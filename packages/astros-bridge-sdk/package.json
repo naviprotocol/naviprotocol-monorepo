@@ -1,0 +1,69 @@
+{
+  "name": "@naviprotocol/astros-bridge-sdk",
+  "version": "1.0.0",
+  "description": "NAVI Astros Aggregator SDK",
+  "license": "MIT",
+  "keywords": [
+    "navi",
+    "astros",
+    "aggregator",
+    "sui"
+  ],
+  "author": "NAVI",
+  "homepage": "https://navprotocol.io",
+  "bugs": "https://github.com/naviprotocol/naviprotocol-monorepo/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naviprotocol/naviprotocol-monorepo.git"
+  },
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "node": "./dist/index.cjs.js",
+        "default": "./dist/index.esm.js"
+      },
+      "require": "./dist/index.cjs.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite build",
+    "build": "run-p build:lib",
+    "build:lib": "vite build",
+    "prettier": "prettier --check src/",
+    "prettier:fix": "prettier --write src/",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "verify": "run-p prettier lint",
+    "verify:fix": "run-p prettier:fix lint:fix",
+    "test": "vitest --config ./vite.config.unit.js",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@mayanfinance/swap-sdk": "10.3.0",
+    "@mysten/sui": "1.34.0",
+    "@solana/web3.js": "1.98.2",
+    "axios": "1.9.0",
+    "ethers": "6.13.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.1",
+    "tsconfig-paths": "^4.2.0",
+    "tslint": "^6.1.3",
+    "typescript": "5.8.3",
+    "vitest": "^3.2.2"
+  }
+}

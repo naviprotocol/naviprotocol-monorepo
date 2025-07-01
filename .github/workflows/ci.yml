@@ -1,0 +1,78 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node and dependencies
+        uses: ./.github/actions/install-dependencies
+
+  unit:
+    name: Unit tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node and dependencies
+        uses: ./.github/actions/install-dependencies
+      - name: Run unit tests
+        run: pnpm run test
+
+  lint:
+    name: Lint
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node and dependencies
+        uses: ./.github/actions/install-dependencies
+      - name: Lint
+        run: pnpm run lint
+      - name: Audit for vulnerabilities
+        run: pnpm audit-ci
+
+  validate:
+    name: Validate Changesets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node and dependencies
+        uses: ./.github/actions/install-dependencies
+      - id: diff
+        name: Determine changed public packages from previous commit
+        run: echo "hasChanges=$(pnpm list --filter "...[$(git rev-parse HEAD^1)]" --depth -1 --json | jq "any(.[] | select(.private != true) ; length > 0)")" >> $GITHUB_OUTPUT
+      - name: Get changed files in the changesets folder
+        id: has-changesets
+        uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69 # pin@v44.3.0
+        with:
+          files: |
+            .changeset/**
+      - name: Create missing changeset note if there are missing changesets
+        if: steps.has-changesets.outputs.any_changed != 'true' && steps.diff.outputs.hasChanges == 'true'
+        run: |
+          echo "true" > missing-changeset.txt
+      - name: Upload missing changeset artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # pin@4.4.3
+        if: steps.has-changesets.outputs.any_changed != 'true' && steps.diff.outputs.hasChanges == 'true'
+        with:
+          name: missing-changeset
+          path: missing-changeset.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Attempt to create snapshots.
+        run: pnpm changeset version --snapshot test-do-not-publish

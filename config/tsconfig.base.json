@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Default",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": true,
+    "declarationMap": true,
+    "strict": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "target": "ES2020",
+		"module": "esnext",
+		"lib": ["dom", "esnext"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "../node_modules/@types",
+      "**/*/dist",
+      "**/*/build",
+      "**/*/.next",
+      "**/*/umd"
+    ],
+    "paths": {
+      "@naviprotocol/astros-aggregator-sdk": [
+        "../packages/astros-aggregator-sdk/src/index.ts"
+      ],
+      "@naviprotocol/astros-bridge-sdk": [
+        "../packages/astros-bridge-sdk/src/index.ts"
+      ]
+    },
+    "noEmitOnError": false
+  },
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/*/node_modules",
+    "**/*/dist",
+    "**/*/build",
+    "**/*/.next",
+    "**/*/__tests__",
+    "**/*/__mocks__",
+    "**/*/coverage",
+    "**/*/.turbo"
+  ]
+}

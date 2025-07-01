@@ -1,0 +1,37 @@
+name: Install Node and package dependencies
+description: 'Install Node dependencies with pnpm'
+runs:
+  using: 'composite'
+  steps:
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10.1.0
+        run_install: false
+    - name: Get pnpm cache directory
+      id: pnpm-cache-dir
+      shell: bash
+      run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+    - uses: actions/cache@v4
+      id: pnpm-cache
+      with:
+        path: ${{ steps.pnpm-cache-dir.outputs.dir }}
+        key: ${{ runner.os }}-node-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: ${{ runner.os }}-node-
+    - name: Use Node.js v20
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+    - shell: bash
+      name: Use Latest Corepack
+      run: |
+        echo "Before: corepack version => $(corepack --version || echo 'not installed')"
+        npm install -g corepack@latest
+        echo "After : corepack version => $(corepack --version)"
+        corepack enable
+        pnpm --version
+    - shell: bash
+      name: Install packages
+      run: pnpm install --frozen-lockfile
+    - shell: bash
+      name: Build packages
+      run: pnpm run build

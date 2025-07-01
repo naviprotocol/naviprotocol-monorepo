@@ -1,0 +1,64 @@
+.DS_Store
+*.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Cache
+.axe/
+.bundle/
+.happo/
+.idea/
+.npm/
+.vagrant/
+.eslintcache
+.yarnclean
+
+# Directories
+coverage/
+dist/
+umd/
+node_modules
+tmp/
+.pnpm-store
+.turbo
+.env*
+.secrets
+out/
+
+# Custom
+*.min.js
+*.map
+
+# Config files that are not part of the repository root anymore. Should be removed in the future.
+/.eslintignore
+/.eslintrc*
+/vite.*.js
+/jest.*.js
+/*tsconfig*.json
+/esbuild.*.js
+
+!config/**
+
+*.tsbuildinfo
+
+# Local Netlify folder
+.netlify
+.monorepo-example
+
+# Local Vercel folder
+.vercel
+
+# Next.js build output
+.next
+
+# TypeDoc output
+
+.docgen
+
+# Nix
+.envrc
+.direnv/
+
+/.vscode/
