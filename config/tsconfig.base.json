@@ -33,6 +33,9 @@
       ],
       "@naviprotocol/astros-bridge-sdk": [
         "../packages/astros-bridge-sdk/src/index.ts"
+      ],
+      "@naviprotocol/lending": [
+        "../packages/lending/src/index.ts"
       ]
     },
     "noEmitOnError": false
