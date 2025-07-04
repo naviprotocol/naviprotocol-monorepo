@@ -13,19 +13,44 @@ export type CacheOption = {
   cacheTime?: number
 }
 
-export type UserLendingInfo = {}
+export type UserLendingInfo = {
+  assetId: number
+  borrowBalance: string
+  supplyBalance: string
+}
 
-export type LendingReward = {}
+export type LendingReward = {
+  assetId: number
+  rewardType: number
+  rewards: { coinType: string; available: string }[]
+}
 
-export type HistoryReward = {}
+export type HistoryClaimedReward = {
+  amount: string
+  coinType: string
+  pool: string
+  sender: string
+  timestamp: string
+  tokenPrice: number
+}
 
 export type LendingClaimedReward = {}
 
-export type Transaction = {}
+export type Transaction = {
+  type: string
+  status: string
+  coinChanges: {
+    symbol: string
+    amount: string
+  }[]
+  timestamp: string
+  digest: string
+}
 
 export type Pool = {
   borrowCapCeiling: string
   coinType: string
+  suiCoinType: string
   currentBorrowIndex: string
   currentBorrowRate: string
   currentSupplyIndex: string
@@ -86,11 +111,21 @@ export type Pool = {
     stakingYieldApy: string
     treasuryApy: string
   }
+  token: {
+    coinType: string
+    decimals: number
+    logoURI: string
+    symbol: string
+  }
+  contract: {
+    reserveId: string
+    pool: string
+  }
 }
 
 export type AssetIdentifier = string | Pool | number
 
-export type PoolOperator = {}
+export type PoolOperator = 'deposit' | 'withdraw' | 'borrow' | 'repay'
 
 export type FloashloanAsset = {
   max: string
@@ -113,7 +148,14 @@ export type PoolStats = {
   borrowFeeAddress: string
 }
 
-export type OraclePriceFeed = {}
+export type OraclePriceFeed = {
+  oracleId: number
+  feedId: string
+  assetId: number
+  pythPriceInfoObject: string
+  coinType: string
+  priceDecimal: number
+}
 
 export type LendingConfig = {
   package: string
@@ -125,6 +167,18 @@ export type LendingConfig = {
   reserveParentId: string
   flashloanConfig: string
   flashloanSupportedAssets: string
+  oracle: {
+    packageId: string
+    priceOracle: string
+    oracleAdminCap: string
+    oracleConfig: string
+    pythStateId: string
+    wormholeStateId: string
+    supraOracleHolder: string
+    sender: string
+    gasObject: string
+    feeds: OraclePriceFeed[]
+  }
 }
 
 export type FeeDetail = {

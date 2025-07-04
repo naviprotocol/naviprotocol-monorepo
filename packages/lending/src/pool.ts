@@ -1,16 +1,20 @@
 import type {
-  SuiClientOption,
   EnvOption,
   CacheOption,
   Pool,
   AssetIdentifier,
-  PoolOperator,
   FloashloanAsset,
   PoolStats,
   FeeDetail
 } from './types'
-import { withCache, withSingleton, suiClient } from './utils'
-import { getConfig } from './config'
+import { withCache, withSingleton } from './utils'
+
+export enum PoolOperator {
+  Supply = 1,
+  Withdraw = 2,
+  Borrow = 3,
+  Repay = 4
+}
 
 export const getPools = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<Pool[]> => {

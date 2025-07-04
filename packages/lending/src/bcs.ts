@@ -75,3 +75,9 @@ export const ReserveDataInfo = bcs.struct('ReserveDataInfo', {
   liquidation_bonus: bcs.u256(),
   liquidation_threshold: bcs.u256()
 })
+
+export const UserStateInfo = bcs.struct('UserStateInfo', {
+  asset_id: bcs.u8(),
+  borrow_balance: bcs.u256(),
+  supply_balance: bcs.u256()
+})

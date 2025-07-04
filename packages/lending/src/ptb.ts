@@ -1,6 +1,9 @@
 import type { Transaction, TransactionResult } from '@mysten/sui/transactions'
 import type { EnvOption, LendingClaimedReward, OraclePriceFeed, Pool } from './types'
 import { CoinStruct } from '@mysten/sui/client'
+import { DEFAULT_CACHE_TIME, getConfig } from './config'
+import { parseTxVaule, parseTxPoolVaule, normalizeCoinType } from './utils'
+import { getPools } from './pool'
 
 export async function mergeCoinsPTB(
   tx: Transaction,
@@ -93,7 +96,55 @@ export async function getHealthFactorPTB(
   address: string | TransactionResult,
   options?: Partial<EnvOption>
 ): Promise<TransactionResult> {
-  return {} as any
+  const config = await getConfig({
+    ...options,
+    cacheTime: DEFAULT_CACHE_TIME
+  })
+  return tx.moveCall({
+    target: `${config.package}::logic::user_health_factor`,
+    arguments: [
+      tx.object('0x06'),
+      tx.object(config.storage),
+      tx.object(config.oracle.priceOracle),
+      parseTxVaule(address, tx.pure.address)
+    ]
+  })
+}
+
+export async function getDynamicHealthFactorPTB(
+  tx: Transaction,
+  address: string | TransactionResult,
+  coinType: string | Pool,
+  estimatedSupply: number | TransactionResult,
+  estimatedBorrow: number | TransactionResult,
+  isIncrease: boolean | TransactionResult,
+  options?: Partial<EnvOption>
+): Promise<TransactionResult> {
+  const config = await getConfig({
+    ...options,
+    cacheTime: DEFAULT_CACHE_TIME
+  })
+  const pools = await getPools(options)
+  const type = typeof coinType === 'string' ? coinType : coinType.suiCoinType
+  const pool = pools.find((p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(type))
+  if (!pool) {
+    throw new Error(`Pool not found for coin type: ${type}`)
+  }
+  return tx.moveCall({
+    target: `${config.package}::dynamic_calculator::dynamic_health_factor`,
+    arguments: [
+      tx.object('0x06'),
+      tx.object(config.storage),
+      tx.object(config.oracle.priceOracle),
+      parseTxPoolVaule(tx, pool),
+      parseTxVaule(address, tx.pure.address),
+      parseTxVaule(pool.id, tx.pure.u8),
+      parseTxVaule(estimatedSupply, tx.pure.u64),
+      parseTxVaule(estimatedBorrow, tx.pure.u64),
+      parseTxVaule(isIncrease, tx.pure.bool)
+    ],
+    typeArguments: [pool.suiCoinType]
+  })
 }
 
 export async function flashloanPTB(
