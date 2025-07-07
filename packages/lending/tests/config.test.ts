@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getConfig } from '../src/config'
+import { getConfig, DEFAULT_CACHE_TIME } from '../src/config'
 
 describe('getConfig', () => {
   it('prod config', async () => {
@@ -15,5 +15,11 @@ describe('getConfig', () => {
     expect(config.package).toEqual(
       '0xacc64a324fc6f68b47fefd484419dedc4d620630665ead67f393c90d11b387b9'
     )
+  })
+})
+
+describe('default config', () => {
+  it('DEFAULT_CACHE_TIME', async () => {
+    expect(DEFAULT_CACHE_TIME).toBeDefined()
   })
 })

@@ -1,4 +1,16 @@
-import { type SuiClient } from '@mysten/sui/client'
+import type { SuiClient } from '@mysten/sui/client'
+import type { TransactionResult as TransactionResultType } from '@mysten/sui/transactions'
+
+export type TransactionResult =
+  | {
+      $kind: 'Result'
+      Result: number
+    }
+  | {
+      $kind: 'NestedResult'
+      NestedResult: [number, number]
+    }
+  | TransactionResultType
 
 export type EnvOption = {
   env: 'dev' | 'prod'
@@ -20,6 +32,16 @@ export type UserLendingInfo = {
 }
 
 export type LendingReward = {
+  userClaimableReward: number
+  userClaimedReward?: string
+  option: number
+  ruleIds: string[]
+  assetCoinType: string
+  rewardCoinType: string
+  assetId: number
+}
+
+export type LendingRewardSummary = {
   assetId: number
   rewardType: number
   rewards: { coinType: string; available: string }[]
@@ -34,7 +56,10 @@ export type HistoryClaimedReward = {
   tokenPrice: number
 }
 
-export type LendingClaimedReward = {}
+export type LendingClaimedReward = {
+  coin: TransactionResult
+  identifier: Pool
+}
 
 export type Transaction = {
   type: string
@@ -120,12 +145,11 @@ export type Pool = {
   contract: {
     reserveId: string
     pool: string
+    rewardFundId?: string
   }
 }
 
 export type AssetIdentifier = string | Pool | number
-
-export type PoolOperator = 'deposit' | 'withdraw' | 'borrow' | 'repay'
 
 export type FloashloanAsset = {
   max: string
@@ -152,9 +176,11 @@ export type OraclePriceFeed = {
   oracleId: number
   feedId: string
   assetId: number
+  pythPriceFeedId: string
   pythPriceInfoObject: string
   coinType: string
   priceDecimal: number
+  supraPairId: number
 }
 
 export type LendingConfig = {
@@ -190,3 +216,16 @@ export type FeeDetail = {
   price: number
   currentValue: number
 }
+
+export type CoinObject =
+  | TransactionResult
+  | {
+      $kind: 'GasCoin'
+      GasCoin: true
+    }
+  | {
+      $kind: 'Input'
+      Input: number
+      type?: 'object'
+    }
+  | string

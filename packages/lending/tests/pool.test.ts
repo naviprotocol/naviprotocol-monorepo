@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { getPools, getAllFlashLoanAssets, getFlashLoanAsset, getStats, getFees } from '../src/pool'
+import {
+  getPools,
+  getStats,
+  getFees,
+  depositCoinPTB,
+  withdrawCoinPTB,
+  borrowCoinPTB,
+  repayCoinPTB
+} from '../src/pool'
+import { Transaction } from '@mysten/sui/transactions'
+import { suiClient } from '../src/utils'
+
+const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 
 describe('getPools', () => {
   it('prod pools', async () => {
@@ -28,59 +40,6 @@ describe('getPools', () => {
   })
 })
 
-describe('getAllFlashLoanAssets', () => {
-  it('prod', async () => {
-    const assets = await getAllFlashLoanAssets()
-    expect(assets).toBeDefined()
-    expect(assets.length).toBeGreaterThan(0)
-    const navx = assets.find(
-      (asset) =>
-        asset.coinType ===
-        '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('dev', async () => {
-    const assets = await getAllFlashLoanAssets({ env: 'dev' })
-    expect(assets).toBeDefined()
-    expect(assets.length).toBeGreaterThan(0)
-    const navx = assets.find(
-      (asset) =>
-        asset.coinType ===
-        '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(8)
-  })
-})
-
-describe('getFlashLoanAsset', () => {
-  it('find by coinType', async () => {
-    const navx = await getFlashLoanAsset(
-      '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('find by assetId', async () => {
-    const navx = await getFlashLoanAsset(7)
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('find by poolId', async () => {
-    const pools = await getPools()
-    const navx = pools.find(
-      (pool) =>
-        pool.coinType ===
-        'a99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    const navxAsset = await getFlashLoanAsset(navx!)
-    expect(navxAsset).toBeDefined()
-    expect(navxAsset?.assetId).toBe(7)
-  })
-})
-
 describe('getStats', () => {
   it('check response', async () => {
     const stats = await getStats()
@@ -104,5 +63,100 @@ describe('getFees', () => {
     expect(fees.v3BorrowFee.totalValue).toBeGreaterThan(0)
     expect(fees.borrowInterestFee.totalValue).toBeGreaterThan(0)
     expect(fees.flashloanAndLiquidationFee.totalValue).toBeGreaterThan(0)
+  })
+})
+
+describe('depositCoinPTB', () => {
+  it('should success deposit 1 Sui', async () => {
+    const coinType = '0x2::sui::SUI'
+    const tx = new Transaction()
+    const [toDeposit] = tx.splitCoins(tx.gas, [1e9])
+    await depositCoinPTB(tx, coinType, toDeposit)
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const res = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+    expect(res.executionErrorSource).eql(null)
+    expect(res.events.length).toBeGreaterThan(0)
+  })
+
+  it('should failed insufficient SUI balance for deposit', async () => {
+    const coinType = '0x2::sui::SUI'
+    const tx = new Transaction()
+    const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 1000])
+    await depositCoinPTB(tx, coinType, toDeposit, {
+      amount: 1e9 * 1000
+    })
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const res = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+    expect(res.executionErrorSource).toBeTypeOf('string')
+    expect(res.events.length).eql(0)
+  })
+})
+
+describe('withdrawCoinPTB', () => {
+  it('should success withdraw 1 vSUI', async () => {
+    const coinType =
+      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
+    const tx = new Transaction()
+    const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9)
+    tx.transferObjects([withdrawCoins], testAddress)
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const res = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+
+    expect(res.executionErrorSource).eql(null)
+    expect(res.events.length).toBeGreaterThan(0)
+  })
+})
+
+describe('borrowCoinPTB', () => {
+  it('should success borrow 1 vSUI', async () => {
+    const coinType =
+      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
+    const tx = new Transaction()
+    const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9)
+    tx.transferObjects([borrowCoin], testAddress)
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const res = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+
+    expect(res.executionErrorSource).eql(null)
+  })
+})
+
+describe('repayCoinPTB', () => {
+  it('should success repay 0.5 SUI', async () => {
+    const coinType = '0x2::sui::SUI'
+    const tx = new Transaction()
+    await repayCoinPTB(tx, coinType, tx.gas, {
+      amount: 1e9 * 0.5
+    })
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const res = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+
+    expect(res.executionErrorSource).eql(null)
+    expect(res.events.length).toBeGreaterThan(0)
   })
 })

@@ -1,49 +1,15 @@
-import type { SuiClientOption, CacheOption, Pool } from './types'
-import type { CoinStruct, DevInspectResults } from '@mysten/sui/client'
-import BigNumber from 'bignumber.js'
+import type { SuiClientOption, CacheOption, Pool, TransactionResult } from './types'
+import type { DevInspectResults } from '@mysten/sui/client'
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 import camelCase from 'lodash.camelcase'
-import { TransactionResult, Transaction } from '@mysten/sui/transactions'
-import { bcs, BcsType, pureBcsSchemaFromTypeName } from '@mysten/sui/bcs'
+import { Transaction } from '@mysten/sui/transactions'
+import { BcsType } from '@mysten/sui/bcs'
 import { normalizeStructTag } from '@mysten/sui/utils'
+import { SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js'
 
 export const suiClient = new SuiClient({
   url: getFullnodeUrl('mainnet')
 })
-
-export async function getUserCoins(
-  address: string,
-  options?: Partial<
-    {
-      coinType?: string
-    } & SuiClientOption
-  >
-): Promise<CoinStruct[]> {
-  let cursor: string | undefined | null = null
-  const allCoinDatas: CoinStruct[] = []
-  const client = options?.client ?? suiClient
-  do {
-    const { data, nextCursor } = await client.getCoins({
-      owner: address,
-      coinType: options?.coinType,
-      cursor,
-      limit: 100
-    })
-    if (!data || !data.length) {
-      break
-    }
-    allCoinDatas.push(...data)
-    cursor = nextCursor
-  } while (cursor)
-  return allCoinDatas
-}
-
-export function rayMathMulIndex(
-  amount: string | number | BigNumber,
-  index: string | number | BigNumber
-): BigNumber {
-  return new BigNumber(0)
-}
 
 function argsKey(args: any[]) {
   let argsCopy = JSON.parse(JSON.stringify(args))
@@ -121,11 +87,11 @@ export function camelize<T extends Record<string, any>>(obj: T): T {
 }
 
 export function parseTxVaule(
-  value: string | number | boolean | TransactionResult,
+  value: string | number | boolean | object,
   format: any
 ): TransactionResult {
-  if (typeof value === 'object' && value.$kind) {
-    return value
+  if (typeof value === 'object') {
+    return value as TransactionResult
   }
   return format(value) as TransactionResult
 }
@@ -175,3 +141,7 @@ export function processContractHealthFactor(hf: number) {
   }
   return healthFactor
 }
+
+export const suiPythConnection = new SuiPriceServiceConnection('https://hermes.pyth.network', {
+  timeout: 20000
+})

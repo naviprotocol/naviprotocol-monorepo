@@ -3,14 +3,16 @@ import {
   getUserLendingState,
   getUserHealthFactor,
   getUserDynamicHealthFactorAfterOperator,
-  getUserAvailableLendingRewards,
-  getUserTotalClaimedReward,
   getUserTransactions,
-  getUserClaimedRewardHistory
+  getUserCoins,
+  mergeCoinsPTB
 } from '../src/account'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
-import { Transaction } from '../src/types'
-import { getPools, PoolOperator } from '../src/pool'
+import { Transaction as NAVITransaction } from '../src/types'
+import { getPools, PoolOperator, depositCoinPTB } from '../src/pool'
+import { suiClient } from '../src/utils'
+import { Transaction } from '@mysten/sui/transactions'
+import { CoinStruct } from '@mysten/sui/client'
 
 const keypair = Ed25519Keypair.generate()
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
@@ -103,30 +105,8 @@ describe('getUserDynamicHealthFactorAfterOperator', () => {
   })
 })
 
-describe('getUserAvailableLendingRewards', () => {
-  it('check with rewards', async () => {
-    const rewards = await getUserAvailableLendingRewards(testAddress)
-    expect(rewards).toBeDefined()
-    expect(rewards.length).toBeGreaterThan(0)
-  })
-})
-
-describe('getUserTotalClaimedReward', () => {
-  it('check with rewards', async () => {
-    const rewards = await getUserTotalClaimedReward(testAddress)
-    expect(rewards).toBeDefined()
-    expect(rewards.USDValue).toBeGreaterThan(0)
-  })
-
-  it('check with no rewards', async () => {
-    const rewards = await getUserTotalClaimedReward(keypair.toSuiAddress())
-    expect(rewards).toBeDefined()
-    expect(rewards.USDValue).toBe(0)
-  })
-})
-
 describe('getUserTransactions', () => {
-  let transactions: Transaction[] = []
+  let transactions: NAVITransaction[] = []
   let cursor: string | undefined
   const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
   it('check with transactions', async () => {
@@ -151,11 +131,120 @@ describe('getUserTransactions', () => {
   })
 })
 
-describe('getUserClaimedRewardHistory', () => {
-  const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
-  it('check with rewards', async () => {
-    const rewards = await getUserClaimedRewardHistory(address)
-    expect(rewards).toBeDefined()
-    expect(rewards.data.length).toBeGreaterThan(0)
+describe('getUserCoins', () => {
+  let allCoins = [] as CoinStruct[]
+  it('should return all coins', async () => {
+    allCoins = await getUserCoins(testAddress)
+    expect(allCoins).toBeDefined()
+    expect(allCoins.length).toBeGreaterThan(0)
+  })
+  it('filter by coinType', async () => {
+    const coinType =
+      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
+    const coins = await getUserCoins(testAddress, {
+      coinType
+    })
+    expect(coins.length).toBeGreaterThan(0)
+    expect(coins.length).toBeLessThan(allCoins.length)
+    expect(coins[0].coinType).eqls(coinType)
+  })
+})
+
+describe('mergeCoinsPTB', () => {
+  const fakeCoins = [
+    {
+      coinObjectId: '0x1',
+      balance: '10',
+      coinType: '0x1',
+      digest: '0x1',
+      previousTransaction: '0x1',
+      version: ''
+    },
+    {
+      coinObjectId: '0x2',
+      balance: '20',
+      coinType: '0x1',
+      digest: '0x2',
+      previousTransaction: '0x2',
+      version: ''
+    }
+  ]
+  it('no coins to merge', () => {
+    const tx = new Transaction()
+    expect(() => mergeCoinsPTB(tx, [])).toThrow('No coins to merge')
+    expect(() => mergeCoinsPTB(tx, [], { balance: 100 })).toThrow('No coins to merge')
+    expect(() =>
+      mergeCoinsPTB(
+        tx,
+        [
+          {
+            coinObjectId: '0x2',
+            balance: '0',
+            coinType: '0x2',
+            digest: '0x2',
+            previousTransaction: '0x2',
+            version: ''
+          }
+        ],
+        { balance: 100 }
+      )
+    ).toThrow('No coins to merge')
+  })
+
+  it('Balance is less than the specified balance', () => {
+    const tx = new Transaction()
+    expect(() => mergeCoinsPTB(tx, fakeCoins, { balance: 100 })).toThrow(
+      'Balance is less than the specified balance: 30 < 100'
+    )
+  })
+
+  it('merge vsui coins', async () => {
+    const coinType =
+      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
+    const userCoins = await getUserCoins(testAddress, {
+      coinType
+    })
+    let tx = new Transaction()
+    const result = mergeCoinsPTB(tx, userCoins)
+    expect(result).toBeDefined()
+    tx = new Transaction()
+    const result2 = mergeCoinsPTB(tx, userCoins)
+    expect(result2).toBeDefined()
+    await depositCoinPTB(tx, coinType, result2 as any, {
+      amount: 1e9
+    })
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const a = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+    const vSuiBalance = a.balanceChanges.find((b) => b.coinType === coinType)
+    expect(vSuiBalance).toBeDefined()
+    expect(vSuiBalance?.amount).toBe('-1000000000')
+  })
+
+  it('merge sui coins', async () => {
+    const coinType = '0x2::sui::SUI'
+    const userCoins = await getUserCoins(testAddress, {
+      coinType
+    })
+    const tx = new Transaction()
+    const result2 = mergeCoinsPTB(tx, userCoins, {
+      useGasCoin: true,
+      balance: 1e9
+    })
+    await depositCoinPTB(tx, coinType, result2)
+    tx.setSender(testAddress)
+    const dryRunTxBytes: Uint8Array = await tx.build({
+      client: suiClient
+    })
+    const a = await suiClient.dryRunTransactionBlock({
+      transactionBlock: dryRunTxBytes
+    })
+    const suiBalance = a.balanceChanges.find((b) => b.coinType === coinType)
+    expect(suiBalance).toBeDefined()
+    expect(Math.abs(Number(suiBalance?.amount))).toBeGreaterThan(1000000000)
   })
 })

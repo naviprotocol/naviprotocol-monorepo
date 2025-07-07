@@ -1,17 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { getPriceFeeds, filterPriceFeeds } from '../src/oracle'
+import {
+  getPriceFeeds,
+  filterPriceFeeds,
+  getPythStalePriceFeedId,
+  updatePythPriceFeeds,
+  updateOraclePricesPTB
+} from '../src/oracle'
 import { getUserLendingState } from '../src/account'
 import { OraclePriceFeed } from '../src/types'
 import { getPools } from '../src/pool'
 
 let allFeeds: OraclePriceFeed[] = []
 
-describe('oracle module', () => {
-  it('getPriceFeeds', async () => {
+describe('getPriceFeeds', () => {
+  it('response success', async () => {
     allFeeds = await getPriceFeeds()
     expect(allFeeds.length).toBeGreaterThan(0)
   })
+})
 
+describe('filterPriceFeeds', () => {
   it('filterPriceFeeds by userLendingState', async () => {
     const lendingState = await getUserLendingState(
       '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
@@ -31,3 +39,12 @@ describe('oracle module', () => {
     expect(filteredFeeds.length).toEqual(3)
   })
 })
+
+// describe('getPythStalePriceFeedId', () => {
+//   it('response success', async () => {
+//     const stalePriceFeedIds = await getPythStalePriceFeedId(
+//       allFeeds.map((feed) => feed.pythPriceFeedId)
+//     )
+//     expect(stalePriceFeedIds.length).toBeGreaterThan(0)
+//   })
+// })
