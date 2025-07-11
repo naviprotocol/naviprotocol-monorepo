@@ -12,18 +12,3 @@ export async function createAccountCapPTB(tx: Transaction, options?: Partial<Env
     arguments: []
   })
 }
-
-export async function destroyAccountCapPTB(
-  tx: Transaction,
-  accountCap: string | TransactionResult,
-  options?: Partial<EnvOption>
-) {
-  const config = await getConfig({
-    ...options
-  })
-  tx.moveCall({
-    target: `${config.package}::lending::delete_account`,
-    arguments: [parseTxVaule(accountCap, tx.object)]
-  })
-  return tx
-}
