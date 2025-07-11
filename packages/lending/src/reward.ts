@@ -1,3 +1,11 @@
+/**
+ * Lending Reward Management for Lending Protocol
+ *
+ * This module provides comprehensive reward functionality for the lending protocol.
+ * It handles reward calculations, claiming, and management for users who participate
+ * in lending activities such as supplying assets or borrowing.
+ */
+
 import type {
   SuiClientOption,
   EnvOption,
@@ -22,6 +30,17 @@ import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
 
+/**
+ * Get user's available lending rewards
+ *
+ * This function retrieves all available rewards for a user from the lending protocol.
+ * It uses devInspect to simulate the reward calculation and returns detailed
+ * information about claimable rewards for each asset and reward type.
+ *
+ * @param address - User's wallet address
+ * @param options - Optional client and environment configuration
+ * @returns Array of lending rewards available for claiming
+ */
 export async function getUserAvailableLendingRewards(
   address: string,
   options?: Partial<SuiClientOption & EnvOption>
@@ -33,30 +52,37 @@ export async function getUserAvailableLendingRewards(
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
   })
+
+  // Create transaction to simulate reward calculation
   const tx = new Transaction()
   tx.moveCall({
     target: `${config.uiGetter}::incentive_v3_getter::get_user_atomic_claimable_rewards`,
     arguments: [
-      tx.object('0x06'),
-      tx.object(config.storage),
-      tx.object(config.incentiveV3),
-      tx.pure.address(address)
+      tx.object('0x06'), // Clock object
+      tx.object(config.storage), // Protocol storage
+      tx.object(config.incentiveV3), // Incentive V3 contract
+      tx.pure.address(address) // User address
     ]
   })
+
+  // Simulate the transaction to get reward data
   const result = await client.devInspectTransactionBlock({
     transactionBlock: tx,
     sender: address
   })
+
+  // Parse the result using BCS schemas
   const rewardsData = parseDevInspectResult<[string[], string[], number[], string[], number[]]>(
     result,
     [
-      bcs.vector(bcs.string()),
-      bcs.vector(bcs.string()),
-      bcs.vector(bcs.u8()),
-      bcs.vector(bcs.Address),
-      bcs.vector(bcs.u256())
+      bcs.vector(bcs.string()), // Asset coin types
+      bcs.vector(bcs.string()), // Reward coin types
+      bcs.vector(bcs.u8()), // Reward options
+      bcs.vector(bcs.Address), // Rule IDs
+      bcs.vector(bcs.u256()) // Claimable amounts
     ]
   )
+
   const rewardsList: {
     userClaimableReward: number
     userClaimedReward?: string
@@ -66,6 +92,8 @@ export async function getUserAvailableLendingRewards(
     rewardCoinType: string
     assetId: number
   }[] = []
+
+  // Process the reward data and match with feeds and pools
   if (rewardsData.length === 5 && Array.isArray(rewardsData[0])) {
     const count = rewardsData[0].length
     for (let i = 0; i < count; i++) {
@@ -91,7 +119,17 @@ export async function getUserAvailableLendingRewards(
   return rewardsList
 }
 
+/**
+ * Summarize lending rewards by asset and reward type
+ *
+ * This function aggregates rewards by asset ID and reward type, providing
+ * a summary view of all available rewards for easier display and management.
+ *
+ * @param rewards - Array of lending rewards to summarize
+ * @returns Array of summarized reward information grouped by asset and type
+ */
 export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSummary[] {
+  // Aggregate rewards by asset ID, reward type, and coin type
   const agg = new Map<
     string,
     { assetId: number; rewardType: number; coinType: string; total: number }
@@ -113,6 +151,7 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
     }
   })
 
+  // Group rewards by asset ID and reward type
   const groupMap = new Map<
     string,
     { assetId: number; rewardType: number; rewards: Map<string, number> }
@@ -126,6 +165,7 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
     rewardMap.rewards.set(coinType, (rewardMap.rewards.get(coinType) || 0) + total)
   }
 
+  // Convert to summary format
   return Array.from(groupMap.values()).map((group) => ({
     assetId: group.assetId,
     rewardType: group.rewardType,
@@ -136,6 +176,15 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
   }))
 }
 
+/**
+ * Get user's total claimed rewards in USD value
+ *
+ * Fetches the total amount of rewards that a user has claimed historically,
+ * converted to USD value for easy comparison and display.
+ *
+ * @param address - User's wallet address
+ * @returns Object containing total claimed rewards in USD
+ */
 export const getUserTotalClaimedReward = withSingleton(
   async (
     address: string
@@ -148,6 +197,16 @@ export const getUserTotalClaimedReward = withSingleton(
   }
 )
 
+/**
+ * Get user's claimed reward history
+ *
+ * Retrieves a paginated list of all rewards that a user has claimed historically.
+ * Useful for tracking reward history and generating reports.
+ *
+ * @param address - User's wallet address
+ * @param options - Pagination options (page number and size)
+ * @returns Object containing claimed reward history and pagination cursor
+ */
 export const getUserClaimedRewardHistory = withSingleton(
   async (
     address: string,
@@ -167,6 +226,19 @@ export const getUserClaimedRewardHistory = withSingleton(
   }
 )
 
+/**
+ * Claim lending rewards in the PTB (Programmable Transaction Block)
+ *
+ * This function creates a transaction to claim rewards from the lending protocol.
+ * It supports different claiming methods including direct claiming, claiming with
+ * account capabilities, and custom coin handling (transfer or deposit).
+ *
+ * @param tx - The transaction block to add reward claiming operations to
+ * @param rewards - Array of rewards to claim
+ * @param options - Optional configuration including account capabilities and custom coin handling
+ * @returns Array of claimed reward coins and their identifiers
+ * @throws Error if reward fund not found or invalid configuration
+ */
 export async function claimLendingRewardsPTB(
   tx: Transaction,
   rewards: LendingReward[],
@@ -190,6 +262,7 @@ export async function claimLendingRewardsPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
 
+  // Group rewards by reward coin type and collect asset IDs and rule IDs
   const rewardMap = new Map<string, { assetIds: string[]; ruleIds: string[] }>()
 
   for (const reward of rewards) {
@@ -205,7 +278,10 @@ export async function claimLendingRewardsPTB(
       group.ruleIds.push(ruleId)
     }
   }
+
   const rewardCoins = [] as LendingClaimedReward[]
+
+  // Process each reward coin type
   for (const [rewardCoinType, { assetIds, ruleIds }] of rewardMap) {
     const pool = pools.find(
       (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(rewardCoinType)
@@ -215,23 +291,27 @@ export async function claimLendingRewardsPTB(
     }
     const matchedRewardFund = pool.contract.rewardFundId
 
+    // Validate configuration
     if (options?.accountCap && !options.customCoinReceive) {
       throw new Error('customCoinReceive is required when accountCap is provided')
     }
+
+    // Handle custom coin receiving logic
     if (options?.customCoinReceive) {
       let rewardBalance
 
+      // Claim rewards with or without account capability
       if (options.accountCap) {
         rewardBalance = tx.moveCall({
           target: `${config.package}::incentive_v3::claim_reward_with_account_cap`,
           arguments: [
-            tx.object('0x06'),
-            tx.object(config.incentiveV3),
-            tx.object(config.storage),
-            tx.object(matchedRewardFund),
-            tx.pure.vector('string', assetIds),
-            tx.pure.vector('address', ruleIds),
-            parseTxVaule(options.accountCap, tx.object)
+            tx.object('0x06'), // Clock object
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.object(config.storage), // Protocol storage
+            tx.object(matchedRewardFund), // Reward fund
+            tx.pure.vector('string', assetIds), // Asset IDs
+            tx.pure.vector('address', ruleIds), // Rule IDs
+            parseTxVaule(options.accountCap, tx.object) // Account capability
           ],
           typeArguments: [rewardCoinType]
         })
@@ -239,23 +319,25 @@ export async function claimLendingRewardsPTB(
         rewardBalance = tx.moveCall({
           target: `${config.package}::incentive_v3::claim_reward`,
           arguments: [
-            tx.object('0x06'),
-            tx.object(config.incentiveV3),
-            tx.object(config.storage),
-            tx.object(matchedRewardFund),
-            tx.pure.vector('string', assetIds),
-            tx.pure.vector('address', ruleIds)
+            tx.object('0x06'), // Clock object
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.object(config.storage), // Protocol storage
+            tx.object(matchedRewardFund), // Reward fund
+            tx.pure.vector('string', assetIds), // Asset IDs
+            tx.pure.vector('address', ruleIds) // Rule IDs
           ],
           typeArguments: [rewardCoinType]
         })
       }
 
+      // Convert balance to coin object
       const [rewardCoin]: any = tx.moveCall({
         target: '0x2::coin::from_balance',
         arguments: [rewardBalance],
         typeArguments: [rewardCoinType]
       })
 
+      // Handle different custom coin receiving types
       if (options?.customCoinReceive.type === 'transfer') {
         if (!options.customCoinReceive.transfer) {
           throw new Error('customCoinReceive.transfer is required')
@@ -274,15 +356,16 @@ export async function claimLendingRewardsPTB(
         })
       }
     } else {
+      // Standard reward claiming without custom handling
       tx.moveCall({
         target: `${config.package}::incentive_v3::claim_reward_entry`,
         arguments: [
-          tx.object('0x06'),
-          tx.object(config.incentiveV3),
-          tx.object(config.storage),
-          tx.object(matchedRewardFund),
-          tx.pure.vector('string', assetIds),
-          tx.pure.vector('address', ruleIds)
+          tx.object('0x06'), // Clock object
+          tx.object(config.incentiveV3), // Incentive V3 contract
+          tx.object(config.storage), // Protocol storage
+          tx.object(matchedRewardFund), // Reward fund
+          tx.pure.vector('string', assetIds), // Asset IDs
+          tx.pure.vector('address', ruleIds) // Rule IDs
         ],
         typeArguments: [rewardCoinType]
       })

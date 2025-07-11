@@ -1,3 +1,13 @@
+/**
+ * Lending Account Management
+ *
+ * This module provides comprehensive account management functionality for the lending protocol.
+ * It includes coin merging, health factor calculations, user state management, and various
+ * lending operations like supply, borrow, withdraw, and repay.
+ *
+ * @module LendingAccount
+ */
+
 import type {
   UserLendingInfo,
   SuiClientOption,
@@ -26,6 +36,18 @@ import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
 import { getPool, PoolOperator } from './pool'
 
+/**
+ * Merges multiple coins into a single coin for transaction building
+ *
+ * This function takes multiple coin objects and merges them into a single coin
+ * that can be used in a transaction. It supports optional splitting to create
+ * a specific balance amount.
+ *
+ * @param tx - The transaction object to build
+ * @param coins - Array of coin objects to merge
+ * @param options - Optional parameters for balance splitting and gas coin usage
+ * @returns Transaction result representing the merged coin
+ */
 export function mergeCoinsPTB(
   tx: Transaction,
   coins: ({
@@ -43,6 +65,8 @@ export function mergeCoinsPTB(
   let mergedBalance = 0
   const mergeList: string[] = []
   let coinType = ''
+
+  // Sort coins by balance (highest first) and collect valid coins
   coins
     .sort((a, b) => Number(b.balance) - Number(a.balance))
     .forEach((coin) => {
@@ -61,6 +85,7 @@ export function mergeCoinsPTB(
       mergedBalance += Number(coin.balance)
       mergeList.push(coin.coinObjectId)
     })
+
   if (mergeList.length === 0) {
     throw new Error('No coins to merge')
   }
@@ -70,12 +95,14 @@ export function mergeCoinsPTB(
     )
   }
 
+  // Handle SUI gas coin specially
   if (normalizeCoinType(coinType) === normalizeCoinType('0x2::sui::SUI')) {
     return needSplit && !options?.useGasCoin
       ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)])
       : tx.gas
   }
 
+  // Merge coins and optionally split
   const coin =
     mergeList.length == 1
       ? tx.object(mergeList[0])
@@ -84,6 +111,21 @@ export function mergeCoinsPTB(
   return needSplit ? tx.splitCoins(coin, [tx.pure.u64(splitBalance)]) : coin
 }
 
+/**
+ * Calculates dynamic health factor for a user after potential operations
+ *
+ * This function creates a transaction call to calculate the health factor
+ * that would result after performing supply/borrow operations.
+ *
+ * @param tx - The transaction object to build
+ * @param address - User address or transaction result
+ * @param identifier - Asset identifier
+ * @param estimatedSupply - Estimated supply amount
+ * @param estimatedBorrow - Estimated borrow amount
+ * @param isIncrease - Whether this is an increase operation
+ * @param options - Environment options
+ * @returns Transaction result for health factor calculation
+ */
 export async function getDynamicHealthFactorPTB(
   tx: Transaction,
   address: string | TransactionResult,
@@ -115,6 +157,14 @@ export async function getDynamicHealthFactorPTB(
   })
 }
 
+/**
+ * Gets the current health factor for a user
+ *
+ * @param tx - The transaction object to build
+ * @param address - User address or transaction result
+ * @param options - Environment options
+ * @returns Transaction result for health factor calculation
+ */
 export async function getHealthFactorPTB(
   tx: Transaction,
   address: string | TransactionResult,
@@ -123,6 +173,16 @@ export async function getHealthFactorPTB(
   return getDynamicHealthFactorPTB(tx, address, 0, 0, 0, false, options)
 }
 
+/**
+ * Retrieves the current lending state for a user
+ *
+ * This function fetches all active lending positions for a user, including
+ * supply and borrow balances for different assets.
+ *
+ * @param address - User wallet address
+ * @param options - Options for client, environment, and caching
+ * @returns Promise<UserLendingInfo[]> - Array of user lending positions
+ */
 export const getUserLendingState = withCache(
   async (
     address: string,
@@ -134,14 +194,20 @@ export const getUserLendingState = withCache(
     })
     const tx = new Transaction()
     const client = options?.client ?? suiClient
+
+    // Create transaction call to get user state
     tx.moveCall({
       target: `${config.uiGetter}::getter_unchecked::get_user_state`,
       arguments: [tx.object(config.storage), tx.pure.address(address!)]
     })
+
+    // Execute dry run to get user state
     const result = await client.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: address
     })
+
+    // Parse the result and filter out zero balances
     const res = parseDevInspectResult<
       {
         supply_balance: string
@@ -149,6 +215,7 @@ export const getUserLendingState = withCache(
         asset_id: number
       }[][]
     >(result, [bcs.vector(UserStateInfo)])
+
     return camelize(
       res[0].filter((item) => {
         return item.supply_balance !== '0' || item.borrow_balance !== '0'
@@ -157,6 +224,13 @@ export const getUserLendingState = withCache(
   }
 )
 
+/**
+ * Calculates the current health factor for a user
+ *
+ * @param address - User wallet address
+ * @param options - Options for client and environment
+ * @returns Promise<number> - Health factor value
+ */
 export async function getUserHealthFactor(
   address: string,
   options?: Partial<SuiClientOption & EnvOption>
@@ -172,6 +246,18 @@ export async function getUserHealthFactor(
   return processContractHealthFactor(Number(res[0]) || 0)
 }
 
+/**
+ * Calculates the health factor after performing lending operations
+ *
+ * This function simulates the health factor that would result after
+ * performing a series of supply, withdraw, borrow, or repay operations.
+ *
+ * @param address - User wallet address
+ * @param pool - Pool information
+ * @param operations - Array of operations to simulate
+ * @param options - Options for client and environment
+ * @returns Promise<number> - Projected health factor
+ */
 export async function getUserDynamicHealthFactorAfterOperator(
   address: string,
   pool: Pool,
@@ -185,6 +271,8 @@ export async function getUserDynamicHealthFactorAfterOperator(
   const tx = new Transaction()
   let estimatedSupply = 0
   let estimatedBorrow = 0
+
+  // Calculate estimated changes from operations
   operations.forEach((operation) => {
     if (operation.type === PoolOperator.Supply) {
       estimatedSupply += operation.amount
@@ -196,10 +284,16 @@ export async function getUserDynamicHealthFactorAfterOperator(
       estimatedBorrow -= operation.amount
     }
   })
+
+  // Validate operation consistency
   if (estimatedSupply * estimatedBorrow < 0) {
     throw new Error('Invalid operations')
   }
+
+  // Determine if this is an increase operation
   const isIncrease = estimatedSupply > 0 || estimatedBorrow > 0
+
+  // Calculate the dynamic health factor
   await getDynamicHealthFactorPTB(
     tx,
     address,
@@ -209,6 +303,8 @@ export async function getUserDynamicHealthFactorAfterOperator(
     isIncrease,
     options
   )
+
+  // Execute dry run to get the result
   const result = await client.devInspectTransactionBlock({
     transactionBlock: tx,
     sender: address
@@ -217,6 +313,16 @@ export async function getUserDynamicHealthFactorAfterOperator(
   return processContractHealthFactor(Number(res[0]) || 0)
 }
 
+/**
+ * Retrieves transaction history for a user from the Navi protocol API
+ *
+ * This function fetches the transaction history for a specific user address
+ * from the Navi protocol's open API. It supports pagination through cursor-based navigation.
+ *
+ * @param address - User wallet address
+ * @param options - Optional parameters including cursor for pagination
+ * @returns Promise with transaction data and optional cursor for next page
+ */
 export const getUserTransactions = withSingleton(
   async (
     address: string,
@@ -227,17 +333,30 @@ export const getUserTransactions = withSingleton(
     data: NAVITransaction[]
     cursor?: string
   }> => {
+    // Build query parameters for the API request
     const params = new URLSearchParams()
     if (options?.cursor) {
       params.set('cursor', options.cursor)
     }
     params.set('userAddress', address)
+
+    // Fetch transaction history from Navi protocol API
     const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}`
     const res = await fetch(url).then((res) => res.json())
     return res.data
   }
 )
 
+/**
+ * Retrieves all coins owned by a user address
+ *
+ * This function fetches all coin objects owned by a specific address from the Sui blockchain.
+ * It supports filtering by coin type and handles pagination automatically to retrieve all coins.
+ *
+ * @param address - User wallet address
+ * @param options - Optional parameters including coin type filter and client options
+ * @returns Promise<CoinStruct[]> - Array of coin objects owned by the address
+ */
 export async function getUserCoins(
   address: string,
   options?: Partial<
@@ -249,8 +368,12 @@ export async function getUserCoins(
   let cursor: string | undefined | null = null
   const allCoinDatas: CoinStruct[] = []
   const client = options?.client ?? suiClient
+
+  // Fetch all coins using pagination
   do {
     let res: PaginatedCoins
+
+    // Use specific coin type filter if provided, otherwise get all coins
     if (options?.coinType) {
       res = await client.getCoins({
         owner: address,
@@ -265,11 +388,16 @@ export async function getUserCoins(
         limit: 100
       })
     }
+
+    // Break if no more data
     if (!res.data || !res.data.length) {
       break
     }
+
+    // Collect coin data and continue with next page
     allCoinDatas.push(...res.data)
     cursor = res.nextCursor
   } while (cursor)
+
   return allCoinDatas
 }
