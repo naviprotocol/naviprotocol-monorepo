@@ -10,8 +10,6 @@ import {
   getPools,
   mergeCoinsPTB,
   getUserHealthFactor,
-  depositCoinWithAccountCapPTB,
-  withdrawCoinWithAccountCapPTB,
   liquidatePTB,
   claimLendingRewardsPTB,
   getUserAvailableLendingRewards,
@@ -20,7 +18,8 @@ import {
   getUserLendingState,
   filterPriceFeeds,
   CacheOption,
-  LendingReward
+  LendingReward,
+  AccountCapOption
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -79,7 +78,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async deposit<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T }
+    options?: { dryRun: T } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -102,7 +101,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     await depositCoinPTB(tx, pool, mergedCoin, {
       env: this.config.env,
-      amount
+      amount,
+      accountCap: options?.accountCap
     })
 
     const result = await this.walletClient.signExecuteTransaction({
@@ -122,48 +122,10 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return result as any
   }
 
-  async depositWithAccountCap<T extends boolean = false>(
-    identifier: AssetIdentifier,
-    amount: number,
-    accountCapAddress: string,
-    options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
-    if (!this.walletClient) {
-      throw new Error('Wallet client not found')
-    }
-
-    const pool = await getPool(identifier, {
-      env: this.config.env
-    })
-
-    await this.walletClient.module('balance').waitForUpdate()
-
-    const tx = new Transaction()
-
-    const coinBalance = this.walletClient.module('balance').portfolio.getBalance(pool.suiCoinType)
-
-    const mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
-      balance: amount,
-      useGasCoin: true
-    })
-
-    await depositCoinWithAccountCapPTB(tx, pool, mergedCoin, accountCapAddress, {
-      env: this.config.env,
-      amount
-    })
-
-    const result = await this.walletClient.signExecuteTransaction({
-      transaction: tx,
-      dryRun: options?.dryRun ?? false
-    })
-
-    return result as any
-  }
-
   async withdraw<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T }
+    options?: { dryRun: T } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -176,7 +138,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     const tx = new Transaction()
 
     const coin = await withdrawCoinPTB(tx, pool, amount, {
-      env: this.config.env
+      env: this.config.env,
+      accountCap: options?.accountCap
     })
 
     tx.transferObjects([coin], this.walletClient.address)
@@ -197,40 +160,10 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return result as any
   }
 
-  async withdrawWithAccountCap<T extends boolean = false>(
-    identifier: AssetIdentifier,
-    amount: number,
-    accountCapAddress: string,
-    options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
-    if (!this.walletClient) {
-      throw new Error('Wallet client not found')
-    }
-
-    const pool = await getPool(identifier, {
-      env: this.config.env
-    })
-
-    const tx = new Transaction()
-
-    const coin = await withdrawCoinWithAccountCapPTB(tx, pool, accountCapAddress, amount, {
-      env: this.config.env
-    })
-
-    tx.transferObjects([coin], this.walletClient.address)
-
-    const result = await this.walletClient.signExecuteTransaction({
-      transaction: tx,
-      dryRun: options?.dryRun ?? false
-    })
-
-    return result as any
-  }
-
   async borrow<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T }
+    options?: { dryRun: T } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -243,7 +176,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     const tx = new Transaction()
 
     const coin = await borrowCoinPTB(tx, pool, amount, {
-      env: this.config.env
+      env: this.config.env,
+      accountCap: options?.accountCap
     })
 
     tx.transferObjects([coin], this.walletClient.address)
@@ -267,7 +201,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async repay<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T }
+    options?: { dryRun: T } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -290,7 +224,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     await repayCoinPTB(tx, pool, mergedCoin, {
       env: this.config.env,
-      amount
+      amount,
+      accountCap: options?.accountCap
     })
 
     const result = await this.walletClient.signExecuteTransaction({
@@ -397,9 +332,9 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return result as any
   }
 
-  async claimAllRewards<T extends boolean = false>(options?: {
-    dryRun: T
-  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  async claimAllRewards<T extends boolean = false>(
+    options?: { dryRun: T } & Partial<AccountCapOption>
+  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -411,7 +346,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     await claimLendingRewardsPTB(tx, rewards, {
-      env: this.config.env
+      env: this.config.env,
+      accountCap: options?.accountCap
     })
 
     const result = await this.walletClient.signExecuteTransaction({
