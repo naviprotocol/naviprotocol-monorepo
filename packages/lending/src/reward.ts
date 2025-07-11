@@ -5,7 +5,8 @@ import type {
   LendingReward,
   HistoryClaimedReward,
   LendingClaimedReward,
-  TransactionResult
+  TransactionResult,
+  AccountCapOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -170,12 +171,13 @@ export async function claimLendingRewardsPTB(
   tx: Transaction,
   rewards: LendingReward[],
   options?: Partial<
-    EnvOption & {
-      customCoinReceive?: {
-        type: 'transfer' | 'depositNAVI' | 'skip'
-        transfer?: string | TransactionResult
+    EnvOption &
+      AccountCapOption & {
+        customCoinReceive?: {
+          type: 'transfer' | 'depositNAVI' | 'skip'
+          transfer?: string | TransactionResult
+        }
       }
-    }
   >
 ) {
   const config = await getConfig({
@@ -212,23 +214,45 @@ export async function claimLendingRewardsPTB(
       throw new Error(`No matching rewardFund found for reward coin: ${rewardCoinType}`)
     }
     const matchedRewardFund = pool.contract.rewardFundId
-    if (options?.customCoinReceive) {
-      const reward_balance = tx.moveCall({
-        target: `${config.package}::incentive_v3::claim_reward`,
-        arguments: [
-          tx.object('0x06'),
-          tx.object(config.incentiveV3),
-          tx.object(config.storage),
-          tx.object(matchedRewardFund),
-          tx.pure.vector('string', assetIds),
-          tx.pure.vector('address', ruleIds)
-        ],
-        typeArguments: [rewardCoinType]
-      })
 
-      const [reward_coin]: any = tx.moveCall({
+    if (options?.accountCap && !options.customCoinReceive) {
+      throw new Error('customCoinReceive is required when accountCap is provided')
+    }
+    if (options?.customCoinReceive) {
+      let rewardBalance
+
+      if (options.accountCap) {
+        rewardBalance = tx.moveCall({
+          target: `${config.package}::incentive_v3::claim_reward_with_account_cap`,
+          arguments: [
+            tx.object('0x06'),
+            tx.object(config.incentiveV3),
+            tx.object(config.storage),
+            tx.object(matchedRewardFund),
+            tx.pure.vector('string', assetIds),
+            tx.pure.vector('address', ruleIds),
+            parseTxVaule(options.accountCap, tx.object)
+          ],
+          typeArguments: [rewardCoinType]
+        })
+      } else {
+        rewardBalance = tx.moveCall({
+          target: `${config.package}::incentive_v3::claim_reward`,
+          arguments: [
+            tx.object('0x06'),
+            tx.object(config.incentiveV3),
+            tx.object(config.storage),
+            tx.object(matchedRewardFund),
+            tx.pure.vector('string', assetIds),
+            tx.pure.vector('address', ruleIds)
+          ],
+          typeArguments: [rewardCoinType]
+        })
+      }
+
+      const [rewardCoin]: any = tx.moveCall({
         target: '0x2::coin::from_balance',
-        arguments: [reward_balance],
+        arguments: [rewardBalance],
         typeArguments: [rewardCoinType]
       })
 
@@ -237,15 +261,15 @@ export async function claimLendingRewardsPTB(
           throw new Error('customCoinReceive.transfer is required')
         }
         tx.transferObjects(
-          [reward_coin],
+          [rewardCoin],
           parseTxVaule(options.customCoinReceive.transfer, tx.pure.address)
         )
       }
       if (options?.customCoinReceive.type === 'depositNAVI') {
-        await depositCoinPTB(tx, pool, reward_coin, options)
+        await depositCoinPTB(tx, pool, rewardCoin, options)
       } else {
         rewardCoins.push({
-          coin: reward_coin,
+          coin: rewardCoin,
           identifier: pool
         })
       }

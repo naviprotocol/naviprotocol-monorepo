@@ -7,7 +7,8 @@ import type {
   PoolStats,
   FeeDetail,
   CoinObject,
-  TransactionResult
+  TransactionResult,
+  AccountCapOption
 } from './types'
 import { normalizeCoinType, withCache, withSingleton, parseTxVaule } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
@@ -92,9 +93,10 @@ export async function depositCoinPTB(
   identifier: AssetIdentifier,
   coinObject: CoinObject,
   options?: Partial<
-    EnvOption & {
-      amount: number | TransactionResult
-    }
+    EnvOption &
+      AccountCapOption & {
+        amount: number | TransactionResult
+      }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -123,62 +125,38 @@ export async function depositCoinPTB(
     })
   }
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_deposit`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      parseTxVaule(coinObject, tx.object),
-      depositAmount,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
-  return tx
-}
-
-export async function depositCoinWithAccountCapPTB(
-  tx: Transaction,
-  identifier: AssetIdentifier,
-  coinObject: CoinObject,
-  account: string | TransactionResult,
-  options?: Partial<
-    EnvOption & {
-      amount: number | TransactionResult
-    }
-  >
-): Promise<Transaction> {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-  const pool = await getPool(identifier, options)
-  const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
-
-  if (normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') && isGasCoin) {
-    if (!options?.amount) {
-      throw new Error('Amount is required for sui coin')
-    }
-    coinObject = tx.splitCoins(coinObject, [options.amount])
+  if (options?.accountCap) {
+    tx.moveCall({
+      target: `${config.package}::incentive_v3::deposit_with_account_cap`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        parseTxVaule(coinObject, tx.object),
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3),
+        parseTxVaule(options.accountCap, tx.object)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+  } else {
+    tx.moveCall({
+      target: `${config.package}::incentive_v3::entry_deposit`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        parseTxVaule(coinObject, tx.object),
+        depositAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
   }
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::deposit_with_account_cap`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      parseTxVaule(coinObject, tx.object),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-      parseTxVaule(account, tx.object)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
   return tx
 }
 
@@ -186,7 +164,7 @@ export async function withdrawCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & AccountCapOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -196,75 +174,57 @@ export async function withdrawCoinPTB(
 
   const withdrawAmount = parseTxVaule(amount, tx.pure.u64)
 
-  const [ret] = tx.moveCall({
-    target: `${config.package}::incentive_v3::withdraw`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      withdrawAmount,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
+  let withdrawBalance
+
+  if (options?.accountCap) {
+    const [ret] = tx.moveCall({
+      target: `${config.package}::incentive_v3::withdraw_with_account_cap`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        withdrawAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3),
+        parseTxVaule(options.accountCap, tx.object)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+    withdrawBalance = ret
+  } else {
+    const [ret] = tx.moveCall({
+      target: `${config.package}::incentive_v3::withdraw`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        withdrawAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+    withdrawBalance = ret
+  }
 
   const withdrawCoin = tx.moveCall({
     target: `0x2::coin::from_balance`,
-    arguments: [ret],
+    arguments: [withdrawBalance],
     typeArguments: [pool.suiCoinType]
   })
 
   return withdrawCoin
 }
 
-export async function withdrawCoinWithAccountCapPTB(
-  tx: Transaction,
-  identifier: AssetIdentifier,
-  account: string | TransactionResult,
-  amount: number | TransactionResult,
-  options?: Partial<EnvOption>
-) {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-  const pool = await getPool(identifier, options)
-
-  const withdrawAmount = parseTxVaule(amount, tx.pure.u64)
-
-  const [ret] = tx.moveCall({
-    target: `${config.package}::incentive_v3::withdraw_with_account_cap`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      withdrawAmount,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-      parseTxVaule(account, tx.object)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
-
-  const [coin] = tx.moveCall({
-    target: `0x2::coin::from_balance`,
-    arguments: [tx.object(ret)],
-    typeArguments: [pool.suiCoinType]
-  })
-
-  return coin
-}
-
 export async function borrowCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & AccountCapOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -273,24 +233,47 @@ export async function borrowCoinPTB(
   const pool = await getPool(identifier, options)
 
   const borrowAmount = parseTxVaule(amount, tx.pure.u64)
-  const [ret] = tx.moveCall({
-    target: `${config.package}::incentive_v3::borrow`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      borrowAmount,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
+
+  let borrowBalance
+
+  if (!options?.accountCap) {
+    const [ret] = tx.moveCall({
+      target: `${config.package}::incentive_v3::borrow`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        borrowAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+    borrowBalance = ret
+  } else {
+    const [ret] = tx.moveCall({
+      target: `${config.package}::incentive_v3::borrow_with_account_cap`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        borrowAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3),
+        parseTxVaule(options.accountCap, tx.object)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+    borrowBalance = ret
+  }
 
   const coin = tx.moveCall({
     target: `0x2::coin::from_balance`,
-    arguments: [tx.object(ret)],
+    arguments: [tx.object(borrowBalance)],
     typeArguments: [pool.suiCoinType]
   })
 
@@ -302,9 +285,10 @@ export async function repayCoinPTB(
   identifier: AssetIdentifier,
   coinObject: CoinObject,
   options?: Partial<
-    EnvOption & {
-      amount: number | TransactionResult
-    }
+    EnvOption &
+      AccountCapOption & {
+        amount: number | TransactionResult
+      }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -333,21 +317,40 @@ export async function repayCoinPTB(
     })
   }
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_repay`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      parseTxVaule(coinObject, tx.object),
-      repayAmount,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3)
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
+  if (options?.accountCap) {
+    tx.moveCall({
+      target: `${config.package}::incentive_v3::repay_with_account_cap`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        parseTxVaule(coinObject, tx.object),
+        repayAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3),
+        parseTxVaule(options.accountCap, tx.object)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+  } else {
+    tx.moveCall({
+      target: `${config.package}::incentive_v3::entry_repay`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.priceOracle),
+        tx.object(config.storage),
+        tx.object(pool.contract.pool),
+        tx.pure.u8(pool.id),
+        parseTxVaule(coinObject, tx.object),
+        repayAmount,
+        tx.object(config.incentiveV2),
+        tx.object(config.incentiveV3)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+  }
 
   return tx
 }
