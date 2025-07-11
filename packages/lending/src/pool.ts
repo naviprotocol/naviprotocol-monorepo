@@ -186,11 +186,7 @@ export async function withdrawCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<
-    EnvOption & {
-      receiveAddress?: string
-    }
-  >
+  options?: Partial<EnvOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -261,7 +257,7 @@ export async function withdrawCoinWithAccountCapPTB(
     typeArguments: [pool.suiCoinType]
   })
 
-  return [coin]
+  return coin
 }
 
 export async function borrowCoinPTB(

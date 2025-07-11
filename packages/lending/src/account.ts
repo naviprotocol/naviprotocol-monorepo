@@ -5,7 +5,8 @@ import type {
   Pool,
   Transaction as NAVITransaction,
   AssetIdentifier,
-  TransactionResult
+  TransactionResult,
+  CacheOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo } from './bcs'
@@ -17,7 +18,9 @@ import {
   withSingleton,
   processContractHealthFactor,
   parseTxVaule,
-  parseTxPoolVaule
+  parseTxPoolVaule,
+  withCache,
+  normalizeCoinType
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
@@ -67,8 +70,10 @@ export function mergeCoinsPTB(
     )
   }
 
-  if (coinType === '0x2::sui::SUI' && options?.useGasCoin) {
-    return needSplit ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)]) : tx.gas
+  if (normalizeCoinType(coinType) === normalizeCoinType('0x2::sui::SUI')) {
+    return needSplit && !options?.useGasCoin
+      ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)])
+      : tx.gas
   }
 
   const coin =
@@ -130,37 +135,39 @@ export async function getDynamicHealthFactorPTB(
   })
 }
 
-export async function getUserLendingState(
-  address: string,
-  options?: Partial<SuiClientOption & EnvOption>
-): Promise<UserLendingInfo[]> {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-  const tx = new Transaction()
-  const client = options?.client ?? suiClient
-  tx.moveCall({
-    target: `${config.uiGetter}::getter::get_user_state`,
-    arguments: [tx.object(config.storage), tx.pure.address(address!)]
-  })
-  const result = await client.devInspectTransactionBlock({
-    transactionBlock: tx,
-    sender: address
-  })
-  const res = parseDevInspectResult<
-    {
-      supply_balance: string
-      borrow_balance: string
-      asset_id: number
-    }[][]
-  >(result, [bcs.vector(UserStateInfo)])
-  return camelize(
-    res[0].filter((item) => {
-      return item.supply_balance !== '0' || item.borrow_balance !== '0'
+export const getUserLendingState = withCache(
+  async (
+    address: string,
+    options?: Partial<SuiClientOption & EnvOption & CacheOption>
+  ): Promise<UserLendingInfo[]> => {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME
     })
-  ) as any
-}
+    const tx = new Transaction()
+    const client = options?.client ?? suiClient
+    tx.moveCall({
+      target: `${config.uiGetter}::getter::get_user_state`,
+      arguments: [tx.object(config.storage), tx.pure.address(address!)]
+    })
+    const result = await client.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: address
+    })
+    const res = parseDevInspectResult<
+      {
+        supply_balance: string
+        borrow_balance: string
+        asset_id: number
+      }[][]
+    >(result, [bcs.vector(UserStateInfo)])
+    return camelize(
+      res[0].filter((item) => {
+        return item.supply_balance !== '0' || item.borrow_balance !== '0'
+      })
+    ) as any
+  }
+)
 
 export async function getUserHealthFactor(
   address: string,
