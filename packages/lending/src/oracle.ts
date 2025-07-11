@@ -51,12 +51,12 @@ export async function updatePythPriceFeeds(
   try {
     const priceUpdateData = await suiPythConnection.getPriceFeedsUpdateData(priceFeedIds)
     const suiPythClient = new SuiPythClient(
-      client,
+      client as any,
       config.oracle.pythStateId,
       config.oracle.wormholeStateId
     )
 
-    return await suiPythClient.updatePriceFeeds(tx, priceUpdateData, priceFeedIds)
+    return await suiPythClient.updatePriceFeeds(tx as any, priceUpdateData, priceFeedIds)
   } catch (error) {
     throw new Error(`failed to update pyth price feeds, msg: ${(error as Error).message}`)
   }
@@ -75,21 +75,21 @@ export async function updateOraclePricesPTB(
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
   })
-  const feeds = await getPriceFeeds({
-    ...options
-  })
   if (options?.updatePythPriceFeeds) {
-    const pythPriceFeedIds = feeds
+    const pythPriceFeedIds = priceFeeds
       .filter((feed) => !!feed.pythPriceFeedId)
       .map((feed) => feed.pythPriceFeedId)
-    const stalePriceFeedIds = await getPythStalePriceFeedId(pythPriceFeedIds)
-    if (stalePriceFeedIds.length > 0) {
-      await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
-    }
+
+    try {
+      const stalePriceFeedIds = await getPythStalePriceFeedId(pythPriceFeedIds)
+      if (stalePriceFeedIds.length > 0) {
+        await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
+      }
+    } catch (e) {}
   }
   for (const priceFeed of priceFeeds) {
     tx.moveCall({
-      target: `${config.package}::oracle_pro::update_single_price`,
+      target: `${config.oracle.packageId}::oracle_pro::update_single_price`,
       arguments: [
         tx.object('0x6'),
         tx.object(config.oracle.oracleConfig),
