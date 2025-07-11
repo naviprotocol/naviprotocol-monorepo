@@ -1,0 +1,156 @@
+import {
+  CoinObject,
+  mergeCoinsPTB,
+  parseTxVaule,
+  withCache,
+  withSingleton
+} from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+import { Module } from '../module'
+import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
+import axios from 'axios'
+
+export interface HaedalModuleConfig {
+  packageId: string
+  configId: string
+  coinType: string
+}
+
+export type Events = {
+  'haedal:stake-success': {
+    suiAmount: number
+  }
+  'haedal:unstake-success': {
+    haSUIAmount: number
+  }
+}
+
+export class HaedalModule extends Module<HaedalModuleConfig, Events> {
+  readonly name = 'haedal'
+  readonly defaultConfig = {
+    packageId: '0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2',
+    configId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
+    coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
+  }
+
+  getApy = withCache(
+    withSingleton(async () => {
+      const resp: {
+        data: {
+          apy: number
+        }
+      } = await axios.get('https://open-api.naviprotocol.io/api/haedal/stats').then((res) => {
+        return res.data
+      })
+      return resp.data.apy
+    })
+  )
+
+  async stakePTB(tx: Transaction, suiCoin: CoinObject) {
+    const [coin] = tx.moveCall({
+      target: `${this.config.packageId}::staking::request_stake_coin`,
+      arguments: [
+        tx.object('0x05'),
+        tx.object(this.config.configId),
+        parseTxVaule(suiCoin, tx.object),
+        tx.pure.address('0x0000000000000000000000000000000000000000000000000000000000000000')
+      ],
+      typeArguments: []
+    })
+    return coin
+  }
+
+  async unstakePTB(tx: Transaction, haSUICoin: CoinObject) {
+    const [coin] = tx.moveCall({
+      target: `${this.config.packageId}::stake_pool::request_unstake_instant_coin`,
+      arguments: [
+        tx.object('0x05'),
+        tx.object(this.config.configId),
+        parseTxVaule(haSUICoin, tx.object)
+      ],
+      typeArguments: []
+    })
+    return coin
+  }
+
+  async stake<T extends boolean = false>(
+    suiAmount: number,
+    options?: { dryRun: T }
+  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+
+    const tx = new Transaction()
+
+    await this.walletClient.module('balance').waitForUpdate()
+
+    const suiBalance = this.walletClient.module('balance').portfolio.getBalance('0x2::sui::SUI')
+
+    const mergedCoin = mergeCoinsPTB(tx, suiBalance.coins, {
+      balance: suiAmount,
+      useGasCoin: true
+    })
+
+    const coin = tx.splitCoins(mergedCoin, [tx.pure.u64(suiAmount)])
+
+    const haSUICoin = await this.stakePTB(tx, coin)
+
+    tx.transferObjects([haSUICoin], this.walletClient.address)
+
+    const result = await this.walletClient.signExecuteTransaction({
+      transaction: tx,
+      dryRun: options?.dryRun ?? false
+    })
+
+    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+      this.emit('haedal:stake-success', {
+        suiAmount
+      })
+
+      this.walletClient.module('balance').updatePortfolio()
+    }
+
+    return result as any
+  }
+
+  async unstake<T extends boolean = false>(
+    haSUIAmount: number,
+    options?: { dryRun: T }
+  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+
+    await this.walletClient.module('balance').waitForUpdate()
+
+    const tx = new Transaction()
+
+    const haSuiBalance = this.walletClient
+      .module('balance')
+      .portfolio.getBalance(this.config.coinType)
+
+    const mergedCoin = mergeCoinsPTB(tx, haSuiBalance.coins, {
+      balance: haSUIAmount
+    })
+
+    const suiCoin = await this.unstakePTB(tx, mergedCoin)
+
+    tx.transferObjects([suiCoin], this.walletClient.address)
+
+    const result = await this.walletClient.signExecuteTransaction({
+      transaction: tx,
+      dryRun: options?.dryRun ?? false
+    })
+
+    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+      this.emit('haedal:unstake-success', {
+        haSUIAmount
+      })
+
+      this.walletClient.module('balance').updatePortfolio()
+    }
+
+    return result as any
+  }
+}
