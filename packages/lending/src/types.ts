@@ -16,6 +16,10 @@ export type EnvOption = {
   env: 'dev' | 'prod'
 }
 
+export type AccountCapOption = {
+  accountCap: string | TransactionResult
+}
+
 export type SuiClientOption = {
   client: SuiClient
 }

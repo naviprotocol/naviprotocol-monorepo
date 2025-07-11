@@ -84,26 +84,6 @@ export function mergeCoinsPTB(
   return needSplit ? tx.splitCoins(coin, [tx.pure.u64(splitBalance)]) : coin
 }
 
-export async function getHealthFactorPTB(
-  tx: Transaction,
-  address: string | TransactionResult,
-  options?: Partial<EnvOption>
-): Promise<TransactionResult> {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-  return tx.moveCall({
-    target: `${config.package}::logic::user_health_factor`,
-    arguments: [
-      tx.object('0x06'),
-      tx.object(config.storage),
-      tx.object(config.oracle.priceOracle),
-      parseTxVaule(address, tx.pure.address)
-    ]
-  })
-}
-
 export async function getDynamicHealthFactorPTB(
   tx: Transaction,
   address: string | TransactionResult,
@@ -119,7 +99,7 @@ export async function getDynamicHealthFactorPTB(
   })
   const pool = await getPool(identifier, options)
   return tx.moveCall({
-    target: `${config.package}::dynamic_calculator::dynamic_health_factor`,
+    target: `${config.uiGetter}::calculator_unchecked::dynamic_health_factor`,
     arguments: [
       tx.object('0x06'),
       tx.object(config.storage),
@@ -135,6 +115,14 @@ export async function getDynamicHealthFactorPTB(
   })
 }
 
+export async function getHealthFactorPTB(
+  tx: Transaction,
+  address: string | TransactionResult,
+  options?: Partial<EnvOption>
+): Promise<TransactionResult> {
+  return getDynamicHealthFactorPTB(tx, address, 0, 0, 0, false, options)
+}
+
 export const getUserLendingState = withCache(
   async (
     address: string,
@@ -147,7 +135,7 @@ export const getUserLendingState = withCache(
     const tx = new Transaction()
     const client = options?.client ?? suiClient
     tx.moveCall({
-      target: `${config.uiGetter}::getter::get_user_state`,
+      target: `${config.uiGetter}::getter_unchecked::get_user_state`,
       arguments: [tx.object(config.storage), tx.pure.address(address!)]
     })
     const result = await client.devInspectTransactionBlock({
