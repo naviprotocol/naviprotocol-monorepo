@@ -173,9 +173,6 @@ For detailed documentation of each package, please refer to the corresponding RE
 - [Lending SDK](./packages/lending/README.md)
 - [Wallet Client](./packages/wallet-client/README.md)
 
-## 🤝 Contributing
-
-We welcome community contributions! Please check our [Contributing Guide](./CONTRIBUTING.md) to learn how to participate in project development.
 
 ### Contribution Process
 

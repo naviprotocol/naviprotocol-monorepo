@@ -175,6 +175,3 @@ MIT License - see [LICENSE](../../LICENSE) file for details
 - Issues: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
 - Community: [Discord](https://discord.gg/naviprotocol)
 
-## Contributing
-
-We welcome community contributions! Please check our [Contributing Guide](../../CONTRIBUTING.md) to learn how to participate in project development. 
