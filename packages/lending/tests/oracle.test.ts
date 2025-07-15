@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import { getPriceFeeds, filterPriceFeeds, getPythStalePriceFeedId } from '../src/oracle'
 import { getLendingState } from '../src/account'

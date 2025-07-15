@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import { createAccountCapPTB } from '../src'
 import { Transaction } from '@mysten/sui/transactions'

@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import { getConfig, DEFAULT_CACHE_TIME } from '../src/config'
 

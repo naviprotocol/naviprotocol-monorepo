@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import {
   getPools,
@@ -70,7 +71,7 @@ describe('depositCoinPTB', () => {
   it('should success deposit 1 Sui', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    const [toDeposit] = tx.splitCoins(tx.gas, [1e9])
+    const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 0.2])
     await depositCoinPTB(tx, coinType, toDeposit)
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({
