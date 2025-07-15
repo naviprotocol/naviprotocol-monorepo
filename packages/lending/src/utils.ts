@@ -34,18 +34,17 @@ export const suiClient = new SuiClient({
  * @returns JSON string representing the arguments
  */
 function argsKey(args: any[]) {
-  let argsCopy = JSON.parse(JSON.stringify(args))
-  const options = argsCopy[argsCopy.length - 1] as Partial<CacheOption & SuiClientOption>
-  if (!!options && typeof options === 'object') {
-    delete options.cacheTime
-    delete options.disableCache
-    delete options.client
-    if (Object.keys(options).length === 0) {
-      argsCopy = argsCopy.slice(0, -1)
+  const serializergs = [] as any[]
+  args.forEach((option: any, index) => {
+    const isLast = index === args.length - 1
+    if (typeof option === 'object' && isLast) {
+      const { client, disableCache, cacheTime, ...rest } = option
+      serializergs.push(rest)
+    } else {
+      serializergs.push(option)
     }
-  }
-
-  return JSON.stringify(argsCopy)
+  })
+  return JSON.stringify(serializergs)
 }
 
 /**

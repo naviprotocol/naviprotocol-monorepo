@@ -16,7 +16,8 @@ import type {
   Transaction as NAVITransaction,
   AssetIdentifier,
   TransactionResult,
-  CacheOption
+  CacheOption,
+  AccountCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo } from './bcs'
@@ -104,7 +105,7 @@ export function mergeCoinsPTB(
 
   // Merge coins and optionally split
   const coin =
-    mergeList.length == 1
+    mergeList.length === 1
       ? tx.object(mergeList[0])
       : tx.mergeCoins(mergeList[0], mergeList.slice(1))
 
@@ -128,7 +129,7 @@ export function mergeCoinsPTB(
  */
 export async function getDynamicHealthFactorPTB(
   tx: Transaction,
-  address: string | TransactionResult,
+  address: string | AccountCap | TransactionResult,
   identifier: AssetIdentifier,
   estimatedSupply: number | TransactionResult,
   estimatedBorrow: number | TransactionResult,
@@ -161,13 +162,13 @@ export async function getDynamicHealthFactorPTB(
  * Gets the current health factor for a user
  *
  * @param tx - The transaction object to build
- * @param address - User address or transaction result
+ * @param address - User address or account cap or transaction result
  * @param options - Environment options
  * @returns Transaction result for health factor calculation
  */
 export async function getHealthFactorPTB(
   tx: Transaction,
-  address: string | TransactionResult,
+  address: string | AccountCap | TransactionResult,
   options?: Partial<EnvOption>
 ): Promise<TransactionResult> {
   return getDynamicHealthFactorPTB(tx, address, 0, 0, 0, false, options)
@@ -179,13 +180,13 @@ export async function getHealthFactorPTB(
  * This function fetches all active lending positions for a user, including
  * supply and borrow balances for different assets.
  *
- * @param address - User wallet address
+ * @param address - User wallet address or account cap
  * @param options - Options for client, environment, and caching
  * @returns Promise<UserLendingInfo[]> - Array of user lending positions
  */
-export const getUserLendingState = withCache(
+export const getLendingState = withCache(
   async (
-    address: string,
+    address: string | AccountCap,
     options?: Partial<SuiClientOption & EnvOption & CacheOption>
   ): Promise<UserLendingInfo[]> => {
     const config = await getConfig({
@@ -227,12 +228,12 @@ export const getUserLendingState = withCache(
 /**
  * Calculates the current health factor for a user
  *
- * @param address - User wallet address
+ * @param address - User wallet address or account cap
  * @param options - Options for client and environment
  * @returns Promise<number> - Health factor value
  */
-export async function getUserHealthFactor(
-  address: string,
+export async function getHealthFactor(
+  address: string | AccountCap,
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<number> {
   const client = options?.client ?? suiClient
@@ -252,14 +253,14 @@ export async function getUserHealthFactor(
  * This function simulates the health factor that would result after
  * performing a series of supply, withdraw, borrow, or repay operations.
  *
- * @param address - User wallet address
+ * @param address - User wallet address or account cap
  * @param pool - Pool information
  * @param operations - Array of operations to simulate
  * @param options - Options for client and environment
  * @returns Promise<number> - Projected health factor
  */
-export async function getUserDynamicHealthFactorAfterOperator(
-  address: string,
+export async function getDynamicHealthFactor(
+  address: string | AccountCap,
   pool: Pool,
   operations: {
     type: PoolOperator
@@ -319,13 +320,13 @@ export async function getUserDynamicHealthFactorAfterOperator(
  * This function fetches the transaction history for a specific user address
  * from the Navi protocol's open API. It supports pagination through cursor-based navigation.
  *
- * @param address - User wallet address
+ * @param address - User wallet address or account cap
  * @param options - Optional parameters including cursor for pagination
  * @returns Promise with transaction data and optional cursor for next page
  */
-export const getUserTransactions = withSingleton(
+export const getTransactions = withSingleton(
   async (
-    address: string,
+    address: string | AccountCap,
     options?: {
       cursor?: string
     }
@@ -357,7 +358,7 @@ export const getUserTransactions = withSingleton(
  * @param options - Optional parameters including coin type filter and client options
  * @returns Promise<CoinStruct[]> - Array of coin objects owned by the address
  */
-export async function getUserCoins(
+export async function getCoins(
   address: string,
   options?: Partial<
     {

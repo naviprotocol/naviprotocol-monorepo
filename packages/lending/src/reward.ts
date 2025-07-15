@@ -14,7 +14,8 @@ import type {
   HistoryClaimedReward,
   LendingClaimedReward,
   TransactionResult,
-  AccountCapOption
+  AccountCapOption,
+  AccountCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -37,12 +38,12 @@ import { getPools, depositCoinPTB } from './pool'
  * It uses devInspect to simulate the reward calculation and returns detailed
  * information about claimable rewards for each asset and reward type.
  *
- * @param address - User's wallet address
+ * @param address - User's wallet address or account cap
  * @param options - Optional client and environment configuration
  * @returns Array of lending rewards available for claiming
  */
 export async function getUserAvailableLendingRewards(
-  address: string,
+  address: string | AccountCap,
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<LendingReward[]> {
   const feeds = await getPriceFeeds(options)
@@ -182,12 +183,12 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
  * Fetches the total amount of rewards that a user has claimed historically,
  * converted to USD value for easy comparison and display.
  *
- * @param address - User's wallet address
+ * @param address - User's wallet address or account cap
  * @returns Object containing total claimed rewards in USD
  */
 export const getUserTotalClaimedReward = withSingleton(
   async (
-    address: string
+    address: string | AccountCap
   ): Promise<{
     USDValue: number
   }> => {
@@ -203,13 +204,13 @@ export const getUserTotalClaimedReward = withSingleton(
  * Retrieves a paginated list of all rewards that a user has claimed historically.
  * Useful for tracking reward history and generating reports.
  *
- * @param address - User's wallet address
+ * @param address - User's wallet address or account cap
  * @param options - Pagination options (page number and size)
  * @returns Object containing claimed reward history and pagination cursor
  */
 export const getUserClaimedRewardHistory = withSingleton(
   async (
-    address: string,
+    address: string | AccountCap,
     options?: {
       page?: number
       size?: number

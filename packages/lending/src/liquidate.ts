@@ -47,26 +47,6 @@ export async function liquidatePTB(
   const payPool = await getPool(payAsset, commonOptions)
   const collateralPool = await getPool(collateralAsset, commonOptions)
 
-  const flashLoanAssets = await getAllFlashLoanAssets(commonOptions)
-
-  // Check if pay asset supports flash loans
-  const isSupportPay = flashLoanAssets.some(
-    (asset) => normalizeCoinType(asset.coinType) === normalizeCoinType(payPool.suiCoinType)
-  )
-
-  if (!isSupportPay) {
-    throw new Error('Pay asset does not support flashloan')
-  }
-
-  // Check if collateral asset supports flash loans
-  const isSupportCollateral = flashLoanAssets.some(
-    (asset) => normalizeCoinType(asset.coinType) === normalizeCoinType(collateralPool.suiCoinType)
-  )
-
-  if (!isSupportCollateral) {
-    throw new Error('Collateral asset does not support flashloan')
-  }
-
   // Execute the liquidation transaction
   const [collateralBalance, remainDebtBalance] = tx.moveCall({
     target: `${config.package}::incentive_v3::liquidation`,

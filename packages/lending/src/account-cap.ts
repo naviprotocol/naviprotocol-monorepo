@@ -6,8 +6,7 @@
  */
 
 import { getConfig } from './config'
-import type { EnvOption, TransactionResult } from './types'
-import { parseTxVaule } from './utils'
+import type { EnvOption } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 
 /**

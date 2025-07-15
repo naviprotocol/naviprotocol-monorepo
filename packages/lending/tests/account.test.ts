@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
-  getUserLendingState,
-  getUserHealthFactor,
-  getUserDynamicHealthFactorAfterOperator,
-  getUserTransactions,
-  getUserCoins,
+  getLendingState,
+  getHealthFactor,
+  getDynamicHealthFactor,
+  getTransactions,
+  getCoins,
   mergeCoinsPTB
 } from '../src/account'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
@@ -17,14 +17,14 @@ import { CoinStruct } from '@mysten/sui/client'
 const keypair = Ed25519Keypair.generate()
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 
-describe('getUserLendingState', () => {
+describe('getLendingState', () => {
   it('check no state', async () => {
-    const state = await getUserLendingState(keypair.toSuiAddress())
+    const state = await getLendingState(keypair.toSuiAddress())
     expect(state).toEqual([])
   })
 
   it('check with lending state', async () => {
-    const state = await getUserLendingState(testAddress)
+    const state = await getLendingState(testAddress)
     expect(state.length).toBeGreaterThan(0)
     const supplyState = state.find((item) => item.supplyBalance !== '0')
     expect(supplyState).toBeDefined()
@@ -33,30 +33,30 @@ describe('getUserLendingState', () => {
   })
 })
 
-describe('getUserHealthFactor', () => {
+describe('getHealthFactor', () => {
   it('check with health factor', async () => {
-    const healthFactor = await getUserHealthFactor(testAddress)
+    const healthFactor = await getHealthFactor(testAddress)
     expect(healthFactor).toBeGreaterThan(0)
   })
 
   it('check Infinity', async () => {
-    const healthFactor = await getUserHealthFactor(keypair.toSuiAddress())
+    const healthFactor = await getHealthFactor(keypair.toSuiAddress())
     expect(healthFactor).toBe(Infinity)
   })
 })
 
-describe('getUserDynamicHealthFactorAfterOperator', () => {
+describe('getDynamicHealthFactor', () => {
   let lastHf = 0
   it('no operations', async () => {
     const pools = await getPools()
     const pool = pools[10]
-    lastHf = await getUserDynamicHealthFactorAfterOperator(testAddress, pool, [])
+    lastHf = await getDynamicHealthFactor(testAddress, pool, [])
     expect(lastHf).toBeGreaterThan(0)
   })
   it('supply', async () => {
     const pools = await getPools()
     const pool = pools[10]
-    const currentHf = await getUserDynamicHealthFactorAfterOperator(testAddress, pool, [
+    const currentHf = await getDynamicHealthFactor(testAddress, pool, [
       {
         type: PoolOperator.Supply,
         amount: 1e9
@@ -67,7 +67,7 @@ describe('getUserDynamicHealthFactorAfterOperator', () => {
   it('withdraw', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 5)
-    const currentHf = await getUserDynamicHealthFactorAfterOperator(testAddress, pool!, [
+    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Withdraw,
         amount: 3 * Math.pow(10, pool!.token.decimals)
@@ -80,7 +80,7 @@ describe('getUserDynamicHealthFactorAfterOperator', () => {
   it('borrow', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 5)
-    const currentHf = await getUserDynamicHealthFactorAfterOperator(testAddress, pool!, [
+    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Borrow,
         amount: 3 * Math.pow(10, pool!.token.decimals)
@@ -93,7 +93,7 @@ describe('getUserDynamicHealthFactorAfterOperator', () => {
   it('repay', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 0)
-    const currentHf = await getUserDynamicHealthFactorAfterOperator(testAddress, pool!, [
+    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Repay,
         amount: 30 * Math.pow(10, pool!.token.decimals)
@@ -105,12 +105,12 @@ describe('getUserDynamicHealthFactorAfterOperator', () => {
   })
 })
 
-describe('getUserTransactions', () => {
+describe('getTransactions', () => {
   let transactions: NAVITransaction[] = []
   let cursor: string | undefined
   const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
   it('check with transactions', async () => {
-    const res = await getUserTransactions(address)
+    const res = await getTransactions(address)
     transactions = res.data
     cursor = res.cursor
     expect(transactions).toBeDefined()
@@ -119,29 +119,29 @@ describe('getUserTransactions', () => {
   })
 
   it('check with cursor', async () => {
-    const res = await getUserTransactions(address, {
+    const res = await getTransactions(address, {
       cursor
     })
     expect(res.data.length).toBeGreaterThan(0)
   })
 
   it('check new wallet', async () => {
-    const res = await getUserTransactions(keypair.toSuiAddress())
+    const res = await getTransactions(keypair.toSuiAddress())
     expect(res.data.length).toBe(0)
   })
 })
 
-describe('getUserCoins', () => {
+describe('getCoins', () => {
   let allCoins = [] as CoinStruct[]
   it('should return all coins', async () => {
-    allCoins = await getUserCoins(testAddress)
+    allCoins = await getCoins(testAddress)
     expect(allCoins).toBeDefined()
     expect(allCoins.length).toBeGreaterThan(0)
   })
   it('filter by coinType', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
-    const coins = await getUserCoins(testAddress, {
+    const coins = await getCoins(testAddress, {
       coinType
     })
     expect(coins.length).toBeGreaterThan(0)
@@ -201,7 +201,7 @@ describe('mergeCoinsPTB', () => {
   it('merge vsui coins', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
-    const userCoins = await getUserCoins(testAddress, {
+    const userCoins = await getCoins(testAddress, {
       coinType
     })
     let tx = new Transaction()
@@ -227,7 +227,7 @@ describe('mergeCoinsPTB', () => {
 
   it('merge sui coins', async () => {
     const coinType = '0x2::sui::SUI'
-    const userCoins = await getUserCoins(testAddress, {
+    const userCoins = await getCoins(testAddress, {
       coinType
     })
     const tx = new Transaction()
@@ -235,7 +235,9 @@ describe('mergeCoinsPTB', () => {
       useGasCoin: true,
       balance: 1e9
     })
-    await depositCoinPTB(tx, coinType, result2)
+    await depositCoinPTB(tx, coinType, result2, {
+      amount: 1e9
+    })
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({
       client: suiClient

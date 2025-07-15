@@ -83,7 +83,6 @@ export class WalletClient {
       ...options.client
     }
     clientOptions.transport = clientOptions.transport || new CustomTransport(clientOptions.url)
-
     // Initialize the Sui client
     this.client = new SuiClient(clientOptions as any)
     this.signer = options.signer

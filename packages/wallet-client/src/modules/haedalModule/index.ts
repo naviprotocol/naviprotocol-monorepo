@@ -96,7 +96,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
    */
   async unstakePTB(tx: Transaction, haSUICoin: CoinObject) {
     const [coin] = tx.moveCall({
-      target: `${this.config.packageId}::stake_pool::request_unstake_instant_coin`,
+      target: `${this.config.packageId}::staking::request_unstake_instant_coin`,
       arguments: [
         tx.object('0x05'),
         tx.object(this.config.configId),

@@ -3,21 +3,27 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "umd/**", "build/**", ".next/**"]
+      "outputs": ["dist/**", "umd/**", "build/**", ".next/**", "!.next/cache/**"]
     },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
     "dev": {
-      "cache": false
-    },
+			"dependsOn": ["^build"],
+			"cache": false,
+			"persistent": true
+		},
     "lint": {
       "dependsOn": ["^build"],
       "outputs": []
     },
     "lint:fix": {
       "outputs": []
+    },
+    "typedoc": {
+      "dependsOn": ["^build"],
+      "outputs": ["docs/docs/api/**"]
     },
     "start": {}
   }

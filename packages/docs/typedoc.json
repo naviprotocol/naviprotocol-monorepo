@@ -1,0 +1,14 @@
+{
+  "entryPoints": [
+    "../astros-aggregator-sdk",
+    "../astros-bridge-sdk",
+    "../lending",
+    "../wallet-client"
+  ],
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "intentionallyNotExported": [],
+  "out": "public/typedoc",
+  "entryPointStrategy": "packages",
+  "plugin": ["typedoc-plugin-mermaid"]
+}

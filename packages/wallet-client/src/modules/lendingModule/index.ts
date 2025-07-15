@@ -8,7 +8,12 @@
  * @module LendingModule
  */
 
-import { DryRunTransactionBlockResponse, SuiTransactionBlockResponse } from '@mysten/sui/client'
+import {
+  DryRunTransactionBlockResponse,
+  getFullnodeUrl,
+  SuiClient,
+  SuiTransactionBlockResponse
+} from '@mysten/sui/client'
 import { Module } from '../module'
 import {
   depositCoinPTB,
@@ -19,17 +24,18 @@ import {
   getPool,
   getPools,
   mergeCoinsPTB,
-  getUserHealthFactor,
+  getHealthFactor,
   liquidatePTB,
   claimLendingRewardsPTB,
   getUserAvailableLendingRewards,
   updateOraclePricesPTB,
   getPriceFeeds,
-  getUserLendingState,
+  getLendingState,
   filterPriceFeeds,
   CacheOption,
   LendingReward,
-  AccountCapOption
+  AccountCapOption,
+  Pool
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -213,7 +219,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async withdraw<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T } & Partial<AccountCapOption>
+    options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -226,6 +232,10 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build transaction
     const tx = new Transaction()
+
+    if (!options?.disableUpdateOracle) {
+      await this.updateOraclePTB(tx, [pool])
+    }
 
     // Build withdraw transaction
     const coin = await withdrawCoinPTB(tx, pool, amount, {
@@ -265,7 +275,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async borrow<T extends boolean = false>(
     identifier: AssetIdentifier,
     amount: number,
-    options?: { dryRun: T } & Partial<AccountCapOption>
+    options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
   ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -278,6 +288,10 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build transaction
     const tx = new Transaction()
+
+    if (!options?.disableUpdateOracle) {
+      await this.updateOraclePTB(tx, [pool])
+    }
 
     // Build borrow transaction
     const coin = await borrowCoinPTB(tx, pool, amount, {
@@ -381,7 +395,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const address = this.walletClient.address
 
-    const healthFactor = await getUserHealthFactor(address, {
+    const healthFactor = await getHealthFactor(address, {
       env: this.config.env,
       client: this.walletClient.client
     })
@@ -510,14 +524,36 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return result as any
   }
 
+  private async updateOraclePTB(tx: Transaction, pools?: Pool[]) {
+    const feeds = await getPriceFeeds({
+      env: this.config.env
+    })
+
+    const lendingState = await this.getLendingState({
+      cacheTime: 60 * 1000
+    })
+
+    const filteredFeeds = filterPriceFeeds(feeds, {
+      lendingState,
+      pools
+    })
+
+    await updateOraclePricesPTB(tx, filteredFeeds, {
+      env: this.config.env,
+      updatePythPriceFeeds: true
+    })
+  }
+
   /**
    * Updates the oracle prices for the lending protocol
    *
-   * @param options - Optional parameters including dry run mode
+   * @param options - Optional parameters including dry run mode and pools
+   * @param options.dryRun - Whether to perform a dry run
    * @returns Transaction response or dry run response
    */
   async updateOracle<T extends boolean = false>(options?: {
     dryRun: T
+    pools?: Pool[]
   }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
@@ -525,22 +561,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const tx = new Transaction()
 
-    const feeds = await getPriceFeeds({
-      env: this.config.env
-    })
-
-    const lendingState = await this.getUserLendingState({
-      cacheTime: 60 * 1000
-    })
-
-    const filteredFeeds = filterPriceFeeds(feeds, {
-      lendingState
-    })
-
-    await updateOraclePricesPTB(tx, filteredFeeds, {
-      env: this.config.env,
-      updatePythPriceFeeds: true
-    })
+    await this.updateOraclePTB(tx, options?.pools)
 
     const result = await this.walletClient.signExecuteTransaction({
       transaction: tx,
@@ -556,14 +577,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    * @param options - Optional caching options
    * @returns User's lending state information
    */
-  async getUserLendingState(options?: Partial<CacheOption>) {
+  async getLendingState(options?: Partial<CacheOption>) {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
-    return await getUserLendingState(this.walletClient.address, {
+    return await getLendingState(this.walletClient.address, {
       env: this.config.env,
-      client: this.walletClient.client,
-      ...options
+      ...options,
+      client: this.walletClient.client
     })
   }
 }

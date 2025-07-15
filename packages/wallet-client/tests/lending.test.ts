@@ -58,7 +58,7 @@ describe('lending module', () => {
     expect(result.events.length).toBeGreaterThan(0)
   })
   it('repay SUI', async () => {
-    const result = await walletClient.module('lending').repay('0x2::sui::SUI', 1e9 * 0.5, {
+    const result = await walletClient.module('lending').repay('0x2::sui::SUI', 1e9 * 0.1, {
       dryRun: true
     })
     expect(result).toBeDefined()
@@ -84,8 +84,8 @@ describe('lending module', () => {
     expect(result.events.length).toBeGreaterThan(0)
   })
 
-  it('getUserLendingState', async () => {
-    const result = await walletClient.module('lending').getUserLendingState()
+  it('getLendingState', async () => {
+    const result = await walletClient.module('lending').getLendingState()
     expect(result).toBeDefined()
     expect(result.length).toBeGreaterThan(0)
   })

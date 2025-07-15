@@ -27,6 +27,8 @@ export type TransactionResult =
     }
   | TransactionResultType
 
+export type AccountCap = string
+
 /**
  * Environment configuration options
  */
@@ -71,6 +73,8 @@ export type UserLendingInfo = {
   borrowBalance: string
   /** Current supply balance */
   supplyBalance: string
+  /** Pool information */
+  pool: Pool
 }
 
 /**

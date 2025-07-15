@@ -37,7 +37,6 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "vite build",
     "build": "run-p build:lib",
     "build:lib": "vite build",
     "prettier": "prettier --check src/",
@@ -48,7 +47,8 @@
     "verify:fix": "run-p prettier:fix lint:fix",
     "test": "vitest --config ./vite.config.unit.js",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typedoc": "typedoc"
   },
   "dependencies": {
     "@mysten/sui": "1.34.0",

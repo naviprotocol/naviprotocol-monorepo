@@ -9,7 +9,7 @@
  */
 
 import { Module } from '../module'
-import { getUserCoins, mergeCoinsPTB, withSingleton } from '@naviprotocol/lending'
+import { getCoins, mergeCoinsPTB, withSingleton } from '@naviprotocol/lending'
 import { CoinStruct } from '@mysten/sui/client'
 import type { WalletClient } from '../../client'
 import { UserPortfolio } from './portfolio'
@@ -230,7 +230,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     }
 
     // Fetch current coins from the wallet
-    this._coins = await getUserCoins(this.walletClient.address, {
+    this._coins = await getCoins(this.walletClient.address, {
       client: this.walletClient.client
     })
 

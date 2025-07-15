@@ -1,0 +1,6 @@
+{
+	"root": true,
+	"title": "Lending",
+	"description": "NAVI Lending SDK",
+	"pages": ["index", "[Api Reference](/typedoc/modules/_naviprotocol_lending.html)"]
+}
