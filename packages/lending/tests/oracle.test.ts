@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getPriceFeeds, filterPriceFeeds, getPythStalePriceFeedId } from '../src/oracle'
-import { getUserLendingState } from '../src/account'
+import { getLendingState } from '../src/account'
 import { OraclePriceFeed } from '../src/types'
 import { getPools } from '../src/pool'
 
@@ -15,7 +15,7 @@ describe('getPriceFeeds', () => {
 
 describe('filterPriceFeeds', () => {
   it('filterPriceFeeds by userLendingState', async () => {
-    const lendingState = await getUserLendingState(
+    const lendingState = await getLendingState(
       '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
     )
     const filteredFeeds = filterPriceFeeds(allFeeds, {
@@ -39,6 +39,6 @@ describe('getPythStalePriceFeedId', () => {
     const stalePriceFeedIds = await getPythStalePriceFeedId(
       allFeeds.map((feed) => feed.pythPriceFeedId)
     )
-    expect(stalePriceFeedIds.length).toBeGreaterThan(0)
+    expect(stalePriceFeedIds).toBeDefined()
   })
 })

@@ -1,0 +1,6 @@
+{
+	"root": true,
+	"title": "Wallet Client",
+	"description": "Wallet Client SDK",
+	"pages": ["index", "[Api Reference](/typedoc/modules/_naviprotocol_wallet-client.html)"]
+}

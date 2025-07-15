@@ -1,10 +1,25 @@
+/**
+ * Astros Bridge SDK Package - Main Entry Point
+ *
+ * This package provides cross-chain bridge functionality for the Sui blockchain.
+ * It enables users to transfer tokens between different blockchain networks through
+ * various bridge providers like Mayan.
+ *
+ * @module AstrosBridgeSDK
+ */
+
 import { Chain, Token, BridgeSwapOptions, BridgeSwapQuote, BridgeSwapTransaction } from './types'
 import * as mayan from './providers/mayan'
 import { WalletConnection } from './providers/mayan'
 import { apiInstance, config } from './config'
 
+// Export configuration for the bridge SDK
 export { config }
 
+/**
+ * Retrieves a list of supported blockchain networks for bridging
+ * @returns Promise<Chain[]> - Array of supported blockchain networks
+ */
 export async function getSupportChains(): Promise<Chain[]> {
   const res = await apiInstance.get<{
     data: {
@@ -14,6 +29,13 @@ export async function getSupportChains(): Promise<Chain[]> {
   return res.data.data.chains
 }
 
+/**
+ * Retrieves a list of supported tokens for a specific blockchain
+ * @param chainId - The ID of the blockchain network
+ * @param page - Page number for pagination (default: 1)
+ * @param pageSize - Number of tokens per page (default: 100)
+ * @returns Promise<Token[]> - Array of supported tokens
+ */
 export async function getSupportTokens(
   chainId: number,
   page: number = 1,
@@ -34,6 +56,12 @@ export async function getSupportTokens(
   return res.data.data.list
 }
 
+/**
+ * Searches for supported tokens by keyword on a specific blockchain
+ * @param chainId - The ID of the blockchain network
+ * @param keyword - Search keyword for token name or symbol
+ * @returns Promise<Token[]> - Array of matching tokens
+ */
 export async function searchSupportTokens(chainId: number, keyword: string): Promise<Token[]> {
   const res = await apiInstance.get<{
     data: {
@@ -51,6 +79,14 @@ export async function searchSupportTokens(chainId: number, keyword: string): Pro
   return res.data.data.list
 }
 
+/**
+ * Gets a quote for cross-chain token swap
+ * @param from - Source token information
+ * @param to - Destination token information
+ * @param amount - Amount to swap
+ * @param options - Optional swap parameters (slippage, referrer fees)
+ * @returns Promise<{routes: BridgeSwapQuote[]}> - Available swap routes
+ */
 export async function getQuote(
   from: Token,
   to: Token,
@@ -72,7 +108,7 @@ export async function getQuote(
       referrerBps: options?.referrerBps
     }
   })
-  // temporary fix
+  // Temporary fix for chain ID parsing
   const rtn = res.data.data
   rtn.routes.forEach((router: any) => {
     if (router.from_token.chain) {
@@ -85,6 +121,11 @@ export async function getQuote(
   return rtn
 }
 
+/**
+ * Retrieves transaction details by transaction hash
+ * @param hash - Transaction hash to look up
+ * @returns Promise<BridgeSwapTransaction> - Transaction details
+ */
 export async function getTransaction(hash: string) {
   const res = await apiInstance.get<{
     data: {
@@ -94,6 +135,13 @@ export async function getTransaction(hash: string) {
   return res.data.data.transaction
 }
 
+/**
+ * Retrieves wallet transaction history
+ * @param address - Wallet address to get transactions for
+ * @param page - Page number for pagination (default: 1)
+ * @param limit - Number of transactions per page (default: 10)
+ * @returns Promise<{transactions: BridgeSwapTransaction[]}> - Transaction history
+ */
 export async function getWalletTransactions(address: string, page: number = 1, limit: number = 10) {
   const res = await apiInstance.get<{
     data: {
@@ -109,6 +157,15 @@ export async function getWalletTransactions(address: string, page: number = 1, l
   return res.data.data
 }
 
+/**
+ * Executes a cross-chain token swap
+ * @param quote - The swap quote to execute
+ * @param fromAddress - Source wallet address
+ * @param toAddress - Destination wallet address
+ * @param walletConnection - Wallet connection for signing
+ * @param referrerAddresses - Optional referrer addresses for different chains
+ * @returns Promise<BridgeSwapTransaction> - Transaction details
+ */
 export async function swap(
   quote: BridgeSwapQuote,
   fromAddress: string,
@@ -123,6 +180,8 @@ export async function swap(
   const startAt = new Date().toISOString()
   const hash = await mayan.swap(quote, fromAddress, toAddress, walletConnection, referrerAddresses)
   const endAt = new Date().toISOString()
+
+  // Prepare token information for the transaction record
   const sourceToken = {
     address: quote.from_token.address,
     symbol: quote.from_token.symbol,
@@ -133,6 +192,8 @@ export async function swap(
     symbol: quote.to_token.symbol,
     decimals: quote.to_token.decimals
   }
+
+  // Return transaction details
   return {
     id: hash,
     status: 'processing',

@@ -1,0 +1,6 @@
+{
+	"root": true,
+	"title": "Astros Swap",
+	"description": "NAVI Astros Swap SDK",
+	"pages": ["index", "[Api Reference](/typedoc/modules/_naviprotocol_astros-aggregator-sdk.html)"]
+}

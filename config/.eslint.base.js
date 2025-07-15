@@ -21,7 +21,8 @@ module.exports = {
     'tests/**/*.ts',
     'tests/**/*.d.ts',
     'e2e/**/*.ts',
-    'e2e/**/*.d.ts'
+    'e2e/**/*.d.ts',
+    'packages/docs'
   ],
   plugins: ['@typescript-eslint'],
   extends: [],
