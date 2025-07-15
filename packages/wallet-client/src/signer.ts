@@ -11,6 +11,8 @@
 import { Signer } from '@mysten/sui/cryptography'
 import { Transaction } from '@mysten/sui/transactions'
 import { SuiClient } from '@mysten/sui/client'
+import { Experimental_SuiClientTypes } from '@mysten/sui/experimental'
+import { SignatureWithBytes } from '@mysten/sui/cryptography'
 
 /**
  * Options for signing and executing transactions
@@ -103,4 +105,77 @@ export class WatchSigner extends Signer {
   async signAndExecuteTransaction({ transaction, client }: SignAndExecuteOptions): Promise<any> {
     return {} as any
   }
+}
+
+/**
+ * Web signer implementation
+ *
+ * For use in browser environments
+ */
+export abstract class WebSigner extends Signer {
+  private address: string
+
+  /**
+   * Creates a new watch-only signer
+   *
+   * @param address - The wallet address to watch
+   */
+  constructor(address: string) {
+    super()
+    this.address = address
+  }
+
+  /**
+   * Signs transaction bytes (not implemented for watch-only mode)
+   *
+   * This method is required by the Signer interface but cannot
+   * actually sign transactions in watch-only mode.
+   *
+   * @param bytes - Transaction bytes to sign
+   * @returns Promise<Uint8Array> - Empty signature (not valid)
+   */
+  async sign(bytes: Uint8Array): Promise<Uint8Array> {
+    return new Uint8Array([])
+  }
+
+  /**
+   * Gets the public key information for this signer
+   *
+   * Returns a mock public key object that provides the wallet address
+   * but cannot be used for actual cryptographic operations.
+   *
+   * @returns Mock public key object
+   */
+  getPublicKey(): any {
+    return {
+      /** Returns the wallet address */
+      toSuiAddress: () => this.address,
+      /** Returns empty bytes (not a real public key) */
+      toBytes: () => new Uint8Array(32),
+      /** Returns empty raw bytes (not a real public key) */
+      toRawBytes: () => new Uint8Array(32),
+      /** Public key flag (0 for mock) */
+      flag: 0,
+      /** Verification always returns false (not a real public key) */
+      verify: async () => false
+    }
+  }
+
+  /**
+   * Gets the key scheme for this signer
+   *
+   * @returns Key scheme string (ed25519 for compatibility)
+   */
+  getKeyScheme(): any {
+    return 'ed25519'
+  }
+
+  abstract signPersonalMessage(bytes: Uint8Array): Promise<SignatureWithBytes>
+
+  abstract signTransaction(bytes: Uint8Array): Promise<SignatureWithBytes>
+
+  abstract signAndExecuteTransaction({
+    transaction,
+    client
+  }: SignAndExecuteOptions): Promise<Experimental_SuiClientTypes.TransactionResponse>
 }

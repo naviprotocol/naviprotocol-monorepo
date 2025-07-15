@@ -8,12 +8,7 @@
  * @module LendingModule
  */
 
-import {
-  DryRunTransactionBlockResponse,
-  getFullnodeUrl,
-  SuiClient,
-  SuiTransactionBlockResponse
-} from '@mysten/sui/client'
+import { DryRunTransactionBlockResponse, SuiTransactionBlockResponse } from '@mysten/sui/client'
 import { Module } from '../module'
 import {
   depositCoinPTB,
