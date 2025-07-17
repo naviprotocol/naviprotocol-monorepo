@@ -52,7 +52,12 @@ export enum PoolOperator {
 export const getPools = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<Pool[]> => {
     const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, {
+      headers: {
+        Referer: 'https://app.naviprotocol.io/',
+        origin: 'app.naviprotocol.io'
+      }
+    }).then((res) => res.json())
     return res.data
   })
 )
@@ -113,7 +118,12 @@ export async function getPool(
 export const getStats = withCache(
   withSingleton(async (options?: Partial<CacheOption>): Promise<PoolStats> => {
     const url = `https://open-api.naviprotocol.io/api/navi/stats`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, {
+      headers: {
+        Referer: 'https://app.naviprotocol.io/',
+        origin: 'app.naviprotocol.io'
+      }
+    }).then((res) => res.json())
     return res.data
   })
 )
@@ -150,7 +160,12 @@ export const getFees = withCache(
       }
     }> => {
       const url = `https://open-api.naviprotocol.io/api/navi/fee`
-      const res = await fetch(url).then((res) => res.json())
+      const res = await fetch(url, {
+        headers: {
+          Referer: 'https://app.naviprotocol.io/',
+          origin: 'app.naviprotocol.io'
+        }
+      }).then((res) => res.json())
       return res
     }
   )
