@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import {
   getAllFlashLoanAssets,
@@ -8,7 +9,6 @@ import {
 import { getPools } from '../src/pool'
 import { Transaction } from '@mysten/sui/transactions'
 import { parseDevInspectResult, suiClient } from '../src/utils'
-import './fetch'
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 
