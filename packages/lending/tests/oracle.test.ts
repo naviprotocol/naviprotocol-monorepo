@@ -3,6 +3,7 @@ import { getPriceFeeds, filterPriceFeeds, getPythStalePriceFeedId } from '../src
 import { getLendingState } from '../src/account'
 import { OraclePriceFeed } from '../src/types'
 import { getPools } from '../src/pool'
+import './fetch'
 
 let allFeeds: OraclePriceFeed[] = []
 
