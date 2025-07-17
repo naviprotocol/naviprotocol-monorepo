@@ -1,6 +1,6 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import './fetch'
 
 import dotenv from 'dotenv'
 

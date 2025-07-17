@@ -5,7 +5,6 @@
   const _fetch = fetch
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    console.log('fetch', input)
     return _fetch(input, {
       ...init,
       headers: {

@@ -1,3 +1,4 @@
+import './fetch'
 import { describe, it, expect } from 'vitest'
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
 
@@ -8,7 +9,6 @@ import { Dex } from '../src/types'
 import { createTransaction, handleTransactionResult } from './helper'
 import { keypair } from './keypair'
 import dotenv from 'dotenv'
-import './fetch'
 
 dotenv.config()
 

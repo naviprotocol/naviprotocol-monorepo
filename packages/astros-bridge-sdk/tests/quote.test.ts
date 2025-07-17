@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
 import './fetch'
+import { describe, it, expect } from 'vitest'
 
 describe('getQuote', () => {
   it('sui navx to solana usdc', async () => {
