@@ -236,6 +236,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.11
         version: 4.1.11
+      typedoc-github-theme:
+        specifier: ^0.3.0
+        version: 0.3.0(typedoc@0.28.7(typescript@5.8.3))
       typedoc-plugin-mermaid:
         specifier: ^1.12.0
         version: 1.12.0(typedoc@0.28.7(typescript@5.8.3))
@@ -5702,6 +5705,12 @@ packages:
   typed-array-length@1.0.7:
     resolution: {integrity: sha512-3KS2b+kL7fsuk/eJZ7EQdnEmQoaho/r6KUef7hxvltNA5DR8NAUM+8wJMbJyZ4G9/7i3v5zPBIMN5aybAh2/Jg==}
     engines: {node: '>= 0.4'}
+
+  typedoc-github-theme@0.3.0:
+    resolution: {integrity: sha512-7HzKJt8ZZSTNYczK8BcZZbpr7GsyTZgsoLFKtO4NYxXOb7mSr92yTj7hl16ind0WsOzxPo2DZGjkUH2VoPrdxg==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      typedoc: ~0.28.0
 
   typedoc-plugin-markdown@4.7.0:
     resolution: {integrity: sha512-PitbnAps2vpcqK2gargKoiFXLWFttvwUbyns/E6zGIFG5Gz8ZQJGttHnYR9csOlcSjB/uyjd8tnoayrtsXG17w==}
@@ -12355,6 +12364,10 @@ snapshots:
       is-typed-array: 1.1.15
       possible-typed-array-names: 1.1.0
       reflect.getprototypeof: 1.0.10
+
+  typedoc-github-theme@0.3.0(typedoc@0.28.7(typescript@5.8.3)):
+    dependencies:
+      typedoc: 0.28.7(typescript@5.8.3)
 
   typedoc-plugin-markdown@4.7.0(typedoc@0.28.7(typescript@5.8.3)):
     dependencies:

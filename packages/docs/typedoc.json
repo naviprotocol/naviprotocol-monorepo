@@ -10,5 +10,5 @@
   "intentionallyNotExported": [],
   "out": "public/typedoc",
   "entryPointStrategy": "packages",
-  "plugin": ["typedoc-plugin-mermaid"]
+  "plugin": ["typedoc-plugin-mermaid", "typedoc-github-theme"]
 }

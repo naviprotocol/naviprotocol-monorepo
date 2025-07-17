@@ -13,7 +13,8 @@
         'User-Agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         Referer: 'https://app.naviprotocol.io/',
-        origin: 'app.naviprotocol.io'
+        origin: 'app.naviprotocol.io',
+        'X-Forwarded-For': '127.0.0.1'
       },
       referrer: 'https://app.naviprotocol.io/'
     })
