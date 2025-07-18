@@ -97,10 +97,8 @@ export function mergeCoinsPTB(
   }
 
   // Handle SUI gas coin specially
-  if (normalizeCoinType(coinType) === normalizeCoinType('0x2::sui::SUI')) {
-    return needSplit && !options?.useGasCoin
-      ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)])
-      : tx.gas
+  if (normalizeCoinType(coinType) === normalizeCoinType('0x2::sui::SUI') && options?.useGasCoin) {
+    return needSplit ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)]) : tx.gas
   }
 
   // Merge coins and optionally split
