@@ -199,9 +199,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
       useGasCoin: true
     })
 
-    const coin = tx.splitCoins(mergedCoin, [tx.pure.u64(suiAmount)])
-
-    const vSuiCoin = await this.stakePTB(tx, coin)
+    const vSuiCoin = await this.stakePTB(tx, mergedCoin)
 
     tx.transferObjects([vSuiCoin], this.walletClient.address)
 

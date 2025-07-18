@@ -17,7 +17,7 @@ import { suiClient } from './utils'
  * Connects to the Hermes endpoint for real-time price updates
  */
 const suiPythConnection = new SuiPriceServiceConnection('https://hermes.pyth.network', {
-  timeout: 20000
+  timeout: 10000
 })
 
 /**

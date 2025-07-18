@@ -104,11 +104,11 @@ describe('depositCoinPTB', () => {
 })
 
 describe('withdrawCoinPTB', () => {
-  it('should success withdraw 1 vSUI', async () => {
+  it('should success withdraw 0.2 vSUI', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9)
+    const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9 * 0.2)
     tx.transferObjects([withdrawCoins], testAddress)
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({
@@ -124,11 +124,11 @@ describe('withdrawCoinPTB', () => {
 })
 
 describe('borrowCoinPTB', () => {
-  it('should success borrow 1 vSUI', async () => {
+  it('should success borrow 0.1 vSUI', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9)
+    const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9 * 0.1)
     tx.transferObjects([borrowCoin], testAddress)
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({

@@ -19,6 +19,7 @@ import type {
   DryRunTransactionBlockResponse,
   SuiTransactionBlockResponse
 } from '@mysten/sui/client'
+import { normalizeStructTag } from '@mysten/sui/utils'
 
 /**
  * Configuration options for the balance module
@@ -139,11 +140,13 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     // Build transaction
     const tx = new Transaction()
 
-    // Merge coins and split for recipients
-    const mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
-      balance: totalAmount.toNumber(),
-      useGasCoin: true
-    })
+    let mergedCoin: any = tx.gas
+
+    if (normalizeStructTag(coinType) !== normalizeStructTag('0x2::sui::SUI')) {
+      mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
+        balance: totalAmount.toNumber()
+      })
+    }
 
     const coins = tx.splitCoins(mergedCoin, amounts)
 

@@ -25,7 +25,7 @@ describe('swap module', () => {
     const res = await swapModule.swap(
       '0x2::sui::SUI',
       '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
-      1e9 * 1,
+      1e9 * 0.4,
       0.01,
       {
         dryRun: true

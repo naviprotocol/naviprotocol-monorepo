@@ -125,8 +125,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       balance: suiAmount,
       useGasCoin: true
     })
-    const coin = tx.splitCoins(mergedCoin, [tx.pure.u64(suiAmount)])
-    const haSUICoin = await this.stakePTB(tx, coin)
+    const haSUICoin = await this.stakePTB(tx, mergedCoin)
     tx.transferObjects([haSUICoin], this.walletClient.address)
     const result = await this.walletClient.signExecuteTransaction({
       transaction: tx,
