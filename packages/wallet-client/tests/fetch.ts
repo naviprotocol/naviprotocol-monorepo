@@ -1,3 +1,15 @@
+import axios from 'axios'
+
+axios.interceptors.request.use((config) => {
+  config.headers.set('Host', 'app.naviprotocol.io')
+  config.headers.set(
+    'User-Agent',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+  )
+  config.headers.set('Referer', 'https://app.naviprotocol.io/')
+  config.headers.set('origin', 'app.naviprotocol.io')
+  return config
+})
 ;(() => {
   if ((globalThis.fetch as any).isWraped) {
     return
