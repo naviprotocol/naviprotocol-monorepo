@@ -10,6 +10,11 @@ axios.interceptors.request.use((config) => {
   config.headers.set('origin', 'app.naviprotocol.io')
   return config
 })
+
+axios.interceptors.response.use((response) => {
+  console.log('response', response)
+  return response
+})
 ;(() => {
   if ((globalThis.fetch as any).isWraped) {
     return
