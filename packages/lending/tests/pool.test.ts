@@ -125,6 +125,7 @@ describe('withdrawCoinPTB', () => {
 
 describe('borrowCoinPTB', () => {
   it('should success borrow 0.1 vSUI', async () => {
+    const testAddress = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
@@ -143,11 +144,11 @@ describe('borrowCoinPTB', () => {
 })
 
 describe('repayCoinPTB', () => {
-  it('should success repay 0.5 SUI', async () => {
+  it('should success repay 0.1 SUI', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
     await repayCoinPTB(tx, coinType, tx.gas, {
-      amount: 1e9 * 0.5
+      amount: 1e9 * 0.1
     })
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({
