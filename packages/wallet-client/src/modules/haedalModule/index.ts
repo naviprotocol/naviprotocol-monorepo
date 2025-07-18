@@ -17,7 +17,6 @@ import {
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
 import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
-import axios from 'axios'
 
 /**
  * Configuration for the Haedal module
@@ -67,9 +66,8 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
         data: {
           apy: number
         }
-      } = await axios.get('https://open-api.naviprotocol.io/api/haedal/stats').then((res) => {
-        return res.data
-      })
+      } = await fetch('https://open-api.naviprotocol.io/api/haedal/stats').then((res) => res.json())
+
       return resp.data.apy
     })
   )

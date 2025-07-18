@@ -16,7 +16,6 @@ import {
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
 import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
-import axios from 'axios'
 
 /**
  * Configuration interface for the Volo staking module
@@ -121,9 +120,8 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
     withSingleton(async () => {
       const resp: {
         data: VoloStats
-      } = await axios.get('https://open-api.naviprotocol.io/api/volo/stats').then((res) => {
-        return res.data
-      })
+      } = await fetch('https://open-api.naviprotocol.io/api/volo/stats').then((res) => res.json())
+
       return resp.data
     })
   )
