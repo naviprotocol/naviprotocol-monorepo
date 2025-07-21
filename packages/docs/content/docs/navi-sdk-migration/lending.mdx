@@ -1,0 +1,536 @@
+---
+title: Lending Migration
+---
+
+This guide will help you migrate from the old version of the navi-sdk package to the new @naviprotocol/lending package. The new version provides a clearer API design, better type support, and more complete functionality.
+
+## Install New Package
+
+First, uninstall the old package and install the new one:
+
+```npm
+npm uninstall navi-sdk
+npm install @naviprotocol/lending
+```
+
+## Interface Migration Guide
+
+### Interface Optional Parameters
+
+The last `options` parameter of the new version interface is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
+
+- `client`: Sui network client instance (such as `SuiClient`), used for customizing network requests, suitable for scenarios that require custom RPC nodes or multi-network environments.
+- `env`: Specify environment (such as `'prod'`、`'dev'`), affecting data sources and on-chain contract addresses, ensuring data isolation and compatibility in different deployment environments.
+- `cacheTime`: Custom cache time in milliseconds. By setting cache time, you can reduce duplicate requests and improve performance. For example, `cacheTime: 60000` means cache for 60 seconds.
+- `disableCache`: Whether to disable cache
+- `accountCap`: In ptb-related operations, use account cap
+
+**Usage Recommendations:**
+
+- If you don't pass `options`, the SDK will automatically use default configuration, suitable for most regular scenarios.
+- When you need to customize network, environment, or cache strategy, it's recommended to pass corresponding parameters for more flexible control.
+
+<br/>
+
+### Coin Variables
+The new version no longer provides coin variables. Please directly use the coin type or asset id corresponding to the coin.
+
+**Old Version:**
+```typescript
+import { Sui, USDT, WETH, vSui, haSui, 
+         CETUS, NAVX, WBTC, AUSD, wUSDC, 
+         nUSDC, ETH, USDY, NS, LorenzoBTC, 
+         DEEP, FDUSD, BLUE, BUCK, suiUSDT } from 'navi-sdk'
+
+client.getPoolInfo(USDC) 
+```
+
+**New Version:**
+```typescript
+import { getPool } from '@naviprotocol/lending'
+
+await getPool('0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC')
+```
+
+<br/>
+
+### Retrieve Address Information
+
+#### Retrieve Address All Coins
+
+Related interfaces:
+- getAllCoins
+- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
+
+**Old Version:**
+```typescript
+account.getAllCoins(prettyPrint = true) 
+```
+
+**New Version:**
+```typescript
+import { getCoins } from '@naviprotocol/lending'
+
+await getCoins(address)
+```
+<br/>
+#### Retrieve Address Specific Coins 
+
+Related interfaces:
+- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
+
+**Old Version:**
+```typescript
+account.getCoins(coinType = "0x2::sui::SUI")
+```
+
+**New Version:**
+```typescript
+import { getCoins } from '@naviprotocol/lending'
+
+await getCoins(address, {
+    coinType: "0x2::sui::SUI"
+})
+```
+<br/>
+### Retrieve NAVI-Related Position Information
+
+#### Get NAVI Portfolio
+
+Related interfaces:
+- getNAVIPortfolio
+- [getLendingState](/typedoc/variables/_naviprotocol_lending.getLendingState.html)
+
+**Old Version:**
+```typescript
+const naviPortfolio = account.getNAVIPortfolio(address)
+```
+
+**New Version:**
+```typescript
+import { getLendingState } from '@naviprotocol/lending'
+
+const lendingStates = await getLendingState(address)
+```
+
+<Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
+
+<br/>
+#### Get NAVI Health Factor
+
+Related interfaces:
+- [getHealthFactor](/typedoc/functions/_naviprotocol_lending.getHealthFactor.html)
+
+**Old Version:**
+```typescript
+account.getHealthFactor(address)
+```
+
+**New Version:**
+```typescript
+import { getHealthFactor } from '@naviprotocol/lending'
+
+await getHealthFactor(address)
+```
+<br/>
+
+
+#### Get Available NAVI Rewards
+
+Related interfaces:
+- getAddressAvailableRewards
+- [getUserAvailableLendingRewards](/typedoc/functions/_naviprotocol_lending.getUserAvailableLendingRewards.html)
+
+**Old Version:**
+```typescript
+client.getAddressAvailableRewards(address = account.address, option = [1,])
+```
+
+**New Version:**
+```typescript
+import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
+
+await getUserAvailableLendingRewards(address)
+```
+
+<Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
+<br/>
+
+
+#### Retrieve Rewards Claimed History
+
+Related interfaces:
+- getUserRewardHistory
+- [getUserClaimedRewardHistory](/typedoc/variables/_naviprotocol_lending.getUserClaimedRewardHistory.html)
+
+**Old Version:**
+```typescript
+client.getUserRewardHistory(userAddress, page = 1, size = 400)
+```
+
+**New Version:**
+```typescript
+import { getUserClaimedRewardHistory } from '@naviprotocol/lending'
+
+await getUserClaimedRewardHistory(address, {
+    page: 1,
+    size: 400
+})
+```
+
+<Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
+<br/>
+
+
+### Retrieve Pool Information
+
+#### Get Pool Information
+
+Related interfaces:
+- getPoolInfo
+- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
+
+
+**Old Version:**
+```typescript
+import { USDC } from 'navi-sdk/dist/address'
+client.getPoolInfo(USDC) 
+```
+
+**New Version:**
+```typescript
+import { getPool } from '@naviprotocol/lending'
+// get pool by coin type
+await getPool('0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC')
+// get pool by asset id
+await getPool(10)
+```
+<Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
+<br/>
+
+#### Get Reserve Information
+
+Related interfaces:
+- getReserves
+- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
+- [getPools](/typedoc/functions/_naviprotocol_lending.getPools.html)
+
+
+**Old Version:**
+```typescript
+import { USDC } from 'navi-sdk/dist/address'
+client.getReserves(USDC)
+// Leave empty to retrieve reserves for all pools
+client.getReserves()
+```
+
+**New Version:**
+```typescript
+import { getPool, getPools } from '@naviprotocol/lending'
+// get pool by coin type
+await getPool('0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC')
+// get pool by asset id
+await getPool(10)
+// retrieve all pools
+await getPools()
+```
+<Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
+<br/>
+
+
+### PTB Functions
+
+#### Deposit Coin
+
+Related interfaces:
+- depositCoin
+- depositCoinWithAccountCap
+- [depositCoinPTB](/typedoc/functions/_naviprotocol_lending.depositCoinPTB.html)
+
+
+**Old Version:**
+```typescript
+depositCoin(txb: Transaction, _pool: PoolConfig, coinObject: any, amount: any)
+depositCoinWithAccountCap(txb: Transaction, _pool: PoolConfig, coinObject: any, accountCapAddress: string)
+```
+
+**New Version:**
+```typescript
+import { depositCoinPTB } from '@naviprotocol/lending'
+
+await depositCoinPTB(
+  txb,
+  '0x2::sui::SUI',
+  coinObject,
+  {
+    // use account cap
+    accountCap: accountCapObject,
+    // If amount is not specified, all balance in coinObject will be deposited
+    amount: 1000000000
+  }
+)
+
+```
+<br/>
+
+#### Withdraw Coin
+
+Related interfaces:
+- withdrawCoin
+- withdrawCoinWithAccountCap
+- [withdrawCoinPTB](/typedoc/functions/_naviprotocol_lending.withdrawCoinPTB.html)
+
+
+**Old Version:**
+```typescript
+const [returnedCoin] = withdrawCoin(txb: Transaction, _pool: PoolConfig, amount: number)
+const [returnedCoin] = withdrawCoinWithAccountCap(txb: Transaction, _pool: PoolConfig, account: string, withdrawAmount: number, sender: string)
+
+```
+
+**New Version:**
+```typescript
+import { withdrawCoinPTB } from '@naviprotocol/lending'
+
+const returnedCoin = await withdrawCoinPTB(
+  txb,
+  '0x2::sui::SUI',
+  1000000000, 
+  {
+    accountCap: accountCapObject
+  }
+)
+```
+
+<br/>
+
+#### Borrow Coin
+
+Related interfaces:
+- borrowCoin
+- [borrowCoinPTB](/typedoc/functions/_naviprotocol_lending.borrowCoinPTB.html)
+
+
+**Old Version:**
+```typescript
+const [returnedCoin] = borrowCoin(txb: Transaction, _pool: PoolConfig, borrowAmount: number)
+```
+
+**New Version:**
+```typescript
+import { borrowCoinPTB } from '@naviprotocol/lending'
+
+const returnedCoin = await borrowCoinPTB(
+  txb,
+  '0x2::sui::SUI',
+  1000000000, 
+  {
+    accountCap: accountCapObject
+  }
+)
+```
+
+<br/>
+
+#### Repay Debt
+
+Related interfaces:
+- repayDebt
+- [repayCoinPTB](/typedoc/functions/_naviprotocol_lending.repayCoinPTB.html)
+
+
+**Old Version:**
+```typescript
+repayDebt(txb: Transaction, _pool: PoolConfig, coinObject: any, repayAmount: n)
+```
+
+**New Version:**
+```typescript
+import { repayCoinPTB } from '@naviprotocol/lending'
+
+const returnedCoin = await repayCoinPTB(
+  txb,
+  '0x2::sui::SUI',
+  coinObject, 
+  {
+    accountCap: accountCapObject,
+    amount: 1000000
+  }
+)
+```
+
+<br/>
+
+#### Flashloan
+
+Related interfaces:
+- flashloan
+- repayFlashLoan
+- [flashloanPTB](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html)
+- [repayFlashLoanPTB](/typedoc/functions/_naviprotocol_lending.repayFlashLoanPTB.html)
+
+
+**Old Version:**
+```typescript
+const [balance, receipt] = flashloan(txb: Transaction, _pool: PoolConfig, amount: number)
+const [e_balance] = repayFlashLoan(txb: Transaction, _pool: PoolConfig, receipt: any, repayCoin: any)
+```
+
+**New Version:**
+```typescript
+import { flashloanPTB, repayFlashLoanPTB } from '@naviprotocol/lending'
+
+const [balance, receipt] = await flashloanPTB(tx, '0x2::sui::SUI', 1e9)
+const [e_balance] = await repayFlashLoanPTB(tx, '0x2::sui::SUI', receipt, repayCoin)
+```
+
+<br/>
+
+#### Liquidation
+
+Related interfaces:
+- liquidateFunction
+- [liquidatePTB](/typedoc/functions/_naviprotocol_lending.liquidatePTB.html)
+
+
+**Old Version:**
+```typescript
+const [collateralBalance, remainDebtBalance] = liquidateFunction(txb: Transaction, payCoinType: CoinInfo, payCoinObj: any, collateralCoinType: CoinInfo, to_liquidate_address: string)
+```
+
+**New Version:**
+```typescript
+import { liquidatePTB } from '@naviprotocol/lending'
+
+const [collateralBalance, remainDebtBalance] = liquidatePTB(txb, '0x2::sui::SUI', payCoinObj, '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', to_liquidate_address)
+```
+
+<br/>
+
+#### Claim Single Assert Reward
+
+Related interfaces:
+- claimRewardsByAssetIdPTB
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
+
+**Old Version:**
+```typescript
+claimRewardsByAssetIdPTB(    
+    client: SuiClient, 
+    address, 
+    assetId, 
+    txb
+)
+```
+
+**New Version:**
+```typescript
+import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
+
+const rewards = await getUserAvailableLendingRewards(address);
+
+const filterRewards = rewards.filter((reward) => {
+    return reward.assetId === assetId
+})
+
+await claimLendingRewardsPTB(txb, filterRewards)
+
+```
+
+<br/>
+
+#### Claim All Reward
+
+Related interfaces:
+- claimAllRewardsPTB
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
+
+**Old Version:**
+```typescript
+claimAllRewardsPTB(    
+    client: SuiClient, 
+    address, 
+    txb
+)
+```
+
+**New Version:**
+```typescript
+import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
+
+const rewards = await getUserAvailableLendingRewards(address);
+
+await claimLendingRewardsPTB(txb, rewards)
+
+```
+
+<br/>
+
+#### Claim All Reward and Resupply
+
+Related interfaces:
+- claimAllRewardsResupplyPTB
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
+
+**Old Version:**
+```typescript
+claimAllRewardsResupplyPTB(    
+    client: SuiClient, 
+    address, 
+    txb
+)
+```
+
+**New Version:**
+```typescript
+import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
+
+const rewards = await getUserAvailableLendingRewards(address);
+
+await claimLendingRewardsPTB(txb, rewards, {
+    customCoinReceive: {
+        type: 'depositNAVI',
+    }
+})
+
+```
+
+<br/>
+
+#### Update Oracle PTB
+
+Related interfaces:
+- updateOraclePTB
+- [updateOraclePricesPTB](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html)
+
+
+**Old Version:**
+```typescript
+updateOraclePTB(client: SuiClient, txb: Transaction)
+```
+
+**New Version:**
+```typescript
+import { updateOraclePricesPTB, getPriceFeeds } from '@naviprotocol/lending'
+
+const priceFeeds = await getPriceFeeds();
+
+await updateOraclePricesPTB(txb, priceFeeds, {
+    updatePythPriceFeeds: true
+})
+
+```
+
+<br/>
+
+
+## Support
+
+If you encounter issues during migration, please refer to:
+
+- [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
+- [Discord Community](https://discord.gg/naviprotocol)
+

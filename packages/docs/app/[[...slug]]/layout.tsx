@@ -33,6 +33,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             description: 'Wallet client SDK',
             url: '/wallet-client',
             icon: <Image src="/assets/logo.png" alt="Lending" width={24} height={24} />
+          },
+          {
+            title: 'NAVI SDK Migration',
+            description: 'migration from navi-sdk package',
+            url: '/navi-sdk-migration/lending',
+            icon: <Image src="/assets/logo.png" alt="Lending" width={24} height={24} />
           }
         ]
       }}

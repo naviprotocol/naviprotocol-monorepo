@@ -35,7 +35,7 @@ import {
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
-import { getPool, PoolOperator } from './pool'
+import { getPool, getPools, PoolOperator } from './pool'
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -194,6 +194,8 @@ export const getLendingState = withCache(
     const tx = new Transaction()
     const client = options?.client ?? suiClient
 
+    const pools = await getPools(options)
+
     // Create transaction call to get user state
     tx.moveCall({
       target: `${config.uiGetter}::getter_unchecked::get_user_state`,
@@ -215,11 +217,25 @@ export const getLendingState = withCache(
       }[][]
     >(result, [bcs.vector(UserStateInfo)])
 
-    return camelize(
+    const lendingStates = camelize(
       res[0].filter((item) => {
         return item.supply_balance !== '0' || item.borrow_balance !== '0'
       })
-    ) as any
+    ) as any as {
+      supplyBalance: string
+      borrowBalance: string
+      assetId: number
+    }[]
+
+    return lendingStates
+      .map((lendingState) => {
+        const pool = pools.find((pool) => pool.id === lendingState.assetId)
+        return {
+          ...lendingState,
+          pool
+        }
+      })
+      .filter((lendingState) => !!lendingState.pool) as any
   }
 )
 
