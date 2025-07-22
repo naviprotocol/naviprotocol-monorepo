@@ -58,26 +58,27 @@ await getPool('0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e
 
 #### Retrieve Address All Coins
 
-Related interfaces:
-- getAllCoins
-- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
-
 **Old Version:**
+
+- getAllCoins
+
 ```typescript
 account.getAllCoins(prettyPrint = true) 
 ```
 
+
 **New Version:**
+
+- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
+
 ```typescript
 import { getCoins } from '@naviprotocol/lending'
 
 await getCoins(address)
 ```
 <br/>
-#### Retrieve Address Specific Coins 
 
-Related interfaces:
-- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
+#### Retrieve Address Specific Coins 
 
 **Old Version:**
 ```typescript
@@ -85,6 +86,9 @@ account.getCoins(coinType = "0x2::sui::SUI")
 ```
 
 **New Version:**
+
+- [getCoins](/typedoc/functions/_naviprotocol_lending.getCoins.html)
+
 ```typescript
 import { getCoins } from '@naviprotocol/lending'
 
@@ -95,18 +99,21 @@ await getCoins(address, {
 <br/>
 ### Retrieve NAVI-Related Position Information
 
+
 #### Get NAVI Portfolio
 
-Related interfaces:
-- getNAVIPortfolio
-- [getLendingState](/typedoc/variables/_naviprotocol_lending.getLendingState.html)
-
 **Old Version:**
+
+- getNAVIPortfolio
+
 ```typescript
 const naviPortfolio = account.getNAVIPortfolio(address)
 ```
 
 **New Version:**
+
+- [getLendingState](/typedoc/variables/_naviprotocol_lending.getLendingState.html)
+
 ```typescript
 import { getLendingState } from '@naviprotocol/lending'
 
@@ -118,15 +125,15 @@ const lendingStates = await getLendingState(address)
 <br/>
 #### Get NAVI Health Factor
 
-Related interfaces:
-- [getHealthFactor](/typedoc/functions/_naviprotocol_lending.getHealthFactor.html)
-
 **Old Version:**
 ```typescript
 account.getHealthFactor(address)
 ```
 
 **New Version:**
+
+- [getHealthFactor](/typedoc/functions/_naviprotocol_lending.getHealthFactor.html)
+
 ```typescript
 import { getHealthFactor } from '@naviprotocol/lending'
 
@@ -137,16 +144,18 @@ await getHealthFactor(address)
 
 #### Get Available NAVI Rewards
 
-Related interfaces:
-- getAddressAvailableRewards
-- [getUserAvailableLendingRewards](/typedoc/functions/_naviprotocol_lending.getUserAvailableLendingRewards.html)
-
 **Old Version:**
+
+- getAddressAvailableRewards
+
 ```typescript
 client.getAddressAvailableRewards(address = account.address, option = [1,])
 ```
 
 **New Version:**
+
+- [getUserAvailableLendingRewards](/typedoc/functions/_naviprotocol_lending.getUserAvailableLendingRewards.html)
+
 ```typescript
 import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
@@ -159,16 +168,18 @@ await getUserAvailableLendingRewards(address)
 
 #### Retrieve Rewards Claimed History
 
-Related interfaces:
-- getUserRewardHistory
-- [getUserClaimedRewardHistory](/typedoc/variables/_naviprotocol_lending.getUserClaimedRewardHistory.html)
-
 **Old Version:**
+
+- getUserRewardHistory
+
 ```typescript
 client.getUserRewardHistory(userAddress, page = 1, size = 400)
 ```
 
 **New Version:**
+
+- [getUserClaimedRewardHistory](/typedoc/variables/_naviprotocol_lending.getUserClaimedRewardHistory.html)
+
 ```typescript
 import { getUserClaimedRewardHistory } from '@naviprotocol/lending'
 
@@ -186,18 +197,20 @@ await getUserClaimedRewardHistory(address, {
 
 #### Get Pool Information
 
-Related interfaces:
-- getPoolInfo
-- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
-
 
 **Old Version:**
+
+- getPoolInfo
+
 ```typescript
 import { USDC } from 'navi-sdk/dist/address'
 client.getPoolInfo(USDC) 
 ```
 
 **New Version:**
+
+- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
+
 ```typescript
 import { getPool } from '@naviprotocol/lending'
 // get pool by coin type
@@ -210,13 +223,10 @@ await getPool(10)
 
 #### Get Reserve Information
 
-Related interfaces:
-- getReserves
-- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
-- [getPools](/typedoc/functions/_naviprotocol_lending.getPools.html)
-
-
 **Old Version:**
+
+- getReserves
+
 ```typescript
 import { USDC } from 'navi-sdk/dist/address'
 client.getReserves(USDC)
@@ -225,6 +235,10 @@ client.getReserves()
 ```
 
 **New Version:**
+
+- [getPool](/typedoc/functions/_naviprotocol_lending.getPool.html)
+- [getPools](/typedoc/functions/_naviprotocol_lending.getPools.html)
+
 ```typescript
 import { getPool, getPools } from '@naviprotocol/lending'
 // get pool by coin type
@@ -242,19 +256,20 @@ await getPools()
 
 #### Deposit Coin
 
-Related interfaces:
+**Old Version:**
+
 - depositCoin
 - depositCoinWithAccountCap
-- [depositCoinPTB](/typedoc/functions/_naviprotocol_lending.depositCoinPTB.html)
 
-
-**Old Version:**
 ```typescript
 depositCoin(txb: Transaction, _pool: PoolConfig, coinObject: any, amount: any)
 depositCoinWithAccountCap(txb: Transaction, _pool: PoolConfig, coinObject: any, accountCapAddress: string)
 ```
 
 **New Version:**
+
+- [depositCoinPTB](/typedoc/functions/_naviprotocol_lending.depositCoinPTB.html)
+
 ```typescript
 import { depositCoinPTB } from '@naviprotocol/lending'
 
@@ -275,13 +290,11 @@ await depositCoinPTB(
 
 #### Withdraw Coin
 
-Related interfaces:
+**Old Version:**
+
 - withdrawCoin
 - withdrawCoinWithAccountCap
-- [withdrawCoinPTB](/typedoc/functions/_naviprotocol_lending.withdrawCoinPTB.html)
 
-
-**Old Version:**
 ```typescript
 const [returnedCoin] = withdrawCoin(txb: Transaction, _pool: PoolConfig, amount: number)
 const [returnedCoin] = withdrawCoinWithAccountCap(txb: Transaction, _pool: PoolConfig, account: string, withdrawAmount: number, sender: string)
@@ -289,6 +302,9 @@ const [returnedCoin] = withdrawCoinWithAccountCap(txb: Transaction, _pool: PoolC
 ```
 
 **New Version:**
+
+- [withdrawCoinPTB](/typedoc/functions/_naviprotocol_lending.withdrawCoinPTB.html)
+
 ```typescript
 import { withdrawCoinPTB } from '@naviprotocol/lending'
 
@@ -306,17 +322,18 @@ const returnedCoin = await withdrawCoinPTB(
 
 #### Borrow Coin
 
-Related interfaces:
-- borrowCoin
-- [borrowCoinPTB](/typedoc/functions/_naviprotocol_lending.borrowCoinPTB.html)
-
-
 **Old Version:**
+
+- borrowCoin
+
 ```typescript
 const [returnedCoin] = borrowCoin(txb: Transaction, _pool: PoolConfig, borrowAmount: number)
 ```
 
 **New Version:**
+
+- [borrowCoinPTB](/typedoc/functions/_naviprotocol_lending.borrowCoinPTB.html)
+
 ```typescript
 import { borrowCoinPTB } from '@naviprotocol/lending'
 
@@ -334,17 +351,18 @@ const returnedCoin = await borrowCoinPTB(
 
 #### Repay Debt
 
-Related interfaces:
-- repayDebt
-- [repayCoinPTB](/typedoc/functions/_naviprotocol_lending.repayCoinPTB.html)
-
-
 **Old Version:**
+
+- repayDebt
+
 ```typescript
 repayDebt(txb: Transaction, _pool: PoolConfig, coinObject: any, repayAmount: n)
 ```
 
 **New Version:**
+
+- [repayCoinPTB](/typedoc/functions/_naviprotocol_lending.repayCoinPTB.html)
+
 ```typescript
 import { repayCoinPTB } from '@naviprotocol/lending'
 
@@ -363,20 +381,21 @@ const returnedCoin = await repayCoinPTB(
 
 #### Flashloan
 
-Related interfaces:
+**Old Version:**
+
 - flashloan
 - repayFlashLoan
-- [flashloanPTB](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html)
-- [repayFlashLoanPTB](/typedoc/functions/_naviprotocol_lending.repayFlashLoanPTB.html)
 
-
-**Old Version:**
 ```typescript
 const [balance, receipt] = flashloan(txb: Transaction, _pool: PoolConfig, amount: number)
 const [e_balance] = repayFlashLoan(txb: Transaction, _pool: PoolConfig, receipt: any, repayCoin: any)
 ```
 
 **New Version:**
+
+- [flashloanPTB](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html)
+- [repayFlashLoanPTB](/typedoc/functions/_naviprotocol_lending.repayFlashLoanPTB.html)
+
 ```typescript
 import { flashloanPTB, repayFlashLoanPTB } from '@naviprotocol/lending'
 
@@ -388,17 +407,18 @@ const [e_balance] = await repayFlashLoanPTB(tx, '0x2::sui::SUI', receipt, repayC
 
 #### Liquidation
 
-Related interfaces:
-- liquidateFunction
-- [liquidatePTB](/typedoc/functions/_naviprotocol_lending.liquidatePTB.html)
-
-
 **Old Version:**
+
+- liquidateFunction
+
 ```typescript
 const [collateralBalance, remainDebtBalance] = liquidateFunction(txb: Transaction, payCoinType: CoinInfo, payCoinObj: any, collateralCoinType: CoinInfo, to_liquidate_address: string)
 ```
 
 **New Version:**
+
+- [liquidatePTB](/typedoc/functions/_naviprotocol_lending.liquidatePTB.html)
+
 ```typescript
 import { liquidatePTB } from '@naviprotocol/lending'
 
@@ -409,12 +429,10 @@ const [collateralBalance, remainDebtBalance] = liquidatePTB(txb, '0x2::sui::SUI'
 
 #### Claim Single Assert Reward
 
-Related interfaces:
-- claimRewardsByAssetIdPTB
-- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
-
-
 **Old Version:**
+
+- claimRewardsByAssetIdPTB
+
 ```typescript
 claimRewardsByAssetIdPTB(    
     client: SuiClient, 
@@ -425,6 +443,9 @@ claimRewardsByAssetIdPTB(
 ```
 
 **New Version:**
+
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
@@ -442,12 +463,10 @@ await claimLendingRewardsPTB(txb, filterRewards)
 
 #### Claim All Reward
 
-Related interfaces:
-- claimAllRewardsPTB
-- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
-
-
 **Old Version:**
+
+- claimAllRewardsPTB
+
 ```typescript
 claimAllRewardsPTB(    
     client: SuiClient, 
@@ -457,6 +476,9 @@ claimAllRewardsPTB(
 ```
 
 **New Version:**
+
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
@@ -470,12 +492,10 @@ await claimLendingRewardsPTB(txb, rewards)
 
 #### Claim All Reward and Resupply
 
-Related interfaces:
-- claimAllRewardsResupplyPTB
-- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
-
-
 **Old Version:**
+
+- claimAllRewardsResupplyPTB
+
 ```typescript
 claimAllRewardsResupplyPTB(    
     client: SuiClient, 
@@ -485,6 +505,9 @@ claimAllRewardsResupplyPTB(
 ```
 
 **New Version:**
+
+- [claimLendingRewardsPTB](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html)
+
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
@@ -502,17 +525,18 @@ await claimLendingRewardsPTB(txb, rewards, {
 
 #### Update Oracle PTB
 
-Related interfaces:
-- updateOraclePTB
-- [updateOraclePricesPTB](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html)
-
-
 **Old Version:**
+
+- updateOraclePTB
+
 ```typescript
 updateOraclePTB(client: SuiClient, txb: Transaction)
 ```
 
 **New Version:**
+
+- [updateOraclePricesPTB](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html)
+
 ```typescript
 import { updateOraclePricesPTB, getPriceFeeds } from '@naviprotocol/lending'
 

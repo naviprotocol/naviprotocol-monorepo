@@ -1,0 +1,414 @@
+---
+title: Account Manager Migration
+---
+
+This guide will help you migrate account-related features from the old navi-sdk package to the new @naviprotocol/wallet-client package.
+
+## Install New Package
+
+First, uninstall the old package and install the new one:
+
+```npm
+npm uninstall navi-sdk
+npm install @naviprotocol/wallet-client
+```
+
+## Interface Migration Guide
+
+### init Account
+
+**Old Version:**
+
+- NAVISDKClient
+
+```typescript
+const client = new NAVISDKClient({
+  mnemonic,
+  networkType: "mainnet" || rpc, 
+  numberOfAccounts: 5
+}); 
+const account = client.accounts[0];
+
+```
+
+
+**New Version:**
+
+- [WalletClient](/typedoc/classes/_naviprotocol_wallet-client.WalletClient.html)
+
+```typescript
+import { WalletClient, WatchSigner, WebSigner } from '@naviprotocol/wallet-client'
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+
+
+// 私钥钱包
+const walletClient = new WalletClient({
+    client: {
+        url: '' // custom rpc url
+    },
+    signer: Ed25519Keypair.fromSecretKey(privateKey)
+})
+
+
+// 观察者钱包（无法执行链上操作，只能读取链上资产数据）
+const walletClient = new WalletClient({
+    client: {
+        url: '' // custom rpc url
+    },
+    signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
+})
+
+// 游览器环境(PC, Mobile)插件钱包
+class WebSignerAdapter extends WebSigner {
+    signAndExecuteTransaction() {}
+    signTransaction() {}
+    signPersonalMessage() {}
+}
+
+const walletClient = new WalletClient({
+    client: {
+        url: '' // custom rpc url
+    },
+    signer: new WebSignerAdapter()
+})
+```
+
+<br/>
+
+### Retrieve Account Information
+
+#### Get Account Address
+
+**Old Version:**
+
+```typescript
+account.address
+account.getPublicKey()
+```
+
+**New Version:**
+
+```typescript
+walletClient.address
+```
+<br/>
+
+#### Retrieve Address Coin Info Across Objects
+
+**Old Version:**
+
+- getAllCoins
+
+```typescript
+account.getAllCoins() 
+```
+
+**New Version:**
+
+```typescript
+await walletClient.balance.updatePortfolio();
+
+walletClient.balance.coins
+waleetClient.balance.portfolio
+```
+<br/>
+
+#### Get Specific Token Info
+
+**Old Version:**
+
+- getCoins
+
+```typescript
+account.getCoins("0x2::sui::SUI")
+```
+
+**New Version:**
+
+```typescript
+await walletClient.balance.updatePortfolio();
+
+waleetClient.balance.portfolio.getBalance('0x2::sui::SUI')
+```
+<br/>
+
+#### Get Address Merged Coin Balance
+
+**Old Version:**
+
+- getWalletBalance
+
+```typescript
+account.getWalletBalance()
+```
+
+**New Version:**
+
+```typescript
+await walletClient.balance.updatePortfolio();
+
+waleetClient.balance.portfolio
+```
+<br/>
+
+
+### Retrieve NAVI-Related Position Information
+
+#### Get NAVI Portfolio
+
+**Old Version:**
+
+- getNAVIPortfolio
+
+```typescript
+account.getNAVIPortfolio(address = account.address, prettyPrint = true)
+```
+
+**New Version:**
+
+- lending.getLendingState
+
+```typescript
+await walletClient.lending.getLendingState();
+
+```
+<br/>
+
+#### Get NAVI Health Factor
+
+**Old Version:**
+
+- getHealthFactor
+
+```typescript
+account.getHealthFactor(address = account.address)
+```
+
+**New Version:**
+
+- lending.getHealthFactor
+
+```typescript
+await walletClient.lending.getHealthFactor();
+
+```
+<br/>
+
+#### Get Available NAVI Rewards
+
+**Old Version:**
+
+- getAddressAvailableRewards
+
+```typescript
+client.getAddressAvailableRewards(address = account.address, option = [1,])
+```
+
+**New Version:**
+
+- lending.getAvailableRewards
+
+```typescript
+await walletClient.lending.getAvailableRewards();
+
+```
+<br/>
+
+#### Retrieve Rewards Claimed History
+
+**Old Version:**
+
+- getUserRewardHistory
+
+```typescript
+client.getUserRewardHistory(userAddress, page = 1, size = 400)
+```
+
+**New Version:**
+
+- lending.getClaimedRewardHistory
+
+```typescript
+await walletClient.lending.getClaimedRewardHistory({
+    page: 1,
+    size: 400
+});
+
+```
+<br/>
+
+
+
+### Interactions With NAVI
+
+#### Supply to NAVI
+
+**Old Version:**
+
+- depositToNavi
+- depositToNaviWithAccountCap
+
+```typescript
+import { Sui, NAVX} from 'navi-sdk'
+
+// Deposit tokens to NAVI
+account.depositToNavi(Sui, amount)
+
+// Deposit with account cap restrictions
+account.depositToNaviWithAccountCap(NAVX, amount, accountCap_Address_that_account_own)
+```
+
+**New Version:**
+
+- lending.deposit
+
+```typescript
+await walletClient.lending.deposit('0x2::sui::SUI', 1e9)
+
+await walletClient.lending.deposit('0x2::sui::SUI', 1e9, {
+    accountCap: '0x...'
+})
+
+```
+<br/>
+
+#### Withdraw from NAVI
+
+**Old Version:**
+
+- withdraw
+- withdrawWithAccountCap
+
+```typescript
+import { Sui, NAVX} from 'navi-sdk'
+
+// Deposit tokens to NAVI
+account.withdraw(Sui, amount)
+
+// Deposit with account cap restrictions
+account.withdrawWithAccountCap(NAVX, amount, accountCap_Address_that_account_own)
+```
+
+**New Version:**
+
+- lending.withdraw
+
+```typescript
+await walletClient.lending.withdraw('0x2::sui::SUI', 1e9)
+
+await walletClient.lending.withdraw('0x2::sui::SUI', 1e9, {
+    accountCap: '0x...'
+})
+
+```
+<br/>
+
+#### Borrow from NAVI
+
+**Old Version:**
+
+- borrow
+
+```typescript
+import { Sui} from 'navi-sdk'
+
+// Deposit tokens to NAVI
+account.borrow(Sui, amount)
+```
+
+**New Version:**
+
+- lending.borrow
+
+```typescript
+await walletClient.lending.borrow('0x2::sui::SUI', 1e9)
+```
+<br/>
+
+#### Repay Debt to NAVI
+
+**Old Version:**
+
+- repay
+
+```typescript
+import { Sui} from 'navi-sdk'
+
+// Deposit tokens to NAVI
+account.repay(coinType = Sui, amount)
+```
+
+**New Version:**
+
+- lending.repay
+
+```typescript
+await walletClient.lending.repay('0x2::sui::SUI', 1e9)
+```
+<br/>
+
+#### Claim All Available Rewards
+
+**Old Version:**
+
+- claimAllRewards
+
+```typescript
+account.claimAllRewards()
+```
+
+**New Version:**
+
+- lending.claimAllRewards
+
+```typescript
+await walletClient.lending.claimAllRewards()
+```
+<br/>
+
+#### Create Account Cap
+
+**Old Version:**
+
+- createAccountCap
+
+```typescript
+account.createAccountCap()
+```
+
+**New Version:**
+
+- lending.createAccountCap
+
+```typescript
+await walletClient.lending.createAccountCap()
+```
+<br/>
+
+#### Liquidation
+
+**Old Version:**
+
+- liquidate
+
+```typescript
+account.liquidate(payCoinType: CoinInfo, liquidationAddress: string, collateralCoinType: CoinInfo, liquidationAmount: number = 0)
+```
+
+**New Version:**
+
+- lending.createAccountCap
+
+```typescript
+await walletClient.lending.liquidate('0x2::sui::SUI', 1e9, '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', liquidationAddress)
+```
+<br/>
+
+
+## Support
+
+If you encounter issues during migration, please refer to:
+
+- [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
+- [Discord Community](https://discord.gg/naviprotocol)
+

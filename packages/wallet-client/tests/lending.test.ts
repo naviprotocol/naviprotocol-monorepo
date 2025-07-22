@@ -20,7 +20,7 @@ const walletClient = new WalletClient({
 
 describe('lending module', () => {
   it('deposit SUI', async () => {
-    const result = await walletClient.module('lending').deposit('0x2::sui::SUI', 1e9 * 0.1, {
+    const result = await walletClient.lending.deposit('0x2::sui::SUI', 1e9 * 0.1, {
       dryRun: true
     })
     expect(result).toBeDefined()
