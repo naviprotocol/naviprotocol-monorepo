@@ -72,6 +72,26 @@ export class WalletClient {
   /** The Sui client instance */
   public readonly client: SuiClient
 
+  public get lending() {
+    return this.modules.lending
+  }
+
+  public get balance() {
+    return this.modules.balance
+  }
+
+  public get volo() {
+    return this.modules.volo
+  }
+
+  public get swap() {
+    return this.modules.swap
+  }
+
+  public get haedal() {
+    return this.modules.haedal
+  }
+
   /**
    * Creates a new wallet client instance
    * @param options - Configuration options for the wallet client

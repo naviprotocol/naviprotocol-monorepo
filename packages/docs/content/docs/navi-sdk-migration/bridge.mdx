@@ -1,0 +1,34 @@
+---
+title: Bridge Migration
+---
+
+This guide will help you migrate bridge-related features from the old navi-sdk to the new @naviprotocol/astros-bridge-sdk package.
+
+The new package separates bridge-related features from the original navi-sdk. Since the interface definitions remain unchanged, you can quickly migrate to the new version with only minor adjustments.
+
+## Install New Package
+
+First, uninstall the old package and install the new one:
+
+```npm
+npm uninstall navi-sdk
+npm install @naviprotocol/astros-bridge-sdk
+```
+
+## Interface Migration
+
+**Old Version:**
+
+```typescript
+import {Bridge} from 'navi-sdk'
+
+```
+
+**New Version:**
+
+```typescript
+import * as Bridge from '@naviprotocol/astros-bridge-sdk'
+
+```
+
+<br/>

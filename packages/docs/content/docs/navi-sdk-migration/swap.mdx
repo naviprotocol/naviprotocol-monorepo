@@ -1,0 +1,92 @@
+---
+title: Swap Migration
+---
+
+This guide will help you migrate DEX aggregator-related features from the old navi-sdk to the new @naviprotocol/astros-aggregator-sdk package.
+
+The new package separates DEX aggregator-related features from the original navi-sdk. Since the interface definitions remain unchanged, you can quickly migrate to the new version with only minor adjustments.
+
+## Install New Package
+
+First, uninstall the old package and install the new one:
+
+```npm
+npm uninstall navi-sdk
+npm install @naviprotocol/astros-aggregator-sdk
+```
+
+## Interface Migration
+
+### Get Quote
+
+**Old Version:**
+
+- client.getQuote
+
+```typescript
+import { NAVISDKClient } from "navi-sdk";
+
+const client = new NAVISDKClient();
+
+const quote = await client.getQuote(...);
+```
+
+**New Version:**
+
+- [getQuote](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.getQuote.html)
+
+```typescript
+import { getQuote } from '@naviprotocol/astros-aggregator-sdk'
+
+const quote = await getQuote(...)
+```
+
+<br/>
+
+### Build Swap PTB from Quote
+
+**Old Version:**
+
+- buildSwapPTBFromQuote
+
+```typescript
+import { buildSwapPTBFromQuote } from "navi-sdk/dist/libs/Aggregator";
+
+const coinB = await buildSwapPTBFromQuote(...);
+```
+
+**New Version:**
+
+- [buildSwapPTBFromQuote](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.buildSwapPTBFromQuote.html)
+
+```typescript
+import { buildSwapPTBFromQuote } from '@naviprotocol/astros-aggregator-sdk'
+
+const coinB = await buildSwapPTBFromQuote(...)
+```
+
+<br/>
+
+### Swap PTB
+
+**Old Version:**
+
+- swapPTB
+
+```typescript
+import { swapPTB } from "navi-sdk/dist/libs/Aggregator";
+
+const coinB = await swapPTB(...);
+```
+
+**New Version:**
+
+- [swapPTB](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.swapPTB.html)
+
+```typescript
+import { swapPTB } from '@naviprotocol/astros-aggregator-sdk'
+
+const coinB = await swapPTB(...)
+```
+
+<br/>

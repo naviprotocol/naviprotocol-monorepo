@@ -30,7 +30,9 @@ import {
   CacheOption,
   LendingReward,
   AccountCapOption,
-  Pool
+  Pool,
+  createAccountCapPTB,
+  getUserClaimedRewardHistory
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -481,6 +483,44 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   }
 
   /**
+   * Get the available lending rewards for the current user.
+   *
+   * @param options - Optional cache options.
+   * @returns The available lending rewards for the user.
+   * @throws If the wallet client is not found.
+   */
+  async getAvailableRewards(options?: Partial<CacheOption>) {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+    return getUserAvailableLendingRewards(this.walletClient.address, {
+      ...options,
+      env: this.config.env
+    })
+  }
+
+  /**
+   * Get the claimed reward history for the current user.
+   *
+   * @param options - Optional cache options.
+   * @returns The claimed reward history for the user.
+   * @throws If the wallet client is not found.
+   */
+  async getClaimedRewardHistory(
+    options?: Partial<CacheOption> & {
+      page?: number
+      size?: number
+    }
+  ) {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+    return getUserClaimedRewardHistory(this.walletClient.address, {
+      ...options
+    })
+  }
+
+  /**
    * Claims all available lending rewards for the user
    *
    * @param options - Optional parameters including dry run mode and account capability
@@ -581,5 +621,32 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       ...options,
       client: this.walletClient.client
     })
+  }
+
+  /**
+   * Creates an account capability for the lending protocol
+   *
+   * @param options - Optional parameters including dry run mode
+   * @returns Transaction response or dry run response
+   */
+  async createAccountCap<T extends boolean = false>(options?: {
+    dryRun: T
+  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+
+    const tx = new Transaction()
+
+    const cap = await createAccountCapPTB(tx)
+
+    tx.transferObjects([cap], this.walletClient.address)
+
+    const result = await this.walletClient.signExecuteTransaction({
+      transaction: tx,
+      dryRun: options?.dryRun ?? false
+    })
+
+    return result as any
   }
 }
