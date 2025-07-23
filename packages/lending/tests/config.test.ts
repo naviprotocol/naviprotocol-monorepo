@@ -5,7 +5,6 @@ import { getConfig, DEFAULT_CACHE_TIME } from '../src/config'
 describe('getConfig', () => {
   it('prod config', async () => {
     const config = await getConfig()
-    console.log(JSON.stringify(config, null, 2))
     expect(config).toBeDefined()
     expect(config.package).toEqual(
       '0x81c408448d0d57b3e371ea94de1d40bf852784d3e225de1e74acab3e8395c18f'
