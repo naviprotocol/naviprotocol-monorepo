@@ -268,14 +268,14 @@ export async function getHealthFactor(
  * performing a series of supply, withdraw, borrow, or repay operations.
  *
  * @param address - User wallet address or account cap
- * @param pool - Pool information
+ * @param identifier - Asset identifier
  * @param operations - Array of operations to simulate
  * @param options - Options for client and environment
  * @returns Promise<number> - Projected health factor
  */
 export async function getDynamicHealthFactor(
   address: string | AccountCap,
-  pool: Pool,
+  identifier: AssetIdentifier,
   operations: {
     type: PoolOperator
     amount: number
@@ -286,6 +286,7 @@ export async function getDynamicHealthFactor(
   const tx = new Transaction()
   let estimatedSupply = 0
   let estimatedBorrow = 0
+  const pool = await getPool(identifier, options)
 
   // Calculate estimated changes from operations
   operations.forEach((operation) => {
