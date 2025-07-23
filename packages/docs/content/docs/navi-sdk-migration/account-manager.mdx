@@ -41,7 +41,7 @@ import { WalletClient, WatchSigner, WebSigner } from '@naviprotocol/wallet-clien
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
 
-// 私钥钱包
+// Private key wallet
 const walletClient = new WalletClient({
     client: {
         url: '' // custom rpc url
@@ -50,7 +50,7 @@ const walletClient = new WalletClient({
 })
 
 
-// 观察者钱包（无法执行链上操作，只能读取链上资产数据）
+// Watch-only wallet (cannot perform on-chain operations, can only read on-chain asset data)
 const walletClient = new WalletClient({
     client: {
         url: '' // custom rpc url
@@ -58,7 +58,7 @@ const walletClient = new WalletClient({
     signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
 })
 
-// 游览器环境(PC, Mobile)插件钱包
+// Browser environment (PC, Mobile) extension wallet
 class WebSignerAdapter extends WebSigner {
     signAndExecuteTransaction() {}
     signTransaction() {}
@@ -404,6 +404,63 @@ await walletClient.lending.liquidate('0x2::sui::SUI', 1e9, '0x549e8b69270defbfaf
 ```
 <br/>
 
+### Interactions With Astros Swap 
+
+#### Swap
+
+**Old Version:**
+
+- swap
+
+```typescript
+await account.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut, apiKey);
+```
+
+**New Version:**
+
+- swap.swap
+
+```typescript
+const walletClient = new WalletClient({
+    configs: {
+        swap: {
+            apiKey
+        }
+    }
+   ...
+})
+await walletClient.swap.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut)
+```
+<br/>
+
+#### Dry Run Swap
+
+**Old Version:**
+
+- dryRunSwap
+
+```typescript
+await account.dryRunSwap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut, apiKey);
+```
+
+**New Version:**
+
+- swap.swap
+
+```typescript
+const walletClient = new WalletClient({
+    configs: {
+        swap: {
+            apiKey
+        }
+    }
+   ...
+})
+await walletClient.swap.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut, {
+    dryRun: true
+})
+```
+<br/>
 
 ## Support
 
