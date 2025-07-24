@@ -9,7 +9,7 @@
 import {
   CoinObject,
   mergeCoinsPTB,
-  parseTxVaule,
+  parseTxValue,
   withCache,
   withSingleton
 } from '@naviprotocol/lending'
@@ -140,7 +140,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
         tx.object(this.config.poolId),
         tx.object(this.config.metadataId),
         tx.object('0x05'),
-        parseTxVaule(suiCoin, tx.object)
+        parseTxValue(suiCoin, tx.object)
       ],
       typeArguments: []
     })
@@ -161,7 +161,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
         tx.object(this.config.poolId),
         tx.object(this.config.metadataId),
         tx.object('0x05'),
-        parseTxVaule(vSuiCoin, tx.object)
+        parseTxValue(vSuiCoin, tx.object)
       ],
       typeArguments: []
     })
