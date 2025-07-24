@@ -20,7 +20,7 @@ import type {
   TransactionResult,
   AccountCapOption
 } from './types'
-import { normalizeCoinType, withCache, withSingleton, parseTxVaule } from './utils'
+import { normalizeCoinType, withCache, withSingleton, parseTxValue } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
 
 /**
@@ -199,11 +199,11 @@ export async function depositCoinPTB(
   let depositAmount: TransactionResult
 
   if (typeof options?.amount !== 'undefined') {
-    depositAmount = parseTxVaule(options.amount, tx.pure.u64)
+    depositAmount = parseTxValue(options.amount, tx.pure.u64)
   } else {
     depositAmount = tx.moveCall({
       target: '0x2::coin::value',
-      arguments: [parseTxVaule(coinObject as any, tx.object)],
+      arguments: [parseTxValue(coinObject as any, tx.object)],
       typeArguments: [pool.suiCoinType]
     })
   }
@@ -217,10 +217,10 @@ export async function depositCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -232,7 +232,7 @@ export async function depositCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         depositAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3)
@@ -268,7 +268,7 @@ export async function withdrawCoinPTB(
   })
   const pool = await getPool(identifier, options)
 
-  const withdrawAmount = parseTxVaule(amount, tx.pure.u64)
+  const withdrawAmount = parseTxValue(amount, tx.pure.u64)
 
   let withdrawBalance
 
@@ -285,7 +285,7 @@ export async function withdrawCoinPTB(
         withdrawAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -329,7 +329,7 @@ export async function borrowCoinPTB(
   })
   const pool = await getPool(identifier, options)
 
-  const borrowAmount = parseTxVaule(amount, tx.pure.u64)
+  const borrowAmount = parseTxValue(amount, tx.pure.u64)
 
   let borrowBalance
 
@@ -361,7 +361,7 @@ export async function borrowCoinPTB(
         borrowAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -405,11 +405,11 @@ export async function repayCoinPTB(
   let repayAmount: TransactionResult
 
   if (typeof options?.amount !== 'undefined') {
-    repayAmount = parseTxVaule(options.amount, tx.pure.u64)
+    repayAmount = parseTxValue(options.amount, tx.pure.u64)
   } else {
     repayAmount = tx.moveCall({
       target: '0x2::coin::value',
-      arguments: [parseTxVaule(coinObject as any, tx.object)],
+      arguments: [parseTxValue(coinObject as any, tx.object)],
       typeArguments: [pool.suiCoinType]
     })
   }
@@ -423,11 +423,11 @@ export async function repayCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         repayAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -440,7 +440,7 @@ export async function repayCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         repayAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3)

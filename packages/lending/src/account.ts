@@ -28,7 +28,7 @@ import {
   parseDevInspectResult,
   withSingleton,
   processContractHealthFactor,
-  parseTxVaule,
+  parseTxValue,
   parseTxPoolVaule,
   withCache,
   normalizeCoinType
@@ -146,11 +146,11 @@ export async function getDynamicHealthFactorPTB(
       tx.object(config.storage),
       tx.object(config.oracle.priceOracle),
       parseTxPoolVaule(tx, pool),
-      parseTxVaule(address, tx.pure.address),
-      parseTxVaule(pool.id, tx.pure.u8),
-      parseTxVaule(estimatedSupply, tx.pure.u64),
-      parseTxVaule(estimatedBorrow, tx.pure.u64),
-      parseTxVaule(isIncrease, tx.pure.bool)
+      parseTxValue(address, tx.pure.address),
+      parseTxValue(pool.id, tx.pure.u8),
+      parseTxValue(estimatedSupply, tx.pure.u64),
+      parseTxValue(estimatedBorrow, tx.pure.u64),
+      parseTxValue(isIncrease, tx.pure.bool)
     ],
     typeArguments: [pool.suiCoinType]
   })

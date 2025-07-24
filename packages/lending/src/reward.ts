@@ -25,7 +25,7 @@ import {
   parseDevInspectResult,
   normalizeCoinType,
   withSingleton,
-  parseTxVaule
+  parseTxValue
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
@@ -312,7 +312,7 @@ export async function claimLendingRewardsPTB(
             tx.object(matchedRewardFund), // Reward fund
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds), // Rule IDs
-            parseTxVaule(options.accountCap, tx.object) // Account capability
+            parseTxValue(options.accountCap, tx.object) // Account capability
           ],
           typeArguments: [rewardCoinType]
         })
@@ -345,7 +345,7 @@ export async function claimLendingRewardsPTB(
         }
         tx.transferObjects(
           [rewardCoin],
-          parseTxVaule(options.customCoinReceive.transfer, tx.pure.address)
+          parseTxValue(options.customCoinReceive.transfer, tx.pure.address)
         )
       }
       if (options?.customCoinReceive.type === 'depositNAVI') {

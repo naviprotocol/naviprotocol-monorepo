@@ -150,7 +150,7 @@ export function camelize<T extends Record<string, any>>(obj: T): T {
  * @param format - Format function to apply to the value
  * @returns Transaction result in the appropriate format
  */
-export function parseTxVaule(
+export function parseTxValue(
   value: string | number | boolean | object,
   format: any
 ): TransactionResult {
