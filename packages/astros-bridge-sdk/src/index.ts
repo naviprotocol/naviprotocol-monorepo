@@ -16,6 +16,8 @@ import { apiInstance, config } from './config'
 // Export configuration for the bridge SDK
 export { config }
 
+export * from './types'
+
 /**
  * Retrieves a list of supported blockchain networks for bridging
  * @returns Promise<Chain[]> - Array of supported blockchain networks
