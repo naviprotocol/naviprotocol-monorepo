@@ -47,6 +47,8 @@ import { getPool, getPools, PoolOperator } from './pool'
  * @param tx - The transaction object to build
  * @param coins - Array of coin objects to merge
  * @param options - Optional parameters for balance splitting and gas coin usage
+ *   - `balance` - If provided, splits this amount from the resulting coin object
+ *   - `useGasCoin` - If true, uses the gas coin for the operation
  * @returns Transaction result representing the merged coin
  */
 export function mergeCoinsPTB(
