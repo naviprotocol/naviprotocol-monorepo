@@ -135,7 +135,7 @@ export const getFees = withCache(
     async (
       options?: Partial<CacheOption>
     ): Promise<{
-      totalValue: string
+      totalValue: number
       v3BorrowFee: {
         totalValue: number
         details: FeeDetail[]
