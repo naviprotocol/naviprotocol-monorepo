@@ -81,13 +81,13 @@ export async function swap(
       toAddress,
       referrerAddresses,
       null,
-      client as any
+      client
     )
     const connection = walletConnection.sui
     const signed: {
       bytes: string
       signature: string
-    } = await connection.signTransaction({ transaction: swapTrx as any })
+    } = await connection.signTransaction({ transaction: swapTrx })
     const resp = await client.executeTransactionBlock({
       transactionBlock: signed.bytes,
       signature: [signed.signature],
