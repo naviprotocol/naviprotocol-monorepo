@@ -1,55 +1,57 @@
 ---
-title: Quick Start
+title: Getting Started
 ---
 
-NAVI Lending SDK is a lending SDK designed for the Sui blockchain. It provides complete lending functionality including account management, pool operations, flash loans, liquidation, and reward systems.
+# NAVI Lending SDK Quick Start
 
-## Features
+NAVI Lending SDK is a lending SDK designed specifically for the Sui blockchain, providing complete lending functionality including account management, pool operations, flash loans, liquidation, and reward systems.
 
-- 💰 **Lending Functions**: Supports deposit, borrow, repay and other basic lending operations
-- ⚡ **Flash Loans**: Supports uncollateralized flash loan functionality
-- 🔄 **Pool Management**: Complete pool operations and management
-- 📊 **Price Oracle**: Integrated Pyth Network price oracle
-- 🏆 **Reward System**: Supports liquidity mining and reward distribution
-- 🔒 **Liquidation Mechanism**: Automatic liquidation mechanism to protect protocol security
-- 📱 **Easy Integration**: Clean API design, easy to integrate into various applications
+## Core Concepts
+
+### Lending Protocol Basics
+
+The NAVI lending protocol allows users to:
+
+- **Deposit**: Deposit assets into pools to earn interest
+- **Borrow**: Use deposits as collateral to borrow other assets
+- **Repay**: Repay loans and pay interest
+- **Withdraw**: Withdraw deposits from pools
+
+### Health Factor
+
+Health factor is an important metric for measuring the safety of a user's lending account:
+
+- **Health Factor > 1**: Account is safe and can continue borrowing
+- **Health Factor ≤ 1**: Account is at risk of liquidation
+
+### Flash Loan
+
+Flash loans allow users to borrow assets without collateral, but must be repaid within the same transaction.
 
 ## Installation
 
-```bash
+```npm
 npm install @naviprotocol/lending
-# or
-yarn add @naviprotocol/lending
-# or
-pnpm add @naviprotocol/lending
 ```
 
+## Code Style and Conventions
 
-## Development
+### Interface Optional Parameters
 
-### Build
+The last `options` parameter of the interface is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
 
-```bash
-pnpm build
-```
+- `client`: Sui network client instance (such as `SuiClient`), used for customizing network requests, suitable for scenarios that require custom RPC nodes or multi-network environments.
+- `env`: Specify environment (such as `'prod'`、`'dev'`), affecting data sources and on-chain contract addresses, ensuring data isolation and compatibility in different deployment environments.
+- `cacheTime`: Custom cache time in milliseconds. By setting cache time, you can reduce duplicate requests and improve performance. For example, `cacheTime: 60000` means cache for 60 seconds.
+- `disableCache`: Whether to disable cache
+- `accountCap`: In ptb-related operations, use account cap
 
-### Test
+**Usage Recommendations:**
 
-```bash
-pnpm test
-```
-
-### Code Quality
-
-```bash
-pnpm lint
-pnpm prettier
-```
+- If you don't pass `options`, the SDK will automatically use default configuration, suitable for most regular scenarios.
+- When you need to customize network, environment, or cache strategy, it's recommended to pass corresponding parameters for more flexible control.
 
 
-## Support
+### Interface Naming
 
-- Documentation: [https://navprotocol.io](https://navprotocol.io)
-- Issues: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-- Community: [Discord](https://discord.gg/naviprotocol)
-
+- Interfaces with PTB suffix indicate that the current interface is used for constructing transactions.

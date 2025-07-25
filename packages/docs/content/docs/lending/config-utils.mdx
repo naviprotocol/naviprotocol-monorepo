@@ -1,0 +1,99 @@
+---
+title: Configuration & Utilities
+---
+
+The configuration and utilities module provides infrastructure support for the SDK, including configuration management, caching mechanisms, data transformation, and blockchain interaction utilities.
+
+## API Reference
+
+### getConfig
+
+Get the complete configuration information for the NAVI lending protocol. See [documentation](/typedoc/variables/_naviprotocol_lending.getConfig.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getConfig } from '@naviprotocol/lending'
+
+const config = await getConfig()
+```
+
+**Result Example**
+```json
+{
+  "package": "0x81c408448d0d57b3e371ea94de1d40bf852784d3e225de1e74acab3e8395c18f",
+  "storage": "0xbb4e2f4b6205c2e2a2db47aeb4f830796ec7c005f88537ee775986639bc442fe",
+  "incentiveV2": "0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c",
+  "incentiveV3": "0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80",
+  "priceOracle": "0x1568865ed9a0b5ec414220e8f79b3d04c77acc82358f6e5ae4635687392ffbef",
+  "reserveParentId": "0xe6d4c6610b86ce7735ea754596d71d72d10c7980b5052fc3c8cdf8d09fea9b4b",
+  "uiGetter": "0x5ec2f790407295ac17fb83e43c22ba07a08d52ea8fad6cc4a47189770080cd3c",
+  "flashloanConfig": "0x3672b2bf471a60c30a03325f104f92fb195c9d337ba58072dce764fe2aa5e2dc",
+  "flashloanSupportedAssets": "0x6c8fc404b4f22443302bbcc50ee593e5b898cc1e6755d72af0a6aab5a7a6f6d3",
+  "oracle": {
+    "packageId": "0xc2d49bf5e75d2258ee5563efa527feb6155de7ac6f6bf025a23ee88cd12d5a83",
+    "priceOracle": "0x1568865ed9a0b5ec414220e8f79b3d04c77acc82358f6e5ae4635687392ffbef",
+    "oracleAdminCap": "0x7204e37882baf10f31b66cd1ac78ac65b3b8ad29c265d1e474fb4b24ccd6d5b7",
+    "oracleConfig": "0x1afe1cb83634f581606cc73c4487ddd8cc39a944b951283af23f7d69d5589478",
+    "pythStateId": "0x1f9310238ee9298fb703c3419030b35b22bb1cc37113e3bb5007c99aec79e5b8",
+    "wormholeStateId": "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c",
+    "supraOracleHolder": "0xaa0315f0748c1f24ddb2b45f7939cff40f7a8104af5ccbc4a1d32f870c0b4105",
+    "sender": "0x39c70d4ce3ce769a46f46ad80184a88bc25be9b49545751f5425796ef0c3d9ba",
+    "gasObject": "0x1e30410559ed83708ee1bb6b21e3a1dae96f1768ce35ed8233590b130ddc0086",
+    "feeds": [
+      {
+        "oracleId": 0,
+        "assetId": 0,
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "feedId": "0x2cab9b151ca1721624b09b421cc57d0bb26a1feb5da1f821492204b098ec35c9",
+        "pythPriceFeedId": "0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744",
+        "pythPriceInfoObject": "0x801dbc2f0053d34734814b2d6df491ce7807a725fe9a01ad74a07e9c51396c37",
+        "priceDecimal": 9,
+        "supraPairId": 90
+      }
+    ]
+  }
+}
+```
+
+### withCache
+
+Add caching functionality to functions to avoid repeated API calls. See [documentation](/typedoc/functions/_naviprotocol_lending.withCache.html) for details.
+
+**Usage Example**
+
+```typescript
+import { withCache } from '@naviprotocol/lending'
+
+const cachedFunction = withCache(async (param: string, options?: any) => {
+  // Execute expensive operation
+  return await expensiveOperation(param)
+})
+
+// Use cached function
+const result1 = await cachedFunction('test', { cacheTime: 60000 }) // Cache for 1 minute
+const result2 = await cachedFunction('test', { disableCache: true }) // Disable cache
+```
+
+### withSingleton
+
+Add singleton pattern to functions to prevent duplicate concurrent calls. See [documentation](/typedoc/functions/_naviprotocol_lending.withSingleton.html) for details.
+
+**Usage Example**
+
+```typescript
+import { withSingleton } from '@naviprotocol/lending'
+
+const singletonFunction = withSingleton(async (param: string) => {
+  // Execute operation that needs to prevent duplicate calls
+  return await criticalOperation(param)
+})
+
+// Call multiple times simultaneously, only executes once
+const promises = [
+  singletonFunction('test'),
+  singletonFunction('test'),
+  singletonFunction('test')
+]
+const results = await Promise.all(promises) // Only executes once
+```

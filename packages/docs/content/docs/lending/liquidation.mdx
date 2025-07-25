@@ -1,0 +1,48 @@
+---
+title: Liquidation
+---
+
+The liquidation mechanism module provides liquidation functionality. When a borrower's health factor falls below the liquidation threshold, liquidators can repay the borrower's debt in exchange for their collateral.
+
+## Core Concepts
+
+### Liquidation Principle
+
+The liquidation mechanism is an important security mechanism in lending protocols:
+
+1. **Trigger Condition**: When a borrower's health factor falls below the liquidation threshold
+2. **Liquidator**: Anyone can become a liquidator
+3. **Liquidation Process**: Liquidators repay debt and receive collateral
+4. **Liquidation Reward**: Liquidators receive liquidation rewards as incentives
+
+### Liquidation Process
+
+1. **Monitoring**: Monitor the borrower's health factor
+2. **Trigger**: Trigger liquidation when health factor falls below threshold
+3. **Execution**: Liquidators execute liquidation transactions
+4. **Settlement**: Liquidators receive collateral and rewards
+
+## API Reference
+
+### liquidatePTB
+
+This function liquidates a position by paying debt and receiving collateral. See [documentation](/typedoc/functions/_naviprotocol_lending.liquidatePTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { liquidatePTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const [collateralBalance, remainDebtBalance] = await liquidatePTB(
+  tx,
+  payAsset, // Asset identifier for the debt being repaid
+  payCoinObject, // Coin object containing the debt repayment amount
+  collateralAsset, // Asset identifier for the collateral being liquidated
+  liquidateAddress, // Address of the borrower being liquidated
+  options // Optional environment configuration
+)
+```
+

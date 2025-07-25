@@ -1,0 +1,165 @@
+---
+title: Reward System
+---
+
+The reward module provides comprehensive lending reward functionality, including reward queries, claiming, and management for users who participate in lending activities.
+
+## API Reference
+
+### getUserAvailableLendingRewards
+
+Get user's available lending rewards. See [documentation](/typedoc/functions/_naviprotocol_lending.getUserAvailableLendingRewards.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
+
+const rewards = await getUserAvailableLendingRewards('0x...')
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "assetId": 19,
+    "assetCoinType": "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT",
+    "rewardCoinType": "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT",
+    "option": 3,
+    "userClaimableReward": 0.005299,
+    "ruleIds": ["0x02d80d2d9a2b9fc65baf19c13a0e7d0584fe4bb69487f24b672c3e50de820150"]
+  },
+  {
+    "assetId": 5,
+    "assetCoinType": "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT",
+    "rewardCoinType": "0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX",
+    "option": 1,
+    "userClaimableReward": 0.345351397,
+    "ruleIds": ["0x3f2610eb38a4ff44b9e6e6ba292c9ddcc3b5a75e4a99169f4fc3bdbcd0d69676"]
+  }
+]
+```
+
+### summaryLendingRewards
+
+Summarize lending rewards by asset and reward type. See [documentation](/typedoc/functions/_naviprotocol_lending.summaryLendingRewards.html) for details.
+
+**Usage Example**
+
+```typescript
+import { summaryLendingRewards } from '@naviprotocol/lending'
+
+const rewards = await getUserAvailableLendingRewards('0x...')
+const summary = summaryLendingRewards(rewards)
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "assetId": 19,
+    "rewardType": 1,
+    "rewards": [
+      {
+        "coinType": "0x2::sui::SUI",
+        "available": "0.123456"
+      }
+    ]
+  }
+]
+```
+
+### getUserTotalClaimedReward
+
+Get user's total claimed rewards in USD value. See [documentation](/typedoc/variables/_naviprotocol_lending.getUserTotalClaimedReward.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getUserTotalClaimedReward } from '@naviprotocol/lending'
+
+const totalRewards = await getUserTotalClaimedReward('0x...')
+```
+
+**Result Example**
+
+```json
+{
+  "USDValue": 123.45
+}
+```
+
+### getUserClaimedRewardHistory
+
+Get user's claimed reward history. See [documentation](/typedoc/variables/_naviprotocol_lending.getUserClaimedRewardHistory.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getUserClaimedRewardHistory } from '@naviprotocol/lending'
+
+const history = await getUserClaimedRewardHistory('0x...', {
+  page: 1,
+  size: 20
+})
+```
+
+**Result Example**
+
+```json
+{
+  "data": [
+    {
+      "type": "claim",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "SUI",
+          "amount": "1000000"
+        }
+      ],
+      "timestamp": "1751358720243",
+      "digest": "BVpGDpt9nmb1TkTnh65QmqedXt2gYqkVMhhkBE1uraWG"
+    }
+  ],
+  "cursor": "next_page_cursor"
+}
+```
+
+### claimLendingRewardsPTB
+
+Claim lending rewards in a programmable transaction block. See [documentation](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { claimLendingRewardsPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+const rewards = await getUserAvailableLendingRewards(
+  '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+)
+
+// Standard claiming
+const rewardCoins = await claimLendingRewardsPTB(tx, rewards)
+
+// Claiming with account cap and custom coin handling (transfer reward to another address)
+await claimLendingRewardsPTB(tx, rewards, {
+  accountCap: '0x...',
+  customCoinReceive: {
+    type: 'transfer',
+    transfer: '0xrecipient_address'
+  }
+})
+
+// Claiming and depositing to NAVI
+await claimLendingRewardsPTB(tx, rewards, {
+  accountCap: '0x...',
+  customCoinReceive: {
+    type: 'depositNAVI'
+  }
+})
+```

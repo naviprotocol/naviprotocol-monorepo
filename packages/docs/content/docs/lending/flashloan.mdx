@@ -1,0 +1,176 @@
+---
+title: Flash Loan
+---
+
+The Flash Loan module provides uncollateralized borrowing functionality, allowing users to borrow and repay assets in the same transaction, primarily used for arbitrage, debt restructuring, and other scenarios.
+
+## Core Concepts
+
+### Flash Loan Principle
+
+Flash loans allow users to borrow assets without collateral, but must meet the following conditions:
+
+1. **Same Transaction**: Borrowing and repayment must be completed in the same transaction
+2. **Complete Repayment**: Must repay the full borrowed amount plus fees
+3. **Atomicity**: If repayment fails, the entire transaction will be rolled back
+
+### Use Cases
+
+- **Arbitrage Trading**: Price arbitrage between different DEXs
+- **Debt Restructuring**: Optimize borrowing portfolios to reduce interest rates
+- **Liquidation Protection**: Quickly replenish collateral to avoid liquidation
+- **Liquidity Management**: Temporarily obtain liquidity for other operations
+
+## API Reference
+
+### getAllFlashLoanAssets
+
+Get all available flash loan assets from the API. Uses caching to avoid repeated API calls. See [documentation](/typedoc/variables/_naviprotocol_lending.getAllFlashLoanAssets.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getAllFlashLoanAssets } from '@naviprotocol/lending'
+
+const flashLoanAssets = await getAllFlashLoanAssets({
+  env: 'prod',
+  cacheTime: 30000
+})
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "max": "50000000000",
+    "min": "0",
+    "assetId": 3,
+    "poolId": "0x71b9f6e822c48ce827bceadce82201d6a7559f7b0350ed1daa1dc2ba3ac41b56",
+    "supplierFee": 0,
+    "flashloanFee": 0.0006,
+    "coinType": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN"
+  }
+]
+```
+
+### getFlashLoanAsset
+
+Get a specific flash loan asset by identifier. See [documentation](/typedoc/functions/_naviprotocol_lending.getFlashLoanAsset.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getFlashLoanAsset, getPool } from '@naviprotocol/lending'
+
+// Get by coin type
+const assetByCoinType = await getFlashLoanAsset('0x2::sui::SUI')
+
+// Get by asset ID
+const assetById = await getFlashLoanAsset(0)
+
+// Get by pool
+const pool = await getPool('0x2::sui::SUI')
+const assetByObject = await getFlashLoanAsset(pool)
+```
+
+**Result Example**
+
+```json
+{
+  "max": "5000000000",
+  "min": "0",
+  "assetId": 0,
+  "poolId": "0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5",
+  "supplierFee": 0,
+  "flashloanFee": 0.0006,
+  "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
+}
+```
+
+### flashloanPTB
+
+Create a flash loan transaction in the PTB (Programmable Transaction Block). This function initiates a flash loan by borrowing the specified amount of assets. The borrowed assets must be repaid within the same transaction using `repayFlashLoanPTB`. See [documentation](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { flashloanPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const [balance, receipt] = await flashloanPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Amount to borrow
+  { env: 'prod' }
+)
+```
+
+### repayFlashLoanPTB
+
+Repay a flash loan transaction in the PTB. This function repays the flash loan using the receipt from the original flash loan and the coin object containing the repayment amount. See [documentation](/typedoc/functions/_naviprotocol_lending.repayFlashLoanPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { repayFlashLoanPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const [balance] = await repayFlashLoanPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  receipt, // Receipt from original flash loan
+  coinObject, // Coin object containing repayment amount
+  { env: 'prod' }
+)
+```
+
+## Complete Flash Loan Example
+
+Here's a complete example of how to use flash loans for arbitrage:
+
+```typescript
+import { flashloanPTB, repayFlashLoanPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+async function executeFlashLoanArbitrage() {
+  const tx = new Transaction()
+
+  // Step 1: Initiate flash loan
+  const [borrowedBalance, receipt] = await flashloanPTB(
+    tx,
+    '0x2::sui::SUI',
+    1000000000, // 1 SUI
+    { env: 'prod' }
+  )
+
+  // Step 2: Execute arbitrage logic with borrowed funds
+  // ... your arbitrage trading logic here ...
+
+  // Step 3: Repay the flash loan
+  const [remainingBalance] = await repayFlashLoanPTB(
+    tx,
+    '0x2::sui::SUI',
+    receipt,
+    borrowedBalance,
+    { env: 'prod' }
+  )
+
+  // Step 4: Execute the transaction
+  ...
+}
+```
+
+## Important Notes
+
+1. **Transaction Atomicity**: Flash loans must be completed within a single transaction. If any part fails, the entire transaction is rolled back.
+
+2. **Fee Calculation**: Flash loans incur fees that must be included in the repayment amount.
+
+3. **Pool Support**: Not all pools support flash loans. Always check if the pool supports flash loans before attempting to use them.
+
+4. **Amount Limits**: Each asset has a maximum flash loan amount. Exceeding this limit will cause the transaction to fail.

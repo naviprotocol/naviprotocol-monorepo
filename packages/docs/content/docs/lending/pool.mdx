@@ -1,0 +1,468 @@
+---
+title: Pool Operations
+---
+
+The pool operations module provides comprehensive lending functionality, including core operations such as deposits, borrowing, repayments, withdrawals, as well as pool information queries and statistical functions.
+
+## Core Features
+
+- **Deposit Operations**: Deposit assets into the pool to earn interest
+- **Borrowing Operations**: Borrow assets using collateral
+- **Repayment Operations**: Repay loans and pay interest
+- **Withdrawal Operations**: Withdraw deposits from the pool
+- **Pool Information**: Query detailed pool information and statistics
+- **Interest Rate Queries**: Get current supply and borrowing rates
+
+## API Reference
+
+### getPools
+
+Get information for all available lending pools. See [documentation](/typedoc/variables/_naviprotocol_lending.getPools.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPools } from '@naviprotocol/lending'
+
+const pools = await getPools({
+  env: 'prod', // Optional: environment configuration
+  cacheTime: 30000 // Optional: cache time
+})
+```
+
+**Return Example**
+
+```json
+[
+  {
+    "borrowCapCeiling": "300000000000000000000000000",
+    "coinType": "876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC",
+    "currentBorrowIndex": "1000160960335184728385830815",
+    "currentBorrowRate": "4731062143063520987416247",
+    "currentSupplyIndex": "1000001102786832645895049380",
+    "currentSupplyRate": "78340321505350785743471",
+    "id": 26,
+    "isIsolated": false,
+    "lastUpdateTimestamp": "1753430822702",
+    "ltv": "600000000000000000000000000",
+    "oracleId": 26,
+    "supplyCapCeiling": "5e+29",
+    "treasuryBalance": "3518",
+    "treasuryFactor": "100000000000000000000000000",
+    "suiCoinType": "0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC",
+    "totalSupplyAmount": "362093101737",
+    "minimumAmount": "50",
+    "leftSupply": "137.906898263",
+    "validBorrowAmount": "108627930521.1",
+    "borrowedAmount": "8565425673",
+    "leftBorrowAmount": "108627930512.1",
+    "availableBorrow": "100062504848.1",
+    "contract": {
+      "reserveId": "0x9a1a0533b157361a5cc42ed64fdee6970ab66eb4731afa6dde8e7fe27a36d24d",
+      "pool": "0xd9c9a1d8a2f82d752d4f2504c1097636bbe7f0f335a89be85f65fb32dc6b1866"
+    },
+    "token": {
+      "coinType": "0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC",
+      "decimals": 8,
+      "logoUri": "https://static.coinall.ltd/cdn/oksupport/common/20250512-095503.72e1f41d9b9a06.png",
+      "symbol": "xBTC"
+    },
+    "oracle": {
+      "decimal": 8,
+      "value": "11553362559772",
+      "price": "115533.62559772",
+      "oracleId": 26,
+      "valid": true
+    },
+    "totalSupply": "362092702426",
+    "totalBorrow": "8564047201",
+    "borrowRateFactors": {
+      "fields": {
+        "baseRate": "0",
+        "multiplier": "200000000000000000000000000",
+        "jumpRateMultiplier": "4000000000000000000000000000",
+        "optimalUtilization": "300000000000000000000000000",
+        "reserveFactor": "300000000000000000000000000"
+      }
+    },
+    "liquidationFactor": {
+      "bonus": "0.1",
+      "ratio": "0.35",
+      "threshold": "0.65"
+    },
+    "supplyIncentiveApyInfo": {
+      "vaultApr": "0.007",
+      "boostedApr": "0.1665",
+      "rewardCoin": [
+        "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT"
+      ],
+      "apy": "0.173",
+      "voloApy": "0",
+      "stakingYieldApy": "0",
+      "treasuryApy": "0"
+    },
+    "borrowIncentiveApyInfo": {
+      "vaultApr": "0.473",
+      "boostedApr": "0",
+      "rewardCoin": [],
+      "apy": "0.473",
+      "voloApy": "0",
+      "stakingYieldApy": "0",
+      "treasuryApy": "0"
+    }
+  }
+]
+```
+
+### getPool
+
+Get detailed information for a specific lending pool by identifier. See [documentation](/typedoc/functions/_naviprotocol_lending.getPool.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPool } from '@naviprotocol/lending'
+
+// Get pool information by token type
+const poolByType = await getPool('0x2::sui::SUI')
+
+// Get pool information by pool ID
+const poolById = await getPool(19)
+
+// Get pool information by pool object
+const poolByObject = await getPool(poolByType)
+```
+
+**Return Example**
+
+```json
+{
+  "borrowCapCeiling": "800000000000000000000000000",
+  "coinType": "0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+  "currentBorrowIndex": "1163411915729702607822665050",
+  "currentBorrowRate": "80174690906201458142810077",
+  "currentSupplyIndex": "1060088075316645469002486667",
+  "currentSupplyRate": "34282565663493028210648694",
+  "id": 0,
+  "isIsolated": false,
+  "lastUpdateTimestamp": "1753430822702",
+  "ltv": "750000000000000000000000000",
+  "oracleId": 0,
+  "supplyCapCeiling": "5.5e+34",
+  "treasuryBalance": "95674562121",
+  "treasuryFactor": "100000000000000000000000000",
+  "suiCoinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+  "totalSupplyAmount": "39071087342301702",
+  "minimumAmount": "5500000",
+  "leftSupply": "15928912.657698296",
+  "validBorrowAmount": "31256869873841361.6",
+  "borrowedAmount": "20883415846590559",
+  "leftBorrowAmount": "31256869852957945.6",
+  "availableBorrow": "10373454027250802.6",
+  "contract": {
+    "reserveId": "0xab644b5fd11aa11e930d1c7bc903ef609a9feaf9ffe1b23532ad8441854fbfaf",
+    "pool": "0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5"
+  },
+  "token": {
+    "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+    "decimals": 9,
+    "logoUri": "https://imagedelivery.net/cBNDGgkrsEA-b_ixIp9SkQ/sui-coin.svg/public",
+    "symbol": "SUI"
+  },
+  "oracle": {
+    "decimal": 9,
+    "value": "3658225910",
+    "price": "3.65822591",
+    "oracleId": 0,
+    "valid": true
+  },
+  "totalSupply": "36856453960800637",
+  "totalBorrow": "17950147805983480",
+  "borrowRateFactors": {
+    "fields": {
+      "baseRate": "0",
+      "multiplier": "150000000000000000000000000",
+      "jumpRateMultiplier": "3000000000000000000000000000",
+      "optimalUtilization": "700000000000000000000000000",
+      "reserveFactor": "200000000000000000000000000"
+    }
+  },
+  "liquidationFactor": {
+    "bonus": "0.1",
+    "ratio": "0.35",
+    "threshold": "0.8"
+  },
+  "supplyIncentiveApyInfo": {
+    "vaultApr": "3.428",
+    "boostedApr": "0",
+    "rewardCoin": [],
+    "apy": "3.428",
+    "voloApy": "0",
+    "stakingYieldApy": "0",
+    "treasuryApy": "0"
+  },
+  "borrowIncentiveApyInfo": {
+    "vaultApr": "8.017",
+    "boostedApr": "6.6228",
+    "rewardCoin": [
+      "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT"
+    ],
+    "apy": "1.394",
+    "voloApy": "0",
+    "stakingYieldApy": "0",
+    "treasuryApy": "0"
+  }
+}
+```
+
+### getStats
+
+Get overall protocol statistics including TVL, total borrowing amount, and other key metrics. See [documentation](/typedoc/variables/_naviprotocol_lending.getStats.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getStats } from '@naviprotocol/lending'
+
+const stats = await getStats({
+  cacheTime: 30000 // Optional: cache time
+})
+```
+
+**Return Example**
+
+```json
+{
+  "tvl": 783569131.844162,
+  "totalBorrowUsd": 210513450.154468,
+  "averageUtilization": 0.268659702889285,
+  "maxApy": 39.438,
+  "userAmount": 978923,
+  "interactionUserAmount": 25185,
+  "borrowFee": 0.002,
+  "borrowFeeAddress": "0x70b9b10704263cf53392849e33b1f5fd16005869b4198ed5524836bad1234ea2",
+  "flashLoanFee": {
+    "WETH": 0.0006,
+    "FDUSD": 0.0006,
+    "NS": 0.0006,
+    "xBTC": 0.0006,
+    "vSUI": 0.0006,
+    "vSui": 0.0006,
+    "BLUE": 0.0006,
+    "NAVX": 0.0006,
+    "AUSD": 0.0006,
+    "suiETH": 0.0006,
+    "haSUI": 0.0006,
+    "haSui": 0.0006,
+    "stSUI": 0.0006,
+    "WBTC": 0.0006,
+    "USDC": 0,
+    "wBTC": 0.0006,
+    "BUCK": 0.0006,
+    "SUI": 0.0006,
+    "Sui": 0.0006,
+    "HAEDAL": 0.0006,
+    "WAL": 0.0006,
+    "suiUSDT": 0.0006,
+    "LBTC": 0.0006,
+    "USDY": 0.0006,
+    "CETUS": 0.0006,
+    "DEEP": 0.0006,
+    "SOL": 0.0006,
+    "USDT": 0.0006,
+    "wUSDC": 0.0006
+  }
+}
+```
+
+### getFees
+
+Get detailed protocol fee information including total fee value, V3 borrowing fees, borrowing interest fees, etc. See [documentation](/typedoc/variables/_naviprotocol_lending.getFees.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getFees } from '@naviprotocol/lending'
+
+const fees = await getFees({
+  cacheTime: 30000 // Optional: cache time
+})
+```
+
+**Return Example**
+
+```json
+{
+  "totalValue": 2468.22064164531,
+  "v3BorrowFee": {
+    "totalValue": 437.583924238588,
+    "details": [
+      {
+        "coinId": "10",
+        "coinSymbol": "nUSDC",
+        "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+        "feeObjectId": "0x71dd059d3983da4f324f73c7b28b8fb8e8ab52b4953fe7d633f314e23903e7cc",
+        "currentAmount": 395.251023,
+        "price": 0.999887,
+        "currentValue": 395.206359634401
+      }
+    ]
+  },
+  "borrowInterestFee": {
+    "totalValue": 2030.46176152308,
+    "details": [
+      {
+        "coinId": "15",
+        "coinSymbol": "DEEP",
+        "coinType": "deeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
+        "reserveObjectId": "0x0b30fe8f42a4fda168c38d734e42a36a77b3d4dd6669069b1cbe53a0c3905ba8",
+        "currentAmount": 3408.032189169,
+        "price": 0.189981,
+        "currentValue": 647.461363330516
+      }
+    ]
+  },
+  "flashloanAndLiquidationFee": {
+    "totalValue": 0.174955883641451,
+    "details": [
+      {
+        "coinSymbol": "SUI",
+        "coinType": "0x2::sui::SUI",
+        "treasuryObjectId": "0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5",
+        "currentAmount": 0.047222784,
+        "price": 3.67969384,
+        "currentValue": 0.173765387392451
+      }
+    ]
+  }
+}
+```
+
+### depositCoinPTB
+
+Build deposit transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.depositCoinPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { depositCoinPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic deposit operation
+await depositCoinPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  coinObject, // Token object
+  {
+    amount: 1000000000, // Optional: deposit amount
+    env: 'prod' // Optional: environment configuration
+  }
+)
+
+// Deposit operation using account cap
+await depositCoinPTB(tx, '0x2::sui::SUI', coinObject, {
+  accountCap: accountCapObjectId,
+  amount: 1000000000
+})
+```
+
+### withdrawCoinPTB
+
+Build withdrawal transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.withdrawCoinPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { withdrawCoinPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic withdrawal operation
+const withdrawnCoin = await withdrawCoinPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Withdrawal amount
+  {
+    env: 'prod' // Optional: environment configuration
+  }
+)
+
+// Withdrawal operation using account cap
+const withdrawnCoin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
+  accountCap: accountCapObjectId
+})
+```
+
+### borrowCoinPTB
+
+Build borrowing transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.borrowCoinPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { borrowCoinPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic borrowing operation
+const borrowedCoin = await borrowCoinPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Borrowing amount
+  {
+    env: 'prod' // Optional: environment configuration
+  }
+)
+
+// Borrowing operation using account cap
+const borrowedCoin = await borrowCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
+  accountCap: accountCapObjectId
+})
+```
+
+### repayCoinPTB
+
+Build repayment transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.repayCoinPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { repayCoinPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic repayment operation
+await repayCoinPTB(
+  tx,
+  '0x2::sui::SUI', // Asset identifier
+  coinObject, // Token object
+  {
+    amount: 1000000000, // Optional: repayment amount
+    env: 'prod' // Optional: environment configuration
+  }
+)
+
+// Repayment operation using account cap
+await repayCoinPTB(tx, '0x2::sui::SUI', coinObject, {
+  accountCap: accountCapObjectId,
+  amount: 1000000000
+})
+```
+
+### PoolOperator
+
+Defines the enumeration of lending pool operation types
+
+```typescript
+enum PoolOperator {
+  Supply = 1, // Supply/deposit operation
+  Withdraw = 2, // Withdrawal operation
+  Borrow = 3, // Borrowing operation
+  Repay = 4 // Repayment operation
+}
+```

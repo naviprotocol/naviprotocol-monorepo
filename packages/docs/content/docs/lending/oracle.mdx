@@ -1,0 +1,173 @@
+---
+title: Decentralized Oracle
+---
+
+The NAVI decentralized oracle consistently produces stable and reliable prices by integrating data from multiple trusted oracle providers on Sui. Currently, we have selected Pyth and Supra as our price providers. To learn more, please refer to our medium post.
+
+The Oracle operates on a PUSH model, allowing anyone to trigger updates. To ensure the protocol's security, we enforce a valid price interval of 15 seconds, meaning that any price older than 15 seconds is considered stale and not allowed. It is always recommended to update the price before using the NAVI lending protocol.
+
+## API Reference
+
+### getPriceFeeds
+
+Get all available price feeds from the configuration. See [documentation](/typedoc/functions/_naviprotocol_lending.getPriceFeeds.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPriceFeeds } from '@naviprotocol/lending'
+
+const priceFeeds = await getPriceFeeds()
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "oracleId": 0,
+    "assetId": 0,
+    "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+    "feedId": "0x2cab9b151ca1721624b09b421cc57d0bb26a1feb5da1f821492204b098ec35c9",
+    "pythPriceFeedId": "0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744",
+    "pythPriceInfoObject": "0x801dbc2f0053d34734814b2d6df491ce7807a725fe9a01ad74a07e9c51396c37",
+    "priceDecimal": 9,
+    "supraPairId": 90
+  }
+]
+```
+
+### filterPriceFeeds
+
+Filter price feeds based on lending state and pools. See [documentation](/typedoc/functions/_naviprotocol_lending.filterPriceFeeds.html) for details.
+
+**Usage Example**
+
+```typescript
+import { filterPriceFeeds, getPriceFeeds, getLendingState, getPool } from '@naviprotocol/lending'
+
+const allFeeds = await getPriceFeeds()
+const userLendingState = await getLendingState('0x...')
+const suiPool = await getPool('0x2::sui::SUI')
+
+// Filter by user's lending state
+const filteredFeeds = filterPriceFeeds(allFeeds, {
+  lendingState: userLendingState
+})
+
+// Filter by available pools
+const filteredFeeds = filterPriceFeeds(allFeeds, {
+  pools: [suiPool]
+})
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "oracleId": 0,
+    "assetId": 0,
+    "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+    "feedId": "0x2cab9b151ca1721624b09b421cc57d0bb26a1feb5da1f821492204b098ec35c9",
+    "pythPriceFeedId": "0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744",
+    "pythPriceInfoObject": "0x801dbc2f0053d34734814b2d6df491ce7807a725fe9a01ad74a07e9c51396c37",
+    "priceDecimal": 9,
+    "supraPairId": 90
+  }
+]
+```
+
+### getPythStalePriceFeedId
+
+Get stale price feed IDs from Pyth Network. Identifies price feeds that have not been updated recently (more than 30 seconds old). See [documentation](/typedoc/functions/_naviprotocol_lending.getPythStalePriceFeedId.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPythStalePriceFeedId, getPriceFeeds } from '@naviprotocol/lending'
+
+const allPriceFeeds = await getPriceFeeds()
+
+const stalePriceFeedIds = await getPythStalePriceFeedId([allPriceFeeds[0].pythPriceFeedId])
+```
+
+**Result Example**
+
+```json
+["0x..."]
+```
+
+### updatePythPriceFeeds
+
+Update Pyth price feeds in a transaction. Fetches the latest price update data from Pyth Network and adds the update operations to the transaction block. See [documentation](/typedoc/functions/_naviprotocol_lending.updatePythPriceFeeds.html) for details.
+
+**Usage Example**
+
+```typescript
+import { updatePythPriceFeeds, getPythStalePriceFeedId } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const allPriceFeeds = await getPriceFeeds()
+
+const stalePriceFeedIds = await getPythStalePriceFeedId([allPriceFeeds[0].pythPriceFeedId])
+
+await updatePythPriceFeeds(tx, stalePriceFeedIds)
+```
+
+### updateOraclePricesPTB
+
+Update oracle prices in the PTB (Programmable Transaction Block). This function updates price feeds for the lending protocol. See [documentation](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { updateOraclePricesPTB, getPriceFeeds } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const allPriceFeeds = await getPriceFeeds()
+
+await updateOraclePricesPTB(tx, allPriceFeeds, {
+  updatePythPriceFeeds: true // Optional: update Pyth feeds if stale
+})
+```
+
+## Complete Example
+
+Here's a complete example showing how to use the oracle module:
+
+```typescript
+import {
+  getPriceFeeds,
+  filterPriceFeeds,
+  getPythStalePriceFeedId,
+  updateOraclePricesPTB,
+  getLendingState
+} from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+// 1. Get all available price feeds
+const allPriceFeeds = await getPriceFeeds()
+
+// 2. Get user's lending state
+const userAddress = '0x...'
+const lendingState = await getLendingState(userAddress)
+
+// 3. Filter price feeds based on user's lending state
+const relevantFeeds = filterPriceFeeds(allPriceFeeds, {
+  lendingState
+})
+
+// 4. Update oracle prices in a transaction
+const tx = new Transaction()
+const updatedTx = await updateOraclePricesPTB(tx, relevantFeeds, {
+  updatePythPriceFeeds: true
+})
+
+// 5. Execute the transaction
+// ... execute the transaction with your wallet
+```

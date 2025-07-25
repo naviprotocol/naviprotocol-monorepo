@@ -2,5 +2,16 @@
 	"root": true,
 	"title": "Lending",
 	"description": "NAVI Lending SDK",
-	"pages": ["index", "[Api Reference](/typedoc/modules/_naviprotocol_lending.html)"]
+	"pages": [
+		"index",
+		"account",
+		"pool",
+		"flashloan",
+		"oracle",
+		"reward",
+		"liquidation",
+		"config-utils",
+		"account-cap",
+		"[Api Reference](/typedoc/modules/_naviprotocol_lending.html)"
+	]
 }

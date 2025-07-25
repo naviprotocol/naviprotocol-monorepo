@@ -1,0 +1,307 @@
+---
+title: Account Management
+---
+
+The account module provides comprehensive lending account functionality, including account information queries, health factor calculations, token merging, and other operations.
+
+## Core Features
+
+- **Account Information Query**: Retrieve detailed information about user lending accounts
+- **Health Factor Calculation**: Calculate and monitor account health factors
+- **Token Management**: Merge and manage tokens in accounts
+- **Dynamic Health Factor**: Simulate the impact of operations on health factors
+
+## API Reference
+
+### getLendingState
+
+Get user's lending account information. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingState.html) for details.
+
+**Usage Example**
+
+```ts
+import { getLendingState } from '@naviprotocol/lending'
+
+const lendingState = await getLendingState('0x...')
+```
+
+**Result Example**
+```json
+[{
+  assetId: 19,
+  borrowBalance: '1979162',
+  supplyBalance: '0',
+  pool: {
+    coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+    id: 19,
+    ...
+  }
+}]
+```
+
+### getTransactions
+
+Get user's transaction history under the NAVI protocol. See [documentation](/typedoc/variables/_naviprotocol_lending.getTransactions.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getTransactions } from '@naviprotocol/lending'
+
+const transactionResult = await getTransactions('0x...', {
+  cursor: ""
+})
+```
+
+**Result Example**
+```json
+{
+  "cursor": "7dmAzBcvd6BcX5msm1UFJns1KdMyqWKfMfqmr6n7ZHEx::0",
+  "data": [
+    {
+      "type": "supply",
+      "status": "success",
+      "coinChanges": [],
+      "timestamp": "1751358720243",
+      "digest": "BVpGDpt9nmb1TkTnh65QmqedXt2gYqkVMhhkBE1uraWG"
+    },
+    {
+      "type": "supply",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "xBTC",
+          "amount": "-93199"
+        }
+      ],
+      "timestamp": "1751026542701",
+      "digest": "GboAWeq8Lt73MUyUrrqsyURqsZRb4XqbBSvP3qHbcbEy"
+    },
+    {
+      "type": "withdraw",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "USDC",
+          "amount": "100000000"
+        }
+      ],
+      "timestamp": "1751026504653",
+      "digest": "9SyEYiMissMXHptiHYHhdTwAbQVscj56kHfVJAq37qLt"
+    },
+    {
+      "type": "supply",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "xBTC",
+          "amount": "-2889"
+        }
+      ],
+      "timestamp": "1751025731403",
+      "digest": "2B7Y2hp2VV4ahB1bRXSRXHNCDbCSUfviUEKxLuZfR1Ec"
+    },
+    {
+      "type": "withdraw",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "USDC",
+          "amount": "1000000"
+        }
+      ],
+      "timestamp": "1750782315024",
+      "digest": "5wn29nowrm8LfRj6RgdyWzRa1fBZNjtjViooFhejffks"
+    },
+    {
+      "type": "withdraw",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "USDC",
+          "amount": "1000000"
+        }
+      ],
+      "timestamp": "1750782116159",
+      "digest": "25zWhQimN7A2UhjMerM3PTsayKpkp7fnrJzgWG4JRxoq"
+    },
+    {
+      "type": "withdraw",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "USDC",
+          "amount": "1000000"
+        }
+      ],
+      "timestamp": "1750781750357",
+      "digest": "Atw8Q7eLJdpkZRxjkqjjqqvpHNZoscRJkXvLbxsQNCUq"
+    },
+    {
+      "type": "repay",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "wUSDC",
+          "amount": "-3024"
+        }
+      ],
+      "timestamp": "1749542703573",
+      "digest": "4ADWEhNgnsYzV44qjEgeuSs8T8ZVaesMDB2D1QiH6DVX"
+    },
+    {
+      "type": "withdraw",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "wUSDC",
+          "amount": "6886783"
+        }
+      ],
+      "timestamp": "1749542675879",
+      "digest": "3i9qfjrtCvSEd7P8wZQoDc994J7TFTS4wgVdZTsGFLrQ"
+    },
+    {
+      "type": "repay",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "wUSDC",
+          "amount": "-1000000"
+        }
+      ],
+      "timestamp": "1749542600488",
+      "digest": "7dmAzBcvd6BcX5msm1UFJns1KdMyqWKfMfqmr6n7ZHEx"
+    }
+  ]
+}
+```
+
+
+### getHealthFactor
+
+Get the current health factor of an account. See [documentation](/typedoc/functions/_naviprotocol_lending.getHealthFactor.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getHealthFactor } from '@naviprotocol/lending'
+
+const healthFactor = await getHealthFactor('0x...')
+```
+
+**Result Example**
+```json
+1.8
+```
+
+### getDynamicHealthFactor
+
+Simulate the impact of operations on health factors to predict account status after operations. See [documentation](/typedoc/functions/_naviprotocol_lending.getDynamicHealthFactor.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getDynamicHealthFactor } from '@naviprotocol/lending'
+
+const healthFactor = await getDynamicHealthFactor(
+  '0x...',
+  '0x2::sui::SUI',
+  [
+    { type: PoolOperator.Supply, amount: 1000000000 },
+  ]
+)
+```
+
+**Result Example**
+```json
+2.1
+```
+
+### getCoins
+
+Get the list of tokens in a user's account. See [documentation](/typedoc/functions/_naviprotocol_lending.getCoins.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getCoins } from '@naviprotocol/lending'
+
+const coins = await getCoins(
+  '0x...', // User address
+  { 
+    coinType: '0x2::sui::SUI', // Optional token type filter
+  }
+)
+```
+
+**Result Example**
+```json
+[{
+  coinObjectId: '0x1',
+  balance: '1000000000',
+  coinType: '0x2::sui::SUI',
+  digest: '0x...',
+  version: '123456'
+}]
+```
+
+### mergeCoinsPTB
+
+Merge multiple tokens in a programmable transaction block. See [documentation](/typedoc/functions/_naviprotocol_lending.mergeCoinsPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { mergeCoinsPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const mergedCoin = mergeCoinsPTB(
+  tx,
+  [
+    { coinObjectId: '0x1', balance: '1000000000', coinType: '0x2::sui::SUI' },
+    { coinObjectId: '0x2', balance: '2000000000', coinType: '0x2::sui::SUI' }
+  ], // Token list
+  { 
+    balance: 2500000000, // Optional split balance
+    useGasCoin: true // Whether to use tx.gas
+  }
+)
+```
+
+
+### getHealthFactorPTB
+
+Get health factor in a programmable transaction block. See [documentation](//typedoc/functions/_naviprotocol_lending.getHealthFactorPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getHealthFactorPTB } from '@naviprotocol/lending'
+
+const healthFactorResult = await getHealthFactorPTB(tx, '0x...')
+```
+
+
+### getDynamicHealthFactorPTB
+
+Get dynamic health factor in a programmable transaction block. See [documentation](//typedoc/functions/_naviprotocol_lending.getDynamicHealthFactorPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getDynamicHealthFactorPTB } from '@naviprotocol/lending'
+
+const healthFactorResult = await getDynamicHealthFactorPTB(
+  tx,
+  '0x...',
+  assetIdentifier, // Asset identifier
+  estimatedSupply, // Estimated supply amount
+  estimatedBorrow, // Estimated borrow amount
+  isIncrease
+)
+```
+
+
