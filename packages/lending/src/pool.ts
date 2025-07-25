@@ -377,6 +377,28 @@ export async function borrowCoinPTB(
   return coin
 }
 
+/**
+ * Builds a repay transaction for a lending pool debt
+ *
+ * Constructs and adds repayment operations to an existing transaction object.
+ * This function handles loan repayments, supporting both standard user
+ * repayments and privileged operations via account capabilities.
+ *
+ *
+ * @param tx - The transaction builder to append repayment operations to
+ * @param identifier - Unique identifier for the lending pool asset (e.g., "USDC", "SUI")
+ * @param coinObject - The coin object to use for repayment, or GasCoin for SUI payments
+ * @param options - Configuration options for the repayment
+ *   - `amount` - Specific amount to repay (required for SUI gas coin, otherwise uses value of specified coinObject)
+ *   - `accountCap` - Optional account capability object for privileged repayments
+ *   - `env` - Environment configuration
+ *   - `cacheTime` - Cache duration for configuration data
+ *
+ * @returns Promise<Transaction> - The modified transaction object with repayment operations added
+ *
+ * @throws {Error} When amount is not provided for SUI gas coin repayments
+ * @throws Will throw if pool doesn't exist or repayment validation fails
+ */
 export async function repayCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
