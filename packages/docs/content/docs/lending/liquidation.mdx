@@ -24,3 +24,25 @@ The liquidation mechanism is an important security mechanism in lending protocol
 
 ## API Reference
 
+### liquidatePTB
+
+This function liquidates a position by paying debt and receiving collateral. See [documentation](/typedoc/functions/_naviprotocol_lending.liquidatePTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { liquidatePTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const [collateralBalance, remainDebtBalance] = await liquidatePTB(
+  tx,
+  payAsset, // Asset identifier for the debt being repaid
+  payCoinObject, // Coin object containing the debt repayment amount
+  collateralAsset, // Asset identifier for the collateral being liquidated
+  liquidateAddress, // Address of the borrower being liquidated
+  options // Optional environment configuration
+)
+```
+
