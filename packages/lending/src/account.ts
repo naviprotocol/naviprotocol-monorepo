@@ -44,7 +44,7 @@ import { getPool, getPools, PoolOperator } from './pool'
  * that can be used in a transaction. It supports optional splitting to create
  * a specific balance amount.
  *
- * @param tx - The transaction object to build
+ * @param tx - The transaction object to add merge operations to
  * @param coins - Array of coin objects to merge
  * @param options - Optional parameters for balance splitting and gas coin usage
  *   - `balance` - If provided, splits this amount from the resulting coin object
