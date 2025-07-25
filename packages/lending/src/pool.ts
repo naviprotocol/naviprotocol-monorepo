@@ -247,10 +247,10 @@ export async function depositCoinPTB(
 /**
  * Builds a withdraw transaction for a lending pool
  *
- * This function creates a transaction block for withdrawing coins from a lending pool.
- * It handles both regular withdrawals and withdrawals with account capabilities.
+ * Constructs and adds withdrawal operations to a transaction object.
+ * This function supports standard withdrawal and withdrawal using account capability.
  *
- * @param tx - Transaction object to build
+ * @param tx - The transaction builder to append operations to
  * @param identifier - Asset identifier for the pool
  * @param amount - Amount to withdraw
  * @param options - Optional parameters including environment and account capability
