@@ -373,6 +373,8 @@ export const getTransactions = withSingleton(
  *
  * @param address - User wallet address
  * @param options - Optional parameters including coin type filter and client options
+ *   - `coinType` - If specified, retrieves only coins of this type
+ *   - `client` - If provided, uses this `SuiClient` instance instead of the default client
  * @returns Promise<CoinStruct[]> - Array of coin objects owned by the address
  */
 export async function getCoins(
