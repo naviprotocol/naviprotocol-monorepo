@@ -230,7 +230,7 @@ export const getUserClaimedRewardHistory = withSingleton(
 /**
  * Claim lending rewards in the PTB (Programmable Transaction Block)
  *
- * This function creates a transaction to claim rewards from the lending protocol.
+ * This function adds operations to a transaction block to claim rewards from the lending protocol.
  * It supports different claiming methods including direct claiming, claiming with
  * account capabilities, and custom coin handling (transfer or deposit).
  *
