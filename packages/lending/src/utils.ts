@@ -170,7 +170,7 @@ export function parseTxValue(
  * @param value - Pool value (string, Pool object, or TransactionResult)
  * @returns Transaction result representing the pool
  */
-export function parseTxPoolVaule(tx: Transaction, value: string | Pool | TransactionResult) {
+export function parseTxPoolValue(tx: Transaction, value: string | Pool | TransactionResult) {
   if (typeof value === 'string') {
     return tx.object(value)
   }

@@ -29,7 +29,7 @@ import {
   withSingleton,
   processContractHealthFactor,
   parseTxValue,
-  parseTxPoolVaule,
+  parseTxPoolValue,
   withCache,
   normalizeCoinType
 } from './utils'
@@ -147,7 +147,7 @@ export async function getDynamicHealthFactorPTB(
       tx.object('0x06'),
       tx.object(config.storage),
       tx.object(config.oracle.priceOracle),
-      parseTxPoolVaule(tx, pool),
+      parseTxPoolValue(tx, pool),
       parseTxValue(address, tx.pure.address),
       parseTxValue(pool.id, tx.pure.u8),
       parseTxValue(estimatedSupply, tx.pure.u64),
