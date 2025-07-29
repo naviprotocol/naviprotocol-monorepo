@@ -4,58 +4,131 @@ title: Quick Start
 
 NAVI Wallet Client is a comprehensive wallet client SDK designed for the Sui blockchain. It provides a unified interface for managing transaction signing, account management, and various DeFi operations including token swapping, lending, and balance management.
 
-## Features
+## Core Features
 
 - 🔐 **Transaction Signing**: Complete transaction signing and execution functionality
 - 💰 **Token Swapping**: Integrated Astros aggregator for token swapping
-- 🏦 **Lending Functions**: Integrated lending protocols for deposit and borrow operations
+- 🏦 **Lending Features**: Integrated lending protocol for deposit and borrow operations
 - 💳 **Balance Management**: Complete wallet balance and portfolio management
-- 🔄 **Modular Design**: Modular architecture, easy to extend and maintain
-- 📱 **Easy Integration**: Clean API design, easy to integrate into various applications
-- 🎯 **Type Safe**: Complete TypeScript type support
+- 🔄 **Modular Design**: Modular architecture for easy extension and maintenance
+- 📱 **Easy Integration**: Clear API design for easy integration into various applications
+- 🎯 **Type Safety**: Complete TypeScript type support
 
 ## Supported Modules
 
-- **Swap Module**: Token swapping functionality
-- **Lending Module**: Lending functionality
-- **Balance Module**: Balance and portfolio management
-- **Haedal Module**: Haedal protocol integration
-- **Volo Module**: Volo protocol integration
+### [Balance Module](./wallet-client/balance)
+Provides comprehensive wallet balance management functionality, including token tracking, portfolio management, token transfers, and automatic balance updates.
+
+**Key Features:**
+- Real-time balance tracking
+- Token transfers
+- Object transfers
+- Automatic balance updates
+
+### [Swap Module](./wallet-client/swap)
+Provides DEX token swapping functionality, integrated with Astros aggregator to find optimal swap paths and execute trades across multiple decentralized exchanges.
+
+**Key Features:**
+- Token swapping
+- Aggregator integration
+- Slippage protection
+- Multi-DEX support
+
+### [Lending Module](./wallet-client/lending)
+Provides comprehensive lending protocol functionality, including deposits, withdrawals, borrowing, repayments, liquidations, reward claiming, and oracle price updates.
+
+**Key Features:**
+- Deposits and withdrawals
+- Borrowing and repayments
+- Liquidation functionality
+- Reward management
+- Oracle updates
+
+### [Haedal Module](./wallet-client/haedal)
+Provides Haedal protocol staking and unstaking functionality, allowing users to stake SUI to receive haSUI and obtain APY statistics.
+
+**Key Features:**
+- SUI staking
+- haSUI unstaking
+- APY queries
+
+### [Volo Module](./wallet-client/volo)
+Provides Volo staking protocol functionality, allowing users to stake SUI tokens and receive vSUI (volo SUI) tokens for liquid staking.
+
+**Key Features:**
+- SUI staking
+- vSUI unstaking
+- Statistics queries
+- APY queries
 
 ## Installation
 
 ```bash
 npm install @naviprotocol/wallet-client
-# or
-yarn add @naviprotocol/wallet-client
-# or
-pnpm add @naviprotocol/wallet-client
 ```
 
-## Development
+## Quick Start
 
-### Build
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
 
-```bash
-pnpm build
+// Create wallet client
+const walletClient = new WalletClient()
+
+// Use balance module
+const portfolio = walletClient.balance.portfolio
+const suiBalance = portfolio.getBalance('0x2::sui::SUI')
+
+// Use swap module
+const result = await walletClient.swap.swap(
+  '0x2::sui::SUI',
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN',
+  1000000000,
+  0.01
+)
+
+// Use lending module
+const healthFactor = await walletClient.lending.getHealthFactor()
+const pools = await walletClient.lending.getPools()
+
+// Use Haedal module
+const apy = await walletClient.haedal.getApy()
+const stakeResult = await walletClient.haedal.stake(1000000000)
+
+// Use Volo module
+const stats = await walletClient.volo.getStats()
+const voloStakeResult = await walletClient.volo.stake(1000000000)
 ```
 
-### Test
+## Event Listening
 
-```bash
-pnpm test
-```
+```ts
+// Listen for balance updates
+walletClient.events.on('balance:portfolio-updated', () => {
+  console.log('Portfolio updated')
+})
 
-### Code Quality
+// Listen for swap success
+walletClient.events.on('swap:swap-success', (data) => {
+  console.log('Swap successful:', data)
+})
 
-```bash
-pnpm lint
-pnpm prettier
+// Listen for lending operations
+walletClient.events.on('lending:deposit-success', (data) => {
+  console.log('Deposit successful:', data)
+})
+
+// Listen for staking operations
+walletClient.events.on('haedal:stake-success', (data) => {
+  console.log('Haedal staking successful:', data)
+})
+
+walletClient.events.on('volo:stake-success', (data) => {
+  console.log('Volo staking successful:', data)
+})
 ```
 
 ## Support
 
-- Documentation: [https://navprotocol.io](https://navprotocol.io)
-- Issues: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-- Community: [Discord](https://discord.gg/naviprotocol)
+- Issue reporting: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
 
