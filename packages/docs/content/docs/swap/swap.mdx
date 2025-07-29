@@ -1,0 +1,73 @@
+---
+title: Swap
+---
+
+Swap 功能基于 Quote 数据来构建交易。
+
+## Build Swap PTB from Quote
+
+If you'd like to create your own PTB code using a quote, we've provided an easy-to-use interface to help you get started. See the [documentation](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.buildSwapPTBFromQuote.html) for details.
+
+**Usage Example**
+
+```typescript
+import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const quote = await getQuote(...);
+
+const coinOut = await buildSwapPTBFromQuote(
+    // The user Address that will run the PTB
+    userAddress,
+    tx, 
+    // The minimum output amount of the target token, specified with decimals, used to validate slippage.
+    minAmountOut, 
+    // The transaction Object of Coin that will be swapped. (e.g., const coinIn = txb.splitCoins(txb.gas, [amount]);)
+    coinIn, 
+    // Quote from getQuote()
+    quote, 
+    // optional. Used to identify the swap service provider, default to 0
+    referral, 
+    // optional. Used to print the swap information, default to true
+    ifPrint, 
+    // optional. A string used for API authentication. Leave empty for limited access.
+    apiKey, 
+    // optional. 
+    swapOptions
+)
+```
+
+
+## Swap PTB
+
+If you'd like to create your own PTB code without managing a quote, we've provided an easy-to-use interface for developers to customize swap fee and receiving address. See the [documentation](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.swapPTB.html) for details.
+
+
+```typescript
+import { swapPTB, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const coinOut = await swapPTB(
+    // The user Address that will run the PTB
+    userAddress,
+    tx, 
+    // The token address you are swapping from (e.g., Sui-0x2::sui::SUI).
+    fromCoinAddress,
+    // The token address you want to swap to (e.g., NAVX-0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX).
+    toCoinAddress,
+    // The transaction Object of Coin that will be swapped. (e.g., const coinIn = txb.splitCoins(txb.gas, [amount]);)
+    coin, 
+    // The amount of the fromCoinAddress token to swap, specified with decimals (e.g., 1e9 for 1,000,000,000).
+    amountIn, 
+    // The minimum output amount of the target token, specified with decimals, used to validate slippage.
+    minAmountOut, 
+    // optional. A string used for API authentication. Leave empty for limited access.
+    apiKey, 
+    // optional. 
+    swapOptions
+)
+```

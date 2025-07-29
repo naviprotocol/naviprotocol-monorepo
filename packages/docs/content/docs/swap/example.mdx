@@ -1,0 +1,61 @@
+---
+title: Full Example
+---
+
+## Swap 1 SUI to NAVX
+
+```typescript
+import {
+  SwapOptions,
+  Dex,
+  getQuote,
+  buildSwapPTBFromQuote
+} from '@naviprotocol/astros-aggregator-sdk'
+import { Transaction } from '@mysten/sui/transactions'
+
+const userAddress = '0x91eb74aef86b5a7002c587704f6c0d5a627c4937bb7d6d659d83a911ae9f4c93';
+
+const tx = new Transaction()
+
+const swapOptions: SwapOptions = {
+  baseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes',
+  dexList: [Dex.CETUS, Dex.TURBOS],
+  depth: 3,
+  feeOption: {
+    fee: 0.03, // 3% fee
+    receiverAddress: '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+  }
+}
+
+const quote = await getQuote(
+  '0x2::sui::SUI', // Source token address
+  '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', // Target token address
+  1e9, // Swap amount
+  'your-api-key',
+  swapOptions
+)
+
+const coinOut = await buildSwapPTBFromQuote(
+  userAddress,
+  tx,
+  // The minimum output amount of the target token, specified with decimals, used to validate slippage.
+  minAmountOut,
+  // The transaction Object of Coin that will be swapped. (e.g., const coinIn = txb.splitCoins(txb.gas, [amount]);)
+  coinIn,
+  // Quote from getQuote()
+  quote,
+  // optional. Used to identify the swap service provider, default to 0
+  referral,
+  // optional. Used to print the swap information, default to true
+  ifPrint,
+  // optional. A string used for API authentication. Leave empty for limited access.
+  apiKey,
+  // optional.
+  swapOptions
+)
+
+await txb.transferObjects([coinOut], userAddress);
+
+await SignAndSubmitTXB(tx)
+
+```
