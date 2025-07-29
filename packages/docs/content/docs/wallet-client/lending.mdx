@@ -1,0 +1,443 @@
+---
+title: Lending Module
+---
+
+The Lending Module provides comprehensive lending protocol functionality, including deposit, withdrawal, borrowing, repayment, liquidation, reward claiming, and oracle price updates.
+
+## Core Features
+
+- **Deposit and Withdrawal**: Deposit and withdraw from lending pools
+- **Borrowing and Repayment**: Borrow from and repay to lending pools
+- **Liquidation Functionality**: Liquidate unhealthy accounts
+- **Reward Management**: Claim lending rewards
+- **Health Factor Monitoring**: Monitor account health status
+- **Oracle Updates**: Update price oracles
+
+## API Reference
+
+### getPools
+
+Get information about all available lending pools.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const pools = await walletClient.lending.getPools({
+  cacheTime: 60 * 1000 // Cache for 60 seconds
+})
+```
+
+**Result Example**
+```json
+[{
+  id: 19,
+  coinType: '0x2::sui::SUI',
+  suiCoinType: '0x2::sui::SUI',
+  symbol: 'SUI',
+  decimals: 9,
+  ...
+}]
+```
+
+### getPool
+
+Get information about a specific lending pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const pool = await walletClient.lending.getPool('0x2::sui::SUI', {
+  cacheTime: 60 * 1000
+})
+```
+
+### deposit
+
+Deposit into a lending pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.module('lending').deposit(
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Deposit amount
+  { 
+    dryRun: false,
+    accountCap: '0x123...' // Optional account cap
+  }
+)
+```
+
+### withdraw
+
+Withdraw from a lending pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.withdraw(
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Withdrawal amount
+  { 
+    dryRun: false,
+    disableUpdateOracle: false, // Whether to disable oracle updates
+    accountCap: '0x123...' // Optional account cap
+  }
+)
+```
+
+### borrow
+
+Borrow from a lending pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.borrow(
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Borrow amount
+  { 
+    dryRun: false,
+    accountCap: '0x123...' // Optional account cap
+  }
+)
+```
+
+### repay
+
+Repay to a lending pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.repay(
+  '0x2::sui::SUI', // Asset identifier
+  1000000000, // Repayment amount
+  { 
+    dryRun: false,
+    accountCap: '0x123...' // Optional account cap
+  }
+)
+```
+
+### getHealthFactor
+
+Get the current account's health factor.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const healthFactor = await walletClient.lending.getHealthFactor()
+console.log('Health Factor:', healthFactor)
+```
+
+### liquidate
+
+Liquidate unhealthy accounts.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.liquidate(
+  'SUI', // Asset identifier for debt payment
+  1000000000, // Debt payment amount
+  'USDC', // Asset identifier for liquidated collateral
+  '0x123...', // Address of the account being liquidated
+  { dryRun: false }
+)
+```
+
+### getAvailableRewards
+
+Get the user's available lending rewards.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const rewards = await walletClient.lending.getAvailableRewards({
+  cacheTime: 60 * 1000
+})
+```
+
+**Result Example**
+```json
+[{
+  assetId: 19,
+  amount: '1000000000',
+  symbol: 'SUI',
+  ...
+}]
+```
+
+### getClaimedRewardHistory
+
+Get the user's claimed reward history.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const history = await walletClient.lending.getClaimedRewardHistory({
+  page: 1,
+  size: 10,
+  cacheTime: 60 * 1000
+})
+```
+
+**Result Example**
+
+```json
+{
+  "data": [
+    {
+      "type": "claim",
+      "status": "success",
+      "coinChanges": [
+        {
+          "symbol": "SUI",
+          "amount": "1000000"
+        }
+      ],
+      "timestamp": "1751358720243",
+      "digest": "BVpGDpt9nmb1TkTnh65QmqedXt2gYqkVMhhkBE1uraWG"
+    }
+  ],
+  "cursor": "next_page_cursor"
+}
+```
+
+### claimAllRewards
+
+Claim all available lending rewards.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.claimAllRewards({
+  dryRun: false,
+  accountCap: '0x123...' // Optional account capability
+})
+```
+
+### updateOracle
+
+Update oracle prices.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.updateOracle({
+  dryRun: false,
+})
+```
+
+### getLendingState
+
+Get the user's lending state.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const lendingState = await walletClient.lending.getLendingState({
+  cacheTime: 60 * 1000
+})
+```
+
+**Result Example**
+```json
+[{
+  assetId: 19,
+  borrowBalance: '1979162',
+  supplyBalance: '0',
+  pool: {
+    coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+    id: 19,
+    ...
+  }
+}]
+```
+
+
+### createAccountCap
+
+Create an account capability for the lending protocol.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.lending.createAccountCap({
+  dryRun: false
+})
+```
+
+## Events
+
+### lending:deposit-success
+
+Event triggered when deposit is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:deposit-success', (data) => {
+  console.log('Deposit successful:', {
+    identifier: data.identifier,
+    amount: data.amount
+  })
+})
+```
+
+### lending:withdraw-success
+
+Event triggered when withdrawal is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:withdraw-success', (data) => {
+  console.log('Withdrawal successful:', {
+    identifier: data.identifier,
+    amount: data.amount
+  })
+})
+```
+
+### lending:borrow-success
+
+Event triggered when borrowing is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:borrow-success', (data) => {
+  console.log('Borrowing successful:', {
+    identifier: data.identifier,
+    amount: data.amount
+  })
+})
+```
+
+### lending:repay-success
+
+Event triggered when repayment is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:repay-success', (data) => {
+  console.log('Repayment successful:', {
+    identifier: data.identifier,
+    amount: data.amount
+  })
+})
+```
+
+### lending:liquidate-success
+
+Event triggered when liquidation is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:liquidate-success', (data) => {
+  console.log('Liquidation successful:', {
+    payIdentifier: data.payIdentifier,
+    payAmount: data.payAmount,
+    collateralIdentifier: data.collateralIdentifier,
+    liquidationAddress: data.liquidationAddress
+  })
+})
+```
+
+### lending:claim-rewards-success
+
+Event triggered when reward claiming is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('lending:claim-rewards-success', (data) => {
+  console.log('Reward claiming successful:', {
+    rewards: data.rewards
+  })
+})
+```
+
+## Configuration Options
+
+### env
+
+Environment setting, defaults to 'prod'. Different environments have different contracts.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    lending: {
+      env: 'prod',
+    }
+  }
+})
+```

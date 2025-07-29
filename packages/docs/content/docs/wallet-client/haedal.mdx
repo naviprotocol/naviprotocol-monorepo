@@ -1,0 +1,172 @@
+---
+title: Haedal Module
+---
+
+The Haedal Module provides staking and unstaking functionality for the Haedal protocol, allowing users to stake SUI to receive haSUI and obtain APY statistics.
+
+## Core Features
+
+- **SUI Staking**: Stake SUI to receive haSUI
+- **haSUI Unstaking**: Unstake haSUI to receive SUI
+- **APY Query**: Get current staking annual percentage yield
+
+## API Reference
+
+### getApy
+
+Get the current APY for Haedal staking.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const apy = await walletClient.haedal.getApy()
+console.log('Current APY:', apy)
+```
+
+**Result Example**
+```json
+5.2
+```
+
+### stake
+
+Stake SUI to receive haSUI.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.haedal.stake(
+  1000000000, // Staking amount (1 SUI)
+  { dryRun: false } // Optional parameters
+)
+```
+
+### unstake
+
+Unstake haSUI to receive SUI.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.haedal.unstake(
+  1000000000, // Unstaking amount (1 haSUI)
+  { dryRun: false } // Optional parameters
+)
+```
+
+## Configuration Options
+
+### packageId
+
+The package ID of the Haedal contract, defaults to `0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    haedal: {
+      packageId: "0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2"
+    }
+  }
+})
+```
+
+### configId
+
+The ID of the Haedal configuration object, defaults to `0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    haedal: {
+      configId: "0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca"
+    }
+  }
+})
+
+```
+
+### coinType
+
+The haSUI token type, defaults to `0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    haedal: {
+      coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
+    }
+  }
+})
+```
+
+## Events
+
+### haedal:stake-success
+
+Event triggered when staking is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('haedal:stake-success', (data) => {
+  console.log('Staking successful:', {
+    suiAmount: data.suiAmount
+  })
+})
+```
+
+**Event Data Example**
+```json
+{
+  "suiAmount": 1000000000
+}
+```
+
+### haedal:unstake-success
+
+Event triggered when unstaking is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('haedal:unstake-success', (data) => {
+  console.log('Unstaking successful:', {
+    haSUIAmount: data.haSUIAmount
+  })
+})
+```
+
+**Event Data Example**
+```json
+{
+  "haSUIAmount": 1000000000
+}
+```
+

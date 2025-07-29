@@ -1,0 +1,55 @@
+---
+title: Swap Options Setting
+---
+
+Many interfaces in the SDK can accept Swap options to customize swap functionality. All parameters in swap options are optional, and you can set them as needed.
+
+
+## SwapOptions Type
+
+See [documentation](/typedoc/types/_naviprotocol_astros-aggregator-sdk.SwapOptions.html) for details.
+
+```typescript
+type SwapOptions = {
+  // The base URL for the NAVI Aggregator API.
+  baseUrl?: string
+  /** DEX list for routing */
+  dexList?: Dex[]
+  // indicate if the calculation is based on the input token amount. Please only use True
+  byAmountIn?: boolean
+  // The algorithm depth for route calculation
+  depth?: number
+  /** Service fee configuration */
+  serviceFee?: {
+    // the transaction fee collected by third-party projects that direct users to swap through our aggregator. 0.01 represents 1% fee
+    fee: number;
+    // Address to receive the fee
+    receiverAddress: string;
+  }
+}
+```
+
+## Usage Example
+
+```typescript
+import {SwapOptions, Dex, getQuote} from "@naviprotocol/astros-aggregator-sdk";
+
+
+const swapOptions: SwapOptions = {
+  baseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes',
+  dexList: [Dex.CETUS, Dex.TURBOS, Dex.KRIYA_V2],
+  depth: 3,
+  feeOption: {
+    fee: 0.03, // 3% fee
+    receiverAddress: '0x...'
+  }
+}
+
+const quote = await getQuote(
+  '0x2::sui::SUI', // Source token address
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token address
+  1000000000, // Swap amount
+  'your-api-key', // Optional API key
+  swapOptions
+)
+```

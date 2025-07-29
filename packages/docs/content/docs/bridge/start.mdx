@@ -1,0 +1,87 @@
+---
+title: Quick Start
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+<Steps>
+<Step>
+### Install SDK
+```npm
+npm install @naviprotocol/astros-bridge-sdk
+
+```
+</Step>
+<Step>
+### Config Api key
+```typescript
+import {config} from '@naviprotocol/astros-bridge-sdk';
+
+config({
+  apiKey: 'your api key'
+});
+
+```
+</Step>
+<Step>
+### Query all supported chains
+```typescript
+import {getSupportChains} from '@naviprotocol/astros-bridge-sdk';
+
+const supportChains = await getSupportChains();
+
+const SuiChain = supportChains[6]
+const SolanaChain = supportChains[0]
+```
+</Step>
+<Step>
+### Query bridge token
+```typescript
+import {searchSupportTokens} from '@naviprotocol/astros-bridge-sdk';
+
+const navxSearchResult = await searchSupportTokens(SuiChain.id, '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX')
+
+const SUI_NAVX = navxSearchResult[0];
+
+const usdcSearchResult = await searchSupportTokens(SolanaChain.id, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+
+const SolanaUSDC = usdcSearchResult[0];
+```
+</Step>
+<Step>
+### Get Quote
+```typescript
+import {getQuote} from '@naviprotocol/astros-bridge-sdk';
+
+const quotes = await getQuote(SUI_NAVX, SolanaUSDC, 10, {
+    slippageBps: 50
+})
+```
+</Step>
+<Step>
+### Start Bridge Transaction
+```typescript
+import {swap} from '@naviprotocol/astros-bridge-sdk';
+
+const transaction = await swap(quotes.routes[0], fromAddress, toAddress, walletConnect)
+
+```
+</Step>
+<Step>
+### Query Transaction Status
+```typescript
+import {getTransaction} from '@naviprotocol/astros-bridge-sdk';
+
+const lastestTransaction = await Bridge.getTransaction(transaction.id) 
+// check transaction state
+switch(lastestTransaction.status) {
+    case "processing":
+        break;
+    case "completed":
+        break;
+    case "fail":
+        break;
+}
+```
+</Step>
+</Steps>

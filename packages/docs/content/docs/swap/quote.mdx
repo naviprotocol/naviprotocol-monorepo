@@ -1,0 +1,99 @@
+---
+title: Get Quote
+---
+
+Before executing a token swap, we need to find the best route and get the exchange rate.
+## API Reference
+
+### getQuote
+
+Get a swap quote between two tokens. See the [documentation](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.getQuote.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getQuote } from '@naviprotocol/astros-aggregator-sdk'
+
+const quote = await getQuote(
+  '0x2::sui::SUI', // Source token address
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token address
+  1000000000, // Swap amount
+  'your-api-key', // Optional API key
+  swapOptions
+)
+```
+
+**Return Result Example**
+```json
+{
+  "routes": [
+    {
+      "dex": "cetus",
+      "amount_in": "1000000000",
+      "amount_out": "950000000",
+      "price_impact": "0.05",
+      "fee": "5000000"
+    }
+  ],
+  "amount_in": "1000000000",
+  "amount_out": "950000000",
+  "from": "0x2::sui::SUI",
+  "target": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+  "dexList": ["cetus"],
+  "from_token": {
+    "address": "0x2::sui::SUI",
+    "decimals": 9,
+    "price": 1.0
+  },
+  "to_token": {
+    "address": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+    "decimals": 6,
+    "price": 1.05
+  },
+  "is_accurate": true
+}
+```
+
+### Quote Type
+
+Detailed information about swap quotes. See the [documentation](/typedoc/types/_naviprotocol_astros-aggregator-sdk.Quote.html) for details.
+
+**Type Definition**
+
+```typescript
+type Quote = {
+  /** Available swap routes from different DEXs */
+  routes: any[]
+  /** Input amount for swap */
+  amount_in: string
+  /** Output amount for swap */
+  amount_out: string
+  /** Source token address */
+  from: string
+  /** Target token address */
+  target: string
+  /** List of DEXs used in routing */
+  dexList: Dex[]
+  /** Source token information */
+  from_token?: {
+    /** Token contract address */
+    address: string
+    /** Token decimal places */
+    decimals: number
+    /** Current token price */
+    price: number
+  }
+  /** Target token information */
+  to_token?: {
+    /** Token contract address */
+    address: string
+    /** Token decimal places */
+    decimals: number
+    /** Current token price */
+    price: number
+  }
+  /** Whether the quote is accurate */
+  is_accurate?: boolean
+}
+```
+

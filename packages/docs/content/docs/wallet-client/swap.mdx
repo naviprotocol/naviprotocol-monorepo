@@ -1,0 +1,210 @@
+---
+title: Swap Module
+---
+
+The Swap Module provides DEX token swapping functionality, integrating the Astros aggregator to find optimal swap routes and execute trades across multiple decentralized exchanges.
+
+## Core Features
+
+- **Token Swapping**: Swap between different tokens
+- **Aggregator Integration**: Use Astros aggregator to find optimal routes
+- **Slippage Protection**: Built-in slippage protection mechanism
+- **Multi-DEX Support**: Support for multiple decentralized exchanges
+
+## API Reference
+
+### swap
+
+Execute a token swap operation.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.swap.swap(
+  '0x2::sui::SUI', // Source token type
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
+  1000000000, // Swap amount
+  0.01, // Slippage tolerance (1%)
+  { dryRun: false } // Optional parameters
+)
+```
+
+### referral
+
+Get referral ID (if API key is configured).
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const referralId = walletClient.swap.referral
+```
+
+## Configuration Options
+
+### apiKey
+
+API key for aggregator access.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      apiKey: 'your-api-key'
+    }
+  }
+})
+```
+
+### baseUrl
+
+Base URL for the aggregator API, defaults to `https://open-aggregator-api.naviprotocol.io/find_routes`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      baseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes'
+    }
+  }
+})
+```
+
+### dexList
+
+List of DEXes used for routing.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+import { Dex } from '@naviprotocol/astros-aggregator-sdk'
+
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      dexList: [Dex.CETUS, Dex.TURBOS, Dex.AFTERMATH]
+    }
+  }
+})
+```
+
+### depth
+
+Maximum routing depth for finding optimal paths, defaults to 3.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      depth: 3
+    }
+  }
+})
+```
+
+### serviceFee
+
+Service fee configuration.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      serviceFee: {
+        recipient: '0x123...',
+        fee: 0.001 // 0.1%
+      }
+    }
+  }
+})
+```
+
+## Events
+
+### swap:swap-success
+
+Event triggered when a swap is successfully completed.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('swap:swap-success', (data) => {
+  console.log('Swap successful:', {
+    fromCoinType: data.fromCoinType,
+    toCoinType: data.toCoinType,
+    fromAmount: data.fromAmount,
+    toAmount: data.toAmount,
+    slippage: data.slippage
+  })
+})
+```
+
+**Event Data Example**
+
+```json
+{
+  "fromCoinType": "0x2::sui::SUI",
+  "toCoinType": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+  "fromAmount": 1000000000,
+  "toAmount": 950000000,
+  "slippage": 0.01
+}
+```
+
+## Complete Usage Example
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+import { Dex } from '@naviprotocol/astros-aggregator-sdk'
+
+// Create wallet client
+const walletClient = new WalletClient({
+  configs: {
+    swap: {
+      apiKey: 'your-api-key',
+      serviceFee: {
+        recipient: '0x123...',
+        fee: 0.001
+      }
+    }
+  }
+})
+
+// Execute token swap
+try {
+  const result = await walletClient.module('swap').swap(
+    '0x2::sui::SUI',
+    '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN',
+    1000000000, // 1 SUI
+    0.01 // 1% slippage
+  )
+  console.log('Swap transaction submitted:', result.digest)
+} catch (error) {
+  console.error('Swap failed:', error)
+}
+```
