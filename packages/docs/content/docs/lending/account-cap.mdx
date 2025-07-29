@@ -1,4 +1,21 @@
 ---
-title: Account Capability
+title: Account Cap
 ---
+
+## API Reference
+
+### createAccountCapPTB
+
+Use this function to create an account cap, which is a prerequisite for certain operations within the NAVI protocol. See [documentation](/typedoc/functions/_naviprotocol_lending.createAccountCapPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { createAccountCapPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const accountCap = await createAccountCapPTB(tx)
+```
 

@@ -1,0 +1,214 @@
+---
+title: Volo Module
+---
+
+The Volo Module provides functionality for the Volo staking protocol, allowing users to stake SUI tokens and receive vSUI tokens.
+
+## Core Features
+
+- **SUI Staking**: Stake SUI to receive vSUI
+- **vSUI Unstaking**: Unstake vSUI to receive SUI
+- **Statistics Query**: Get detailed statistics of the staking pool
+- **APY Monitoring**: Monitor staking annual percentage yield
+
+## API Reference
+
+### getStats
+
+Get current statistics and detailed information of the Volo staking pool.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const stats = await walletClient.volo.getStats()
+console.log('Volo Statistics:', stats)
+```
+
+**Result Example**
+```json
+{
+  "operatorBalance": "1000000000000",
+  "collectableFee": "50000000000",
+  "pendingStakes": "200000000000",
+  "totalStaked": "10000000000000",
+  "totalRewardsInStakes": "300000000000",
+  "activeStake": "9500000000000",
+  "currentEpoch": "12345",
+  "validators": [
+    {
+      "address": "0x123...",
+      "totalStaked": "1000000000000",
+      "assigned_weight": "0.1",
+      "apy": "5.2",
+      "name": "Validator 1"
+    }
+  ],
+  "exchangeRate": 1.05,
+  "totalSupply": "10500000000000",
+  "apy": 5.2,
+  "maxInstantUnstake": "5000000000000",
+  "maxNoFeeUnstake": "2000000000000",
+  "totalStakers": 1500,
+  "lastUpdated": 1640995200000
+}
+```
+
+### stake
+
+Stake SUI tokens to receive vSUI tokens.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.volo.stake(
+  1000000000, // Staking amount (1 SUI)
+  { dryRun: false } // Optional parameters
+)
+```
+
+### unstake
+
+Unstake vSUI tokens to receive SUI tokens.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.volo.unstake(
+  1000000000, // Unstaking amount (1 vSUI)
+  { dryRun: false } // Optional parameters
+)
+```
+
+## Configuration Options
+
+### packageId
+
+The package ID of the Volo staking contract, defaults to `0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    volo: {
+      packageId: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20'
+    }
+  }
+})
+```
+
+### poolId
+
+The ID of the staking pool, defaults to `0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    volo: {
+      poolId: '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5'
+    }
+  }
+})
+```
+
+### metadataId
+
+The ID of the staking pool metadata, defaults to `0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    volo: {
+      metadataId: '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60'
+    }
+  }
+})
+```
+
+### coinType
+
+The vSUI token type, defaults to `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    volo: {
+      coinType: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
+    }
+  }
+})
+```
+
+## Events
+
+### volo:stake-success
+
+Event triggered when staking is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('volo:stake-success', (data) => {
+  console.log('Staking successful:', {
+    suiAmount: data.suiAmount
+  })
+})
+```
+
+**Event Data Example**
+```json
+{
+  "suiAmount": 1000000000
+}
+```
+
+### volo:unstake-success
+
+Event triggered when unstaking is successful.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('volo:unstake-success', (data) => {
+  console.log('Unstaking successful:', {
+    vSuiAmount: data.vSuiAmount
+  })
+})
+```
+
+**Event Data Example**
+```json
+{
+  "vSuiAmount": 1000000000
+}
+```
+

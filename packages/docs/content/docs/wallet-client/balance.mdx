@@ -1,0 +1,169 @@
+---
+title: Balance Module
+---
+
+The Balance Module provides comprehensive wallet balance management functionality, including token tracking, portfolio management, token transfers, and automatic balance updates.
+
+## Core Features
+
+- **Balance Tracking**: Real-time tracking of token balances in the wallet
+- **Token Transfers**: Send tokens to specified addresses
+- **Object Transfers**: Transfer NFTs and other objects
+- **Auto Updates**: Automatic balance updates through polling mechanism
+
+## API Reference
+
+### coins
+
+Get the current list of token objects in the wallet.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const coins = walletClient.balance.coins
+```
+
+**Result Example**
+```json
+[{
+  coinObjectId: '0x1',
+  balance: '1000000000',
+  coinType: '0x2::sui::SUI',
+  digest: '0x...',
+  version: '123456'
+}]
+```
+
+### portfolio
+
+Categorize and aggregate data based on coins. Supports querying balance for specified coins.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const portfolio = walletClient.balance.portfolio
+const suiBalance = portfolio.getBalance('0x2::sui::SUI')
+```
+
+**Result Example**
+```json
+{
+  amount: BigNumber('1000000000'),
+  coins: [{
+    coinObjectId: '0x1',
+    balance: '1000000000',
+    coinType: '0x2::sui::SUI'
+  }]
+}
+```
+
+
+### sendCoinBatch
+
+Batch send tokens to multiple addresses.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.balance.sendCoinBatch(
+  '0x2::sui::SUI', // Token type
+  ['0x123...', '0x456...'], // Recipient addresses array
+  [1000000000, 2000000000], // Send amounts array
+  { dryRun: false } // Optional parameters
+)
+```
+
+### transferObject
+
+Transfer a single object to a specified address.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.module('balance').transferObject(
+  '0x789...', // Object ID
+  '0x123...', // Recipient address
+  { dryRun: false } // Optional parameters
+)
+```
+
+### transferObjectBatch
+
+Batch transfer objects to multiple addresses.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.module('balance').transferObjectBatch(
+  ['0x789...', '0xabc...'], // Object IDs array
+  ['0x123...', '0x456...'], // Recipient addresses array
+  { dryRun: false } // Optional parameters
+)
+```
+
+### updatePortfolio
+
+Manually update user coins data.
+
+The wallet-client SDK has built-in scheduled update logic, and all methods involving contract calls trigger updates upon successful execution.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+await walletClient.balance.updatePortfolio()
+```
+
+## Events
+
+### balance:portfolio-updated
+
+Event triggered when the portfolio is updated.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+walletClient.events.on('balance:portfolio-updated', () => {
+  console.log('Portfolio has been updated')
+})
+```
+
+## Configuration Options
+
+### coinPollingInterval
+
+Token balance polling interval (milliseconds), defaults to 6000ms.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+    configs: {
+        balance: {
+            coinPollingInterval: 6000
+        }
+    }
+})
+``` 

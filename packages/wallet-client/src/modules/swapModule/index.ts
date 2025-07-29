@@ -129,7 +129,8 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
 
     // Merge coins for the swap input
     const fromCoin = mergeCoinsPTB(tx, fromCoinBalance.coins, {
-      balance: fromAmount
+      balance: fromAmount,
+      useGasCoin: true
     })
 
     // Configure swap options

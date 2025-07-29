@@ -2,5 +2,5 @@
 	"root": true,
 	"title": "Astros Bridge",
 	"description": "NAVI Astros Bridge SDK",
-	"pages": ["index", "[Api Reference](/typedoc/modules/_naviprotocol_astros-bridge-sdk.html)"]
+	"pages": ["index", "start", "[Api Reference](/typedoc/modules/_naviprotocol_astros-bridge-sdk.html)"]
 }

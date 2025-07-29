@@ -195,16 +195,16 @@ const healthFactor = await getHealthFactor('0x...')
 1.8
 ```
 
-### getDynamicHealthFactor
+### getSimulatedHealthFactor
 
-Simulate the impact of operations on health factors to predict account status after operations. See [documentation](/typedoc/functions/_naviprotocol_lending.getDynamicHealthFactor.html) for details.
+Simulate the impact of operations on health factors to predict account status after operations. See [documentation](/typedoc/functions/_naviprotocol_lending.getSimulatedHealthFactor.html) for details.
 
 **Usage Example**
 
 ```typescript
-import { getDynamicHealthFactor } from '@naviprotocol/lending'
+import { getSimulatedHealthFactor } from '@naviprotocol/lending'
 
-const healthFactor = await getDynamicHealthFactor(
+const healthFactor = await getSimulatedHealthFactor(
   '0x...',
   '0x2::sui::SUI',
   [
@@ -285,16 +285,16 @@ const healthFactorResult = await getHealthFactorPTB(tx, '0x...')
 ```
 
 
-### getDynamicHealthFactorPTB
+### getSimulatedHealthFactorPTB
 
-Get dynamic health factor in a programmable transaction block. See [documentation](//typedoc/functions/_naviprotocol_lending.getDynamicHealthFactorPTB.html) for details.
+Get dynamic health factor in a programmable transaction block. See [documentation](//typedoc/functions/_naviprotocol_lending.getSimulatedHealthFactorPTB.html) for details.
 
 **Usage Example**
 
 ```typescript
-import { getDynamicHealthFactorPTB } from '@naviprotocol/lending'
+import { getSimulatedHealthFactorPTB } from '@naviprotocol/lending'
 
-const healthFactorResult = await getDynamicHealthFactorPTB(
+const healthFactorResult = await getSimulatedHealthFactorPTB(
   tx,
   '0x...',
   assetIdentifier, // Asset identifier

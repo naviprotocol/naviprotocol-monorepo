@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   getLendingState,
   getHealthFactor,
-  getDynamicHealthFactor,
+  getSimulatedHealthFactor,
   getTransactions,
   getCoins,
   mergeCoinsPTB
@@ -46,18 +46,18 @@ describe('getHealthFactor', () => {
   })
 })
 
-describe('getDynamicHealthFactor', () => {
+describe('getSimulatedHealthFactor', () => {
   let lastHf = 0
   it('no operations', async () => {
     const pools = await getPools()
     const pool = pools[10]
-    lastHf = await getDynamicHealthFactor(testAddress, pool, [])
+    lastHf = await getSimulatedHealthFactor(testAddress, pool, [])
     expect(lastHf).toBeGreaterThan(0)
   })
   it('supply', async () => {
     const pools = await getPools()
     const pool = pools[10]
-    const currentHf = await getDynamicHealthFactor(testAddress, pool, [
+    const currentHf = await getSimulatedHealthFactor(testAddress, pool, [
       {
         type: PoolOperator.Supply,
         amount: 1e9
@@ -68,7 +68,7 @@ describe('getDynamicHealthFactor', () => {
   it('withdraw', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 5)
-    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
+    const currentHf = await getSimulatedHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Withdraw,
         amount: 3 * Math.pow(10, pool!.token.decimals)
@@ -81,7 +81,7 @@ describe('getDynamicHealthFactor', () => {
   it('borrow', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 5)
-    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
+    const currentHf = await getSimulatedHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Borrow,
         amount: 3 * Math.pow(10, pool!.token.decimals)
@@ -94,7 +94,7 @@ describe('getDynamicHealthFactor', () => {
   it('repay', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 0)
-    const currentHf = await getDynamicHealthFactor(testAddress, pool!, [
+    const currentHf = await getSimulatedHealthFactor(testAddress, pool!, [
       {
         type: PoolOperator.Repay,
         amount: 30 * Math.pow(10, pool!.token.decimals)
