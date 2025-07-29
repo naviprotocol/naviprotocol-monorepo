@@ -125,7 +125,7 @@ export function mergeCoinsPTB(
  * @param options - Environment options
  * @returns Transaction result for health factor calculation
  */
-export async function getDynamicHealthFactorPTB(
+export async function getSimulatedHealthFactorPTB(
   tx: Transaction,
   address: string | AccountCap | TransactionResult,
   identifier: AssetIdentifier,
@@ -169,7 +169,7 @@ export async function getHealthFactorPTB(
   address: string | AccountCap | TransactionResult,
   options?: Partial<EnvOption>
 ): Promise<TransactionResult> {
-  return getDynamicHealthFactorPTB(tx, address, 0, 0, 0, false, options)
+  return getSimulatedHealthFactorPTB(tx, address, 0, 0, 0, false, options)
 }
 
 /**
@@ -273,7 +273,7 @@ export async function getHealthFactor(
  * @param options - Options for client and environment
  * @returns Promise<number> - Projected health factor
  */
-export async function getDynamicHealthFactor(
+export async function getSimulatedHealthFactor(
   address: string | AccountCap,
   identifier: AssetIdentifier,
   operations: {
@@ -310,7 +310,7 @@ export async function getDynamicHealthFactor(
   const isIncrease = estimatedSupply > 0 || estimatedBorrow > 0
 
   // Calculate the dynamic health factor
-  await getDynamicHealthFactorPTB(
+  await getSimulatedHealthFactorPTB(
     tx,
     address,
     pool,
