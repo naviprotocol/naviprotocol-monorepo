@@ -115,6 +115,8 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   /**
    * Get current statistics and information about the Volo staking pool
    * Uses caching to avoid repeated API calls
+   *
+   * @returns Volo staking pool information
    */
   getStats = withCache(
     withSingleton(async () => {
@@ -127,7 +129,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   )
 
   /**
-   * Create a staking transaction in the PTB (Programmable Transaction Block)
+   * Adds staking operation to a transaction black
    *
    * @param tx - The transaction block to add the staking operation to
    * @param suiCoin - The SUI coin object to stake
@@ -148,7 +150,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   }
 
   /**
-   * Create an unstaking transaction in the PTB
+   * Adds unstaking operation to a transaction black
    *
    * @param tx - The transaction block to add the unstaking operation to
    * @param vSuiCoin - The vSUI coin object to unstake
