@@ -59,6 +59,8 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
 
   /**
    * Fetches the current APY for Haedal staking
+   *
+   * @returns Current APY of haSUI
    */
   getApy = withCache(
     withSingleton(async () => {
@@ -74,6 +76,10 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
 
   /**
    * Builds a transaction block for staking SUI to haSUI
+   *
+   * @param tx - Transaction to add staking operation to
+   * @param suiCoin - Sui coin object to stake
+   * @returns haSUI coin object
    */
   async stakePTB(tx: Transaction, suiCoin: CoinObject) {
     const [coin] = tx.moveCall({
@@ -91,6 +97,10 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
 
   /**
    * Builds a transaction block for unstaking haSUI to SUI
+   *
+   * @param tx - Transaction to add unstaking operation to
+   * @param haSUICoin - haSUI coin object to unstake
+   * @returns SUI coin object
    */
   async unstakePTB(tx: Transaction, haSUICoin: CoinObject) {
     const [coin] = tx.moveCall({
@@ -107,7 +117,8 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
 
   /**
    * Stake SUI for haSUI
-   * @param suiAmount Amount of SUI to stake
+   *
+   * @param suiAmount - Amount of SUI to stake
    * @param options Optional dry run
    */
   async stake<T extends boolean = false>(
@@ -140,7 +151,8 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
 
   /**
    * Unstake haSUI for SUI
-   * @param haSUIAmount Amount of haSUI to unstake
+   *
+   * @param haSUIAmount - Amount of haSUI to unstake
    * @param options Optional dry run
    */
   async unstake<T extends boolean = false>(
