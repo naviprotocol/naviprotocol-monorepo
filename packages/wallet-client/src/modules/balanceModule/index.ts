@@ -260,7 +260,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   private _updatePromise: Promise<void> | null = null
 
   /**
-   * Starts the polling mechanism for balance updates
+   * Starts polling for portfolio updates
    *
    * This method recursively schedules itself to run at the configured
    * interval, ensuring regular balance updates.
@@ -278,7 +278,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   /**
    * Installs the balance module into a wallet client
    *
-   * @param walletClient - The wallet client to install into
+   * @param walletClient - The wallet client instance to install into
    */
   install(walletClient: WalletClient) {
     super.install(walletClient)
