@@ -181,10 +181,13 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   }
 
   /**
-   * Transfers multiple objects to recipients in a single transaction
+   * Transfers multiple objects to their respective recipients in a single transaction
    *
-   * @param objects - Array of object IDs to transfer
-   * @param recipients - Array of recipient addresses (must match objects length)
+   * Each object is transferred to its corresponding recipient by index
+   * (first object → first recipient, second object → second recipient, etc.)
+   *
+   * @param objects - Object IDs to transfer
+   * @param recipients - Recipient addresses (must match objects array length)
    * @param options - Optional parameters including dry run mode
    * @returns Transaction response or dry run response
    */
