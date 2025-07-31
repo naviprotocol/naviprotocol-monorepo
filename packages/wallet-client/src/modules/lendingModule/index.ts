@@ -483,7 +483,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   }
 
   /**
-   * Get the available lending rewards for the current user.
+   * Gets the available lending rewards for the current user.
    *
    * @param options - Optional cache options.
    * @returns The available lending rewards for the user.
@@ -500,7 +500,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   }
 
   /**
-   * Get the claimed reward history for the current user.
+   * Gets the claimed reward history for the current user.
    *
    * @param options - Optional cache options.
    * @returns The claimed reward history for the user.
@@ -607,7 +607,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   }
 
   /**
-   * Gets the current lending state for the user
+   * Gets all active lending positions for the user
    *
    * @param options - Optional caching options
    * @returns User's lending state information
