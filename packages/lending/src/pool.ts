@@ -20,7 +20,7 @@ import type {
   TransactionResult,
   AccountCapOption
 } from './types'
-import { normalizeCoinType, withCache, withSingleton, parseTxVaule } from './utils'
+import { normalizeCoinType, withCache, withSingleton, parseTxValue } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
 
 /**
@@ -199,11 +199,11 @@ export async function depositCoinPTB(
   let depositAmount: TransactionResult
 
   if (typeof options?.amount !== 'undefined') {
-    depositAmount = parseTxVaule(options.amount, tx.pure.u64)
+    depositAmount = parseTxValue(options.amount, tx.pure.u64)
   } else {
     depositAmount = tx.moveCall({
       target: '0x2::coin::value',
-      arguments: [parseTxVaule(coinObject as any, tx.object)],
+      arguments: [parseTxValue(coinObject as any, tx.object)],
       typeArguments: [pool.suiCoinType]
     })
   }
@@ -217,10 +217,10 @@ export async function depositCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -232,7 +232,7 @@ export async function depositCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         depositAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3)
@@ -247,10 +247,10 @@ export async function depositCoinPTB(
 /**
  * Builds a withdraw transaction for a lending pool
  *
- * This function creates a transaction block for withdrawing coins from a lending pool.
- * It handles both regular withdrawals and withdrawals with account capabilities.
+ * Constructs and adds withdrawal operations to a transaction object.
+ * This function supports standard withdrawal and withdrawal using account capability.
  *
- * @param tx - Transaction object to build
+ * @param tx - The transaction builder to append operations to
  * @param identifier - Asset identifier for the pool
  * @param amount - Amount to withdraw
  * @param options - Optional parameters including environment and account capability
@@ -268,7 +268,7 @@ export async function withdrawCoinPTB(
   })
   const pool = await getPool(identifier, options)
 
-  const withdrawAmount = parseTxVaule(amount, tx.pure.u64)
+  const withdrawAmount = parseTxValue(amount, tx.pure.u64)
 
   let withdrawBalance
 
@@ -285,7 +285,7 @@ export async function withdrawCoinPTB(
         withdrawAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -329,7 +329,7 @@ export async function borrowCoinPTB(
   })
   const pool = await getPool(identifier, options)
 
-  const borrowAmount = parseTxVaule(amount, tx.pure.u64)
+  const borrowAmount = parseTxValue(amount, tx.pure.u64)
 
   let borrowBalance
 
@@ -361,7 +361,7 @@ export async function borrowCoinPTB(
         borrowAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -377,6 +377,28 @@ export async function borrowCoinPTB(
   return coin
 }
 
+/**
+ * Builds a repay transaction for a lending pool debt
+ *
+ * Constructs and adds repayment operations to an existing transaction object.
+ * This function handles loan repayments, supporting both standard user
+ * repayments and privileged operations via account capabilities.
+ *
+ *
+ * @param tx - The transaction builder to append repayment operations to
+ * @param identifier - Unique identifier for the lending pool asset (e.g., "USDC", "SUI")
+ * @param coinObject - The coin object to use for repayment, or GasCoin for SUI payments
+ * @param options - Configuration options for the repayment
+ *   - `amount` - Specific amount to repay (required for SUI gas coin, otherwise uses value of specified coinObject)
+ *   - `accountCap` - Optional account capability object for privileged repayments
+ *   - `env` - Environment configuration
+ *   - `cacheTime` - Cache duration for configuration data
+ *
+ * @returns Promise<Transaction> - The modified transaction object with repayment operations added
+ *
+ * @throws {Error} When amount is not provided for SUI gas coin repayments
+ * @throws Will throw if pool doesn't exist or repayment validation fails
+ */
 export async function repayCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
@@ -405,11 +427,11 @@ export async function repayCoinPTB(
   let repayAmount: TransactionResult
 
   if (typeof options?.amount !== 'undefined') {
-    repayAmount = parseTxVaule(options.amount, tx.pure.u64)
+    repayAmount = parseTxValue(options.amount, tx.pure.u64)
   } else {
     repayAmount = tx.moveCall({
       target: '0x2::coin::value',
-      arguments: [parseTxVaule(coinObject as any, tx.object)],
+      arguments: [parseTxValue(coinObject as any, tx.object)],
       typeArguments: [pool.suiCoinType]
     })
   }
@@ -423,11 +445,11 @@ export async function repayCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         repayAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
-        parseTxVaule(options.accountCap, tx.object)
+        parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
@@ -440,7 +462,7 @@ export async function repayCoinPTB(
         tx.object(config.storage),
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
-        parseTxVaule(coinObject, tx.object),
+        parseTxValue(coinObject, tx.object),
         repayAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3)

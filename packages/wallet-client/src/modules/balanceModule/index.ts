@@ -181,10 +181,13 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   }
 
   /**
-   * Transfers multiple objects to recipients in a single transaction
+   * Transfers multiple objects to their respective recipients in a single transaction
    *
-   * @param objects - Array of object IDs to transfer
-   * @param recipients - Array of recipient addresses (must match objects length)
+   * Each object is transferred to its corresponding recipient by index
+   * (first object → first recipient, second object → second recipient, etc.)
+   *
+   * @param objects - Object IDs to transfer
+   * @param recipients - Recipient addresses (must match objects array length)
    * @param options - Optional parameters including dry run mode
    * @returns Transaction response or dry run response
    */
@@ -257,7 +260,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   private _updatePromise: Promise<void> | null = null
 
   /**
-   * Starts the polling mechanism for balance updates
+   * Starts polling for portfolio updates
    *
    * This method recursively schedules itself to run at the configured
    * interval, ensuring regular balance updates.
@@ -275,7 +278,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
   /**
    * Installs the balance module into a wallet client
    *
-   * @param walletClient - The wallet client to install into
+   * @param walletClient - The wallet client instance to install into
    */
   install(walletClient: WalletClient) {
     super.install(walletClient)

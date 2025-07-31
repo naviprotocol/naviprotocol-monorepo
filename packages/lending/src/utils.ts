@@ -150,7 +150,7 @@ export function camelize<T extends Record<string, any>>(obj: T): T {
  * @param format - Format function to apply to the value
  * @returns Transaction result in the appropriate format
  */
-export function parseTxVaule(
+export function parseTxValue(
   value: string | number | boolean | object,
   format: any
 ): TransactionResult {
@@ -170,7 +170,7 @@ export function parseTxVaule(
  * @param value - Pool value (string, Pool object, or TransactionResult)
  * @returns Transaction result representing the pool
  */
-export function parseTxPoolVaule(tx: Transaction, value: string | Pool | TransactionResult) {
+export function parseTxPoolValue(tx: Transaction, value: string | Pool | TransactionResult) {
   if (typeof value === 'string') {
     return tx.object(value)
   }

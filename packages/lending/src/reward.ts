@@ -25,7 +25,7 @@ import {
   parseDevInspectResult,
   normalizeCoinType,
   withSingleton,
-  parseTxVaule
+  parseTxValue
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
@@ -230,7 +230,7 @@ export const getUserClaimedRewardHistory = withSingleton(
 /**
  * Claim lending rewards in the PTB (Programmable Transaction Block)
  *
- * This function creates a transaction to claim rewards from the lending protocol.
+ * This function adds operations to a transaction block to claim rewards from the lending protocol.
  * It supports different claiming methods including direct claiming, claiming with
  * account capabilities, and custom coin handling (transfer or deposit).
  *
@@ -312,7 +312,7 @@ export async function claimLendingRewardsPTB(
             tx.object(matchedRewardFund), // Reward fund
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds), // Rule IDs
-            parseTxVaule(options.accountCap, tx.object) // Account capability
+            parseTxValue(options.accountCap, tx.object) // Account capability
           ],
           typeArguments: [rewardCoinType]
         })
@@ -345,7 +345,7 @@ export async function claimLendingRewardsPTB(
         }
         tx.transferObjects(
           [rewardCoin],
-          parseTxVaule(options.customCoinReceive.transfer, tx.pure.address)
+          parseTxValue(options.customCoinReceive.transfer, tx.pure.address)
         )
       }
       if (options?.customCoinReceive.type === 'depositNAVI') {
