@@ -16,7 +16,7 @@ import type {
   TransactionResult
 } from './types'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
-import { parseTxVaule, normalizeCoinType, withCache, withSingleton } from './utils'
+import { parseTxValue, normalizeCoinType, withCache, withSingleton } from './utils'
 import { getPool } from './pool'
 
 /**
@@ -107,7 +107,7 @@ export async function flashloanPTB(
     arguments: [
       tx.object(config.flashloanConfig),
       tx.object(pool.contract.pool),
-      parseTxVaule(amount, tx.pure.u64)
+      parseTxValue(amount, tx.pure.u64)
     ],
     typeArguments: [pool.suiCoinType]
   })
@@ -161,8 +161,8 @@ export async function repayFlashLoanPTB(
       tx.object('0x06'),
       tx.object(config.storage),
       tx.object(pool.contract.pool),
-      parseTxVaule(receipt, tx.object),
-      parseTxVaule(coinObject, tx.object)
+      parseTxValue(receipt, tx.object),
+      parseTxValue(coinObject, tx.object)
     ],
     typeArguments: [pool.suiCoinType]
   })

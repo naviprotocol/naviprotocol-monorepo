@@ -10,7 +10,7 @@
 import {
   CoinObject,
   mergeCoinsPTB,
-  parseTxVaule,
+  parseTxValue,
   withCache,
   withSingleton
 } from '@naviprotocol/lending'
@@ -81,7 +81,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       arguments: [
         tx.object('0x05'),
         tx.object(this.config.configId),
-        parseTxVaule(suiCoin, tx.object),
+        parseTxValue(suiCoin, tx.object),
         tx.pure.address('0x0000000000000000000000000000000000000000000000000000000000000000')
       ],
       typeArguments: []
@@ -98,7 +98,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       arguments: [
         tx.object('0x05'),
         tx.object(this.config.configId),
-        parseTxVaule(haSUICoin, tx.object)
+        parseTxValue(haSUICoin, tx.object)
       ],
       typeArguments: []
     })

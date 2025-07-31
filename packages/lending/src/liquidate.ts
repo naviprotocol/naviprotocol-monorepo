@@ -11,7 +11,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { getPool } from './pool'
 import { getAllFlashLoanAssets } from './flashloan'
-import { normalizeCoinType, parseTxVaule } from './utils'
+import { normalizeCoinType, parseTxValue } from './utils'
 
 /**
  * Create a liquidation transaction in the PTB (Programmable Transaction Block)
@@ -56,10 +56,10 @@ export async function liquidatePTB(
       tx.object(config.storage), // Protocol storage
       tx.pure.u8(payPool.id), // Pay asset ID
       tx.object(payPool.contract.pool), // Pay asset pool contract
-      parseTxVaule(payCoinObject, tx.object), // Debt repayment amount
+      parseTxValue(payCoinObject, tx.object), // Debt repayment amount
       tx.pure.u8(collateralPool.id), // Collateral asset ID
       tx.object(collateralPool.contract.pool), // Collateral asset pool contract
-      parseTxVaule(liquidateAddress, tx.pure.address), // Borrower address
+      parseTxValue(liquidateAddress, tx.pure.address), // Borrower address
       tx.object(config.incentiveV2), // Incentive V2 contract
       tx.object(config.incentiveV3) // Incentive V3 contract
     ],

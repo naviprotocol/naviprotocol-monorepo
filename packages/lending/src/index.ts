@@ -35,7 +35,7 @@ export * from './reward'
 export * from './types'
 
 // Export utility functions with specific naming
-export { withCache, withSingleton, normalizeCoinType, parseTxVaule } from './utils'
+export { withCache, withSingleton, normalizeCoinType, parseTxValue } from './utils'
 
 // Export account capability management
 export * from './account-cap'
