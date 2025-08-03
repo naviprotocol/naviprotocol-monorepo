@@ -54,6 +54,15 @@ enum BridgeChain {
   SOLANA = 0
 }
 
+/**
+ * Executes a cross-chain token swap
+ * @param route - The swap quote to execute
+ * @param fromAddress - Source wallet address
+ * @param toAddress - Destination wallet address
+ * @param walletConnection - Wallet connection for signing
+ * @param referrerAddresses - Optional referrer addresses for different chains (sui, evm, solana)
+ * @returns Promise<string> - Transaction digest
+ */
 export async function swap(
   route: BridgeSwapQuote,
   fromAddress: string,

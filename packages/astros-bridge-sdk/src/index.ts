@@ -166,7 +166,7 @@ export async function getWalletTransactions(address: string, page: number = 1, l
  * @param toAddress - Destination wallet address
  * @param walletConnection - Wallet connection for signing
  * @param referrerAddresses - Optional referrer addresses for different chains
- * @returns Promise<BridgeSwapTransaction> - Transaction details
+ * @returns Promise<BridgeSwapTransaction> - Transaction hash
  */
 export async function swap(
   quote: BridgeSwapQuote,
