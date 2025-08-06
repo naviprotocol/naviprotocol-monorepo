@@ -306,6 +306,9 @@ importers:
       mitt:
         specifier: ^3.0.1
         version: 3.0.1
+      shio-sdk:
+        specifier: ^1.0.9
+        version: 1.0.9
     devDependencies:
       '@types/node':
         specifier: ^20.19.1
@@ -5356,6 +5359,9 @@ packages:
 
   shiki@3.8.0:
     resolution: {integrity: sha512-yPqK0y68t20aakv+3aMTpUMJZd6UHaBY2/SBUDowh9M70gVUwqT0bf7Kz5CWG0AXfHtFvXCHhBBHVAzdp0ILoQ==}
+
+  shio-sdk@1.0.9:
+    resolution: {integrity: sha512-1JMHtfQ4a8c2L+1M1TjUgKiWmhvok2qU4QUMP10Yt0WxRuKMlxAbIEUzDcvKxFVXZhkA2c4ZcDJofiVVfMo4hA==}
 
   side-channel-list@1.0.0:
     resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
@@ -12049,6 +12055,12 @@ snapshots:
       '@shikijs/types': 3.8.0
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
+
+  shio-sdk@1.0.9:
+    dependencies:
+      axios: 1.11.0
+    transitivePeerDependencies:
+      - debug
 
   side-channel-list@1.0.0:
     dependencies:

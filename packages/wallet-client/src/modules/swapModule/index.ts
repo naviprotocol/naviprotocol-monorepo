@@ -20,6 +20,8 @@ import { Module } from '../module'
 import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
+import { executeAuction } from 'shio-sdk'
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 
 /**
  * Configuration options for the swap module
@@ -168,6 +170,20 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
 
     // Transfer output coins to wallet
     tx.transferObjects([coinOut], this.walletClient.address)
+
+    // Set sender address
+    tx.setSender(this.walletClient.address)
+
+    // Sign transaction
+    const keypair = Ed25519Keypair.deriveKeypair(process.env.MNEMONIC || '')
+    let builtTx = await tx.build({
+      client: this.walletClient.client as any
+    })
+    let signed = await keypair.signTransaction(builtTx)
+
+    // Execute auction before transaction execution
+    const signatures = [signed.signature]
+    await executeAuction(signed.bytes, signatures)
 
     // Execute transaction
     const result = await this.walletClient.signExecuteTransaction({
