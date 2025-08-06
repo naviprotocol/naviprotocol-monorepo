@@ -175,11 +175,10 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     tx.setSender(this.walletClient.address)
 
     // Sign transaction
-    const keypair = Ed25519Keypair.deriveKeypair(process.env.MNEMONIC || '')
     let builtTx = await tx.build({
       client: this.walletClient.client as any
     })
-    let signed = await keypair.signTransaction(builtTx)
+    let signed = await this.walletClient.signer.signTransaction(builtTx)
 
     // Execute auction before transaction execution
     const signatures = [signed.signature]
