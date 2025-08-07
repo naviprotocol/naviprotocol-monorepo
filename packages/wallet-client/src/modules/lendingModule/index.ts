@@ -655,14 +655,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return result as any
   }
 
-  migrateSupplyPTB = migrateBetweenSupplyPTB
-  migrateBorrowPTB = migrateBetweenBorrowPTB
+  migrateBetweenSupplyPTB = migrateBetweenSupplyPTB
+  migrateBetweenBorrowPTB = migrateBetweenBorrowPTB
   migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB
 
   constructor() {
     super()
-    this.migrateSupplyPTB = migrateBetweenSupplyPTB.bind(this)
-    this.migrateBorrowPTB = migrateBetweenBorrowPTB.bind(this)
+    this.migrateBetweenSupplyPTB = migrateBetweenSupplyPTB.bind(this)
+    this.migrateBetweenSupplyPTB = migrateBetweenBorrowPTB.bind(this)
     this.migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB.bind(this)
   }
 }
