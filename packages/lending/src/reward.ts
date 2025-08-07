@@ -99,7 +99,7 @@ export async function getUserAvailableLendingRewards(
     const count = rewardsData[0].length
     for (let i = 0; i < count; i++) {
       const feed = feeds.find(
-        (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[0][i])
+        (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
       )
       const pool = pools.find(
         (pool) => normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i])
