@@ -20,7 +20,7 @@ import type {
   TransactionResult,
   AccountCapOption
 } from './types'
-import { normalizeCoinType, withCache, withSingleton, parseTxValue } from './utils'
+import { normalizeCoinType, withCache, withSingleton, parseTxValue, suiClient } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
 
 /**
@@ -473,3 +473,23 @@ export async function repayCoinPTB(
 
   return tx
 }
+
+/**
+ * Fetches the current borrow fee rate
+ *
+ * @param options - Optional caching options
+ * @returns Promise<number> - Current borrow fee rate
+ */
+export const getBorrowFee = withCache(
+  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<number> => {
+    const config = await getConfig({
+      ...options
+    })
+    const rawData: any = await suiClient.getObject({
+      id: config.incentiveV3,
+      options: { showType: true, showOwner: true, showContent: true }
+    })
+    const borrowFee = rawData.data.content.fields.borrow_fee_rate
+    return Number(borrowFee) / 100
+  })
+)

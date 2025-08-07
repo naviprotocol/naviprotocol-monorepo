@@ -8,13 +8,15 @@ import {
   repayFlashLoanPTB,
   repayCoinPTB,
   borrowCoinPTB,
-  mergeCoinsPTB
+  mergeCoinsPTB,
+  updateOraclePricesPTB
 } from '@naviprotocol/lending'
-import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+import { buildSwapPTBFromQuote } from '@naviprotocol/astros-aggregator-sdk'
 import type { LendingModule } from '.'
 import { fromRate } from './utils'
 import BigNumber from 'bignumber.js'
 import { normalizeStructTag } from '@mysten/sui/utils'
+import { getPriceFeeds, filterPriceFeeds } from '@naviprotocol/lending'
 
 export async function migrateBetweenSupplyPTB(
   this: LendingModule,
@@ -40,9 +42,19 @@ export async function migrateBetweenSupplyPTB(
     throw new Error('No supply balance')
   }
 
-  if (options?.amount && options.amount < Number(fromPoolLending.supplyBalance)) {
+  if (options?.amount && options.amount > Number(fromPoolLending.supplyBalance)) {
     throw new Error('Amount is less than supply balance')
   }
+
+  const priceFeeds = await getPriceFeeds()
+  const pools = await Promise.all([fromPool, toPool])
+  await updateOraclePricesPTB(
+    tx,
+    filterPriceFeeds(priceFeeds, {
+      lendingState,
+      pools
+    })
+  )
 
   const toPoolFlashloanAsset = await getFlashLoanAsset(toPool, {
     env: this.config.env
@@ -141,9 +153,19 @@ export async function migrateBetweenBorrowPTB(
     throw new Error('No borrow balance')
   }
 
-  if (options?.amount && options.amount < Number(fromPoolLending.borrowBalance)) {
+  if (options?.amount && options.amount > Number(fromPoolLending.borrowBalance)) {
     throw new Error('Amount is less than borrow balance')
   }
+
+  const priceFeeds = await getPriceFeeds()
+  const pools = await Promise.all([fromPool, toPool])
+  await updateOraclePricesPTB(
+    tx,
+    filterPriceFeeds(priceFeeds, {
+      lendingState,
+      pools
+    })
+  )
 
   let formAmount = options?.amount ?? Number(fromPoolLending.borrowBalance)
 

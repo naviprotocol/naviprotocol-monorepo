@@ -16,6 +16,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import { BcsType } from '@mysten/sui/bcs'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js'
+import BigNumber from 'bignumber.js'
 
 /**
  * Default Sui client instance configured for mainnet
@@ -251,3 +252,16 @@ export function processContractHealthFactor(hf: number) {
 export const suiPythConnection = new SuiPriceServiceConnection('https://hermes.pyth.network', {
   timeout: 20000
 })
+
+export const Rate_Decimals = 27
+
+export const rayMathMulIndex = (amount: string | number, index: string | number) => {
+  if (!Number(amount) || !Number(index)) return new BigNumber(0)
+  const ray = new BigNumber(1).shiftedBy(1 * Rate_Decimals)
+  const halfRay = ray.multipliedBy(new BigNumber(0.5))
+  return new BigNumber(amount)
+    .multipliedBy(new BigNumber(index))
+    .plus(halfRay)
+    .dividedBy(ray)
+    .integerValue(BigNumber.ROUND_DOWN)
+}

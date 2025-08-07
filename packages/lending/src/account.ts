@@ -31,7 +31,8 @@ import {
   parseTxValue,
   parseTxPoolValue,
   withCache,
-  normalizeCoinType
+  normalizeCoinType,
+  rayMathMulIndex
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
@@ -232,8 +233,18 @@ export const getLendingState = withCache(
     return lendingStates
       .map((lendingState) => {
         const pool = pools.find((pool) => pool.id === lendingState.assetId)
+        const supplyBalance = rayMathMulIndex(
+          lendingState.supplyBalance,
+          pool!.currentSupplyIndex
+        ).toString()
+        const borrowBalance = rayMathMulIndex(
+          lendingState.borrowBalance,
+          pool!.currentBorrowIndex
+        ).toString()
         return {
           ...lendingState,
+          supplyBalance,
+          borrowBalance,
           pool
         }
       })
