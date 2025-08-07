@@ -29,6 +29,7 @@ export async function migrateBetweenSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
+  await this.walletClient.balance.waitForUpdate()
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
@@ -129,6 +130,7 @@ export async function migrateBetweenBorrowPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
+  await this.walletClient.balance.waitForUpdate()
   const address = this.walletClient.address
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
@@ -252,6 +254,7 @@ export async function migrateBalanceToSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
+  await this.walletClient.balance.waitForUpdate()
   const address = this.walletClient.address
   const toPool = await this.getPool(to)
   const balance = this.walletClient.balance.portfolio.getBalance(coinType)
