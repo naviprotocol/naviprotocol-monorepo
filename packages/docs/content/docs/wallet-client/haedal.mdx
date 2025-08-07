@@ -10,6 +10,30 @@ The Haedal Module provides staking and unstaking functionality for the Haedal pr
 - **haSUI Unstaking**: Unstake haSUI to receive SUI
 - **APY Query**: Get current staking annual percentage yield
 
+## Configuration Options
+
+### packageId
+
+The package ID of the Haedal contract, defaults to `0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2`.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    haedal: {
+      packageId: "0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2"
+    }
+  }
+})
+```
+
+### configId
+
+The ID of the Haedal configuration object, defaults to `0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca`.
+
 ## API Reference
 
 ### getApy
@@ -47,6 +71,41 @@ const result = await walletClient.haedal.stake(
 )
 ```
 
+### stakePTB
+
+Adds staking operation to a transaction block for building complex transactions.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+import { Transaction } from '@mysten/sui/transactions'
+
+const walletClient = new WalletClient()
+const tx = new Transaction()
+
+// Get SUI balance and merge coins
+const suiBalance = walletClient.balance.portfolio.getBalance('0x2::sui::SUI')
+const mergedCoin = mergeCoinsPTB(tx, suiBalance.coins, {
+  balance: 1000000000, // 1 SUI
+  useGasCoin: true
+})
+
+// Add staking operation to transaction
+const haSUICoin = await walletClient.haedal.stakePTB(tx, mergedCoin)
+
+// Transfer haSUI to user address
+tx.transferObjects([haSUICoin], walletClient.address)
+
+// Execute transaction
+const result = await walletClient.signExecuteTransaction({
+  transaction: tx,
+  dryRun: false
+})
+```
+
+<Callout>This method is used for building complex transactions that combine multiple operations. For simple staking operations, use the `stake` method instead.</Callout>
+
 ### unstake
 
 Unstake haSUI to receive SUI.
@@ -63,29 +122,42 @@ const result = await walletClient.haedal.unstake(
 )
 ```
 
-## Configuration Options
+### unstakePTB
 
-### packageId
-
-The package ID of the Haedal contract, defaults to `0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2`.
+Adds unstaking operation to a transaction block for building complex transactions.
 
 **Usage Example**
 
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
+import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient({
-  configs: {
-    haedal: {
-      packageId: "0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2"
-    }
-  }
+const walletClient = new WalletClient()
+const tx = new Transaction()
+
+// Get haSUI balance and merge coins
+const haSuiBalance = walletClient.balance.portfolio.getBalance(
+  '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
+)
+const mergedCoin = mergeCoinsPTB(tx, haSuiBalance.coins, {
+  balance: 1000000000 // 1 haSUI
+})
+
+// Add unstaking operation to transaction
+const suiCoin = await walletClient.haedal.unstakePTB(tx, mergedCoin)
+
+// Transfer SUI to user address
+tx.transferObjects([suiCoin], walletClient.address)
+
+// Execute transaction
+const result = await walletClient.signExecuteTransaction({
+  transaction: tx,
+  dryRun: false
 })
 ```
 
-### configId
+<Callout>This method is used for building complex transactions that combine multiple operations. For simple unstaking operations, use the `unstake` method instead.</Callout>
 
-The ID of the Haedal configuration object, defaults to `0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca`.
 
 **Usage Example**
 

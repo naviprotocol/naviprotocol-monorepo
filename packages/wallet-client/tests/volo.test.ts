@@ -7,7 +7,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const signer = new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
+const signer = new WatchSigner('0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e')
 
 const walletClient = new WalletClient({
   signer: signer,

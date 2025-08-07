@@ -13,6 +13,27 @@ The Lending Module provides comprehensive lending protocol functionality, includ
 - **Health Factor Monitoring**: Monitor account health status
 - **Oracle Updates**: Update price oracles
 
+## Configuration Options
+
+### env
+
+Environment setting, defaults to 'prod'. Different environments have different contracts.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+  configs: {
+    lending: {
+      env: 'prod',
+    }
+  }
+})
+```
+
+
 ## API Reference
 
 ### getPools
@@ -422,22 +443,3 @@ walletClient.events.on('lending:claim-rewards-success', (data) => {
 })
 ```
 
-## Configuration Options
-
-### env
-
-Environment setting, defaults to 'prod'. Different environments have different contracts.
-
-**Usage Example**
-
-```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
-
-const walletClient = new WalletClient({
-  configs: {
-    lending: {
-      env: 'prod',
-    }
-  }
-})
-```

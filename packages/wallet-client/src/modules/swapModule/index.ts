@@ -13,7 +13,8 @@ import {
   getQuote,
   Dex,
   FeeOption,
-  generateRefId
+  generateRefId,
+  Quote
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
@@ -91,6 +92,56 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
   }
 
   /**
+   * Get the swap options
+   * @returns The swap options
+   */
+  get swapOptions() {
+    return {
+      baseUrl: this.config.baseUrl,
+      dexList: this.config.dexList,
+      depth: this.config.depth,
+      serviceFee: this.config.serviceFee
+    }
+  }
+
+  /**
+   * Get a quote for a swap
+   * @param fromCoinType - The type of the coin being swapped from
+   * @param toCoinType - The type of the coin being swapped to
+   * @param fromAmount - The amount of the coin being swapped from
+   * @returns A promise that resolves with the quote
+   */
+  async getQuote(fromCoinType: string, toCoinType: string, fromAmount: number) {
+    return getQuote(fromCoinType, toCoinType, fromAmount, this.config.apiKey, this.swapOptions)
+  }
+
+  /**
+   * Builds a swap transaction from a quote
+   * @param tx - The transaction to build the swap from
+   * @param quote - The quote to build the swap from
+   * @param fromCoin - The coin to swap from
+   * @param slippage - The slippage tolerance
+   * @returns The swap transaction
+   */
+  async buildSwapPTBFromQuote(tx: Transaction, quote: Quote, fromCoin: any, slippage: number) {
+    if (!this.walletClient) {
+      throw new Error('Wallet client not found')
+    }
+    const minAmountOut = new BigNumber(quote.amount_out).multipliedBy(1 - slippage).toFixed(0)
+    return await buildSwapPTBFromQuote(
+      this.walletClient.address,
+      tx,
+      Number(minAmountOut),
+      fromCoin as any,
+      quote,
+      this.referral,
+      false,
+      this.config.apiKey,
+      this.swapOptions
+    )
+  }
+
+  /**
    * Executes a swap between two coin types
    *
    * This method performs a complete swap operation including:
@@ -133,38 +184,11 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
       useGasCoin: true
     })
 
-    // Configure swap options
-    const swapOptions = {
-      baseUrl: this.config.baseUrl,
-      dexList: this.config.dexList,
-      depth: this.config.depth,
-      serviceFee: this.config.serviceFee
-    }
-
     // Get quote from aggregator
-    const quote = await getQuote(
-      fromCoinType,
-      toCoinType,
-      fromAmount,
-      this.config.apiKey,
-      swapOptions
-    )
-
-    // Calculate minimum output amount with slippage protection
-    const minAmountOut = new BigNumber(quote.amount_out).multipliedBy(1 - slippage).toFixed(0)
+    const quote = await this.getQuote(fromCoinType, toCoinType, fromAmount)
 
     // Build swap transaction from quote
-    const coinOut = await buildSwapPTBFromQuote(
-      this.walletClient.address,
-      tx,
-      Number(minAmountOut),
-      fromCoin as any,
-      quote,
-      this.referral,
-      false,
-      this.config.apiKey,
-      swapOptions
-    )
+    const coinOut = await this.buildSwapPTBFromQuote(tx, quote, fromCoin, slippage)
 
     // Transfer output coins to wallet
     tx.transferObjects([coinOut], this.walletClient.address)

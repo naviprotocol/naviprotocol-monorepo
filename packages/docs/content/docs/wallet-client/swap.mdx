@@ -11,40 +11,6 @@ The Swap Module provides DEX token swapping functionality, integrating the Astro
 - **Slippage Protection**: Built-in slippage protection mechanism
 - **Multi-DEX Support**: Support for multiple decentralized exchanges
 
-## API Reference
-
-### swap
-
-Execute a token swap operation.
-
-**Usage Example**
-
-```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
-
-const walletClient = new WalletClient()
-const result = await walletClient.swap.swap(
-  '0x2::sui::SUI', // Source token type
-  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
-  1000000000, // Swap amount
-  0.01, // Slippage tolerance (1%)
-  { dryRun: false } // Optional parameters
-)
-```
-
-### referral
-
-Get referral ID (if API key is configured).
-
-**Usage Example**
-
-```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
-
-const walletClient = new WalletClient()
-const referralId = walletClient.swap.referral
-```
-
 ## Configuration Options
 
 ### apiKey
@@ -140,6 +106,150 @@ const walletClient = new WalletClient({
   }
 })
 ```
+
+## API Reference
+
+### swap
+
+Execute a token swap operation.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const result = await walletClient.swap.swap(
+  '0x2::sui::SUI', // Source token type
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
+  1000000000, // Swap amount
+  0.01, // Slippage tolerance (1%)
+  { dryRun: false } // Optional parameters
+)
+```
+
+### referral
+
+Get referral ID (if API key is configured).
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const referralId = walletClient.swap.referral
+```
+
+### swapOptions
+
+Get the current swap configuration options.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const options = walletClient.swap.swapOptions
+console.log('Current swap options:', options)
+```
+
+**Return Value Example**
+
+```json
+{
+  "baseUrl": "https://open-aggregator-api.naviprotocol.io/find_routes",
+  "dexList": ["cetus", "turbos"],
+  "depth": 3,
+  "serviceFee": {
+    "fee": 0.001,
+    "receiverAddress": "0x123..."
+  }
+}
+```
+
+### getQuote
+
+Get a quote for a swap operation from the aggregator.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient()
+const quote = await walletClient.swap.getQuote(
+  '0x2::sui::SUI', // Source token type
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
+  1000000000 // Amount to swap
+)
+console.log('Quote received:', quote)
+```
+
+**Quote Object Structure**
+
+```json
+{
+  "routes": [
+    {
+      "dex": "cetus",
+      "amount_in": "1000000000",
+      "amount_out": "950000000",
+      "path": ["0x2::sui::SUI", "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN"]
+    }
+  ],
+  "amount_in": "1000000000",
+  "amount_out": "950000000",
+  "from": "0x2::sui::SUI",
+  "target": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+  "dexList": ["cetus"],
+  "from_token": {
+    "address": "0x2::sui::SUI",
+    "decimals": 9,
+    "price": 1.0
+  },
+  "to_token": {
+    "address": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+    "decimals": 9,
+    "price": 0.95
+  },
+  "is_accurate": true
+}
+```
+
+### buildSwapPTBFromQuote
+
+Build a swap transaction from a quote with slippage protection.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+import { Transaction } from '@mysten/sui/transactions'
+
+const walletClient = new WalletClient()
+const tx = new Transaction()
+
+// Get quote first
+const quote = await walletClient.swap.getQuote(
+  '0x2::sui::SUI',
+  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN',
+  1000000000
+)
+
+// Build swap transaction from quote
+const coinOut = await walletClient.swap.buildSwapPTBFromQuote(
+  tx,
+  quote,
+  fromCoin, // Coin object from mergeCoinsPTB or similar
+  0.01 // 1% slippage tolerance
+)
+
+// Transfer output coins to wallet
+tx.transferObjects([coinOut], walletClient.address)
+```
+
 
 ## Events
 
