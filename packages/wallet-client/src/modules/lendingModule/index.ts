@@ -662,7 +662,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   constructor() {
     super()
     this.migrateBetweenSupplyPTB = migrateBetweenSupplyPTB.bind(this)
-    this.migrateBetweenSupplyPTB = migrateBetweenBorrowPTB.bind(this)
+    this.migrateBetweenBorrowPTB = migrateBetweenBorrowPTB.bind(this)
     this.migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB.bind(this)
   }
 }
