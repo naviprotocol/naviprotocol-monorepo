@@ -4,6 +4,7 @@
 	"description": "Wallet Client SDK",
 	"pages": [
 		"index",
+		"client",
 		"balance",
 		"swap",
 		"lending",

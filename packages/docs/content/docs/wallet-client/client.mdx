@@ -1,0 +1,91 @@
+---
+title: WalletClient
+---
+
+WalletClient provides a unified interface for interacting with the Sui blockchain. It integrates transaction signing, module management, and various DeFi operations.
+
+## Initialization
+
+### Import Dependencies
+
+```typescript
+import { WalletClient, WatchSigner, WebSigner } from '@naviprotocol/wallet-client'
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
+```
+
+### Private Key Wallet
+
+Create a wallet client using a private key to perform all blockchain operations:
+
+```typescript
+// Create wallet client from private key
+const walletClient = new WalletClient({
+    client: {
+        url: 'https://fullnode.mainnet.sui.io' // Custom RPC URL
+    },
+    signer: Ed25519Keypair.fromSecretKey(privateKey)
+})
+
+// Get wallet address
+console.log('Wallet address:', walletClient.address)
+```
+
+### Watch-Only Wallet
+
+Use a watch-only wallet to view wallet information but cannot execute transactions:
+
+```typescript
+// Create watch-only wallet client
+const walletClient = new WalletClient({
+    client: {
+        url: 'https://fullnode.mainnet.sui.io'
+    },
+    signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
+})
+
+// Can view balances and portfolio
+const portfolio = await walletClient.balance.getPortfolio()
+const pools = await walletClient.lending.getPools()
+
+// Cannot execute transaction operations (will throw error)
+// await walletClient.swap.swap(...) // ❌ Error
+```
+
+### Browser Extension Wallet
+
+Create an adapter for browser environment (PC, Mobile) extension wallets:
+
+```typescript
+// Browser extension wallet adapter
+class WebSignerAdapter extends WebSigner {
+    constructor(address: string) {
+        super(address)
+    }
+
+    // Sign and execute transaction
+    async signAndExecuteTransaction({ transaction, client }) {
+        // Implement interaction logic with browser extension
+        // For example: call Sui Wallet, Ethos Wallet, etc.
+        return await this.walletExtension.signAndExecuteTransaction(transaction)
+    }
+
+    // Sign transaction
+    async signTransaction(bytes: Uint8Array) {
+        return await this.walletExtension.signTransaction(bytes)
+    }
+
+    // Sign personal message
+    async signPersonalMessage(bytes: Uint8Array) {
+        return await this.walletExtension.signPersonalMessage(bytes)
+    }
+}
+
+// Create browser wallet client
+const walletClient = new WalletClient({
+    client: {
+        url: 'https://fullnode.mainnet.sui.io'
+    },
+    signer: new WebSignerAdapter('0x...')
+})
+```
+

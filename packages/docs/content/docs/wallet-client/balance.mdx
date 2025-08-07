@@ -11,6 +11,26 @@ The Balance Module provides comprehensive wallet balance management functionalit
 - **Object Transfers**: Transfer NFTs and other objects
 - **Auto Updates**: Automatic balance updates through polling mechanism
 
+## Configuration Options
+
+### coinPollingInterval
+
+Token balance polling interval (milliseconds), defaults to 6000ms.
+
+**Usage Example**
+
+```ts
+import { WalletClient } from '@naviprotocol/wallet-client'
+
+const walletClient = new WalletClient({
+    configs: {
+        balance: {
+            coinPollingInterval: 6000
+        }
+    }
+})
+``` 
+
 ## API Reference
 
 ### coins
@@ -148,22 +168,3 @@ walletClient.events.on('balance:portfolio-updated', () => {
 })
 ```
 
-## Configuration Options
-
-### coinPollingInterval
-
-Token balance polling interval (milliseconds), defaults to 6000ms.
-
-**Usage Example**
-
-```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
-
-const walletClient = new WalletClient({
-    configs: {
-        balance: {
-            coinPollingInterval: 6000
-        }
-    }
-})
-``` 

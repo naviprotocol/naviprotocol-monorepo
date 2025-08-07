@@ -7,7 +7,8 @@ import {
   depositCoinPTB,
   withdrawCoinPTB,
   borrowCoinPTB,
-  repayCoinPTB
+  repayCoinPTB,
+  getBorrowFee
 } from '../src/pool'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from '../src/utils'
@@ -160,5 +161,13 @@ describe('repayCoinPTB', () => {
 
     expect(res.executionErrorSource).eql(null)
     expect(res.events.length).toBeGreaterThan(0)
+  })
+})
+
+describe('getBorrowFee', () => {
+  it('check response', async () => {
+    const fee = await getBorrowFee()
+    expect(fee).toBeDefined()
+    expect(fee).toBeGreaterThan(0)
   })
 })

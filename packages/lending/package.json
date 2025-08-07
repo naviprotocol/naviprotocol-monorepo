@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/lending",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NAVI Lending SDK",
   "license": "MIT",
   "keywords": [
@@ -54,6 +54,7 @@
     "@mysten/bcs": "^1.6.3",
     "@mysten/sui": "1.34.0",
     "@pythnetwork/pyth-sui-js": "^2.0.0",
+    "bignumber.js": "9.1.2",
     "lodash.camelcase": "^4.3.0"
   },
   "devDependencies": {

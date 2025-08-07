@@ -275,6 +275,32 @@ const stats = await getStats({
 }
 ```
 
+### getBorrowFee
+
+Get the current borrowing fee rate. See [documentation](/typedoc/variables/_naviprotocol_lending.getBorrowFee.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getBorrowFee } from '@naviprotocol/lending'
+
+const borrowFee = await getBorrowFee({
+  env: 'prod', // Optional: environment configuration
+  cacheTime: 30000 // Optional: cache time
+})
+```
+
+**Return Example**
+
+```typescript
+0.3 // Represents a 0.3% borrowing fee rate
+```
+
+**Notes**
+
+- This fee rate applies to all borrowing operations
+- The fee rate may be adjusted based on protocol governance decisions
+
 ### getFees
 
 Get detailed protocol fee information including total fee value, V3 borrowing fees, borrowing interest fees, etc. See [documentation](/typedoc/variables/_naviprotocol_lending.getFees.html) for details.

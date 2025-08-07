@@ -35,6 +35,11 @@ import {
   getUserClaimedRewardHistory
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
+import {
+  migrateBalanceToSupplyPTB,
+  migrateBetweenBorrowPTB,
+  migrateBetweenSupplyPTB
+} from './migrate'
 
 /**
  * Configuration options for the lending module
@@ -648,5 +653,16 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     return result as any
+  }
+
+  migrateBetweenSupplyPTB = migrateBetweenSupplyPTB
+  migrateBetweenBorrowPTB = migrateBetweenBorrowPTB
+  migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB
+
+  constructor() {
+    super()
+    this.migrateBetweenSupplyPTB = migrateBetweenSupplyPTB.bind(this)
+    this.migrateBetweenSupplyPTB = migrateBetweenBorrowPTB.bind(this)
+    this.migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB.bind(this)
   }
 }

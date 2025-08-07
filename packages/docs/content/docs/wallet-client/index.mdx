@@ -71,9 +71,24 @@ npm install @naviprotocol/wallet-client
 
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
+
 
 // Create wallet client
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        url: 'https://fullnode.mainnet.sui.io' // Custom RPC URL
+    },
+    signer: Ed25519Keypair.fromSecretKey(privateKey),
+    configs: {
+      swap: {
+        serviceFee: {
+          recipient: '0x123...',
+          fee: 0.001 // 0.1%
+        }
+      }
+    }
+})
 
 // Use balance module
 const portfolio = walletClient.balance.portfolio
