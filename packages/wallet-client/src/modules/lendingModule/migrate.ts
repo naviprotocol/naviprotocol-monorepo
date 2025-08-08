@@ -60,8 +60,8 @@ export async function migrateBetweenSupplyPTB(
     env: this.config.env
   })
 
-  if (!toPoolFlashloanAsset?.flashloanFee) {
-    throw new Error(`${fromPool.token.symbol} pool not support flashloan`)
+  if (!toPoolFlashloanAsset) {
+    throw new Error(`${toPool.token.symbol} pool not support flashloan`)
   }
 
   const slippage = options?.slippage ?? 0.005
