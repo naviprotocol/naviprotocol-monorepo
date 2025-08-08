@@ -31,12 +31,20 @@ export async function migrateBetweenSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.waitForUpdate()
+  await this.walletClient.balance.updatePortfolio()
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
   const fromPoolLending = lendingState.find((lending) => lending.pool.id === fromPool.id)
   const address = this.walletClient.address
+
+  console.log('migrateBetweenSupplyPTB', {
+    lendingState,
+    fromPoolLending,
+    fromPool,
+    toPool,
+    address
+  })
 
   if (!fromPoolLending || fromPoolLending.supplyBalance === '0') {
     throw new Error('No supply balance')
@@ -142,12 +150,20 @@ export async function migrateBetweenBorrowPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.waitForUpdate()
+  await this.walletClient.balance.updatePortfolio()
   const address = this.walletClient.address
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
   const fromPoolLending = lendingState.find((lending) => lending.pool.id === fromPool.id)
+
+  console.log('migrateBetweenBorrowPTB', {
+    lendingState,
+    fromPoolLending,
+    fromPool,
+    toPool,
+    address
+  })
 
   if (!fromPoolLending || fromPoolLending.borrowBalance === '0') {
     throw new Error('No borrow balance')
@@ -276,7 +292,7 @@ export async function migrateBalanceToSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.waitForUpdate()
+  await this.walletClient.balance.updatePortfolio()
   const address = this.walletClient.address
   const toPool = await this.getPool(to)
   const balance = this.walletClient.balance.portfolio.getBalance(coinType)
