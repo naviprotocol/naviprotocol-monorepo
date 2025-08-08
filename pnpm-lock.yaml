@@ -307,7 +307,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
       shio-sdk:
-        specifier: ^1.0.9
+        specifier: 1.0.9
         version: 1.0.9
     devDependencies:
       '@types/node':

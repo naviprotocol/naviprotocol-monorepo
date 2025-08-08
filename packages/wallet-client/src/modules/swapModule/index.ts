@@ -21,7 +21,6 @@ import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@my
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 
 /**
  * Configuration options for the swap module
@@ -174,24 +173,38 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     // Set sender address
     tx.setSender(this.walletClient.address)
 
-    // Sign transaction
-    let builtTx = await tx.build({
-      client: this.walletClient.client as any
-    })
-    let signed = await this.walletClient.signer.signTransaction(builtTx)
+    if (options?.dryRun) {
+      const result = await this.walletClient.signExecuteTransaction({
+        transaction: tx,
+        dryRun: true
+      })
+      return result as any
+    }
 
-    // Execute auction before transaction execution
+    const builtTx = await tx.build({
+      client: this.walletClient.client
+    })
+
+    const signed = await this.walletClient.signer.signTransaction(builtTx)
     const signatures = [signed.signature]
-    await executeAuction(signed.bytes, signatures)
 
-    // Execute transaction
-    const result = await this.walletClient.signExecuteTransaction({
-      transaction: tx,
-      dryRun: options?.dryRun ?? false
+    try {
+      await executeAuction(signed.bytes, signatures)
+    } catch (e) {
+      console.error(e)
+    }
+
+    const result = await this.walletClient.client.executeTransactionBlock({
+      transactionBlock: signed!.bytes,
+      signature: signatures,
+      options: {
+        showEffects: true,
+        showEvents: true,
+        showBalanceChanges: true
+      }
     })
 
-    // Handle successful swap
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (result.effects?.status?.status === 'success') {
       // Find slippage event to get actual output amount
       const slippageEvent = result.events?.find((event) => {
         return event.type.includes('::slippage::SwapEvent')
