@@ -21,6 +21,7 @@ import { Module } from '../module'
 import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
+import { executeAuction } from 'shio-sdk'
 
 /**
  * Configuration options for the swap module
@@ -193,14 +194,41 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     // Transfer output coins to wallet
     tx.transferObjects([coinOut], this.walletClient.address)
 
-    // Execute transaction
-    const result = await this.walletClient.signExecuteTransaction({
-      transaction: tx,
-      dryRun: options?.dryRun ?? false
+    // Set sender address
+    tx.setSender(this.walletClient.address)
+
+    if (options?.dryRun) {
+      const result = await this.walletClient.signExecuteTransaction({
+        transaction: tx,
+        dryRun: true
+      })
+      return result as any
+    }
+
+    const builtTx = await tx.build({
+      client: this.walletClient.client
     })
 
-    // Handle successful swap
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    const signed = await this.walletClient.signer.signTransaction(builtTx)
+    const signatures = [signed.signature]
+
+    try {
+      await executeAuction(signed.bytes, signatures)
+    } catch (e) {
+      console.error(e)
+    }
+
+    const result = await this.walletClient.client.executeTransactionBlock({
+      transactionBlock: signed!.bytes,
+      signature: signatures,
+      options: {
+        showEffects: true,
+        showEvents: true,
+        showBalanceChanges: true
+      }
+    })
+
+    if (result.effects?.status?.status === 'success') {
       // Find slippage event to get actual output amount
       const slippageEvent = result.events?.find((event) => {
         return event.type.includes('::slippage::SwapEvent')
