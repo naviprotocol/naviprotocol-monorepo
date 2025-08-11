@@ -15,6 +15,9 @@ Signs and executes a transaction. protect users and protocols from losing value 
 ```typescript
 import { executeTransaction } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
+
+const signer = Ed25519Keypair.fromSecretKey(privateKey)
 
 const tx = new Transaction()
 
