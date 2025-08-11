@@ -209,7 +209,7 @@ export type Pool = {
   /** Oracle price information */
   oracle: {
     /** Price decimal places */
-    decimal: 8
+    decimal: number
     /** Oracle value */
     value: string
     /** Current price */
