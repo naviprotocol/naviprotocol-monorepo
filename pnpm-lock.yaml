@@ -140,6 +140,9 @@ importers:
       dotenv:
         specifier: 16.4.7
         version: 16.4.7
+      shio-sdk:
+        specifier: 1.0.9
+        version: 1.0.9
     devDependencies:
       '@types/crypto-js':
         specifier: ^4.2.2
@@ -295,11 +298,11 @@ importers:
         specifier: 1.34.0
         version: 1.34.0(typescript@5.8.3)
       '@naviprotocol/astros-aggregator-sdk':
-        specifier: 1.0.3
-        version: 1.0.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
+        specifier: workspace:*
+        version: link:../astros-aggregator-sdk
       '@naviprotocol/lending':
-        specifier: 1.0.2
-        version: 1.0.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
+        specifier: workspace:*
+        version: link:../lending
       axios:
         specifier: 1.11.0
         version: 1.11.0
@@ -1647,9 +1650,6 @@ packages:
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
 
-  '@mayanfinance/swap-sdk@10.3.0':
-    resolution: {integrity: sha512-6wAfjRYQL9726DIUKcsT+hdUURI8QDJVXQ11yhX1IVknK0ypiFpPrFdAY2KcpifhVOE2osFUMZ+YqO95Y5LJ1A==}
-
   '@mayanfinance/swap-sdk@10.9.0':
     resolution: {integrity: sha512-2bsu573wkvlU/oFPXat9z9+VUurTfuVOMXsWMNEZ2cgb2s9VQu3Sb0ejAYonCT9fUKUEzIrMb85LCeQu2BBkPw==}
 
@@ -1672,9 +1672,6 @@ packages:
   '@mysten/bcs@0.10.1':
     resolution: {integrity: sha512-cQDb7Rhz2J82ZqgVQiHykuwKUlgiLWS2bjoajPPW0uvXlb75qrgKuaxh1UzsaRhHy3egk/APc0xjiZoqdbzB4w==}
 
-  '@mysten/bcs@1.6.2':
-    resolution: {integrity: sha512-po3tjm3Ue7UM1cuveDvrIckR6y22LKXr7KAQf12ZOMasZ0rRjBOdq3zDCVBJC+m536hNLq5uG5U2SQPUGN5+JA==}
-
   '@mysten/bcs@1.6.3':
     resolution: {integrity: sha512-QQ6u0U7a4+/o6rZ9tALTeGYMdf6V5z/HkRI/mhD5/fSr80DJoGzOWpFszcN/fhJpKb36vBaSQUMpS7yNQ10xBQ==}
 
@@ -1683,28 +1680,15 @@ packages:
     engines: {node: '>=16'}
     deprecated: This package has been renamed to @mysten/sui, please update to use the renamed package.
 
-  '@mysten/sui@1.30.5':
-    resolution: {integrity: sha512-+b7WW0UV3nfnQnbM46mLpKgaXQiigh1LdH+Lys7kNQHbJmF3U1SMHddCs46Hhsansk9JMEMl2Qs15ibUW+CpTw==}
-    engines: {node: '>=18'}
-
   '@mysten/sui@1.34.0':
     resolution: {integrity: sha512-Btf2Tq5VPXqABOXqtw9hV13DskepggP7MpeGb7OnRNF2grh1nHyWj9J0Y2UmkhZUEdTWpnVRnl/ufIZ6VmU1kg==}
     engines: {node: '>=18'}
-
-  '@mysten/utils@0.0.1':
-    resolution: {integrity: sha512-KrrGE1N0KFIKkQoQW5/StA6kxRZqUkZlw/Txa7rbj+MVYbnKpdWeH1Xxm7w5rWd8PZ4Sc7v6uVoPz179BAoNZA==}
 
   '@mysten/utils@0.1.0':
     resolution: {integrity: sha512-nFxqArh4cr629elLsIk7UZmx5dFVshblwrfwaG7Dm2L/ii2C65bhK5tdTs6UiC3K0tCr8q8svrgzXyF9L0CN/A==}
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
-
-  '@naviprotocol/astros-aggregator-sdk@1.0.3':
-    resolution: {integrity: sha512-DzZWvM9UgbUitFMbYiJ0mSGLZ1BTo4obyb95oecmcRddsTtcBJgpE+QpdNmb4LqPQKKZgA09QBi/bR+0c2kTQQ==}
-
-  '@naviprotocol/lending@1.0.2':
-    resolution: {integrity: sha512-XBW6xIffLQlEMFT/G79klnV39G9Z7MBEXq2CdjRf7DFdvLXxufCk2MSjtLiPs8J6xADIVydo4YHfnQnEBpLmEw==}
 
   '@next/env@15.3.4':
     resolution: {integrity: sha512-ZkdYzBseS6UjYzz6ylVKPOK+//zLWvD6Ta+vpoye8cW11AjiQjGYVibF0xuvT4L0iJfAPfZLFidaEzAOywyOAQ==}
@@ -2974,9 +2958,6 @@ packages:
 
   axios@1.11.0:
     resolution: {integrity: sha512-1Lx3WLFQWm3ooKDYZD1eXmoGO9fxYQjrycfHFC8P0sCfQVXyROp0p9PFWBehewBOdCwHc+f/b8I0fMto5eSfwA==}
-
-  axios@1.9.0:
-    resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -7597,24 +7578,6 @@ snapshots:
       globby: 11.1.0
       read-yaml-file: 1.1.0
 
-  '@mayanfinance/swap-sdk@10.3.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
-    dependencies:
-      '@mysten/sui': 1.34.0(typescript@5.8.3)
-      '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      bs58: 6.0.0
-      cross-fetch: 3.2.0
-      ethers: 6.13.5(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      js-sha256: 0.9.0
-      js-sha3: 0.8.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - bufferutil
-      - encoding
-      - typescript
-      - utf-8-validate
-
   '@mayanfinance/swap-sdk@10.9.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
     dependencies:
       '@mysten/sui': 1.34.0(typescript@5.8.3)
@@ -7702,11 +7665,6 @@ snapshots:
     dependencies:
       bs58: 5.0.0
 
-  '@mysten/bcs@1.6.2':
-    dependencies:
-      '@mysten/utils': 0.0.1
-      '@scure/base': 1.2.6
-
   '@mysten/bcs@1.6.3':
     dependencies:
       '@mysten/utils': 0.1.0
@@ -7722,25 +7680,6 @@ snapshots:
       '@suchipi/femver': 1.0.0
       superstruct: 1.0.4
       tweetnacl: 1.0.3
-
-  '@mysten/sui@1.30.5(typescript@5.8.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.8.1)
-      '@mysten/bcs': 1.6.2
-      '@mysten/utils': 0.0.1
-      '@noble/curves': 1.9.2
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.8.10(graphql@16.8.1)(typescript@5.8.3)
-      graphql: 16.8.1
-      poseidon-lite: 0.2.1
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - typescript
 
   '@mysten/sui@1.34.0(typescript@5.8.3)':
     dependencies:
@@ -7761,10 +7700,6 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/utils@0.0.1':
-    dependencies:
-      '@scure/base': 1.2.6
-
   '@mysten/utils@0.1.0':
     dependencies:
       '@scure/base': 1.2.6
@@ -7775,40 +7710,6 @@ snapshots:
       '@emnapi/runtime': 1.4.4
       '@tybys/wasm-util': 0.10.0
     optional: true
-
-  '@naviprotocol/astros-aggregator-sdk@1.0.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
-    dependencies:
-      '@mayanfinance/swap-sdk': 10.3.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      '@mysten/sui': 1.30.5(typescript@5.8.3)
-      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      axios: 1.9.0
-      bignumber.js: 9.1.2
-      crypto-js: 4.2.0
-      dotenv: 16.4.7
-      ethers: 6.13.5(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - bufferutil
-      - debug
-      - encoding
-      - typescript
-      - utf-8-validate
-
-  '@naviprotocol/lending@1.0.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
-    dependencies:
-      '@mysten/bcs': 1.6.3
-      '@mysten/sui': 1.34.0(typescript@5.8.3)
-      '@pythnetwork/pyth-sui-js': 2.0.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      bignumber.js: 9.1.2
-      lodash.camelcase: 4.3.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - bufferutil
-      - debug
-      - typescript
-      - utf-8-validate
 
   '@next/env@15.3.4': {}
 
@@ -9127,14 +9028,6 @@ snapshots:
       is-retry-allowed: 2.2.0
 
   axios@1.11.0:
-    dependencies:
-      follow-redirects: 1.15.9
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9
       form-data: 4.0.4

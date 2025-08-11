@@ -2,5 +2,5 @@
 	"root": true,
 	"title": "Astros Swap",
 	"description": "NAVI Astros Swap SDK",
-	"pages": ["index", "swap-options", "quote", "swap", "example", "[Api Reference](/typedoc/modules/_naviprotocol_astros-aggregator-sdk.html)"]
+	"pages": ["index", "swap-options", "quote", "swap", "mev", "example", "[Api Reference](/typedoc/modules/_naviprotocol_astros-aggregator-sdk.html)"]
 }

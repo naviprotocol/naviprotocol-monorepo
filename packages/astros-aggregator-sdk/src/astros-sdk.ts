@@ -1,6 +1,9 @@
 import { SwapOptions, Quote } from './types'
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
+import { Signer } from '@mysten/sui/cryptography'
+import { SuiClient } from '@mysten/sui/client'
+import { executeAuction } from 'shio-sdk'
 
 /**
  * Retrieves a quote for swapping one coin to another.
@@ -27,20 +30,46 @@ export async function getQuote(
 }
 
 /**
- * Signs and submits a transaction block using the provided client and keypair.
- * @param txb - The transaction block to sign and submit.
- * @param client - The client object used to sign and execute the transaction block.
- * @param keypair - The keypair used as the signer for the transaction block.
- * @returns A promise that resolves to the result of signing and executing the transaction block.
+ * Signs and executes a transaction.
+ * This interface also integrates shio, protect users and protocols from losing value to MEV strategies.
+ * @param txb - The transaction to execute.
+ * @param signer - The signer object used to sign the transaction block.
+ * @param options - Optional. The options for the transaction, including client.
+ * @returns A promise that resolves to the result of executing the transaction block.
  */
-export async function SignAndSubmitTXB(txb: Transaction, client: any, keypair: any) {
-  const result = await client.signAndExecuteTransaction({
-    transaction: txb,
-    signer: keypair,
-    requestType: 'WaitForLocalExecution',
+export async function executeTransaction(
+  txb: Transaction,
+  signer: Signer,
+  options?: {
+    client?: SuiClient
+  }
+) {
+  const client =
+    options?.client ||
+    new SuiClient({
+      url: 'https://fullnode.mainnet.sui.io'
+    })
+  const txBytes = await txb.build({
+    client
+  })
+  const signResult = await signer.signTransaction(txBytes)
+  const signatures = [signResult.signature]
+
+  try {
+    await executeAuction(signResult.bytes, signatures)
+  } catch (e) {
+    console.error(e)
+  }
+
+  const result = await client.executeTransactionBlock({
+    transactionBlock: signResult.bytes,
+    signature: signatures,
     options: {
-      showEffects: true
+      showEffects: true,
+      showEvents: true,
+      showBalanceChanges: true
     }
   })
+
   return result
 }

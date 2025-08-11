@@ -1,0 +1,25 @@
+---
+title: MEV Protection
+---
+
+Maximal Extractable Value (MEV) refers to the profit that can be captured by strategically ordering, censoring, or inserting transactions within a blockchain. Common MEV strategies include arbitrage, sandwiching, and liquidation.
+
+The SDK integrates [Shio](https://docs.getshio.com/) to protect users and protocols from losing value to MEV strategies.
+
+### executeTransaction
+
+Signs and executes a transaction. protect users and protocols from losing value to MEV strategies.
+
+**Usage Example**
+
+```typescript
+import { executeTransaction } from '@naviprotocol/astros-aggregator-sdk'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// build swap transaction
+
+const result = await executeTransaction(tx, signer)
+
+```

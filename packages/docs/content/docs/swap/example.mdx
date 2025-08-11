@@ -9,11 +9,16 @@ import {
   SwapOptions,
   Dex,
   getQuote,
-  buildSwapPTBFromQuote
+  buildSwapPTBFromQuote,
+  executeTransaction
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
 
-const userAddress = '0x91eb74aef86b5a7002c587704f6c0d5a627c4937bb7d6d659d83a911ae9f4c93';
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
+
+const signer = Ed25519Keypair.fromSecretKey(privateKey)
+
+const userAddress = signer.address;
 
 const tx = new Transaction()
 
@@ -56,6 +61,6 @@ const coinOut = await buildSwapPTBFromQuote(
 
 await txb.transferObjects([coinOut], userAddress);
 
-await SignAndSubmitTXB(tx)
+await executeTransaction(tx, signer)
 
 ```
