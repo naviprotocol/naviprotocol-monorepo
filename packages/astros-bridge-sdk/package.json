@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-bridge-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
@@ -10,7 +10,7 @@
     "sui"
   ],
   "author": "NAVI",
-  "homepage": "https://navprotocol.io",
+  "homepage": "https://sdk.naviprotocol.io/bridge",
   "bugs": "https://github.com/naviprotocol/naviprotocol-monorepo/issues",
   "repository": {
     "type": "git",

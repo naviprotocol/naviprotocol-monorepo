@@ -349,6 +349,9 @@ export async function claimLendingRewardsPTB(
         )
       }
       if (options?.customCoinReceive.type === 'depositNAVI') {
+        // {formatAmount(reserveData?.totalSupplyAmount, Default_Decimals)}{' '}
+        // <span style={{ fontWeight: 400, color: 'white', opacity: 0.5 }}>of</span>{' '}
+        // {formatAmount(reserveData?.supplyCapCeiling, Rate_Decimals)}
         await depositCoinPTB(tx, pool, rewardCoin, options)
       } else {
         rewardCoins.push({

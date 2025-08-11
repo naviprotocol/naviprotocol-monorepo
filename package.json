@@ -5,7 +5,7 @@
 	"description": "NAVIP Monorepo",
 	"author": "NAVIProtocol",
 	"license": "MIT",
-	"homepage": "https://navprotocol.com",
+	"homepage": "https://naviprotocol.com",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/naviprotocol/naviprotocol-monorepo.git"

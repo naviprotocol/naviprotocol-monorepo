@@ -64,19 +64,19 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ## 🆘 Support
 
-- 📖 Documentation: [https://sdk.navprotocol.io](https://sdk.navprotocol.io)
+- 📖 Documentation: [https://sdk.naviprotocol.io](https://sdk.naviprotocol.io)
 - 🐛 Issues: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-- 📧 Email: zado@navprotocol.io
+- 📧 Email: zado@naviprotocol.io
 
 
 ## 📊 Project Status
 
 | Package | Version | Status |
 |---|---|---|
-| @naviprotocol/astros-aggregator-sdk | 1.0.3 | ✅ Stable |
-| @naviprotocol/astros-bridge-sdk | 1.0.0 | ✅ Stable |
-| @naviprotocol/lending | 1.0.2 | ✅ Stable |
-| @naviprotocol/wallet-client | 1.0.3 | ✅ Stable |
+| @naviprotocol/astros-aggregator-sdk | 1.0.4 | ✅ Stable |
+| @naviprotocol/astros-bridge-sdk | 1.0.1 | ✅ Stable |
+| @naviprotocol/lending | 1.0.3 | ✅ Stable |
+| @naviprotocol/wallet-client | 1.0.4 | ✅ Stable |
 
 ---
 

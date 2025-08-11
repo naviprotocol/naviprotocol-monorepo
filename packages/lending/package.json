@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/lending",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "NAVI Lending SDK",
   "license": "MIT",
   "keywords": [
@@ -9,7 +9,7 @@
     "sui"
   ],
   "author": "NAVI",
-  "homepage": "https://navprotocol.io",
+  "homepage": "https://sdk.naviprotocol.io/lending",
   "bugs": "https://github.com/naviprotocol/naviprotocol-monorepo/issues",
   "repository": {
     "type": "git",

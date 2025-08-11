@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
@@ -10,7 +10,7 @@
     "sui"
   ],
   "author": "NAVI",
-  "homepage": "https://navprotocol.io",
+  "homepage": "https://sdk.naviprotocol.io/swap",
   "bugs": "https://github.com/naviprotocol/naviprotocol-monorepo/issues",
   "repository": {
     "type": "git",
