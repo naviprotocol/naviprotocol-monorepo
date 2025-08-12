@@ -30,6 +30,7 @@ import {
 import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
+import BigNumber from 'bignumber.js'
 
 /**
  * Get user's available lending rewards
@@ -237,6 +238,9 @@ export const getUserClaimedRewardHistory = withSingleton(
  * @param tx - The transaction block to add reward claiming operations to
  * @param rewards - Array of rewards to claim
  * @param options - Optional configuration including account capabilities and custom coin handling
+ * @param options.customCoinReceive.type - The type of custom coin handling, can be 'transfer', 'depositNAVI' or 'skip'
+ * @param options.customCoinReceive.transfer - The address to transfer the reward to, only used when options.customCoinReceive.type is 'transfer'
+ * @param options.customCoinReceive.depositNAVI.fallbackReceiveAddress - The address to transfer the reward to if the pool is full, only used when options.customCoinReceive.type is 'depositNAVI'
  * @returns Array of claimed reward coins and their identifiers
  * @throws Error if reward fund not found or invalid configuration
  */
@@ -249,6 +253,9 @@ export async function claimLendingRewardsPTB(
         customCoinReceive?: {
           type: 'transfer' | 'depositNAVI' | 'skip'
           transfer?: string | TransactionResult
+          depositNAVI?: {
+            fallbackReceiveAddress?: string
+          }
         }
       }
   >
@@ -264,26 +271,27 @@ export async function claimLendingRewardsPTB(
   })
 
   // Group rewards by reward coin type and collect asset IDs and rule IDs
-  const rewardMap = new Map<string, { assetIds: string[]; ruleIds: string[] }>()
+  const rewardMap = new Map<string, { assetIds: string[]; ruleIds: string[]; amount: number }>()
 
   for (const reward of rewards) {
     const { rewardCoinType, ruleIds } = reward
 
     for (const ruleId of ruleIds) {
       if (!rewardMap.has(rewardCoinType)) {
-        rewardMap.set(rewardCoinType, { assetIds: [], ruleIds: [] })
+        rewardMap.set(rewardCoinType, { assetIds: [], ruleIds: [], amount: 0 })
       }
 
       const group = rewardMap.get(rewardCoinType)!
       group.assetIds.push(reward.assetCoinType.replace('0x', ''))
       group.ruleIds.push(ruleId)
+      group.amount += reward.userClaimableReward
     }
   }
 
   const rewardCoins = [] as LendingClaimedReward[]
 
   // Process each reward coin type
-  for (const [rewardCoinType, { assetIds, ruleIds }] of rewardMap) {
+  for (const [rewardCoinType, { assetIds, ruleIds, amount }] of rewardMap) {
     const pool = pools.find(
       (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(rewardCoinType)
     )
@@ -349,10 +357,21 @@ export async function claimLendingRewardsPTB(
         )
       }
       if (options?.customCoinReceive.type === 'depositNAVI') {
-        // {formatAmount(reserveData?.totalSupplyAmount, Default_Decimals)}{' '}
-        // <span style={{ fontWeight: 400, color: 'white', opacity: 0.5 }}>of</span>{' '}
-        // {formatAmount(reserveData?.supplyCapCeiling, Rate_Decimals)}
-        await depositCoinPTB(tx, pool, rewardCoin, options)
+        const supplyAmount = BigNumber(pool.totalSupplyAmount).shiftedBy(-9)
+        const cap = BigNumber(pool.supplyCapCeiling).shiftedBy(-27)
+
+        // if the pool is full, transfer the reward to the fallback receive address
+        if (
+          supplyAmount.plus(amount).isGreaterThan(cap) &&
+          !!options?.customCoinReceive.depositNAVI?.fallbackReceiveAddress
+        ) {
+          tx.transferObjects(
+            [rewardCoin],
+            tx.pure.address(options.customCoinReceive.depositNAVI.fallbackReceiveAddress)
+          )
+        } else {
+          await depositCoinPTB(tx, pool, rewardCoin, options)
+        }
       } else {
         rewardCoins.push({
           coin: rewardCoin,
