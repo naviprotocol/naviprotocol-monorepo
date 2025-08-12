@@ -75,7 +75,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 |---|---|---|
 | @naviprotocol/astros-aggregator-sdk | 1.0.5 | ✅ Stable |
 | @naviprotocol/astros-bridge-sdk | 1.0.1 | ✅ Stable |
-| @naviprotocol/lending | 1.0.4 | ✅ Stable |
+| @naviprotocol/lending | 1.0.5 | ✅ Stable |
 | @naviprotocol/wallet-client | 1.0.4 | ✅ Stable |
 
 ---
