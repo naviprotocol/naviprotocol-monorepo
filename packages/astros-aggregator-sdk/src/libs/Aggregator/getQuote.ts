@@ -57,7 +57,7 @@ export async function getQuoteInternal(
     by_amount_in:
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
-    version: '8'
+    version: '9'
   }).toString()
 
   // Construct dex provider string if dexList is provided
