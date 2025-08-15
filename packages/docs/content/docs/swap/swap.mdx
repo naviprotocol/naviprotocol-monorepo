@@ -4,6 +4,9 @@ title: Swap
 
 The Swap function constructs transactions based on Quote data.
 
+<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/swap#swap">swap feature of @naviprotocol/wallet-client</a></Callout>
+
+
 ## Build Swap PTB from Quote
 
 If you'd like to create your own PTB code using a quote, we've provided an easy-to-use interface to help you get started. See the [documentation](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.buildSwapPTBFromQuote.html) for details.
@@ -40,6 +43,7 @@ const coinOut = await buildSwapPTBFromQuote(
 ```
 
 
+
 ## Swap PTB
 
 If you'd like to create your own PTB code without managing a quote, we've provided an easy-to-use interface for developers to customize swap fee and receiving address. See the [documentation](/typedoc/functions/_naviprotocol_astros-aggregator-sdk.swapPTB.html) for details.
@@ -71,3 +75,4 @@ const coinOut = await swapPTB(
     swapOptions
 )
 ```
+
