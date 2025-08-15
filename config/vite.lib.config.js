@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
-const PWD = process.env.PWD
+const PWD = process.cwd()
 const pkg = require(path.join(PWD, 'package.json'))
 
 const tsEntry = path.resolve(PWD, 'src/index.ts')
