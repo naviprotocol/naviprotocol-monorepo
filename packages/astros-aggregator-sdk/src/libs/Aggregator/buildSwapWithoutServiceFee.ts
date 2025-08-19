@@ -14,6 +14,7 @@ import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
+import { makeFLOWXPTB } from './Dex/flowx'
 
 /**
  * Build a swap transaction without service fee
@@ -284,6 +285,20 @@ export async function buildSwapWithoutServiceFee(
           )
           txb.transferObjects([pathTempCoin], userAddress)
           pathTempCoin = outputCoin
+          break
+        }
+        case Dex.FLOWX: {
+          const deadline = Date.now() + 3 * 60 * 1000
+
+          pathTempCoin = await makeFLOWXPTB(
+            txb,
+            route.fee_rate.toString(),
+            pathTempCoin,
+            a2b,
+            0,
+            deadline,
+            typeArguments
+          )
           break
         }
         default: {
