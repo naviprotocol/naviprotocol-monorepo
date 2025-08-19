@@ -40,6 +40,10 @@ import {
   migrateBetweenBorrowPTB,
   migrateBetweenSupplyPTB
 } from './migrate'
+import NaviProtocol from './protocols/navi'
+import SuilendProtocol from './protocols/suilend'
+import { LendingProtocol } from './protocols'
+import { WalletClient } from '../../client'
 
 /**
  * Configuration options for the lending module
@@ -47,6 +51,8 @@ import {
 export interface LendingModuleConfig {
   /** Environment setting for protocol interaction */
   env: 'dev' | 'prod'
+  /** Lending protocols */
+  protocols: LendingProtocol[]
 }
 
 /**
@@ -117,7 +123,23 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
   /** Default configuration values */
   readonly defaultConfig: LendingModuleConfig = {
-    env: 'prod'
+    env: 'prod',
+    protocols: []
+  }
+
+  /** Internal protocols storage */
+  private _protocols: LendingProtocol[] = []
+
+  /** Get protocols (either from internal storage or config) */
+  get protocols(): LendingProtocol[] {
+    return this._protocols.length > 0 ? this._protocols : this.config.protocols
+  }
+
+  async getProtocol(name: string) {
+    if (!this.protocols || this.protocols.length === 0) {
+      await this.initializeProtocols()
+    }
+    return this.protocols.find((p) => p.name === name)
   }
 
   /**
@@ -664,5 +686,22 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     this.migrateBetweenSupplyPTB = migrateBetweenSupplyPTB.bind(this)
     this.migrateBetweenBorrowPTB = migrateBetweenBorrowPTB.bind(this)
     this.migrateBalanceToSupplyPTB = migrateBalanceToSupplyPTB.bind(this)
+  }
+
+  async initializeProtocols() {
+    if (!this.walletClient) {
+      console.warn('Wallet client not available during protocol initialization')
+      return
+    }
+
+    const protocols = []
+    protocols.push(new NaviProtocol(this.walletClient))
+    try {
+      protocols.push(await SuilendProtocol.create(this.walletClient))
+    } catch (error) {
+      console.warn('Failed to initialize SuilendProtocol:', error)
+    }
+
+    this._protocols = protocols as LendingProtocol[]
   }
 }

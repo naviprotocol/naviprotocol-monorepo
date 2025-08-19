@@ -54,12 +54,16 @@
     "@mysten/sui": "1.34.0",
     "@naviprotocol/astros-aggregator-sdk": "workspace:*",
     "@naviprotocol/lending": "workspace:*",
+    "@suilend/sdk": "^1.1.75",
+    "@suilend/sui-fe": "^0.3.20",
     "axios": "1.11.0",
     "bignumber.js": "9.1.2",
+    "date-fns": "^4.1.0",
     "mitt": "^3.0.1",
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
+    "@sentry/nextjs": "^10.5.0",
     "@types/node": "^20.19.1",
     "dotenv": "16.4.7",
     "tsconfig-paths": "^4.2.0",

@@ -24,6 +24,7 @@ export async function migrateBetweenSupplyPTB(
   from: AssetIdentifier,
   to: AssetIdentifier,
   options?: Partial<{
+    protocol?: 'navi' | 'suilend'
     amount?: number
     slippage?: number
   }>
@@ -35,22 +36,24 @@ export async function migrateBetweenSupplyPTB(
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
-  const fromPoolLending = lendingState.find((lending) => lending.pool.id === fromPool.id)
   const address = this.walletClient.address
 
+  const protocolName = options?.protocol ?? 'navi'
+  const fromProtocol = await this.getProtocol(protocolName)
+  if (!fromProtocol) {
+    throw new Error(`Protocol ${protocolName} not found`)
+  }
+  const fromPoolLending = await fromProtocol.getPool(fromPool.coinType)
+
   console.log('migrateBetweenSupplyPTB', {
-    lendingState,
-    fromPoolLending,
-    fromPool,
-    toPool,
-    address
+    fromPoolLending
   })
 
-  if (!fromPoolLending || fromPoolLending.supplyBalance === '0') {
+  if (protocolName === 'navi' && fromPoolLending.supplyBalance === 0) {
     throw new Error('No supply balance')
   }
 
-  if (options?.amount && options.amount > Number(fromPoolLending.supplyBalance)) {
+  if (options?.amount && options.amount > fromPoolLending.supplyBalance) {
     throw new Error('Amount is less than supply balance')
   }
 
@@ -108,7 +111,11 @@ export async function migrateBetweenSupplyPTB(
     amount: borrowAmountInMin
   })
 
-  const withdrawnFromCoin = await withdrawCoinPTB(tx, fromPool, formAmount)
+  const withdrawnFromCoin = await fromProtocol.withdrawCoinPTB(
+    tx,
+    fromPool.token.coinType,
+    formAmount
+  )
 
   const swappedToCoin = await buildSwapPTBFromQuote(
     address,
@@ -145,6 +152,7 @@ export async function migrateBetweenBorrowPTB(
   options?: Partial<{
     amount?: number
     slippage?: number
+    protocol?: 'navi' | 'suilend'
   }>
 ) {
   if (!this.walletClient) {
@@ -155,21 +163,23 @@ export async function migrateBetweenBorrowPTB(
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
-  const fromPoolLending = lendingState.find((lending) => lending.pool.id === fromPool.id)
+
+  const protocolName = options?.protocol ?? 'navi'
+  const fromProtocol = await this.getProtocol(protocolName)
+  if (!fromProtocol) {
+    throw new Error(`Protocol ${protocolName} not found`)
+  }
+  const fromPoolLending = await fromProtocol.getPool(fromPool.coinType)
 
   console.log('migrateBetweenBorrowPTB', {
-    lendingState,
-    fromPoolLending,
-    fromPool,
-    toPool,
-    address
+    fromPoolLending
   })
 
-  if (!fromPoolLending || fromPoolLending.borrowBalance === '0') {
+  if (fromPoolLending.borrowBalance === 0) {
     throw new Error('No borrow balance')
   }
 
-  if (options?.amount && options.amount > Number(fromPoolLending.borrowBalance)) {
+  if (options?.amount && options.amount > fromPoolLending.borrowBalance) {
     throw new Error('Amount is less than borrow balance')
   }
 
@@ -186,7 +196,7 @@ export async function migrateBetweenBorrowPTB(
   let formAmount = options?.amount ?? Number(fromPoolLending.borrowBalance)
 
   if (Number(fromPoolLending.borrowBalance) === formAmount) {
-    const borrowRate = parseFloat(fromRate(fromPool.currentBorrowRate, 8)) / 100
+    const borrowRate = fromPoolLending.borrowAPR / 100
     formAmount = Math.ceil(
       new BigNumber(formAmount)
         .multipliedBy((borrowRate * (60 * 3)) / (365 * 24 * 3600))
@@ -210,8 +220,8 @@ export async function migrateBetweenBorrowPTB(
 
   const slippage = options?.slippage ?? 0.005
 
-  const floshloanRepayAmount = Math.ceil(formAmount * (1 + fromPoolFlashloanAsset.flashloanFee))
-  const minSwapAmount = floshloanRepayAmount
+  const flashloanRepayAmount = Math.ceil(formAmount * (1 + fromPoolFlashloanAsset.flashloanFee))
+  const minSwapAmount = flashloanRepayAmount
 
   const fromQuote = await this.walletClient.swap.getQuote(
     fromPool.suiCoinType,
@@ -247,16 +257,14 @@ export async function migrateBetweenBorrowPTB(
     typeArguments: [fromPool.suiCoinType]
   })
 
-  await repayCoinPTB(tx, fromPool, flashCoin, {
-    amount: formAmount
-  })
+  await fromProtocol.repayCoinPTB(tx, fromPool.token.coinType, flashCoin, formAmount)
 
   const borrowCoin = await borrowCoinPTB(tx, toPool, shouldBorrowAmount)
 
   const swappedFromCoin = await buildSwapPTBFromQuote(
     address,
     tx,
-    floshloanRepayAmount,
+    flashloanRepayAmount,
     borrowCoin,
     toQuote
   )
@@ -301,8 +309,12 @@ export async function migrateBalanceToSupplyPTB(
     throw new Error(`No balance of ${coinType}`)
   }
 
+  console.log('migrateBalanceToSupplyPTB', {
+    balance: balance.amount.toNumber()
+  })
+
   if (options?.amount && balance.amount.lt(options.amount)) {
-    throw new Error('Amount is less than balance')
+    throw new Error('Amount is greater than balance')
   }
 
   const formAmount = options?.amount ?? balance.amount.toNumber()
