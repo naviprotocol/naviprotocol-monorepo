@@ -35,7 +35,9 @@ export enum Dex {
   /** Magma DEX protocol */
   MAGMA = 'magma',
   /** Momentum DEX protocol */
-  MOMENTUM = 'momentum'
+  MOMENTUM = 'momentum',
+  /** FlowX DEX protocol */
+  FLOWX = 'flowx'
 }
 
 /**

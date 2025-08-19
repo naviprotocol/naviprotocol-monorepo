@@ -72,7 +72,12 @@ export const AggregatorConfig = {
   momentumPackageId: '0xc84b1ef2ac2ba5c3018e2b8c956ba5d0391e0e46d1daa1926d5a99a6a42526b4',
   momentumVersionId: '0x2375a0b1ec12010aaea3b2545acfa2ad34cfbba03ce4b59f4c39e1e25eed1b2a',
   momentumSlippageCheckPackageId:
-    '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6'
+    '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6',
+
+  // FlowX DEX configuration
+  flowxPacakgeId: '0xe882cd54551e73e64ff5b257146a0c5264546974cf00d78ecc871017cb22df67',
+  flowxPoolRegistry: '0x27565d24a4cd51127ac90e4074a841bbe356cca7bf5759ddc14a975be1632abc',
+  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656'
 }
 
 /**
