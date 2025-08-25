@@ -286,20 +286,20 @@ export async function buildSwapWithoutServiceFee(
           pathTempCoin = outputCoin
           break
         }
-        case Dex.FLOWX: {
-          const deadline = Date.now() + 3 * 60 * 1000
+        // case Dex.FLOWX: {
+        //   const deadline = Date.now() + 3 * 60 * 1000
 
-          pathTempCoin = await makeFLOWXPTB(
-            txb,
-            route.fee_rate.toString(),
-            pathTempCoin,
-            a2b,
-            0,
-            deadline,
-            typeArguments
-          )
-          break
-        }
+        //   pathTempCoin = await makeFLOWXPTB(
+        //     txb,
+        //     route.fee_rate.toString(),
+        //     pathTempCoin,
+        //     a2b,
+        //     0,
+        //     deadline,
+        //     typeArguments
+        //   )
+        //   break
+        // }
         default: {
           break
         }
