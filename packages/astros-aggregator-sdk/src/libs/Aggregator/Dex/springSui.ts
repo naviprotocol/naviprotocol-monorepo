@@ -5,13 +5,12 @@ const SUI_SYSTEM_STATE_ID = '0x0000000000000000000000000000000000000000000000000
 
 export async function makeSpringSuiPTB(txb: Transaction, pathTempCoin: any, a2b: boolean) {
   let coinB
-
   if (a2b) {
     const [lst] = txb.moveCall({
       target: `${AggregatorConfig.springSuiPackageId}::liquid_staking::mint`,
-      typeArguments: [AggregatorConfig.springSuiPackageId],
+      typeArguments: [AggregatorConfig.springSuiCoinType],
       arguments: [
-        txb.object(AggregatorConfig.springSuiPackageId),
+        txb.object(AggregatorConfig.springSuiConfigId),
         txb.object(SUI_SYSTEM_STATE_ID),
         pathTempCoin
       ]
@@ -21,9 +20,9 @@ export async function makeSpringSuiPTB(txb: Transaction, pathTempCoin: any, a2b:
   } else {
     const [sui] = txb.moveCall({
       target: `${AggregatorConfig.springSuiPackageId}::liquid_staking::redeem`,
-      typeArguments: [AggregatorConfig.springSuiPackageId],
+      typeArguments: [AggregatorConfig.springSuiCoinType],
       arguments: [
-        txb.object(AggregatorConfig.springSuiPackageId),
+        txb.object(AggregatorConfig.springSuiConfigId),
         pathTempCoin,
         txb.object(SUI_SYSTEM_STATE_ID)
       ]

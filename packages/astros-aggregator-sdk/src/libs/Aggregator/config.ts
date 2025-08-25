@@ -80,7 +80,9 @@ export const AggregatorConfig = {
   flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656',
 
   // SpringSui DEX configuration
-  springSuiPackageId: '0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf'
+  springSuiPackageId: '0xb0575765166030556a6eafd3b1b970eba8183ff748860680245b9edd41c716e7',
+  springSuiConfigId: '0x15eda7330c8f99c30e430b4d82fd7ab2af3ead4ae17046fcb224aa9bad394f6b',
+  springSuiCoinType: "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI",
 }
 
 /**
