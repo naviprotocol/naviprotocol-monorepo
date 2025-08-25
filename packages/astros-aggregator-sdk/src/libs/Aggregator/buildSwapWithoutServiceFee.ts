@@ -14,6 +14,7 @@ import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { makeFLOWXPTB } from './Dex/flowx'
+import { makeSpringSuiPTB } from './Dex/springSui'
 
 /**
  * Build a swap transaction without service fee
@@ -298,6 +299,8 @@ export async function buildSwapWithoutServiceFee(
             deadline,
             typeArguments
           )
+        case Dex.SSUI: {
+          pathTempCoin = await makeSpringSuiPTB(txb, pathTempCoin, a2b)
           break
         }
         default: {

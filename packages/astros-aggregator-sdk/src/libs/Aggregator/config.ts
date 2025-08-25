@@ -77,7 +77,10 @@ export const AggregatorConfig = {
   // FlowX DEX configuration
   flowxPacakgeId: '0xe882cd54551e73e64ff5b257146a0c5264546974cf00d78ecc871017cb22df67',
   flowxPoolRegistry: '0x27565d24a4cd51127ac90e4074a841bbe356cca7bf5759ddc14a975be1632abc',
-  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656'
+  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656',
+
+  // SpringSui DEX configuration
+  springSuiPackageId: '0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf'
 }
 
 /**

@@ -37,7 +37,9 @@ export enum Dex {
   /** Momentum DEX protocol */
   MOMENTUM = 'momentum',
   /** FlowX DEX protocol */
-  FLOWX = 'flowx'
+  FLOWX = 'flowx',
+  /** SpringSui DEX protocol */
+  SSUI = 'sSui'
 }
 
 /**
