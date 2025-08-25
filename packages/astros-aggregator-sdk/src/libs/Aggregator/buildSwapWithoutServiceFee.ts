@@ -299,6 +299,8 @@ export async function buildSwapWithoutServiceFee(
             deadline,
             typeArguments
           )
+          break
+        }
         case Dex.SSUI: {
           pathTempCoin = await makeSpringSuiPTB(txb, pathTempCoin, a2b)
           break
