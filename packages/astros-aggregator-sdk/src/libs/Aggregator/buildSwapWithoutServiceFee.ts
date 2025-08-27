@@ -311,7 +311,7 @@ export async function buildSwapWithoutServiceFee(
       txb.pure.u64(Math.floor(minAmountOut)), // negative slippage
       txb.pure.u64(quote.amount_out), // expected amount out, the dry run swap output coin amount
       txb.pure.u64(quote.amount_in), // amount in
-      txb.pure.u64(amountInValue), // amount in value
+      txb.pure.u64(Math.floor(amountInValue)), // amount in value
       txb.pure.u64(referral) // referral
     ],
     typeArguments: [tokenA, tokenB]
