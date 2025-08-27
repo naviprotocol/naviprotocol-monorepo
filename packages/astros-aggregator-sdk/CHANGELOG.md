@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.4.0
+
+### Minor Changes
+
+- Upgrade slippage check version
+
 ## 1.3.0
 
 ### Minor Changes
