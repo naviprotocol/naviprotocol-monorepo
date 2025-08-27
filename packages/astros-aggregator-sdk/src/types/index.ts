@@ -35,9 +35,7 @@ export enum Dex {
   /** Magma DEX protocol */
   MAGMA = 'magma',
   /** Momentum DEX protocol */
-  MOMENTUM = 'momentum',
-  /** FlowX DEX protocol */
-  FLOWX = 'flowx'
+  MOMENTUM = 'momentum'
 }
 
 /**
@@ -112,4 +110,6 @@ export type SwapOptions = {
   ifPrint?: boolean
   /** Service fee configuration */
   serviceFee?: FeeOption
+  /** Whether to enable positive slippage */
+  disablePositiveSlippage?: boolean
 }
