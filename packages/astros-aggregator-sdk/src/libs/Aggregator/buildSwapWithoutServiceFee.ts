@@ -296,7 +296,9 @@ export async function buildSwapWithoutServiceFee(
   }
 
   txb.transferObjects([coinIn], userAddress)
-  const amountInValue = Number(quote.amount_in) * (quote.from_token?.price ?? 0)
+  const amountInValue = quote.from_token
+    ? ((Number(quote.amount_in) * (quote.from_token.price ?? 0)) / quote.from_token?.decimals) * 1e9
+    : 1e15
   const shouldEnablePositiveSlippage =
     !disablePositiveSlippage && quote.is_accurate === true && amountInValue !== 0
 
