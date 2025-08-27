@@ -13,7 +13,6 @@ import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
-import { makeFLOWXPTB } from './Dex/flowx'
 
 /**
  * Build a swap transaction without service fee
@@ -33,7 +32,8 @@ export async function buildSwapWithoutServiceFee(
   quote: Quote,
   minAmountOut: number,
   referral: number = 0,
-  ifPrint: boolean = true
+  ifPrint: boolean = true,
+  disablePositiveSlippage: boolean = false
 ): Promise<TransactionResult> {
   const tokenA = quote.from
   const tokenB = quote.target
@@ -286,20 +286,6 @@ export async function buildSwapWithoutServiceFee(
           pathTempCoin = outputCoin
           break
         }
-        // case Dex.FLOWX: {
-        //   const deadline = Date.now() + 3 * 60 * 1000
-
-        //   pathTempCoin = await makeFLOWXPTB(
-        //     txb,
-        //     route.fee_rate.toString(),
-        //     pathTempCoin,
-        //     a2b,
-        //     0,
-        //     deadline,
-        //     typeArguments
-        //   )
-        //   break
-        // }
         default: {
           break
         }
@@ -310,15 +296,21 @@ export async function buildSwapWithoutServiceFee(
   }
 
   txb.transferObjects([coinIn], userAddress)
+  const amountInValue = Number(quote.amount_in) * (quote.from_token?.price ?? 0)
+  const shouldEnablePositiveSlippage =
+    !disablePositiveSlippage && quote.is_accurate === true && amountInValue !== 0
 
-  // Add slippage check
   txb.moveCall({
-    target: `${AggregatorConfig.aggregatorContract}::slippage::check_slippage_v2`,
+    target: `${AggregatorConfig.aggregatorContract}::check_slippage_v3`,
     arguments: [
-      finalCoinB,
-      txb.pure.u64(Math.floor(minAmountOut)),
-      txb.pure.u64(quote.amount_in),
-      txb.pure.u64(referral)
+      txb.pure.address(AggregatorConfig.slippageConfig), //slippage config address
+      txb.pure.bool(shouldEnablePositiveSlippage), //true if enable positive slippage
+      finalCoinB, // output coin
+      txb.pure.u64(Math.floor(minAmountOut)), // negative slippage
+      txb.pure.u64(quote.amount_out), // expected amount out, the dry run swap output coin amount
+      txb.pure.u64(quote.amount_in), // amount in
+      txb.pure.u64(amountInValue), // amount in value
+      txb.pure.u64(referral) // referral
     ],
     typeArguments: [tokenA, tokenB]
   })

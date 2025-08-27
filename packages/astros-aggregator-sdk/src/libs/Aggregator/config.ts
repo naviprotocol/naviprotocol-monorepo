@@ -21,7 +21,10 @@ export const AggregatorConfig = {
   aggregatorBaseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes',
 
   // Main aggregator contract address
-  aggregatorContract: '0x5b7d732adeb3140a2dbf2becd1e9dbe56cee0e3687379bcfe7df4357ea664313',
+  aggregatorContract: '0xdd21f177ec772046619e401c7a44eb78c233c0d53b4b2213ad83122eef4147db',
+
+  // Slippage config address
+  slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
   // Cetus DEX configuration
   cetusPackageId: '0xb2db7142fa83210a7d78d9c12ac49c043b3cbbd482224fea6e3da00aa5a5ae2d',
@@ -72,12 +75,7 @@ export const AggregatorConfig = {
   momentumPackageId: '0xcf60a40f45d46fc1e828871a647c1e25a0915dec860d2662eb10fdb382c3c1d1',
   momentumVersionId: '0x2375a0b1ec12010aaea3b2545acfa2ad34cfbba03ce4b59f4c39e1e25eed1b2a',
   momentumSlippageCheckPackageId:
-    '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6',
-
-  // FlowX DEX configuration
-  flowxPacakgeId: '0xe882cd54551e73e64ff5b257146a0c5264546974cf00d78ecc871017cb22df67',
-  flowxPoolRegistry: '0x27565d24a4cd51127ac90e4074a841bbe356cca7bf5759ddc14a975be1632abc',
-  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656'
+    '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6'
 }
 
 /**

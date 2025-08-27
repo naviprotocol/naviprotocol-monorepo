@@ -112,4 +112,6 @@ export type SwapOptions = {
   ifPrint?: boolean
   /** Service fee configuration */
   serviceFee?: FeeOption
+  /** Whether to enable positive slippage */
+  disablePositiveSlippage?: boolean
 }
