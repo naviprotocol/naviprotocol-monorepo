@@ -301,9 +301,9 @@ export async function buildSwapWithoutServiceFee(
     !disablePositiveSlippage && quote.is_accurate === true && amountInValue !== 0
 
   txb.moveCall({
-    target: `${AggregatorConfig.aggregatorContract}::check_slippage_v3`,
+    target: `${AggregatorConfig.aggregatorContract}::slippage::check_slippage_v3`,
     arguments: [
-      txb.pure.address(AggregatorConfig.slippageConfig), //slippage config address
+      txb.object(AggregatorConfig.slippageConfig), //slippage config address
       txb.pure.bool(shouldEnablePositiveSlippage), //true if enable positive slippage
       finalCoinB, // output coin
       txb.pure.u64(Math.floor(minAmountOut)), // negative slippage
