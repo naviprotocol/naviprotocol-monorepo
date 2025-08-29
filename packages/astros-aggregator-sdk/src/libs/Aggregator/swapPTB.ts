@@ -220,7 +220,8 @@ export async function swapPTB(
     dexList: [],
     byAmountIn: true,
     depth: 3,
-    ifPrint: true
+    ifPrint: true,
+    disablePositiveSlippage: false
   }
 ): Promise<TransactionResult> {
   // Generate referral ID if API key is provided
