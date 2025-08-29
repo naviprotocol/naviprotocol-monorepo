@@ -182,7 +182,8 @@ export async function buildSwapPTBFromQuote(
     quote,
     minAmountOut,
     referral,
-    ifPrint
+    ifPrint,
+    swapOptions?.disablePositiveSlippage ?? false
   )
 }
 
