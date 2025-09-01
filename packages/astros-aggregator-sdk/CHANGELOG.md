@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.4.3
+
+### Patch Changes
+
+- Fix the amount value calculation
+
 ## 1.4.2
 
 ### Patch Changes
