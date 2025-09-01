@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.4.2
+
+### Patch Changes
+
+- Fix swap option usage
+
 ## 1.4.0
 
 ### Minor Changes
