@@ -288,7 +288,7 @@ export type Pool = {
     /** Token decimals */
     decimals: number
     /** Token logo URI */
-    logoURI: string
+    logoUri: string
     /** Token symbol */
     symbol: string
   }
