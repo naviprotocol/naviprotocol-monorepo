@@ -78,7 +78,7 @@ export const AggregatorConfig = {
     '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6',
 
   // FlowX DEX configuration
-  flowxPacakgeId: '0xe882cd54551e73e64ff5b257146a0c5264546974cf00d78ecc871017cb22df67',
+  flowxPacakgeId: '0x25929e7f29e0a30eb4e692952ba1b5b65a3a4d65ab5f2a32e1ba3edcb587f26d',
   flowxPoolRegistry: '0x27565d24a4cd51127ac90e4074a841bbe356cca7bf5759ddc14a975be1632abc',
   flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656'
 }
