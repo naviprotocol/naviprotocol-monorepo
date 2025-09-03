@@ -86,9 +86,10 @@ class SuilendProtocol implements LendingProtocol {
     const borrow = obligation.borrows.find((borrow) => borrow.coinType === normalizedCoinType)
 
     const decimals = coinMetadataMap[normalizedCoinType].decimals
+    const cTokenExchangeRate = reservesMap[normalizedCoinType].cTokenExchangeRate.toNumber()
 
     return {
-      cTokenExchangeRate: deposit!.reserve.cTokenExchangeRate.toNumber(),
+      cTokenExchangeRate: cTokenExchangeRate,
       supplyBalance: deposit?.depositedAmount.shiftedBy(decimals).decimalPlaces(0).toNumber() ?? 0,
       borrowBalance: borrow?.borrowedAmount.shiftedBy(decimals).decimalPlaces(0).toNumber() ?? 0,
       borrowAPR: reservesMap[normalizedCoinType].borrowAprPercent.toNumber()
