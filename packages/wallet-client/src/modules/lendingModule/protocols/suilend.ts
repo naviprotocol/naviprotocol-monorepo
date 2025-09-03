@@ -9,7 +9,7 @@ import {
 } from '@suilend/sdk'
 import { ObligationOwnerCap } from '@suilend/sdk/_generated/suilend/lending-market/structs'
 import { WalletClient } from '../../../client'
-import { getCoinMetadataMap } from '@suilend/sui-fe'
+import { getCoinMetadataMap, MAX_U64 } from '@suilend/sui-fe'
 import BigNumber from 'bignumber.js'
 import { normalizeStructTag } from '@mysten/sui/utils'
 
@@ -44,7 +44,7 @@ class SuilendProtocol implements LendingProtocol {
     return new SuilendProtocol(walletClient, obligations[0], suilendClient)
   }
 
-  async getPool(coinType: string): Promise<LendingPool> {
+  async getPool(coinType: string): Promise<LendingPool & { cTokenExchangeRate: number }> {
     const normalizedCoinType = normalizeStructTag(coinType)
 
     const allReserves = this.suilendClient.lendingMarket.reserves
@@ -88,6 +88,7 @@ class SuilendProtocol implements LendingProtocol {
     const decimals = coinMetadataMap[normalizedCoinType].decimals
 
     return {
+      cTokenExchangeRate: deposit!.reserve.cTokenExchangeRate.toNumber(),
       supplyBalance: deposit?.depositedAmount.shiftedBy(decimals).decimalPlaces(0).toNumber() ?? 0,
       borrowBalance: borrow?.borrowedAmount.shiftedBy(decimals).decimalPlaces(0).toNumber() ?? 0,
       borrowAPR: reservesMap[normalizedCoinType].borrowAprPercent.toNumber()
@@ -104,11 +105,14 @@ class SuilendProtocol implements LendingProtocol {
   }
 
   async withdrawCoinPTB(tx: Transaction, coinType: string, amount: number) {
+    const pool = await this.getPool(coinType)
+    const isMax = amount === pool.supplyBalance
+
     return await this.suilendClient.withdraw(
       this.obligationOwnerCap.id,
       this.obligationOwnerCap.obligationId,
       coinType,
-      amount.toString(),
+      isMax ? MAX_U64.toString() : Math.ceil(amount / pool.cTokenExchangeRate).toString(),
       tx
     )
   }
