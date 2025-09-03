@@ -394,6 +394,8 @@ await depositCoinPTB(tx, '0x2::sui::SUI', coinObject, {
 })
 ```
 
+<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#deposit">deposit feature of @naviprotocol/wallet-client</a></Callout>
+
 ### withdrawCoinPTB
 
 Build withdrawal transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.withdrawCoinPTB.html) for details.
@@ -422,6 +424,8 @@ const withdrawnCoin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
 })
 ```
 
+<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#withdraw">withdraw feature of @naviprotocol/wallet-client</a></Callout>
+
 ### borrowCoinPTB
 
 Build borrowing transactions in programmable transaction blocks. See [documentation](/typedoc/functions/_naviprotocol_lending.borrowCoinPTB.html) for details.
@@ -449,6 +453,9 @@ const borrowedCoin = await borrowCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
   accountCap: accountCapObjectId
 })
 ```
+
+<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#borrow">borrow feature of @naviprotocol/wallet-client</a></Callout>
+
 
 ### repayCoinPTB
 
@@ -479,6 +486,9 @@ await repayCoinPTB(tx, '0x2::sui::SUI', coinObject, {
   amount: 1000000000
 })
 ```
+
+<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#repay">repay feature of @naviprotocol/wallet-client</a></Callout>
+
 
 ### PoolOperator
 
