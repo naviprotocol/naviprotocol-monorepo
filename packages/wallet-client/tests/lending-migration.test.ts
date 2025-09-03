@@ -66,7 +66,7 @@ describe('lending borrow migration', () => {
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT',
       '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI',
       {
-        amount: 975687914,
+        amount: 255687914,
         slippage: 0.002
       }
     )

@@ -111,11 +111,7 @@ export async function migrateBetweenSupplyPTB(
     amount: borrowAmountInMin
   })
 
-  const withdrawnFromCoin = await fromProtocol.withdrawCoinPTB(
-    tx,
-    fromPool.token.coinType,
-    formAmount
-  )
+  const withdrawnFromCoin = await fromProtocol.withdrawCoinPTB(tx, fromPool.suiCoinType, formAmount)
 
   const swappedToCoin = await buildSwapPTBFromQuote(
     address,
@@ -180,7 +176,7 @@ export async function migrateBetweenBorrowPTB(
   }
 
   if (options?.amount && options.amount > fromPoolLending.borrowBalance) {
-    throw new Error('Amount is less than borrow balance')
+    throw new Error('Amount is more than borrow balance')
   }
 
   const priceFeeds = await getPriceFeeds()
@@ -257,7 +253,7 @@ export async function migrateBetweenBorrowPTB(
     typeArguments: [fromPool.suiCoinType]
   })
 
-  await fromProtocol.repayCoinPTB(tx, fromPool.token.coinType, flashCoin, formAmount)
+  await fromProtocol.repayCoinPTB(tx, fromPool.suiCoinType, flashCoin, formAmount)
 
   const borrowCoin = await borrowCoinPTB(tx, toPool, shouldBorrowAmount)
 
