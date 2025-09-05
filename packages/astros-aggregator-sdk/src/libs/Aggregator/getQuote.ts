@@ -53,7 +53,12 @@ export async function getQuoteInternal(
   const params = new URLSearchParams({
     from: fromCoinAddress,
     target: toCoinAddress,
-    amount: (typeof amountIn === 'bigint' ? Number(amountIn) : amountIn).toString(),
+    amount:
+      typeof amountIn === 'bigint'
+        ? amountIn.toString()
+        : typeof amountIn === 'number'
+          ? Math.floor(amountIn).toFixed(0)
+          : amountIn,
     by_amount_in:
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
