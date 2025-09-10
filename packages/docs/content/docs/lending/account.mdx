@@ -17,20 +17,24 @@ The account module provides comprehensive lending account functionality, includi
 
 Get user's lending account information. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingState.html) for details.
 
+<Callout>We standardized the precision of the `borrowBalance` and `supplyBalance`, with all decimal places set to `9`. </Callout>
+
+
 **Usage Example**
 
 ```ts
 import { getLendingState } from '@naviprotocol/lending'
 
 const lendingState = await getLendingState('0x...')
+
 ```
 
 **Result Example**
 ```json
 [{
   assetId: 19,
-  borrowBalance: '1979162',
-  supplyBalance: '0',
+  borrowBalance: '1979162', // The precision is fixed at 9, not the decimal part of the token.
+  supplyBalance: '0', // The precision is fixed at 9, not the decimal part of the token.
   pool: {
     coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
     id: 19,
