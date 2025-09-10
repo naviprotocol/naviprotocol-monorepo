@@ -27,6 +27,8 @@ import { normalizeStructTag } from '@mysten/sui/utils'
 export interface BalanceModuleConfig {
   /** Interval in milliseconds for polling coin balances */
   coinPollingInterval: number
+  /** Whether to disable coin polling */
+  disableCoinPolling: boolean
 }
 
 /**
@@ -53,7 +55,8 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
 
   /** Default configuration values */
   readonly defaultConfig = {
-    coinPollingInterval: 6000
+    coinPollingInterval: 6000,
+    disableCoinPolling: false
   }
 
   /**
@@ -267,6 +270,9 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
    */
   private async startPolling() {
     try {
+      if (this.config.disableCoinPolling) {
+        return
+      }
       await this.updatePortfolio()
     } catch (error) {
       console.error(error)
