@@ -10,12 +10,13 @@ export async function makeFLOWXPTB(
   deadline: string | number,
   typeArguments: string[]
 ) {
-  let [coinTypeA, coinTypeB] = typeArguments
+  const coinTypeA = a2b ? typeArguments[0] : typeArguments[1]
+  const coinTypeB = a2b ? typeArguments[1] : typeArguments[0]
 
   const sqrtPriceLimit = BigInt(a2b ? '4295048017' : '79226673515401279992447579054')
 
   const coinResult = txb.moveCall({
-    target: `${AggregatorConfig.flowxPacakgeId}::swap_router::swap_exact_input`,
+    target: `${AggregatorConfig.flowxPackageId}::swap_router::swap_exact_input`,
     arguments: [
       txb.object(AggregatorConfig.flowxPoolRegistry),
       txb.pure.u64(fee),
