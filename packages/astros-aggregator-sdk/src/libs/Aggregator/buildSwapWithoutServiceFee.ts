@@ -32,8 +32,7 @@ export async function buildSwapWithoutServiceFee(
   quote: Quote,
   minAmountOut: number,
   referral: number = 0,
-  ifPrint: boolean = true,
-  disablePositiveSlippage: boolean = false
+  ifPrint: boolean = true
 ): Promise<TransactionResult> {
   const tokenA = quote.from
   const tokenB = quote.target
@@ -301,8 +300,7 @@ export async function buildSwapWithoutServiceFee(
       (quote.from_token.price ?? 0) *
       1e9
     : 1e15
-  const shouldEnablePositiveSlippage =
-    !disablePositiveSlippage && quote.is_accurate === true && amountInValue !== 0
+  const shouldEnablePositiveSlippage = quote.is_accurate === true && amountInValue !== 0
 
   txb.moveCall({
     target: `${AggregatorConfig.aggregatorContract}::slippage::check_slippage_v3`,
