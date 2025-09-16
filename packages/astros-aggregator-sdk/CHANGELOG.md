@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.5.0
+
+### Minor Changes
+
+- Positive slippage update
+
 ## 1.4.3
 
 ### Patch Changes

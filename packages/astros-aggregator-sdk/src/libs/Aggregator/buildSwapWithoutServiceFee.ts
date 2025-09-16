@@ -13,6 +13,7 @@ import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
+import getRemotePositiveSlippageSetting from './getPositiveSlippageSetting'
 
 /**
  * Build a swap transaction without service fee
@@ -294,13 +295,16 @@ export async function buildSwapWithoutServiceFee(
     txb.mergeCoins(finalCoinB, [pathTempCoin])
   }
 
+  const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting()
+
   txb.transferObjects([coinIn], userAddress)
   const amountInValue = quote.from_token
     ? (Number(quote.amount_in) / Math.pow(10, quote.from_token.decimals)) *
       (quote.from_token.price ?? 0) *
       1e9
     : 1e15
-  const shouldEnablePositiveSlippage = quote.is_accurate === true && amountInValue !== 0
+  const shouldEnablePositiveSlippage =
+    remotePositiveSlippageSetting && quote.is_accurate === true && amountInValue !== 0
 
   txb.moveCall({
     target: `${AggregatorConfig.aggregatorContract}::slippage::check_slippage_v3`,
