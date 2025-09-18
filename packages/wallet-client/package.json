@@ -56,15 +56,15 @@
     "@naviprotocol/lending": "workspace:*",
     "axios": "1.11.0",
     "bignumber.js": "9.1.2",
-    "mitt": "^3.0.1",
+    "mitt": "3.0.1",
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
-    "@types/node": "^20.19.1",
+    "@types/node": "20.19.1",
     "dotenv": "16.4.7",
-    "tsconfig-paths": "^4.2.0",
-    "tslint": "^6.1.3",
+    "tsconfig-paths": "4.2.0",
+    "tslint": "6.1.3",
     "typescript": "5.8.3",
-    "vitest": "^3.2.2"
+    "vitest": "3.2.2"
   }
 }
