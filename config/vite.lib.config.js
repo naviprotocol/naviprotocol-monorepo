@@ -36,7 +36,7 @@ export default defineConfig({
     }
   },
   build: {
-    target: 'es2019',
+    target: 'es2020',
     sourcemap: true,
     lib: {
       entry,
