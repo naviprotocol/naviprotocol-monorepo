@@ -110,6 +110,14 @@ export type SwapOptions = {
   ifPrint?: boolean
   /** Service fee configuration */
   serviceFee?: FeeOption
-  /** Whether to enable positive slippage */
-  disablePositiveSlippage?: boolean
+}
+
+/**
+ * Caching configuration options
+ */
+export type CacheOption = {
+  /** Whether to disable caching for this operation */
+  disableCache?: boolean
+  /** Cache expiration time in milliseconds */
+  cacheTime?: number
 }
