@@ -111,3 +111,13 @@ export type SwapOptions = {
   /** Service fee configuration */
   serviceFee?: FeeOption
 }
+
+/**
+ * Caching configuration options
+ */
+export type CacheOption = {
+  /** Whether to disable caching for this operation */
+  disableCache?: boolean
+  /** Cache expiration time in milliseconds */
+  cacheTime?: number
+}

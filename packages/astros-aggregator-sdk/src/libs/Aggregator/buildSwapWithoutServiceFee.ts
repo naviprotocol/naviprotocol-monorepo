@@ -13,7 +13,7 @@ import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
-import getRemotePositiveSlippageSetting from './getPositiveSlippageSetting'
+import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 
 /**
  * Build a swap transaction without service fee
@@ -295,7 +295,9 @@ export async function buildSwapWithoutServiceFee(
     txb.mergeCoins(finalCoinB, [pathTempCoin])
   }
 
-  const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting()
+  const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting({
+    cacheTime: Date.now() + 5 * 60 * 1000 // 5 minutes
+  })
 
   txb.transferObjects([coinIn], userAddress)
   const amountInValue = quote.from_token
