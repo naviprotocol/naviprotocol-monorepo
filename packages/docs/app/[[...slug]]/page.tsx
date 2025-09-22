@@ -57,7 +57,6 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug)
   if (!page) notFound()
 
-  console.log('fuck', params)
   const slug = params.slug?.[0] as any
 
   return {
