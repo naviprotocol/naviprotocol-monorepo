@@ -27,8 +27,8 @@ export const AggregatorConfig = {
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
   // DCA contract address
-  dcaContract: '',
-  dcaRegistry: '',
+  dcaContract: '0xf60960d97765d7ff0989e3905ec81094e4c24300bcb8b7e59a0c8f78732f11d3',
+  dcaRegistry: '0xb1bb0e0c96e076a296bb79ed071a49edd156024489011f3e8aa06751ec3cf8da',
 
   // Cetus DEX configuration
   cetusPackageId: '0xb2db7142fa83210a7d78d9c12ac49c043b3cbbd482224fea6e3da00aa5a5ae2d',
