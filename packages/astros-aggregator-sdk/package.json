@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@mysten/sui": "1.34.0",
-    "axios": "1.11.0",
+    "axios": "1.12.2",
     "bignumber.js": "9.1.2",
     "crypto-js": "4.2.0",
     "dotenv": "16.4.7",
