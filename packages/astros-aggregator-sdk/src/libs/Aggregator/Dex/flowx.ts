@@ -10,8 +10,8 @@ export async function makeFLOWXPTB(
   deadline: string | number,
   typeArguments: string[]
 ) {
-  const coinTypeA = a2b ? typeArguments[0] : typeArguments[1]
-  const coinTypeB = a2b ? typeArguments[1] : typeArguments[0]
+  const coinTypeA = typeArguments[0]
+  const coinTypeB = typeArguments[1]
 
   const sqrtPriceLimit = BigInt(a2b ? '4295048017' : '79226673515401279992447579054')
 
