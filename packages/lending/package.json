@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@mysten/bcs": "1.6.3",
-    "@mysten/sui": "1.34.0",
+    "@mysten/sui": "1.38.0",
     "@pythnetwork/pyth-sui-js": "^2.0.0",
     "bignumber.js": "9.1.2",
     "lodash.camelcase": "4.3.0"

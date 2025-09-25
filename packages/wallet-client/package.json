@@ -51,7 +51,7 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "@mysten/sui": "1.34.0",
+    "@mysten/sui": "1.38.0",
     "@naviprotocol/astros-aggregator-sdk": "workspace:*",
     "@naviprotocol/lending": "workspace:*",
     "axios": "1.11.0",
