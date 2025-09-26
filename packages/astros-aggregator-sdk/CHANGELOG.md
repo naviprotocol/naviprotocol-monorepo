@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.7.0
+
+### Minor Changes
+
+- FlowX dex
+
 ## 1.6.0
 
 ### Minor Changes

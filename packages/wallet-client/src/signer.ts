@@ -57,8 +57,8 @@ export class WatchSigner extends Signer {
    * @param bytes - Transaction bytes to sign
    * @returns Promise<Uint8Array> - Empty signature (not valid)
    */
-  async sign(bytes: Uint8Array): Promise<Uint8Array> {
-    return new Uint8Array([])
+  override async sign(bytes: Uint8Array): Promise<any> {
+    return Promise.resolve(new Uint8Array(0))
   }
 
   /**
@@ -134,8 +134,8 @@ export abstract class WebSigner extends Signer {
    * @param bytes - Transaction bytes to sign
    * @returns Promise<Uint8Array> - Empty signature (not valid)
    */
-  async sign(bytes: Uint8Array): Promise<Uint8Array> {
-    return new Uint8Array([])
+  override async sign(bytes: Uint8Array): Promise<any> {
+    return Promise.resolve(new Uint8Array(0))
   }
 
   /**

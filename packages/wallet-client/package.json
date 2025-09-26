@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/wallet-client",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "NAVI Wallet Client",
   "license": "MIT",
   "keywords": [
@@ -51,7 +51,7 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "@mysten/sui": "1.34.0",
+    "@mysten/sui": "1.38.0",
     "@naviprotocol/astros-aggregator-sdk": "workspace:*",
     "@naviprotocol/lending": "workspace:*",
     "axios": "1.11.0",
