@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.7.1
+
+### Patch Changes
+
+- Fix Cetus and Magma swap
+
 ## 1.7.0
 
 ### Minor Changes
