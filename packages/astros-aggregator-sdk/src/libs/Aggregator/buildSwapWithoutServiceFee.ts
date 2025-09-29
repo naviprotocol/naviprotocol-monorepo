@@ -15,6 +15,7 @@ import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
+import { parsePoolTypeArgs } from './utils'
 
 /**
  * Build a swap transaction without service fee
@@ -107,29 +108,26 @@ export async function buildSwapWithoutServiceFee(
 
       switch (provider) {
         case Dex.CETUS: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
           const coinA = a2b
             ? pathTempCoin
             : txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolA]
               })
+
           const coinB = a2b
             ? txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolB]
               })
             : pathTempCoin
 
-          const coinABs = await makeCETUSPTB(
-            txb,
-            poolId,
-            true,
-            coinA,
-            coinB,
-            amountInPTB,
-            a2b,
-            typeArguments
-          )
+          const coinABs = await makeCETUSPTB(txb, poolId, true, coinA, coinB, amountInPTB, a2b, [
+            poolA,
+            poolB
+          ])
 
           if (a2b) {
             txb.transferObjects([coinABs[0]], userAddress)
@@ -233,29 +231,26 @@ export async function buildSwapWithoutServiceFee(
           break
         }
         case Dex.MAGMA: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
           const coinA = a2b
             ? pathTempCoin
             : txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolA]
               })
+
           const coinB = a2b
             ? txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolB]
               })
             : pathTempCoin
 
-          const coinABs = await makeMAGMAPTB(
-            txb,
-            poolId,
-            true,
-            coinA,
-            coinB,
-            amountInPTB,
-            a2b,
-            typeArguments
-          )
+          const coinABs = await makeMAGMAPTB(txb, poolId, true, coinA, coinB, amountInPTB, a2b, [
+            poolA,
+            poolB
+          ])
 
           if (a2b) {
             txb.transferObjects([coinABs[0]], userAddress)
