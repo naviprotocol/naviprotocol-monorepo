@@ -68,9 +68,9 @@ export const AggregatorConfig = {
   haSuiConfigId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
 
   // Magma DEX configuration
-  magmaPackageId: '0x49e9f06c58a36830fe0d83291f002012e72b00a4ec9b3a6304c40fc5712bb6e3',
+  magmaPackageId: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
   magmaConfigId: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
-  magmaIntegratePublishedAt: '0x7c369062640451c79e4e8ef7540df7540d88a002d04c91ee37c771997739963f',
+  magmaPublishedAt: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
 
   // Momentum DEX configuration
   momentumPackageId: '0xcf60a40f45d46fc1e828871a647c1e25a0915dec860d2662eb10fdb382c3c1d1',
@@ -81,7 +81,12 @@ export const AggregatorConfig = {
   // FlowX DEX configuration
   flowxPackageId: '0xe882cd54551e73e64ff5b257146a0c5264546974cf00d78ecc871017cb22df67',
   flowxPoolRegistry: '0x27565d24a4cd51127ac90e4074a841bbe356cca7bf5759ddc14a975be1632abc',
-  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656'
+  flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656',
+
+  // Magma ALMM DEX configuration
+  magmaAlmmPackageId: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
+  magmaAlmmPublishedAt: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
+  magmaIntegratePublishedAt: '0x7c369062640451c79e4e8ef7540df7540d88a002d04c91ee37c771997739963f'
 }
 
 /**
