@@ -17,6 +17,7 @@ import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
 import { parsePoolTypeArgs } from './utils'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
+import { parsePoolTypeArgs } from './utils'
 
 /**
  * Build a swap transaction without service fee
@@ -298,16 +299,19 @@ export async function buildSwapWithoutServiceFee(
           break
         }
         case Dex.MAGMA_ALMM: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
           const coinA = a2b
             ? pathTempCoin
             : txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolA]
               })
+
           const coinB = a2b
             ? txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolB]
               })
             : pathTempCoin
           pathTempCoin = await makeMAGMAALMMPTB(
