@@ -16,6 +16,7 @@ import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
 import { parsePoolTypeArgs } from './utils'
+import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
 
 /**
  * Build a swap transaction without service fee
@@ -293,6 +294,33 @@ export async function buildSwapWithoutServiceFee(
             0,
             deadline,
             typeArguments
+          )
+          break
+        }
+        case Dex.MAGMA_ALMM: {
+          const coinA = a2b
+            ? pathTempCoin
+            : txb.moveCall({
+                target: '0x2::coin::zero',
+                typeArguments: [tempTokenB]
+              })
+          const coinB = a2b
+            ? txb.moveCall({
+                target: '0x2::coin::zero',
+                typeArguments: [tempTokenB]
+              })
+            : pathTempCoin
+          pathTempCoin = await makeMAGMAALMMPTB(
+            txb,
+            typeArguments[0],
+            typeArguments[1],
+            coinA,
+            coinB,
+            poolId,
+            amountInPTB,
+            minAmountOut,
+            a2b,
+            userAddress
           )
           break
         }
