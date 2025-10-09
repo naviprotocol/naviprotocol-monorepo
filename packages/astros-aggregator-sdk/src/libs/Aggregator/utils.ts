@@ -44,7 +44,7 @@ export function generateRefId(apiKey: string): number {
  * @returns The type arguments
  */
 export function parsePoolTypeArgs(poolTypeStr: string): [string, string] {
-  // 例: "0x...::pool::Pool<0x...::USDC, 0x2::sui::SUI>"
+  // example: "0x...::pool::Pool<0x...::USDC, 0x2::sui::SUI>"
   const m = poolTypeStr.match(/Pool<([^,>]+)\s*,\s*([^>]+)>/)
   if (!m) throw new Error(`Bad pool type: ${poolTypeStr}`)
   return [m[1], m[2]]
