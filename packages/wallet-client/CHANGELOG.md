@@ -5,7 +5,7 @@
 ### Patch Changes
 
 - Updated dependencies
-  - @naviprotocol/astros-aggregator-sdk@1.8.1
+  - @naviprotocol/astros-aggregator-sdk@1.7.1
 
 ## 1.1.8
 

@@ -1,6 +1,6 @@
 # @naviprotocol/astros-aggregator-sdk
 
-## 1.8.1
+## 1.7.1
 
 ### Patch Changes
 
