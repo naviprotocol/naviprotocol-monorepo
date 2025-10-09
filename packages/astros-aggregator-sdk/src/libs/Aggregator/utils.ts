@@ -38,6 +38,19 @@ export function generateRefId(apiKey: string): number {
 }
 
 /**
+ * Parses the type arguments from a pool type string
+ *
+ * @param poolTypeStr - The pool type string
+ * @returns The type arguments
+ */
+export function parsePoolTypeArgs(poolTypeStr: string): [string, string] {
+  // example: "0x...::pool::Pool<0x...::USDC, 0x2::sui::SUI>"
+  const m = poolTypeStr.match(/Pool<([^,>]+)\s*,\s*([^>]+)>/)
+  if (!m) throw new Error(`Bad pool type: ${poolTypeStr}`)
+  return [m[1], m[2]]
+}
+
+/**
  * Generates a cache key from function arguments
  *
  * This function creates a unique key for caching by serializing the arguments

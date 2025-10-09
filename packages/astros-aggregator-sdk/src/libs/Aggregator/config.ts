@@ -70,6 +70,7 @@ export const AggregatorConfig = {
   // Magma DEX configuration
   magmaPackageId: '0x49e9f06c58a36830fe0d83291f002012e72b00a4ec9b3a6304c40fc5712bb6e3',
   magmaConfigId: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
+  magmaIntegratePublishedAt: '0x7c369062640451c79e4e8ef7540df7540d88a002d04c91ee37c771997739963f',
 
   // Momentum DEX configuration
   momentumPackageId: '0xcf60a40f45d46fc1e828871a647c1e25a0915dec860d2662eb10fdb382c3c1d1',
