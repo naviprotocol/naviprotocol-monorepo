@@ -78,7 +78,7 @@ export type Quote = {
     price: number
   }
   /** Whether the quote has passed the dry run. If false, the quote is strongly recommended to be discarded. */
-  is_accurate: boolean
+  is_accurate?: boolean
   /** If dry run fails, the trace id of the quote. */
   trace_id?: string
 }
