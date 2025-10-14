@@ -15,7 +15,6 @@ import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
-import { parsePoolTypeArgs } from './utils'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
 import { parsePoolTypeArgs } from './utils'
 
