@@ -24,7 +24,7 @@ export async function makeMAGMAALMMPTB(
     txb.object(AggregatorConfig.magmaConfigId),
     coinA,
     coinB,
-    txb.pure.u64(amount),
+    amount,
     txb.pure.u64(minAmountOut),
     txb.pure.bool(a2b),
     txb.pure.address(userAddress),
