@@ -168,9 +168,6 @@ importers:
       '@mayanfinance/swap-sdk':
         specifier: 10.9.0
         version: 10.9.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@solana/web3.js':
         specifier: 1.98.2
         version: 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -291,9 +288,6 @@ importers:
 
   packages/wallet-client:
     dependencies:
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@naviprotocol/astros-aggregator-sdk':
         specifier: workspace:*
         version: link:../astros-aggregator-sdk

@@ -67,6 +67,6 @@
     "vitest": "3.2.2"
   },
   "peerDependencies": {
-    "@mysten/sui": "1.38.0"
+    "@mysten/sui": ">=1.25.0"
   }
 }
