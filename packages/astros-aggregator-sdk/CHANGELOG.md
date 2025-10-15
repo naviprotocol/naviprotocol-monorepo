@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- Adjust type for error report
+- Adjust type for error report and update Haedal package id
 
 ## 1.7.1
 
