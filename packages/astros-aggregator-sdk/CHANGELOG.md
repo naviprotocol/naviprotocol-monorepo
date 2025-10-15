@@ -5,6 +5,7 @@
 ### Minor Changes
 
 - Adjust type for error report and update Haedal package id
+- Move @mysten/sui to peer dependency
 
 ## 1.7.1
 

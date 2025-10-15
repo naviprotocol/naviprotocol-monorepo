@@ -53,7 +53,6 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "@mysten/sui": "1.38.0",
     "axios": "1.12.2",
     "bignumber.js": "9.1.2",
     "crypto-js": "4.2.0",
@@ -68,5 +67,8 @@
     "tslint": "6.1.3",
     "typescript": "5.8.3",
     "vitest": "3.2.2"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "1.38.0"
   }
 }

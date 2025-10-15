@@ -125,9 +125,6 @@ importers:
 
   packages/astros-aggregator-sdk:
     dependencies:
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       axios:
         specifier: 1.12.2
         version: 1.12.2
@@ -263,9 +260,6 @@ importers:
       '@mysten/bcs':
         specifier: 1.6.3
         version: 1.6.3
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js':
         specifier: ^2.0.0
         version: 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)

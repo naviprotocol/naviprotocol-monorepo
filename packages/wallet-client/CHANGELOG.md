@@ -1,5 +1,17 @@
 # @naviprotocol/wallet-client
 
+## 1.2.0
+
+### Minor Changes
+
+- Move @mysten/sui to peer dependency
+
+### Patch Changes
+
+- Updated dependencies
+  - @naviprotocol/astros-aggregator-sdk@1.8.0
+  - @naviprotocol/lending@1.2.0
+
 ## 1.1.10
 
 ### Patch Changes
