@@ -64,7 +64,7 @@ export const AggregatorConfig = {
   vSuiPackageId: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20',
 
   // haSui DEX configuration
-  haSuiPackageId: '0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2',
+  haSuiPackageId: '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c',
   haSuiConfigId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
 
   // Magma DEX configuration

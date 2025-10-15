@@ -1,5 +1,12 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.8.0
+
+### Minor Changes
+
+- Adjust type for error report and update Haedal package id
+- Move @mysten/sui to peer dependency
+
 ## 1.7.1
 
 ### Patch Changes

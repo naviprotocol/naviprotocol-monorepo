@@ -125,9 +125,6 @@ importers:
 
   packages/astros-aggregator-sdk:
     dependencies:
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       axios:
         specifier: 1.12.2
         version: 1.12.2
@@ -144,6 +141,9 @@ importers:
         specifier: 1.0.9
         version: 1.0.9
     devDependencies:
+      '@mysten/sui':
+        specifier: 1.38.0
+        version: 1.38.0(typescript@5.8.3)
       '@types/crypto-js':
         specifier: 4.2.2
         version: 4.2.2
@@ -171,9 +171,6 @@ importers:
       '@mayanfinance/swap-sdk':
         specifier: 10.9.0
         version: 10.9.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@solana/web3.js':
         specifier: 1.98.2
         version: 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -184,6 +181,9 @@ importers:
         specifier: 6.13.5
         version: 6.13.5(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     devDependencies:
+      '@mysten/sui':
+        specifier: 1.38.0
+        version: 1.38.0(typescript@5.8.3)
       '@types/node':
         specifier: 20.19.1
         version: 20.19.1
@@ -202,6 +202,9 @@ importers:
 
   packages/docs:
     dependencies:
+      '@mysten/sui':
+        specifier: 1.38.0
+        version: 1.38.0(typescript@5.8.3)
       fumadocs-core:
         specifier: 15.6.3
         version: 15.6.3(@types/react@19.1.8)(next@15.3.4(@babel/core@7.26.10)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -263,9 +266,6 @@ importers:
       '@mysten/bcs':
         specifier: 1.6.3
         version: 1.6.3
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js':
         specifier: ^2.0.0
         version: 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -276,6 +276,9 @@ importers:
         specifier: 4.3.0
         version: 4.3.0
     devDependencies:
+      '@mysten/sui':
+        specifier: 1.38.0
+        version: 1.38.0(typescript@5.8.3)
       '@types/lodash.camelcase':
         specifier: 4.3.9
         version: 4.3.9
@@ -297,9 +300,6 @@ importers:
 
   packages/wallet-client:
     dependencies:
-      '@mysten/sui':
-        specifier: 1.38.0
-        version: 1.38.0(typescript@5.8.3)
       '@naviprotocol/astros-aggregator-sdk':
         specifier: workspace:*
         version: link:../astros-aggregator-sdk
@@ -319,6 +319,9 @@ importers:
         specifier: 1.0.9
         version: 1.0.9
     devDependencies:
+      '@mysten/sui':
+        specifier: 1.38.0
+        version: 1.38.0(typescript@5.8.3)
       '@types/node':
         specifier: 20.19.1
         version: 20.19.1
