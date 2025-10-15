@@ -60,6 +60,7 @@
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
+    "@mysten/sui": "1.38.0",
     "@types/crypto-js": "4.2.2",
     "@types/node": "20.19.1",
     "jsdom": "27.0.0",

@@ -59,6 +59,7 @@
     "ethers": "6.13.5"
   },
   "devDependencies": {
+    "@mysten/sui": "1.38.0",
     "@types/node": "20.19.1",
     "tsconfig-paths": "4.2.0",
     "tslint": "6.1.3",

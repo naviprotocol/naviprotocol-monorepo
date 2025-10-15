@@ -57,6 +57,7 @@
     "lodash.camelcase": "4.3.0"
   },
   "devDependencies": {
+    "@mysten/sui": "1.38.0",
     "@types/lodash.camelcase": "4.3.9",
     "@types/node": "20.19.1",
     "tsconfig-paths": "4.2.0",
