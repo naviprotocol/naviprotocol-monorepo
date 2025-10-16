@@ -1,5 +1,11 @@
 # @naviprotocol/wallet-client
 
+## 1.3.0
+
+### Minor Changes
+
+- suppport migrate suilend position
+
 ## 1.2.0
 
 ### Minor Changes
