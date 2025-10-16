@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js'
+import { CacheOption } from '../../types'
 
 // Reserved ref_id
 const RESERVED_IDS_ARRAY = [1873161113, 8190801341]
@@ -34,4 +35,108 @@ export function generateRefId(apiKey: string): number {
   }
 
   return finalRefId
+}
+
+/**
+ * Parses the type arguments from a pool type string
+ *
+ * @param poolTypeStr - The pool type string
+ * @returns The type arguments
+ */
+export function parsePoolTypeArgs(poolTypeStr: string): [string, string] {
+  // example: "0x...::pool::Pool<0x...::USDC, 0x2::sui::SUI>"
+  const m = poolTypeStr.match(/Pool<([^,>]+)\s*,\s*([^>]+)>/)
+  if (!m) throw new Error(`Bad pool type: ${poolTypeStr}`)
+  return [m[1], m[2]]
+}
+
+/**
+ * Generates a cache key from function arguments
+ *
+ * This function creates a unique key for caching by serializing the arguments
+ * and removing cache-specific options that shouldn't affect the cache key.
+ *
+ * @param args - Function arguments to generate key from
+ * @returns JSON string representing the arguments
+ */
+function argsKey(args: any[]) {
+  const serializergs = [] as any[]
+  args.forEach((option: any, index) => {
+    const isLast = index === args.length - 1
+    if (typeof option === 'object' && isLast) {
+      const { client, disableCache, cacheTime, ...rest } = option
+      serializergs.push(rest)
+    } else {
+      serializergs.push(option)
+    }
+  })
+  return JSON.stringify(serializergs)
+}
+
+/**
+ * Wraps a function with singleton behavior
+ *
+ * This decorator ensures that only one instance of the function is running at a time.
+ * If the function is called again while a previous call is still pending, it returns
+ * the existing promise instead of making a new call.
+ *
+ * @param fn - Function to wrap with singleton behavior
+ * @returns Wrapped function with singleton behavior
+ */
+export function withSingleton<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+  const promiseMap: Record<string, Promise<any> | null> = {}
+
+  return ((...args: any[]) => {
+    const key = argsKey(args)
+    if (!promiseMap[key]) {
+      promiseMap[key] = fn(...args).finally(() => {
+        promiseMap[key] = null
+      })
+    }
+    return promiseMap[key]
+  }) as T
+}
+
+/**
+ * Wraps a function with caching behavior
+ *
+ * This decorator caches function results based on arguments and cache options.
+ * It respects cache time settings and can be disabled per call.
+ *
+ * @param fn - Function to wrap with caching behavior
+ * @returns Wrapped function with caching behavior
+ */
+export function withCache<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+  let cache: Record<
+    string,
+    {
+      data: undefined
+      cacheAt: number
+    }
+  > = {}
+
+  return ((...args: any[]) => {
+    const options = args[args.length - 1] as Partial<CacheOption>
+    const key = argsKey(args)
+    const cacheData = cache[key]
+
+    // Check if cache is valid and not disabled
+    if (!options?.disableCache && typeof cacheData?.data !== 'undefined') {
+      if (
+        typeof options?.cacheTime === 'undefined' ||
+        options.cacheTime > Date.now() - cacheData.cacheAt
+      ) {
+        return cacheData.data
+      }
+    }
+
+    // Execute function and cache result
+    return fn(...args).then((result) => {
+      cache[key] = {
+        data: result,
+        cacheAt: Date.now()
+      }
+      return result
+    })
+  }) as T
 }

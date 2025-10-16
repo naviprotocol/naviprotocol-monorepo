@@ -218,7 +218,7 @@ export const getLendingState = withCache(
         borrow_balance: string
         asset_id: number
       }[][]
-    >(result, [bcs.vector(UserStateInfo)])
+    >(result, [bcs.vector(UserStateInfo as any)])
 
     const lendingStates = camelize(
       res[0].filter((item) => {

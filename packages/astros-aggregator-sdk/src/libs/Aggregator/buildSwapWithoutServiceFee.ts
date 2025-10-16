@@ -13,6 +13,9 @@ import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
+import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
+import { makeFLOWXPTB } from './Dex/flowx'
+import { parsePoolTypeArgs } from './utils'
 
 /**
  * Build a swap transaction without service fee
@@ -32,8 +35,7 @@ export async function buildSwapWithoutServiceFee(
   quote: Quote,
   minAmountOut: number,
   referral: number = 0,
-  ifPrint: boolean = true,
-  disablePositiveSlippage: boolean = false
+  ifPrint: boolean = true
 ): Promise<TransactionResult> {
   const tokenA = quote.from
   const tokenB = quote.target
@@ -106,29 +108,26 @@ export async function buildSwapWithoutServiceFee(
 
       switch (provider) {
         case Dex.CETUS: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
           const coinA = a2b
             ? pathTempCoin
             : txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolA]
               })
+
           const coinB = a2b
             ? txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolB]
               })
             : pathTempCoin
 
-          const coinABs = await makeCETUSPTB(
-            txb,
-            poolId,
-            true,
-            coinA,
-            coinB,
-            amountInPTB,
-            a2b,
-            typeArguments
-          )
+          const coinABs = await makeCETUSPTB(txb, poolId, true, coinA, coinB, amountInPTB, a2b, [
+            poolA,
+            poolB
+          ])
 
           if (a2b) {
             txb.transferObjects([coinABs[0]], userAddress)
@@ -232,29 +231,26 @@ export async function buildSwapWithoutServiceFee(
           break
         }
         case Dex.MAGMA: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
           const coinA = a2b
             ? pathTempCoin
             : txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolA]
               })
+
           const coinB = a2b
             ? txb.moveCall({
                 target: '0x2::coin::zero',
-                typeArguments: [tempTokenB]
+                typeArguments: [poolB]
               })
             : pathTempCoin
 
-          const coinABs = await makeMAGMAPTB(
-            txb,
-            poolId,
-            true,
-            coinA,
-            coinB,
-            amountInPTB,
-            a2b,
-            typeArguments
-          )
+          const coinABs = await makeMAGMAPTB(txb, poolId, true, coinA, coinB, amountInPTB, a2b, [
+            poolA,
+            poolB
+          ])
 
           if (a2b) {
             txb.transferObjects([coinABs[0]], userAddress)
@@ -286,6 +282,20 @@ export async function buildSwapWithoutServiceFee(
           pathTempCoin = outputCoin
           break
         }
+        case Dex.FLOWX: {
+          const deadline = Date.now() + 3 * 60 * 1000
+
+          pathTempCoin = await makeFLOWXPTB(
+            txb,
+            route.fee_rate.toString(),
+            pathTempCoin,
+            a2b,
+            0,
+            deadline,
+            typeArguments
+          )
+          break
+        }
         default: {
           break
         }
@@ -295,6 +305,10 @@ export async function buildSwapWithoutServiceFee(
     txb.mergeCoins(finalCoinB, [pathTempCoin])
   }
 
+  const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting({
+    cacheTime: Date.now() + 5 * 60 * 1000 // 5 minutes
+  })
+
   txb.transferObjects([coinIn], userAddress)
   const amountInValue = quote.from_token
     ? (Number(quote.amount_in) / Math.pow(10, quote.from_token.decimals)) *
@@ -302,7 +316,7 @@ export async function buildSwapWithoutServiceFee(
       1e9
     : 1e15
   const shouldEnablePositiveSlippage =
-    !disablePositiveSlippage && quote.is_accurate === true && amountInValue !== 0
+    remotePositiveSlippageSetting && quote.is_accurate === true && amountInValue !== 0
 
   txb.moveCall({
     target: `${AggregatorConfig.aggregatorContract}::slippage::check_slippage_v3`,

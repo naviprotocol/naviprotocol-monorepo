@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.4.3",
+  "version": "1.8.0",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
@@ -53,19 +53,23 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "@mysten/sui": "1.34.0",
-    "axios": "1.11.0",
+    "axios": "1.12.2",
     "bignumber.js": "9.1.2",
     "crypto-js": "4.2.0",
     "dotenv": "16.4.7",
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
+    "@mysten/sui": "1.38.0",
     "@types/crypto-js": "4.2.2",
     "@types/node": "20.19.1",
+    "jsdom": "27.0.0",
     "tsconfig-paths": "4.2.0",
     "tslint": "6.1.3",
     "typescript": "5.8.3",
     "vitest": "3.2.2"
+  },
+  "peerDependencies": {
+    "@mysten/sui": ">=1.25.0"
   }
 }

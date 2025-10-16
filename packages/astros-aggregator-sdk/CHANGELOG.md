@@ -1,5 +1,36 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.8.0
+
+### Minor Changes
+
+- Adjust type for error report and update Haedal package id
+- Move @mysten/sui to peer dependency
+
+## 1.7.1
+
+### Patch Changes
+
+- Fix cetus and magma dex's
+
+## 1.7.0
+
+### Minor Changes
+
+- FlowX dex
+
+## 1.6.0
+
+### Minor Changes
+
+- Update denpendency version
+
+## 1.5.0
+
+### Minor Changes
+
+- Positive slippage update
+
 ## 1.4.3
 
 ### Patch Changes

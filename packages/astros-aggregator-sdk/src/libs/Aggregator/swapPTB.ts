@@ -182,8 +182,7 @@ export async function buildSwapPTBFromQuote(
     quote,
     minAmountOut,
     referral,
-    ifPrint,
-    swapOptions?.disablePositiveSlippage ?? false
+    ifPrint
   )
 }
 
@@ -220,8 +219,7 @@ export async function swapPTB(
     dexList: [],
     byAmountIn: true,
     depth: 3,
-    ifPrint: true,
-    disablePositiveSlippage: false
+    ifPrint: true
   }
 ): Promise<TransactionResult> {
   // Generate referral ID if API key is provided

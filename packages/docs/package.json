@@ -15,6 +15,7 @@
     "verify:fix": "run-p prettier:fix lint:fix"
   },
   "dependencies": {
+    "@mysten/sui": "1.38.0",
     "fumadocs-core": "15.6.3",
     "fumadocs-mdx": "11.6.10",
     "fumadocs-twoslash": "3.1.4",

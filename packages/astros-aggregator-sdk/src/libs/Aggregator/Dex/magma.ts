@@ -17,7 +17,7 @@ export async function makeMAGMAPTB(
   const sqrtPriceLimit = BigInt(a2b ? '4295048016' : '79226673515401279992447579055')
 
   const coinABs = txb.moveCall({
-    target: `${AggregatorConfig.magmaPackageId}::router::swap`,
+    target: `${AggregatorConfig.magmaIntegratePublishedAt}::router::swap`,
     arguments: [
       txb.object(AggregatorConfig.magmaConfigId),
       txb.object(poolId),

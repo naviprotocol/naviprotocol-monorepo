@@ -35,7 +35,9 @@ export enum Dex {
   /** Magma DEX protocol */
   MAGMA = 'magma',
   /** Momentum DEX protocol */
-  MOMENTUM = 'momentum'
+  MOMENTUM = 'momentum',
+  /** FlowX DEX protocol */
+  FLOWX = 'flowx'
 }
 
 /**
@@ -75,8 +77,10 @@ export type Quote = {
     /** Current token price */
     price: number
   }
-  /** Whether the quote is accurate */
+  /** Whether the quote has passed the dry run. If false, the quote is strongly recommended to be discarded. */
   is_accurate?: boolean
+  /** If dry run fails, the trace id of the quote. */
+  trace_id?: string
 }
 
 /**
@@ -110,6 +114,14 @@ export type SwapOptions = {
   ifPrint?: boolean
   /** Service fee configuration */
   serviceFee?: FeeOption
-  /** Whether to enable positive slippage */
-  disablePositiveSlippage?: boolean
+}
+
+/**
+ * Caching configuration options
+ */
+export type CacheOption = {
+  /** Whether to disable caching for this operation */
+  disableCache?: boolean
+  /** Cache expiration time in milliseconds */
+  cacheTime?: number
 }
