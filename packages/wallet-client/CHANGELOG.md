@@ -1,5 +1,11 @@
 # @naviprotocol/wallet-client
 
+## 1.3.1
+
+### Patch Changes
+
+- Optimize user coins fetch logic
+
 ## 1.3.0
 
 ### Minor Changes
