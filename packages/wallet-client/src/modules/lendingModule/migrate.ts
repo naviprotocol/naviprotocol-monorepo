@@ -4,19 +4,18 @@ import {
   getFlashLoanAsset,
   flashloanPTB,
   depositCoinPTB,
-  withdrawCoinPTB,
   repayFlashLoanPTB,
-  repayCoinPTB,
   borrowCoinPTB,
   mergeCoinsPTB,
-  updateOraclePricesPTB
+  updateOraclePricesPTB,
+  getCoins
 } from '@naviprotocol/lending'
 import { buildSwapPTBFromQuote } from '@naviprotocol/astros-aggregator-sdk'
 import type { LendingModule } from '.'
-import { fromRate } from './utils'
 import BigNumber from 'bignumber.js'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { getPriceFeeds, filterPriceFeeds } from '@naviprotocol/lending'
+import { UserPortfolio } from '../balanceModule/portfolio'
 
 export async function migrateBetweenSupplyPTB(
   this: LendingModule,
@@ -32,7 +31,6 @@ export async function migrateBetweenSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.updatePortfolio()
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
   const lendingState = await this.getLendingState()
@@ -154,7 +152,6 @@ export async function migrateBetweenBorrowPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.updatePortfolio()
   const address = this.walletClient.address
   const fromPool = await this.getPool(from)
   const toPool = await this.getPool(to)
@@ -296,10 +293,14 @@ export async function migrateBalanceToSupplyPTB(
   if (!this.walletClient) {
     throw new Error('Wallet client not found')
   }
-  await this.walletClient.balance.updatePortfolio()
-  const address = this.walletClient.address
+
+  const coins = await getCoins(this.walletClient.address, {
+    client: this.walletClient.client,
+    coinType
+  })
   const toPool = await this.getPool(to)
-  const balance = this.walletClient.balance.portfolio.getBalance(coinType)
+  const portfolio = new UserPortfolio(coins)
+  const balance = portfolio.getBalance(coinType)
 
   if (balance.amount.eq(0)) {
     throw new Error(`No balance of ${coinType}`)
