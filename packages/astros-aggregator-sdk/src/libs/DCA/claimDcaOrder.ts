@@ -6,6 +6,7 @@
 
 import { Transaction } from '@mysten/sui/transactions'
 import { AggregatorConfig } from '../Aggregator'
+import { getDcaPackageId } from './getDcaPackageId'
 
 /**
  * Claims a completed DCA order and withdraws all remaining funds
@@ -31,7 +32,7 @@ export async function claimDcaOrder(
   const tx = new Transaction()
 
   const [remainingInput, totalOutput] = tx.moveCall({
-    target: `${AggregatorConfig.dcaContract}::dca::claim_order`,
+    target: `${getDcaPackageId()}::dca::claim_order`,
     arguments: [tx.object(AggregatorConfig.dcaRegistry), tx.object(receiptId)],
     typeArguments: [fromCoinType, toCoinType]
   })

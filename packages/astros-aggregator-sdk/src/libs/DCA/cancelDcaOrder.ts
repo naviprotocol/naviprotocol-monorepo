@@ -7,6 +7,7 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { CancelDcaOrderParams } from './types'
 import { AggregatorConfig } from '../Aggregator'
+import { getDcaPackageId } from './getDcaPackageId'
 
 /**
  * Cancels an existing DCA order and returns remaining funds
@@ -30,7 +31,7 @@ export async function cancelDcaOrder(
   const tx = new Transaction()
 
   const [remainingInput, accumulatedOutput] = tx.moveCall({
-    target: `${AggregatorConfig.dcaContract}::dca::cancel_order`,
+    target: `${getDcaPackageId()}::dca::cancel_order`,
     arguments: [tx.object(AggregatorConfig.dcaRegistry), tx.object(receiptId)],
     typeArguments: [params.fromCoinType, params.toCoinType]
   })
