@@ -48,7 +48,10 @@ export async function getUserAvailableLendingRewards(
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<LendingReward[]> {
   const feeds = await getPriceFeeds(options)
-  const pools = await getPools(options)
+  const pools = await getPools({
+    ...options,
+    cacheTime: DEFAULT_CACHE_TIME
+  })
   const client = options?.client ?? suiClient
   const config = await getConfig({
     ...options,
