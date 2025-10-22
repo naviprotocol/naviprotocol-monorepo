@@ -6,6 +6,7 @@
 
 import { Transaction } from '@mysten/sui/transactions'
 import { AggregatorConfig } from '../Aggregator'
+import { getDcaPackageId } from './getDcaPackageId'
 
 /**
  * Withdraws all accumulated output tokens from an active DCA order
@@ -26,7 +27,7 @@ export async function withdrawOutput(receiptId: string, toCoinType: string): Pro
   const tx = new Transaction()
 
   const outputBalance = tx.moveCall({
-    target: `${AggregatorConfig.dcaContract}::dca::withdraw_output`,
+    target: `${getDcaPackageId()}::dca::withdraw_output`,
     arguments: [tx.object(AggregatorConfig.dcaRegistry), tx.object(receiptId)],
     typeArguments: [toCoinType]
   })
@@ -68,7 +69,7 @@ export async function withdrawOutputAmount(
   const tx = new Transaction()
 
   const outputBalance = tx.moveCall({
-    target: `${AggregatorConfig.dcaContract}::dca::withdraw_output_amount`,
+    target: `${getDcaPackageId()}::dca::withdraw_output_amount`,
     arguments: [
       tx.object(AggregatorConfig.dcaRegistry),
       tx.object(receiptId),
