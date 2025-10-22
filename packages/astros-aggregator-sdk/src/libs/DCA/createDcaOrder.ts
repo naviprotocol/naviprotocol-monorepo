@@ -5,6 +5,7 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { DcaOrderParams } from './types'
 import { AggregatorConfig } from '../Aggregator'
+import { getDcaPackageId } from './getDcaPackageId'
 
 /**
  * Creates a new DCA order with the specified parameters
@@ -44,7 +45,7 @@ export async function createDcaOrder(
   })
 
   const receipt = tx.moveCall({
-    target: `${AggregatorConfig.dcaContract}::dca::create_order`,
+    target: `${getDcaPackageId()}::dca::create_order`,
     arguments: [
       tx.object(AggregatorConfig.dcaRegistry),
       balance,
