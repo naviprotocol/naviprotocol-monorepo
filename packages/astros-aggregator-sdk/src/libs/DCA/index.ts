@@ -7,8 +7,5 @@
 
 export { createDcaOrder } from './createDcaOrder'
 export { cancelDcaOrder } from './cancelDcaOrder'
-export { claimDcaOrder } from './claimDcaOrder'
-export { withdrawOutput, withdrawOutputAmount } from './withdrawOutput'
-export { queryDcaOrders } from './queryDcaOrders'
-
 export * from './types'
+export { getDcaPackageId } from './getDcaPackageId'
