@@ -46,6 +46,7 @@
 		"@babel/plugin-transform-react-jsx": "7.25.9",
 		"@changesets/cli": "2.29.7",
 		"@faker-js/faker": "7.6.0",
+		"@naviprotocol/astros-aggregator-sdk": "workspace:^",
 		"@rollup/plugin-replace": "5.0.7",
 		"@types/node": "20.19.1",
 		"@typescript-eslint/eslint-plugin": "5.62.0",

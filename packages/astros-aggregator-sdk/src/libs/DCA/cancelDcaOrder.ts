@@ -14,11 +14,13 @@ import { getDcaPackageId } from './getDcaPackageId'
  *
  * @param params - Parameters for cancelling the DCA order
  * @param receiptId - The receipt object ID from when the order was created
+ * @param ownerAddress - Address to receive returned input/output coins
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function cancelDcaOrder(
   params: CancelDcaOrderParams,
-  receiptId: string
+  receiptId: string,
+  ownerAddress: string
 ): Promise<Transaction> {
   if (!receiptId) {
     throw new Error('receiptId is required')
@@ -31,8 +33,13 @@ export async function cancelDcaOrder(
   const tx = new Transaction()
 
   const [remainingInput, accumulatedOutput] = tx.moveCall({
-    target: `${getDcaPackageId()}::dca::cancel_order`,
-    arguments: [tx.object(AggregatorConfig.dcaRegistry), tx.object(receiptId)],
+    target: `${getDcaPackageId()}::main::cancel_order`,
+    arguments: [
+      tx.object(AggregatorConfig.dcaGlobalConfig),
+      tx.object(AggregatorConfig.dcaRegistry),
+      tx.object(receiptId),
+      tx.object('0x6')
+    ],
     typeArguments: [params.fromCoinType, params.toCoinType]
   })
 
@@ -47,6 +54,9 @@ export async function cancelDcaOrder(
     arguments: [accumulatedOutput],
     typeArguments: [params.toCoinType]
   })
+
+  // Ensure returned coins are transferred to the owner to avoid unused value errors
+  tx.transferObjects([inputCoin, outputCoin], tx.pure.address(ownerAddress))
 
   return tx
 }
