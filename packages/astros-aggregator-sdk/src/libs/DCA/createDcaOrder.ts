@@ -12,11 +12,13 @@ import { getDcaPackageId } from './getDcaPackageId'
  *
  * @param params - DCA order configuration parameters
  * @param coinObjectId - Coin object ID
+ * @param ownerAddress - Address to receive the Receipt object
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
   params: DcaOrderParams,
-  coinObjectId: string
+  coinObjectId: string,
+  ownerAddress: string
 ): Promise<Transaction> {
   if (!params.fromCoinType || !params.toCoinType) {
     throw new Error('fromCoinType and toCoinType are required')
@@ -45,20 +47,23 @@ export async function createDcaOrder(
   })
 
   const receipt = tx.moveCall({
-    target: `${getDcaPackageId()}::dca::create_order`,
+    target: `${getDcaPackageId()}::main::create_order`,
     arguments: [
+      tx.object(AggregatorConfig.dcaGlobalConfig),
       tx.object(AggregatorConfig.dcaRegistry),
       balance,
       tx.pure.u64(params.gapDurationMs),
       tx.pure.u64(params.orderNum),
-      tx.pure.u64(params.executionWindowMs),
       tx.pure.u64(params.cliffDurationMs),
       tx.pure.u64(params.minAmountOut),
       tx.pure.u64(params.maxAmountOut),
-      tx.pure.u64(params.feeRate)
+      tx.object('0x6')
     ],
     typeArguments: [params.fromCoinType, params.toCoinType]
   })
+
+  // Ensure the created Receipt object is transferred to the owner to avoid unused value error
+  tx.transferObjects([receipt], tx.pure.address(ownerAddress))
 
   return tx
 }
