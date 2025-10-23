@@ -23,9 +23,7 @@ export type DcaOrderParams = {
   depositedAmount: string // Total deposit amount for all executions
   orderNum: number // Number of execution cycles
   gapDurationMs: number // Fixed time gap between investments
-  executionWindowMs: number // Time window for each execution
   cliffDurationMs: number // Delay before first execution
-  feeRate: number // Fee rate (per million)
   minAmountOut: string // Min price protection
   maxAmountOut: string // Max price protection
 }
@@ -39,15 +37,12 @@ export type DcaOrderMetadata = {
   batchId?: number // Optional batch ID for grouped orders
   gapDurationMs: number // Fixed time gap between investments in milliseconds
   orderNum: number // Total number of execution cycles planned
-  executionWindowMs: number // Time window for each execution in milliseconds
   cliffDurationMs: number // Delay before first execution in milliseconds
   minAmountOut: string // Minimum output amount per execution (price protection)
   maxAmountOut: string // Maximum output amount per execution (price protection)
   fromCoinType: string // Input token type (user trades from this coin)
   toCoinType: string // Output token type (user trades to this coin)
   depositedAmount: string // Total amount originally deposited by user
-  paidFee: string // Total protocol fee paid so far
-  feeRate: number // Fee rate for this order (per million)
   fulfilledTimes: number[] // Timestamps of successful executions
   nextExecutionTime: number // Next scheduled execution time in milliseconds
   currentCycle: number // Current execution cycle number (0-based)
