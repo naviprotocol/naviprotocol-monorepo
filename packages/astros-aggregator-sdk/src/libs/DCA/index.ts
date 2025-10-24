@@ -7,5 +7,5 @@
 
 export { createDcaOrder } from './createDcaOrder'
 export { cancelDcaOrder } from './cancelDcaOrder'
-export * from './types'
 export { getDcaPackageId } from './getDcaPackageId'
+export * from './types'
