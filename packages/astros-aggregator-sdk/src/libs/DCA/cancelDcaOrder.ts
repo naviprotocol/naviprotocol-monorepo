@@ -1,7 +1,7 @@
 /**
  * Cancel DCA Order Function
  *
- * Cancels an existing order using the receipt
+ * Cancels an existing order using the receipt ID from backend API
  */
 
 import { Transaction } from '@mysten/sui/transactions'
@@ -13,9 +13,26 @@ import { getDcaPackageId } from './getDcaPackageId'
  * Cancels an existing DCA order and returns remaining funds
  *
  * @param params - Parameters for cancelling the DCA order
- * @param receiptId - The receipt object ID from when the order was created
+ * @param receiptId - The receipt object ID (from API response's receiptId field)
  * @param ownerAddress - Address to receive returned input/output coins
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
+ * @throws Error if parameters are invalid
+ *
+ * @example
+ * ```typescript
+ * // Get order with receiptId from backend API
+ * const order = await getUserDcaOrders(userAddress, { status: 'active' })
+ *
+ * // Cancel using the receiptId from API response
+ * const tx = await cancelDcaOrder(
+ *   {
+ *     fromCoinType: order.data[0].fromCoinType,
+ *     toCoinType: order.data[0].toCoinType
+ *   },
+ *   order.data[0].receiptId,  // Receipt ID from backend API
+ *   userAddress
+ * )
+ * ```
  */
 export async function cancelDcaOrder(
   params: CancelDcaOrderParams,
@@ -23,7 +40,7 @@ export async function cancelDcaOrder(
   ownerAddress: string
 ): Promise<Transaction> {
   if (!receiptId) {
-    throw new Error('receiptId is required')
+    throw new Error('receiptId is required. Get it from the backend API order response.')
   }
 
   if (!params.fromCoinType || !params.toCoinType) {
