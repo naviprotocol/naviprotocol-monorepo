@@ -5,6 +5,41 @@
  */
 
 /**
+ * Time unit for duration specifications
+ */
+export enum TimeUnit {
+  SECONDS = 'seconds',
+  MINUTES = 'minutes',
+  HOURS = 'hours',
+  DAYS = 'days',
+  WEEKS = 'weeks'
+}
+
+/**
+ * Time unit constants (matching contract)
+ */
+export const UNIT_SECOND = 0
+export const UNIT_MINUTE = 1
+export const UNIT_HOUR = 2
+export const UNIT_DAY = 3
+
+/**
+ * Duration specification with value and unit
+ */
+export type Duration = {
+  value: number
+  unit: TimeUnit
+}
+
+/**
+ * Price range for slippage protection (normalized by coin decimals)
+ */
+export type PriceRange = {
+  min: number | null // Minimum acceptable output amount (normalized), null = no minimum
+  max: number | null // Maximum acceptable output amount (normalized), null = no maximum
+}
+
+/**
  * OrderRegistry structure from Move contract
  */
 export type OrderRegistry = {
@@ -15,17 +50,33 @@ export type OrderRegistry = {
 }
 
 /**
- * DCA order creation parameters
+ * DCA order creation parameters (user-friendly)
  */
 export type DcaOrderParams = {
-  fromCoinType: string // Input token type
+  fromCoinType: string // Input token type (e.g., '0x2::sui::SUI')
   toCoinType: string // Output token type
-  depositedAmount: string // Total deposit amount for all executions
-  orderNum: number // Number of execution cycles
-  gapDurationMs: number // Fixed time gap between investments
-  cliffDurationMs: number // Delay before first execution
-  minAmountOut: string // Min price protection
-  maxAmountOut: string // Max price protection
+  depositedAmount: number // Total deposit amount (normalized by fromCoin decimals, e.g., 1.5 for 1.5 SUI)
+  frequency: Duration // How often to execute (e.g., { value: 1, unit: TimeUnit.HOURS })
+  totalExecutions: number // How many times to execute (must be > 0)
+  cliff?: Duration // Delay before first execution (optional, defaults to 0)
+  priceRange?: PriceRange // Price protection (optional, defaults to no limits)
+}
+
+/**
+ * Internal DCA order parameters (raw on-chain format)
+ * @internal
+ */
+export type DcaOrderParamsRaw = {
+  fromCoinType: string
+  toCoinType: string
+  depositedAmount: string // Atomic units (e.g., '1500000000' for 1.5 SUI)
+  orderNum: number
+  gapFrequency: number // Gap frequency value (e.g., 25 for "25 hours")
+  gapUnit: number // Gap time unit (0=second, 1=minute, 2=hour, 3=day)
+  cliffFrequency: number // Cliff frequency value
+  cliffUnit: number // Cliff time unit
+  minAmountOut: string // Atomic units
+  maxAmountOut: string // Atomic units
 }
 
 /**

@@ -26,10 +26,10 @@ export const AggregatorConfig = {
   // Slippage config address
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
-  // DCA contract (PROD)
-  dcaContract: '0xb90cd30ffb95d4aaf66cc62b4048d2183c3a592c23b583c463d06a052bb75ec0',
-  dcaGlobalConfig: '0x678218337f217bc03b5069c080cd5af1c24a7e3ef6b36ae0e69e7901e3191303',
-  dcaRegistry: '0x2e11e4761b6a8f9122defafd1baaac5f274758b11ccb322824506561887afe7d',
+  // DCA contract (PROD - Updated 2025-10-25 with frequency+unit support)
+  dcaContract: '0xec8f02ccd44aa0a2207270d9290604b11f9d61e2bf35407b0ddfee6770e5ffe9',
+  dcaGlobalConfig: '0x1ddeca54f301bd60659757718cc74700aaffe14af133da8efa0ded348a25782e',
+  dcaRegistry: '0x5356fe605e20b8dcb769870605c81fbbc4ca858e2e86c58e9c0195828795c37c',
 
   // Cetus DEX configuration
   cetusPackageId: '0xb2db7142fa83210a7d78d9c12ac49c043b3cbbd482224fea6e3da00aa5a5ae2d',
