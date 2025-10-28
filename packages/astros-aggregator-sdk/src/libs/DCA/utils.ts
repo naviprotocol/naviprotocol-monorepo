@@ -10,7 +10,6 @@ import {
   PriceRange,
   DcaOrderParams,
   DcaOrderParamsRaw,
-  UNIT_SECOND,
   UNIT_MINUTE,
   UNIT_HOUR,
   UNIT_DAY
@@ -162,7 +161,7 @@ export function convertToRawParams(
 
   // Normalize duration to frequency + unit (contract format)
   const gap = normalizeDuration(params.frequency)
-  const cliff = params.cliff ? normalizeDuration(params.cliff) : { value: 0, unit: UNIT_SECOND }
+  const cliff = params.cliff ? normalizeDuration(params.cliff) : { value: 0, unit: UNIT_MINUTE }
 
   const depositedAmount = toAtomicUnits(params.depositedAmount, fromCoinDecimals)
 
