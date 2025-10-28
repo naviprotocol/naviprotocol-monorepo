@@ -30,11 +30,11 @@ export type DcaOrderSummary = {
   updatedAt: string | Date
   gap: {
     value: number
-    unit: 'second' | 'minute' | 'hour' | 'day'
+    unit: 'minute' | 'hour' | 'day' | 'week' | 'month'
   }
   cliff: {
     value: number
-    unit: 'second' | 'minute' | 'hour' | 'day'
+    unit: 'minute' | 'hour' | 'day' | 'week' | 'month'
   }
   createTxDigest: string | null
   cancelTxDigest: string | null

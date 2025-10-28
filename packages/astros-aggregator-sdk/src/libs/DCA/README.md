@@ -184,8 +184,8 @@ All order queries return orders with the following structure:
   maxAmountOut: string
 
   // Schedule
-  gap: { value: number, unit: 'second' | 'minute' | 'hour' | 'day' }
-  cliff: { value: number, unit: 'second' | 'minute' | 'hour' | 'day' }
+  gap: { value: number, unit: 'minute' | 'hour' | 'day' | 'week' | 'month' }
+  cliff: { value: number, unit: 'minute' | 'hour' | 'day' | 'week' | 'month' }
 
   // Progress
   progress: {
