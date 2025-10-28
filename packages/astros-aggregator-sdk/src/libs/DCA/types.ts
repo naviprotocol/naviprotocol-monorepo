@@ -8,11 +8,11 @@
  * Time unit for duration specifications
  */
 export enum TimeUnit {
-  SECONDS = 'seconds',
-  MINUTES = 'minutes',
-  HOURS = 'hours',
-  DAYS = 'days',
-  WEEKS = 'weeks'
+  MINUTE = 'minute',
+  HOUR = 'hour',
+  DAY = 'day',
+  WEEK = 'week',
+  MONTH = 'month'
 }
 
 /**

@@ -22,16 +22,15 @@ import {
  */
 export function timeUnitToNumber(unit: TimeUnit): number {
   switch (unit) {
-    case TimeUnit.SECONDS:
-      return UNIT_SECOND
-    case TimeUnit.MINUTES:
+    case TimeUnit.MINUTE:
       return UNIT_MINUTE
-    case TimeUnit.HOURS:
+    case TimeUnit.HOUR:
       return UNIT_HOUR
-    case TimeUnit.DAYS:
+    case TimeUnit.DAY:
       return UNIT_DAY
-    case TimeUnit.WEEKS:
-      // Convert weeks to days (contract doesn't support weeks)
+    case TimeUnit.WEEK:
+      return UNIT_DAY
+    case TimeUnit.MONTH:
       return UNIT_DAY
     default:
       throw new Error(`Unknown time unit: ${unit}`)
@@ -43,7 +42,7 @@ export function timeUnitToNumber(unit: TimeUnit): number {
  * If unit is WEEKS, convert to days (7 days per week)
  */
 export function normalizeDuration(duration: Duration): { value: number; unit: number } {
-  if (duration.unit === TimeUnit.WEEKS) {
+  if (duration.unit === TimeUnit.WEEK) {
     return {
       value: duration.value * 7,
       unit: UNIT_DAY
@@ -63,16 +62,16 @@ export function durationToMs(duration: Duration): number {
   const { value, unit } = duration
 
   switch (unit) {
-    case TimeUnit.SECONDS:
-      return value * 1000
-    case TimeUnit.MINUTES:
+    case TimeUnit.MINUTE:
       return value * 60 * 1000
-    case TimeUnit.HOURS:
+    case TimeUnit.HOUR:
       return value * 60 * 60 * 1000
-    case TimeUnit.DAYS:
+    case TimeUnit.DAY:
       return value * 24 * 60 * 60 * 1000
-    case TimeUnit.WEEKS:
+    case TimeUnit.WEEK:
       return value * 7 * 24 * 60 * 60 * 1000
+    case TimeUnit.MONTH:
+      return value * 30 * 24 * 60 * 60 * 1000
     default:
       throw new Error(`Unknown time unit: ${unit}`)
   }
