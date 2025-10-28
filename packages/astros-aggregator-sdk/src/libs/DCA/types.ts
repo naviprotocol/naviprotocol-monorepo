@@ -17,8 +17,8 @@ export enum TimeUnit {
 
 /**
  * Time unit constants (matching contract)
+ * Minimum unit: MINUTE (1)
  */
-export const UNIT_SECOND = 0
 export const UNIT_MINUTE = 1
 export const UNIT_HOUR = 2
 export const UNIT_DAY = 3
