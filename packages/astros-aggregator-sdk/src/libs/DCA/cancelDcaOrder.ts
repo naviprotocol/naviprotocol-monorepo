@@ -5,9 +5,8 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions'
-import { CancelDcaOrderParams } from './types'
-import { AggregatorConfig } from '../Aggregator'
-import { getDcaPackageId } from './getDcaPackageId'
+import { CancelDcaOrderParams, DcaOptions } from './types'
+import { getDcaConfig } from './getDcaConfig'
 
 /**
  * Cancels an existing DCA order and returns remaining funds
@@ -15,6 +14,7 @@ import { getDcaPackageId } from './getDcaPackageId'
  * @param params - Parameters for cancelling the DCA order
  * @param receiptId - The receipt object ID (from API response's receiptId field)
  * @param ownerAddress - Address to receive returned input/output coins
+ * @param dcaOptions - Optional DCA contract configuration overrides (for testing)
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  * @throws Error if parameters are invalid
  *
@@ -23,7 +23,7 @@ import { getDcaPackageId } from './getDcaPackageId'
  * // Get order with receiptId from backend API
  * const order = await getUserDcaOrders(userAddress, { status: 'active' })
  *
- * // Cancel using the receiptId from API response
+ * // Use default production config
  * const tx = await cancelDcaOrder(
  *   {
  *     fromCoinType: order.data[0].fromCoinType,
@@ -32,12 +32,25 @@ import { getDcaPackageId } from './getDcaPackageId'
  *   order.data[0].receiptId,  // Receipt ID from backend API
  *   userAddress
  * )
+ *
+ * // Override for testing environment
+ * const testTx = await cancelDcaOrder(
+ *   { fromCoinType, toCoinType },
+ *   receiptId,
+ *   userAddress,
+ *   {
+ *     dcaContract: '0xTEST_PACKAGE_ID',
+ *     dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+ *     dcaRegistry: '0xTEST_REGISTRY'
+ *   }
+ * )
  * ```
  */
 export async function cancelDcaOrder(
   params: CancelDcaOrderParams,
   receiptId: string,
-  ownerAddress: string
+  ownerAddress: string,
+  dcaOptions?: DcaOptions
 ): Promise<Transaction> {
   if (!receiptId) {
     throw new Error('receiptId is required. Get it from the backend API order response.')
@@ -47,13 +60,16 @@ export async function cancelDcaOrder(
     throw new Error('fromCoinType and toCoinType are required')
   }
 
+  // Get DCA configuration (with optional overrides)
+  const dcaConfig = getDcaConfig(dcaOptions)
+
   const tx = new Transaction()
 
   const [remainingInput, accumulatedOutput] = tx.moveCall({
-    target: `${getDcaPackageId()}::main::cancel_order`,
+    target: `${dcaConfig.dcaContract}::main::cancel_order`,
     arguments: [
-      tx.object(AggregatorConfig.dcaGlobalConfig),
-      tx.object(AggregatorConfig.dcaRegistry),
+      tx.object(dcaConfig.dcaGlobalConfig),
+      tx.object(dcaConfig.dcaRegistry),
       tx.object(receiptId),
       tx.object('0x6')
     ],

@@ -4,9 +4,8 @@
 
 import { Transaction } from '@mysten/sui/transactions'
 import { SuiClient } from '@mysten/sui/client'
-import { DcaOrderParams } from './types'
-import { AggregatorConfig } from '../Aggregator'
-import { getDcaPackageId } from './getDcaPackageId'
+import { DcaOrderParams, DcaOptions } from './types'
+import { getDcaConfig } from './getDcaConfig'
 import { convertToRawParams } from './utils'
 
 /**
@@ -34,6 +33,7 @@ async function getCoinDecimals(client: SuiClient, coinType: string): Promise<num
  * ```typescript
  * import { createDcaOrder, TimeUnit } from '@astros/sdk'
  *
+ * // Use default production config
  * const tx = await createDcaOrder(
  *   client,
  *   {
@@ -51,19 +51,34 @@ async function getCoinDecimals(client: SuiClient, coinType: string): Promise<num
  *   coinObjectId,
  *   ownerAddress
  * )
+ *
+ * // Override for testing environment
+ * const testTx = await createDcaOrder(
+ *   client,
+ *   params,
+ *   coinObjectId,
+ *   ownerAddress,
+ *   {
+ *     dcaContract: '0xTEST_PACKAGE_ID',
+ *     dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+ *     dcaRegistry: '0xTEST_REGISTRY'
+ *   }
+ * )
  * ```
  *
  * @param client - SuiClient instance for fetching coin metadata
  * @param params - DCA order configuration parameters (user-friendly format)
  * @param coinObjectId - Coin object ID to deposit from
  * @param ownerAddress - Address to receive the Receipt object
+ * @param dcaOptions - Optional DCA contract configuration overrides (for testing)
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
   client: SuiClient,
   params: DcaOrderParams,
   coinObjectId: string,
-  ownerAddress: string
+  ownerAddress: string,
+  dcaOptions?: DcaOptions
 ): Promise<Transaction> {
   if (!coinObjectId) {
     throw new Error('coinObjectId is required for the deposit')
@@ -78,6 +93,9 @@ export async function createDcaOrder(
   // Convert user-friendly parameters to raw on-chain format
   const rawParams = convertToRawParams(params, fromCoinDecimals, toCoinDecimals)
 
+  // Get DCA configuration (with optional overrides)
+  const dcaConfig = getDcaConfig(dcaOptions)
+
   const tx = new Transaction()
 
   const [depositCoin] = tx.splitCoins(tx.object(coinObjectId), [rawParams.depositedAmount])
@@ -89,10 +107,10 @@ export async function createDcaOrder(
   })
 
   const receipt = tx.moveCall({
-    target: `${getDcaPackageId()}::main::create_order`,
+    target: `${dcaConfig.dcaContract}::main::create_order`,
     arguments: [
-      tx.object(AggregatorConfig.dcaGlobalConfig),
-      tx.object(AggregatorConfig.dcaRegistry),
+      tx.object(dcaConfig.dcaGlobalConfig),
+      tx.object(dcaConfig.dcaRegistry),
       balance,
       tx.pure.u64(rawParams.gapFrequency), // Gap frequency value
       tx.pure.u8(rawParams.gapUnit), // Gap time unit (0=second, 1=minute, 2=hour, 3=day)
