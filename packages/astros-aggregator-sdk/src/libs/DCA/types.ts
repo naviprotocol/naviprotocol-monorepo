@@ -217,3 +217,13 @@ export type ProtocolFeeClaimedEvent = {
   recipient: string // Fee recipient
   claimedAt: number // Claim timestamp
 }
+
+/**
+ * DCA contract configuration options
+ * Used to override default contract addresses (e.g., for testing)
+ */
+export type DcaOptions = {
+  dcaContract?: string // DCA package ID
+  dcaGlobalConfig?: string // Global config object ID
+  dcaRegistry?: string // Order registry object ID
+}
