@@ -27,9 +27,9 @@ export const AggregatorConfig = {
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
   // DCA contract (PROD - Updated 2025-10-28, minimum unit: MINUTE)
-  dcaContract: '0x83ba399f16eb757ea57c2aa092f93ae25595138810221a4a3f051adde728c161',
-  dcaGlobalConfig: '0x40d059c227a67652b932c88fe6f9e54967c1e4826a2df4f33b189123c8cce13f',
-  dcaRegistry: '0xee22ddda6224842a4647453f1481cb574bacfbadb2769e37c7a10f0dd5d89a3a',
+  dcaContract: '0xfab5465fa80655f42aba9c76d15c0bd48d251dd90430af1c8ba544c62a342540',
+  dcaGlobalConfig: '0x3fc34bbc04fddebe7d3e7f758fab2ea43ec358c55a56b457a4118f3ea34c1770',
+  dcaRegistry: '0x21e7724bf1539be9725abc3007a67e7a7b31293b7d653cad0aa1444af77c276a',
 
   // Cetus DEX configuration
   cetusPackageId: '0xb2db7142fa83210a7d78d9c12ac49c043b3cbbd482224fea6e3da00aa5a5ae2d',

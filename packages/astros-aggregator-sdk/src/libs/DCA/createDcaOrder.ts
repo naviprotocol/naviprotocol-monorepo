@@ -18,6 +18,7 @@ import { getCoinForDca } from './coinUtils'
  * ```typescript
  * import { createDcaOrder, TimeUnit } from '@astros/sdk'
  *
+ * // Use default production config
  * const tx = await createDcaOrder(
  *   client,
  *   userAddress,
@@ -29,22 +30,51 @@ import { getCoinForDca } from './coinUtils'
  *     totalExecutions: 10,
  *   }
  * )
+ *
+ * // Override for testing environment
+ * const testTx = await createDcaOrder(
+ *   client,
+ *   params,
+ *   coinObjectId,
+ *   ownerAddress,
+ *   {
+ *     dcaContract: '0xTEST_PACKAGE_ID',
+ *     dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+ *     dcaRegistry: '0xTEST_REGISTRY'
+ *   }
+ * )
  * ```
  *
+<<<<<<< HEAD
  * @param client - SuiClient instance for fetching coins
  * @param userAddress - User's wallet address (owner of coins and receipt)
  * @param params - DCA order configuration parameters (amounts in atomic units)
  * @param dcaOptions - Optional: DCA contract configuration overrides (for testing)
+=======
+ * @param client - SuiClient instance for fetching coin metadata
+ * @param params - DCA order configuration parameters (user-friendly format)
+ * @param coinObjectId - Coin object ID to deposit from
+ * @param ownerAddress - Address to receive the Receipt object
+ * @param dcaOptions - Optional DCA contract configuration overrides (for testing)
+>>>>>>> a3e7397 (create dcaOption)
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
   client: SuiClient,
   userAddress: string,
   params: DcaOrderParams,
+<<<<<<< HEAD
+=======
+  coinObjectId: string,
+  ownerAddress: string,
+>>>>>>> a3e7397 (create dcaOption)
   dcaOptions?: DcaOptions
 ): Promise<Transaction> {
   // Convert parameters to raw on-chain format
   const rawParams = convertToRawParams(params)
+
+  // Get DCA configuration (with optional overrides)
+  const dcaConfig = getDcaConfig(dcaOptions)
 
   // Get DCA configuration (with optional overrides)
   const dcaConfig = getDcaConfig(dcaOptions)
