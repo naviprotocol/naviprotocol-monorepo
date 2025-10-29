@@ -17,7 +17,9 @@ Dollar-Cost Averaging (DCA) SDK for Astros Aggregator
 ```typescript
 import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-aggregator-sdk'
 
+// Use default production config
 const tx = await createDcaOrder(
+  client,
   {
     fromCoinType: '0x2::sui::SUI',
     toCoinType: '0x...',
@@ -35,6 +37,13 @@ const tx = await createDcaOrder(
   depositCoinId,
   userAddress
 )
+
+// Override for testing environment
+const testTx = await createDcaOrder(client, params, depositCoinId, userAddress, {
+  dcaContract: '0xTEST_PACKAGE_ID',
+  dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+  dcaRegistry: '0xTEST_REGISTRY'
+})
 ```
 
 ### 2. Query User Orders
@@ -109,7 +118,7 @@ if (!order.receiptId) {
   )
 }
 
-// Cancel using the receiptId from API response
+// Use default production config
 const tx = await cancelDcaOrder(
   {
     fromCoinType: order.fromCoinType,
@@ -117,6 +126,21 @@ const tx = await cancelDcaOrder(
   },
   order.receiptId, // Receipt ID from backend API
   userAddress
+)
+
+// Override for testing environment
+const testTx = await cancelDcaOrder(
+  {
+    fromCoinType: order.fromCoinType,
+    toCoinType: order.toCoinType
+  },
+  order.receiptId,
+  userAddress,
+  {
+    dcaContract: '0xTEST_PACKAGE_ID',
+    dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+    dcaRegistry: '0xTEST_REGISTRY'
+  }
 )
 
 // Sign and execute
@@ -131,6 +155,41 @@ const result = await suiClient.signAndExecuteTransaction({
 - The `receiptId` is provided by the backend API in all order query responses
 - No additional blockchain queries are needed
 - If `receiptId` is `null`, the order was created before this feature was implemented
+
+## Configuration
+
+### DCA Options (Testing)
+
+The SDK uses production contract addresses by default. You can override them for testing using the optional `dcaOptions` parameter:
+
+```typescript
+import { DcaOptions } from '@naviprotocol/astros-aggregator-sdk'
+
+// Test contract configuration
+const testOptions: DcaOptions = {
+  dcaContract: '0xTEST_PACKAGE_ID',
+  dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+  dcaRegistry: '0xTEST_REGISTRY'
+}
+
+// Apply to all DCA operations
+const tx1 = await createDcaOrder(client, params, coinId, address, testOptions)
+const tx2 = await cancelDcaOrder(params, receiptId, address, testOptions)
+```
+
+**Production vs Testing**:
+
+| Environment | Configuration                        |
+| ----------- | ------------------------------------ |
+| Production  | No `dcaOptions` parameter (default)  |
+| Testing     | Pass `dcaOptions` with test contract |
+
+**Available in**:
+
+- ✅ `createDcaOrder()`
+- ✅ `cancelDcaOrder()`
+
+**Note**: Query functions (`getUserDcaOrders`, `getDcaOrderDetails`, etc.) use the backend API, which is configured separately via `updateConfig({ aggregatorBaseUrl })` in the Aggregator module.
 
 ## Understanding Order ID vs Receipt ID
 
