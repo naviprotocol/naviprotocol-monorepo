@@ -110,7 +110,7 @@ export type DcaOrderMetadata = {
 export enum DcaOrderStatus {
   ACTIVE = 'active',
   COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
+  CANCELED = 'canceled'
 }
 
 /**
@@ -185,7 +185,7 @@ export type OrderFinishedEvent = {
   amountOutReturned: string // Output amount returned to user
   fromCoinType: string // Input token type
   toCoinType: string // Output token type
-  isEarlyTerminated: boolean // Whether cancelled early
+  isEarlyTerminated: boolean // Whether canceled early
 }
 
 /**
