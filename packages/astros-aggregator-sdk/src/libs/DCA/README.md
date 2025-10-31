@@ -18,6 +18,7 @@ Dollar-Cost Averaging (DCA) SDK for Astros Aggregator
 import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-aggregator-sdk'
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // SDK automatically handles coin selection, merging, and balance checks
 const tx = await createDcaOrder(
   client,
@@ -27,6 +28,12 @@ const tx = await createDcaOrder(
 const tx = await createDcaOrder(
   client,
 >>>>>>> a3e7397 (create dcaOption)
+=======
+// SDK automatically handles coin selection, merging, and balance checks
+const tx = await createDcaOrder(
+  client,
+  userAddress, // User's wallet address
+>>>>>>> 4275cb8 (fix few bugs)
   {
     fromCoinType: '0x2::sui::SUI',
     toCoinType: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
@@ -41,6 +48,21 @@ const tx = await createDcaOrder(
       max: '1100000000'  // Max price in atomic units
     }
   }
+<<<<<<< HEAD
+)
+
+// Override for testing environment
+const testTx = await createDcaOrder(
+  client,
+  userAddress,
+  params,
+  {
+    dcaContract: '0xTEST_PACKAGE_ID',
+    dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+    dcaRegistry: '0xTEST_REGISTRY'
+  }
+=======
+>>>>>>> 4275cb8 (fix few bugs)
 )
 
 // Override for testing environment
@@ -54,13 +76,6 @@ const testTx = await createDcaOrder(
     dcaRegistry: '0xTEST_REGISTRY'
   }
 )
-
-// Override for testing environment
-const testTx = await createDcaOrder(client, params, depositCoinId, userAddress, {
-  dcaContract: '0xTEST_PACKAGE_ID',
-  dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
-  dcaRegistry: '0xTEST_REGISTRY'
-})
 ```
 
 **Note:** All amount fields must be in atomic units. For example:
