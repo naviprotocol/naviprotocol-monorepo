@@ -10,6 +10,18 @@ import { AggregatorConfig } from '../Aggregator/config'
 // Use existing DcaOrderStatus from types
 export type DcaOrderStatusFilter = 'active' | 'completed' | 'canceled'
 
+export type DcaOrderExecution = {
+  cycleNumber: number
+  createdAt: string | Date
+  status: string
+  amountIn: string
+  amountOut: string
+  protocolFeeCharged: string
+  priceOutPerIn: number | null
+  priceInPerOut: number | null
+  txDigest: string | null
+}
+
 export type DcaOrderSummary = {
   id: string
   status: string
@@ -45,18 +57,7 @@ export type DcaOrderSummary = {
     depositedInput: string
     percentage: number
   }
-}
-
-export type DcaOrderExecution = {
-  cycleNumber: number
-  createdAt: string | Date
-  status: string
-  amountIn: string
-  amountOut: string
-  protocolFeeCharged: string
-  priceOutPerIn: number | null
-  priceInPerOut: number | null
-  txDigest: string | null
+  fills: DcaOrderExecution[]
 }
 
 export type DcaOrderDetails = DcaOrderSummary & {
