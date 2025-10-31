@@ -32,11 +32,11 @@ export type Duration = {
 }
 
 /**
- * Price range for slippage protection (normalized by coin decimals)
+ * Price range for slippage protection (in atomic units)
  */
 export type PriceRange = {
-  min: number | null // Minimum acceptable output amount (normalized), null = no minimum
-  max: number | null // Maximum acceptable output amount (normalized), null = no maximum
+  min: string | number | bigint | null // Minimum acceptable output amount in atomic units, null = no minimum
+  max: string | number | bigint | null // Maximum acceptable output amount in atomic units, null = no maximum
 }
 
 /**
@@ -50,16 +50,18 @@ export type OrderRegistry = {
 }
 
 /**
- * DCA order creation parameters (user-friendly)
+ * DCA order creation parameters
+ * NOTE: All amount fields should be in atomic units (not normalized)
+ * e.g., for 1.5 SUI (9 decimals), pass 1500000000
  */
 export type DcaOrderParams = {
   fromCoinType: string // Input token type (e.g., '0x2::sui::SUI')
   toCoinType: string // Output token type
-  depositedAmount: number // Total deposit amount (normalized by fromCoin decimals, e.g., 1.5 for 1.5 SUI)
+  depositedAmount: string | number | bigint // Total deposit amount in atomic units (e.g., '1500000000' for 1.5 SUI)
   frequency: Duration // How often to execute (e.g., { value: 1, unit: TimeUnit.HOURS })
   totalExecutions: number // How many times to execute (must be > 0)
   cliff?: Duration // Delay before first execution (optional, defaults to 0)
-  priceRange?: PriceRange // Price protection (optional, defaults to no limits)
+  priceRange?: PriceRange // Price protection in atomic units (optional, defaults to no limits)
 }
 
 /**
