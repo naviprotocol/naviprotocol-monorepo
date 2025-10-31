@@ -6,7 +6,11 @@
  */
 
 export { createDcaOrder } from './createDcaOrder'
+<<<<<<< HEAD
 export { getCoinForDca } from './coinUtils'
+=======
+export { getCoinForDca, getCoins, returnMergedCoins } from './coinUtils'
+>>>>>>> 4275cb8 (fix few bugs)
 export { cancelDcaOrder } from './cancelDcaOrder'
 export { getDcaPackageId } from './getDcaPackageId'
 export { getDcaConfig } from './getDcaConfig'

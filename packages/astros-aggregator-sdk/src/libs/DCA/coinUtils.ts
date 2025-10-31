@@ -7,9 +7,31 @@ import { Transaction, TransactionResult } from '@mysten/sui/transactions'
 import { SuiClient } from '@mysten/sui/client'
 
 /**
+<<<<<<< HEAD
  * Merge coins and return a merged coin object in PTB
  * @param tx - Transaction to build
  * @param coinInfo - Coin data from client.getCoins
+=======
+ * Get coins for a specific address and coin type
+ */
+export async function getCoins(
+  client: SuiClient,
+  address: string,
+  coinType: string = '0x2::sui::SUI'
+) {
+  const coinDetails = await client.getCoins({
+    owner: address,
+    coinType
+  })
+
+  return coinDetails
+}
+
+/**
+ * Merge coins and return a merged coin object in PTB
+ * @param tx - Transaction to build
+ * @param coinInfo - Coin data from getCoins
+>>>>>>> 4275cb8 (fix few bugs)
  * @returns Merged coin object that can be used in subsequent operations
  */
 export function returnMergedCoins(tx: Transaction, coinInfo: any) {
@@ -57,10 +79,14 @@ export async function getCoinForDca(
     return tx.splitCoins(tx.gas, [tx.pure.u64(amount)])
   } else {
     // Handle other token types
+<<<<<<< HEAD
     const coinInfo = await client.getCoins({
       owner: address,
       coinType
     })
+=======
+    const coinInfo = await getCoins(client, address, coinType)
+>>>>>>> 4275cb8 (fix few bugs)
 
     // Check if user has enough balance
     if (!coinInfo.data || coinInfo.data.length === 0) {
