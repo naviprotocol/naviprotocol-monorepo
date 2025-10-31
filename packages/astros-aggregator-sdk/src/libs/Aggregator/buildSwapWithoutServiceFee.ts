@@ -315,8 +315,8 @@ export async function buildSwapWithoutServiceFee(
             : pathTempCoin
           pathTempCoin = await makeMAGMAALMMPTB(
             txb,
-            typeArguments[0],
-            typeArguments[1],
+            poolA,
+            poolB,
             coinA,
             coinB,
             poolId,
