@@ -7,7 +7,6 @@
 import {
   Duration,
   TimeUnit,
-  PriceRange,
   DcaOrderParams,
   DcaOrderParamsRaw,
   UNIT_MINUTE,
@@ -77,31 +76,21 @@ export function durationToMs(duration: Duration): number {
 }
 
 /**
- * Convert normalized amount to atomic units
- * @param amount - Normalized amount (e.g., 1.5 for 1.5 SUI)
- * @param decimals - Coin decimals (e.g., 9 for SUI)
- * @returns Atomic units as string (e.g., '1500000000')
+ * Convert amount to string format for Move contract
+ * @param amount - Amount in atomic units (string, number, or bigint)
+ * @returns Amount as string
  */
-export function toAtomicUnits(amount: number, decimals: number): string {
-  if (amount < 0) {
-    throw new Error('Amount must be non-negative')
+export function toAtomicString(amount: string | number | bigint): string {
+  if (typeof amount === 'bigint') {
+    return amount.toString()
   }
-  const atomicAmount = Math.floor(amount * Math.pow(10, decimals))
-  return atomicAmount.toString()
-}
-
-/**
- * Convert atomic units to normalized amount
- * @param atomicAmount - Amount in atomic units (e.g., '1500000000')
- * @param decimals - Coin decimals (e.g., 9 for SUI)
- * @returns Normalized amount (e.g., 1.5)
- */
-export function fromAtomicUnits(atomicAmount: string, decimals: number): number {
-  const amount = Number(atomicAmount)
-  if (isNaN(amount)) {
-    throw new Error('Invalid atomic amount')
+  if (typeof amount === 'string') {
+    // Validate it's a valid number string
+    const num = BigInt(amount)
+    return num.toString()
   }
-  return amount / Math.pow(10, decimals)
+  // Convert number to integer string
+  return Math.floor(amount).toString()
 }
 
 /**
@@ -112,8 +101,14 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
     throw new Error('fromCoinType and toCoinType are required')
   }
 
-  if (params.depositedAmount <= 0) {
-    throw new Error('depositedAmount must be greater than 0')
+  // Validate depositedAmount is a valid positive number/string/bigint
+  try {
+    const amount = BigInt(toAtomicString(params.depositedAmount))
+    if (amount <= 0n) {
+      throw new Error('depositedAmount must be greater than 0')
+    }
+  } catch (e) {
+    throw new Error('depositedAmount must be a valid positive number in atomic units')
   }
 
   if (params.totalExecutions <= 0 || !Number.isInteger(params.totalExecutions)) {
@@ -129,54 +124,68 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
   }
 
   if (params.priceRange) {
-    if (params.priceRange.min !== null && params.priceRange.min < 0) {
-      throw new Error('priceRange.min must be non-negative or null')
+    if (params.priceRange.min !== null) {
+      try {
+        const min = BigInt(toAtomicString(params.priceRange.min))
+        if (min < 0n) {
+          throw new Error('priceRange.min must be non-negative or null')
+        }
+      } catch (e) {
+        throw new Error('priceRange.min must be a valid number in atomic units or null')
+      }
     }
-    if (params.priceRange.max !== null && params.priceRange.max < 0) {
-      throw new Error('priceRange.max must be non-negative or null')
+    if (params.priceRange.max !== null) {
+      try {
+        const max = BigInt(toAtomicString(params.priceRange.max))
+        if (max < 0n) {
+          throw new Error('priceRange.max must be non-negative or null')
+        }
+      } catch (e) {
+        throw new Error('priceRange.max must be a valid number in atomic units or null')
+      }
     }
-    if (
-      params.priceRange.min !== null &&
-      params.priceRange.max !== null &&
-      params.priceRange.min > params.priceRange.max
-    ) {
-      throw new Error('priceRange.min must be less than or equal to priceRange.max')
+    if (params.priceRange.min !== null && params.priceRange.max !== null) {
+      const min = BigInt(toAtomicString(params.priceRange.min))
+      const max = BigInt(toAtomicString(params.priceRange.max))
+      if (min > max) {
+        throw new Error('priceRange.min must be less than or equal to priceRange.max')
+      }
     }
   }
 }
 
 /**
- * Convert user-friendly DCA parameters to raw on-chain format
- * @param params - User-friendly parameters
- * @param fromCoinDecimals - Decimals of the input coin
- * @param toCoinDecimals - Decimals of the output coin
+ * Convert DCA parameters to raw on-chain format
+ * @param params - DCA order parameters (amounts already in atomic units)
  * @returns Raw parameters ready for on-chain submission
  */
-export function convertToRawParams(
-  params: DcaOrderParams,
-  fromCoinDecimals: number,
-  toCoinDecimals: number
-): DcaOrderParamsRaw {
+export function convertToRawParams(params: DcaOrderParams): DcaOrderParamsRaw {
   validateDcaOrderParams(params)
 
   // Normalize duration to frequency + unit (contract format)
   const gap = normalizeDuration(params.frequency)
   const cliff = params.cliff ? normalizeDuration(params.cliff) : { value: 0, unit: UNIT_MINUTE }
 
-  const depositedAmount = toAtomicUnits(params.depositedAmount, fromCoinDecimals)
+  const depositedAmount = toAtomicString(params.depositedAmount)
 
-  // Convert price range to atomic units
+  // Convert price range to string format
   // Default: no min (0) and no max (u64::MAX)
   const U64_MAX = '18446744073709551615'
   let minAmountOut = '0'
   let maxAmountOut = U64_MAX
 
   if (params.priceRange) {
-    if (params.priceRange.min !== null && params.priceRange.min > 0) {
-      minAmountOut = toAtomicUnits(params.priceRange.min, toCoinDecimals)
+    if (params.priceRange.min !== null) {
+      const minVal = BigInt(toAtomicString(params.priceRange.min))
+      if (minVal > 0n) {
+        minAmountOut = minVal.toString()
+      }
     }
-    if (params.priceRange.max !== null && params.priceRange.max > 0) {
-      maxAmountOut = toAtomicUnits(params.priceRange.max, toCoinDecimals)
+    if (params.priceRange.max !== null) {
+      const maxVal = BigInt(toAtomicString(params.priceRange.max))
+      if (maxVal > 0n) {
+        maxAmountOut = maxVal.toString()
+      }
     }
   }
 

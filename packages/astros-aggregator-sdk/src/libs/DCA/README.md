@@ -17,34 +17,48 @@ Dollar-Cost Averaging (DCA) SDK for Astros Aggregator
 ```typescript
 import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-aggregator-sdk'
 
-// Use default production config
+// SDK automatically handles coin selection, merging, and balance checks
 const tx = await createDcaOrder(
   client,
+  userAddress, // User's wallet address
   {
     fromCoinType: '0x2::sui::SUI',
-    toCoinType: '0x...',
-    depositedAmount: 1.5, // 1.5 SUI
+    toCoinType: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+    depositedAmount: '1500000000', // 1.5 SUI in atomic units (1.5 * 10^9)
     totalExecutions: 10,
     frequency: {
       value: 1,
       unit: TimeUnit.HOUR
     },
     priceRange: {
-      min: 0.9, // 90% of market price
-      max: 1.1 // 110% of market price
+      min: '900000000', // Min price in atomic units
+      max: '1100000000'  // Max price in atomic units
     }
-  },
-  depositCoinId,
-  userAddress
+  }
 )
 
 // Override for testing environment
-const testTx = await createDcaOrder(client, params, depositCoinId, userAddress, {
-  dcaContract: '0xTEST_PACKAGE_ID',
-  dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
-  dcaRegistry: '0xTEST_REGISTRY'
-})
+const testTx = await createDcaOrder(
+  client,
+  userAddress,
+  params,
+  {
+    dcaContract: '0xTEST_PACKAGE_ID',
+    dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+    dcaRegistry: '0xTEST_REGISTRY'
+  }
+)
 ```
+
+**Note:** All amount fields must be in atomic units. For example:
+- 1 SUI = 1000000000 (1 * 10^9)
+- 1 USDC = 1000000 (1 * 10^6)
+
+The SDK automatically:
+- ✅ Fetches all coins of the specified type
+- ✅ Merges multiple coins if needed
+- ✅ Checks if balance is sufficient
+- ✅ Handles SUI gas coin properly
 
 ### 2. Query User Orders
 
