@@ -13,13 +13,9 @@ export async function makeMAGMAALMMPTB(
   a2b: boolean,
   userAddress: string
 ) {
-  const almmConfig = {
-    factory: '',
-    rewarder_global_vault: ''
-  }
   const typeArguments = [coinTypeA, coinTypeB]
   const args = [
-    txb.object(almmConfig.factory),
+    txb.object(AggregatorConfig.magmaAlmmFactory),
     txb.object(pair),
     txb.object(AggregatorConfig.magmaConfigId),
     coinA,
