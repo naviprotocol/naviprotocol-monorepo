@@ -11,7 +11,12 @@ export const getRemotePositiveSlippageSetting = withCache(
   withSingleton(
     async (options?: { disableCache?: boolean; cacheTime?: number }): Promise<boolean> => {
       const resp = await axios.get(
-        'https://open-api.naviprotocol.io/api/internal/ag/positive-slippage'
+        'https://open-api.naviprotocol.io/api/internal/ag/positive-slippage',
+        {
+          headers: {
+            'User-Agent': 'navi-aggregator-sdk'
+          }
+        }
       )
       return resp.data.data.should_enable_positive_slippage
     }
