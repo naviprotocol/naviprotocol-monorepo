@@ -254,7 +254,10 @@ export async function swapPTB(
   if (options.slippage !== undefined) {
     // Priority: slippage takes precedence over minAmountOut
     // Calculate minAmountOut from slippage: amount_out * (1 - slippage)
-    finalMinAmountOut = Math.floor(Number(quote.amount_out) * (1 - options.slippage))
+    // Using toFixed(0) to match frontend behavior (rounds to nearest integer)
+    // Note: This will be floored again in buildSwapWithoutServiceFee, but we use rounding here
+    // to match the frontend calculation pattern
+    finalMinAmountOut = Math.round(Number(quote.amount_out) * (1 - options.slippage))
   } else {
     // Use the deprecated minAmountOut parameter for backward compatibility
     finalMinAmountOut = minAmountOut
