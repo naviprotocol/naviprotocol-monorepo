@@ -15,8 +15,8 @@ export async function makeMAGMAALMMPTB(
 ) {
   const typeArguments = [coinTypeA, coinTypeB]
   const args = [
-    txb.object(AggregatorConfig.magmaAlmmFactory),
     txb.object(pair),
+    txb.object(AggregatorConfig.magmaAlmmFactory),
     txb.object(AggregatorConfig.magmaConfigId),
     coinA,
     coinB,
@@ -27,10 +27,26 @@ export async function makeMAGMAALMMPTB(
     txb.object(AggregatorConfig.clockAddress)
   ]
 
-  txb.moveCall({
-    target: `${AggregatorConfig.magmaIntegratePublishedAt}::almm_script::swap`,
+  const [coinABalance, coinBBalance] = txb.moveCall({
+    target: `${AggregatorConfig.magmaAlmmPublishedAt}::almm_pair::swap`,
     typeArguments,
     arguments: args
   })
-  return txb
+
+  const coinAOut = txb.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [coinABalance],
+    typeArguments: [coinTypeA]
+  })
+
+  const coinBOut = txb.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [coinBBalance],
+    typeArguments: [coinTypeB]
+  })
+
+  return {
+    coinAOut,
+    coinBOut
+  }
 }

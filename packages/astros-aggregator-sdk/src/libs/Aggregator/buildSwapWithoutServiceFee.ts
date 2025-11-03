@@ -313,7 +313,7 @@ export async function buildSwapWithoutServiceFee(
                 typeArguments: [poolB]
               })
             : pathTempCoin
-          pathTempCoin = await makeMAGMAALMMPTB(
+          const { coinAOut, coinBOut } = await makeMAGMAALMMPTB(
             txb,
             poolA,
             poolB,
@@ -325,6 +325,13 @@ export async function buildSwapWithoutServiceFee(
             a2b,
             userAddress
           )
+          if (a2b) {
+            txb.transferObjects([coinAOut], userAddress)
+            pathTempCoin = coinBOut
+          } else {
+            txb.transferObjects([coinBOut], userAddress)
+            pathTempCoin = coinAOut
+          }
           break
         }
         default: {

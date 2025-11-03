@@ -85,7 +85,7 @@ export const AggregatorConfig = {
 
   // Magma ALMM DEX configuration
   magmaAlmmPackageId: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
-  magmaAlmmPublishedAt: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
+  magmaAlmmPublishedAt: '0xa8b3dbe60b27160e2267c237759dd26f1dfe04e3f2d7cb0fc235a1497bdbfc09',
   magmaIntegratePublishedAt: '0x7c369062640451c79e4e8ef7540df7540d88a002d04c91ee37c771997739963f',
   magmaAlmmFactory: '0x29999aadee09eb031cc98a73b605805306d6ae0fe9d5099fb9e6628d99527234'
 }
