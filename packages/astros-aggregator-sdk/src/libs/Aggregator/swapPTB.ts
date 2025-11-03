@@ -233,14 +233,21 @@ export async function swapPTB(
     ...swapOptions
   }
 
-  // Validate that both minAmountOut and slippage are not provided simultaneously
+  // Validate slippage protection: must provide either slippage or minAmountOut
   if (options.slippage !== undefined) {
     // If slippage is provided, validate it
     if (options.slippage < 0 || options.slippage > 1) {
       throw new Error('Slippage must be between 0 and 1 (e.g., 0.01 for 1%)')
     }
-    // If both are provided, warn that slippage takes precedence and minAmountOut will be ignored
-    // We don't throw an error to maintain backward compatibility, but slippage will be used
+    // If both are provided, slippage takes precedence and minAmountOut will be ignored
+  } else {
+    // If no slippage is provided, minAmountOut parameter is required (enforced by TypeScript type system)
+    // This runtime check provides additional safety in case the function is called from JavaScript
+    if (minAmountOut === undefined || minAmountOut === null) {
+      throw new Error(
+        'Either slippage in swapOptions or minAmountOut parameter must be provided for slippage protection'
+      )
+    }
   }
 
   // Generate referral ID if API key is provided
