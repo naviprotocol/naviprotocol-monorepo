@@ -116,6 +116,8 @@ export type SwapOptions = {
   ifPrint?: boolean
   /** Service fee configuration */
   serviceFee?: FeeOption
+  /** Slippage tolerance as a ratio (e.g., 0.01 for 1%). Only used in swapPTB, not in getQuote. If provided, it will be used to calculate minAmountOut instead of using the minAmountOut parameter. */
+  slippage?: number
 }
 
 /**
