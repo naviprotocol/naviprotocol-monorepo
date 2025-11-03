@@ -52,7 +52,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
   readonly name = 'haedal'
   /** Default configuration values */
   readonly defaultConfig = {
-    packageId: '0x3f45767c1aa95b25422f675800f02d8a813ec793a00b60667d071a77ba7178a2',
+    packageId: '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c',
     configId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
     coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
   }
