@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.9.0
+
+### Minor Changes
+
+- Magma ALMM dex
+
 ## 1.8.0
 
 ### Minor Changes
