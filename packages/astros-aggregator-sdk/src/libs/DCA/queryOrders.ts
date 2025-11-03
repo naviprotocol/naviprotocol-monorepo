@@ -34,8 +34,8 @@ export type DcaOrderSummary = {
   toCoinType: string
   toCoinSymbol: string
   toCoinLogoURI: string
-  minAmountOut: string
-  maxAmountOut: string
+  minAmountOut?: string
+  maxAmountOut?: string
   depositedAmount: string
   originalAmountPerCycle: string
   createdAt: string | Date
@@ -50,8 +50,8 @@ export type DcaOrderSummary = {
   }
   createTxDigest: string | null
   cancelTxDigest: string | null
-  priceOutPerIn: { min: number | null; max: number | null }
-  priceInPerOut: { min: number | null; max: number | null }
+  priceOutPerIn: { min?: number | null; max?: number | null }
+  priceInPerOut: { min?: number | null; max?: number | null }
   progress: {
     succeededInput: string
     depositedInput: string
@@ -64,7 +64,6 @@ export type DcaOrderDetails = DcaOrderSummary & {
   currentCycle: number
   totalSucceeded: number
   lastExecutionStatus: string | null
-  fills: DcaOrderExecution[]
 }
 
 export type UserOrdersResponse = {
