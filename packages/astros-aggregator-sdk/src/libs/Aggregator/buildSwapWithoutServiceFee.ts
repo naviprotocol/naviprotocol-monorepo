@@ -15,6 +15,7 @@ import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
+import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
 import { parsePoolTypeArgs } from './utils'
 
 /**
@@ -294,6 +295,43 @@ export async function buildSwapWithoutServiceFee(
             deadline,
             typeArguments
           )
+          break
+        }
+        case Dex.MAGMA_ALMM: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+
+          const coinA = a2b
+            ? pathTempCoin
+            : txb.moveCall({
+                target: '0x2::coin::zero',
+                typeArguments: [poolA]
+              })
+
+          const coinB = a2b
+            ? txb.moveCall({
+                target: '0x2::coin::zero',
+                typeArguments: [poolB]
+              })
+            : pathTempCoin
+          const { coinAOut, coinBOut } = await makeMAGMAALMMPTB(
+            txb,
+            poolA,
+            poolB,
+            coinA,
+            coinB,
+            poolId,
+            amountInPTB,
+            minAmountOut,
+            a2b,
+            userAddress
+          )
+          if (a2b) {
+            txb.transferObjects([coinAOut], userAddress)
+            pathTempCoin = coinBOut
+          } else {
+            txb.transferObjects([coinBOut], userAddress)
+            pathTempCoin = coinAOut
+          }
           break
         }
         default: {
