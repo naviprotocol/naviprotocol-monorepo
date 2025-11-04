@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.9.1
+
+### Patch Changes
+
+- Update the version for getting quote
+
 ## 1.9.0
 
 ### Minor Changes
