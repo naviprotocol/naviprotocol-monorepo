@@ -103,11 +103,12 @@ export async function flashloanPTB(
   }
 
   const [balance, receipt] = tx.moveCall({
-    target: `${config.package}::lending::flash_loan_with_ctx`,
+    target: `${config.package}::lending::flash_loan_with_ctx_v2`,
     arguments: [
       tx.object(config.flashloanConfig),
       tx.object(pool.contract.pool),
-      parseTxValue(amount, tx.pure.u64)
+      parseTxValue(amount, tx.pure.u64),
+      tx.object('0x05')
     ],
     typeArguments: [pool.suiCoinType]
   })
@@ -155,6 +156,7 @@ export async function repayFlashLoanPTB(
     throw new Error('Pool does not support flashloan')
   }
 
+  // v2 entry is not required to repay
   const [balance] = tx.moveCall({
     target: `${config.package}::lending::flash_repay_with_ctx`,
     arguments: [

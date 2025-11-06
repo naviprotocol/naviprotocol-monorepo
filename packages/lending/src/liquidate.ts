@@ -49,7 +49,7 @@ export async function liquidatePTB(
 
   // Execute the liquidation transaction
   const [collateralBalance, remainDebtBalance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::liquidation`,
+    target: `${config.package}::incentive_v3::liquidation_v2`,
     arguments: [
       tx.object('0x06'), // Clock object
       tx.object(config.priceOracle), // Price oracle for asset pricing
@@ -61,7 +61,8 @@ export async function liquidatePTB(
       tx.object(collateralPool.contract.pool), // Collateral asset pool contract
       parseTxValue(liquidateAddress, tx.pure.address), // Borrower address
       tx.object(config.incentiveV2), // Incentive V2 contract
-      tx.object(config.incentiveV3) // Incentive V3 contract
+      tx.object(config.incentiveV3), // Incentive V3 contract
+      tx.object('0x05') // SuiSystemState object
     ],
     typeArguments: [payPool.suiCoinType, collateralPool.suiCoinType]
   })
