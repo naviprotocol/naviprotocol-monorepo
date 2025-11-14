@@ -457,3 +457,8 @@ export type CoinObject =
       type?: 'object'
     }
   | string
+
+export type BorrowFeeOption = {
+  asset: AssetIdentifier
+  address: string
+}

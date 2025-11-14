@@ -18,10 +18,14 @@ import type {
   FeeDetail,
   CoinObject,
   TransactionResult,
-  AccountCapOption
+  AccountCapOption,
+  BorrowFeeOption,
+  SuiClientOption
 } from './types'
 import { normalizeCoinType, withCache, withSingleton, parseTxValue, suiClient } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
+import { parseDevInspectResult } from './utils'
+import { bcs } from '@mysten/sui/bcs'
 
 /**
  * Enumeration of pool operations
@@ -245,7 +249,7 @@ export async function depositCoinPTB(
   if (pool.id === 0) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
-      arguments: [tx.object(pool.contract.pool), tx.object('0x05')]
+      arguments: [tx.object(pool.contract.pool), tx.object('0x06')]
     })
   }
 
@@ -489,19 +493,61 @@ export async function repayCoinPTB(
 /**
  * Fetches the current borrow fee rate
  *
- * @param options - Optional caching options
- * @returns Promise<number> - Current borrow fee rate
+ * This function can retrieve borrow fee rates in two ways:
+ * - If `address` and `asset` are provided, it calculates the specific borrow fee rate
+ *   for a given address and asset by calling the on-chain `get_borrow_fee_v2` function
+ * - Otherwise, it returns the global borrow fee rate from the incentive V3 contract
+ *
+ * @param options - Optional configuration options
+ *   - `address` - User address to calculate specific borrow fee (requires `asset` to be set)
+ *   - `asset` - Asset identifier to calculate specific borrow fee (requires `address` to be set)
+ *   - `env` - Environment setting ('dev' or 'prod')
+ *   - `client` - Sui client instance for on-chain queries
+ *   - `cacheTime` - Cache expiration time in milliseconds
+ *   - `disableCache` - Whether to disable caching for this operation
+ * @returns Promise<number> - Borrow fee rate as a decimal number
+ *   - When `address` and `asset` are provided: returns the specific fee rate (divided by 10000)
+ *   - Otherwise: returns the global fee rate (divided by 100)
  */
 export const getBorrowFee = withCache(
-  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<number> => {
-    const config = await getConfig({
-      ...options
-    })
-    const rawData: any = await suiClient.getObject({
-      id: config.incentiveV3,
-      options: { showType: true, showOwner: true, showContent: true }
-    })
-    const borrowFee = rawData.data.content.fields.borrow_fee_rate
-    return Number(borrowFee) / 100
-  })
+  withSingleton(
+    async (
+      options?: Partial<EnvOption & CacheOption & BorrowFeeOption & SuiClientOption>
+    ): Promise<number> => {
+      const config = await getConfig({
+        ...options
+      })
+      if (options?.address && options?.asset) {
+        try {
+          const pool = await getPool(options.asset, options)
+          const client = options?.client ?? suiClient
+          const tx = new Transaction()
+          tx.moveCall({
+            target: `${config.package}::incentive_v3::get_borrow_fee_v2`,
+            arguments: [
+              tx.object(config.incentiveV3),
+              tx.pure.address(options.address),
+              tx.pure.u8(pool.id),
+              tx.pure.u64(10000)
+            ],
+            typeArguments: []
+          })
+          const result = await client.devInspectTransactionBlock({
+            transactionBlock: tx,
+            sender: options.address
+          })
+          const res = parseDevInspectResult<number[]>(result, [bcs.u64()])
+          return (Number(res[0]) || 0) / 100
+        } catch (error) {
+          console.error(error)
+        }
+      }
+      const rawData: any = await suiClient.getObject({
+        id: config.incentiveV3,
+        options: { showType: true, showOwner: true, showContent: true }
+      })
+      const borrowFee = rawData.data.content.fields.borrow_fee_rate
+      return Number(borrowFee) / 100
+    }
+  )
 )
