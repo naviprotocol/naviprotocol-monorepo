@@ -30,7 +30,7 @@ import { withCache, withSingleton } from './utils'
 export const getConfig = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<LendingConfig> => {
     // Build API URL with environment parameter
-    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}`
+    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&v=2`
 
     // Fetch configuration from API
     const res = await fetch(url).then((res) => res.json())
