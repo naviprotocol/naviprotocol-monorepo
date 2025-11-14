@@ -245,7 +245,7 @@ export async function depositCoinPTB(
   if (pool.id === 0) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
-      arguments: [tx.object(pool.contract.pool), tx.object('0x06')]
+      arguments: [tx.object(pool.contract.pool), tx.object('0x05')]
     })
   }
 
