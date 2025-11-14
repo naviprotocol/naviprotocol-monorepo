@@ -517,7 +517,7 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
-      if (options?.address && options?.asset) {
+      if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
           const client = options?.client ?? suiClient
