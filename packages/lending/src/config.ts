@@ -10,6 +10,7 @@
 
 import type { LendingConfig, EnvOption, CacheOption } from './types'
 import { withCache, withSingleton } from './utils'
+import packageJson from '../package.json'
 
 /**
  * Fetches lending protocol configuration from the API
@@ -29,8 +30,7 @@ import { withCache, withSingleton } from './utils'
  */
 export const getConfig = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<LendingConfig> => {
-    // Build API URL with environment parameter
-    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&v=2`
+    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
 
     // Fetch configuration from API
     const res = await fetch(url).then((res) => res.json())

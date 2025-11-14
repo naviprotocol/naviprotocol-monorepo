@@ -102,18 +102,32 @@ export async function flashloanPTB(
     throw new Error('Pool does not support flashloan')
   }
 
-  const [balance, receipt] = tx.moveCall({
-    target: `${config.package}::lending::flash_loan_with_ctx_v2`,
-    arguments: [
-      tx.object(config.flashloanConfig),
-      tx.object(pool.contract.pool),
-      parseTxValue(amount, tx.pure.u64),
-      tx.object('0x05')
-    ],
-    typeArguments: [pool.suiCoinType]
-  })
+  if (config.version === 1) {
+    const [balance, receipt] = tx.moveCall({
+      target: `${config.package}::lending::flash_loan_with_ctx`,
+      arguments: [
+        tx.object(config.flashloanConfig),
+        tx.object(pool.contract.pool),
+        parseTxValue(amount, tx.pure.u64)
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
 
-  return [balance, receipt]
+    return [balance, receipt]
+  } else {
+    const [balance, receipt] = tx.moveCall({
+      target: `${config.package}::lending::flash_loan_with_ctx_v2`,
+      arguments: [
+        tx.object(config.flashloanConfig),
+        tx.object(pool.contract.pool),
+        parseTxValue(amount, tx.pure.u64),
+        tx.object('0x05')
+      ],
+      typeArguments: [pool.suiCoinType]
+    })
+
+    return [balance, receipt]
+  }
 }
 
 /**

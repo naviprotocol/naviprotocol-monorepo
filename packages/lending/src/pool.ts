@@ -246,7 +246,7 @@ export async function depositCoinPTB(
   }
 
   // refresh stake for sui pool to balance the stake after deposit
-  if (pool.id === 0) {
+  if (config.version === 2 && pool.id === 0) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
       arguments: [tx.object(pool.contract.pool), tx.object('0x05')]
@@ -284,42 +284,80 @@ export async function withdrawCoinPTB(
 
   let withdrawBalance
 
-  // Build withdraw transaction based on account capability
-  if (options?.accountCap) {
-    const [ret] = tx.moveCall({
-      target: `${config.package}::incentive_v3::withdraw_with_account_cap_v2`,
-      arguments: [
-        tx.object('0x06'),
-        tx.object(config.priceOracle),
-        tx.object(config.storage),
-        tx.object(pool.contract.pool),
-        tx.pure.u8(pool.id),
-        withdrawAmount,
-        tx.object(config.incentiveV2),
-        tx.object(config.incentiveV3),
-        parseTxValue(options.accountCap, tx.object),
-        tx.object('0x05')
-      ],
-      typeArguments: [pool.suiCoinType]
-    })
-    withdrawBalance = ret
+  if (config.version === 1) {
+    // Build withdraw transaction based on account capability
+    if (options?.accountCap) {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::withdraw_with_account_cap`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          withdrawAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          parseTxValue(options.accountCap, tx.object)
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      withdrawBalance = ret
+    } else {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::withdraw`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          withdrawAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3)
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      withdrawBalance = ret
+    }
   } else {
-    const [ret] = tx.moveCall({
-      target: `${config.package}::incentive_v3::withdraw_v2`,
-      arguments: [
-        tx.object('0x06'),
-        tx.object(config.priceOracle),
-        tx.object(config.storage),
-        tx.object(pool.contract.pool),
-        tx.pure.u8(pool.id),
-        withdrawAmount,
-        tx.object(config.incentiveV2),
-        tx.object(config.incentiveV3),
-        tx.object('0x05')
-      ],
-      typeArguments: [pool.suiCoinType]
-    })
-    withdrawBalance = ret
+    // Build withdraw transaction based on account capability
+    if (options?.accountCap) {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::withdraw_with_account_cap_v2`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          withdrawAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          parseTxValue(options.accountCap, tx.object),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      withdrawBalance = ret
+    } else {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::withdraw_v2`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          withdrawAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      withdrawBalance = ret
+    }
   }
 
   const withdrawCoin = tx.moveCall({
@@ -347,41 +385,78 @@ export async function borrowCoinPTB(
 
   let borrowBalance
 
-  if (!options?.accountCap) {
-    const [ret] = tx.moveCall({
-      target: `${config.package}::incentive_v3::borrow_v2`,
-      arguments: [
-        tx.object('0x06'),
-        tx.object(config.priceOracle),
-        tx.object(config.storage),
-        tx.object(pool.contract.pool),
-        tx.pure.u8(pool.id),
-        borrowAmount,
-        tx.object(config.incentiveV2),
-        tx.object(config.incentiveV3),
-        tx.object('0x05')
-      ],
-      typeArguments: [pool.suiCoinType]
-    })
-    borrowBalance = ret
+  if (config.version === 1) {
+    if (!options?.accountCap) {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::borrow`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          borrowAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3)
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      borrowBalance = ret
+    } else {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::borrow_with_account_cap`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          borrowAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          parseTxValue(options.accountCap, tx.object)
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      borrowBalance = ret
+    }
   } else {
-    const [ret] = tx.moveCall({
-      target: `${config.package}::incentive_v3::borrow_with_account_cap_v2`,
-      arguments: [
-        tx.object('0x06'),
-        tx.object(config.priceOracle),
-        tx.object(config.storage),
-        tx.object(pool.contract.pool),
-        tx.pure.u8(pool.id),
-        borrowAmount,
-        tx.object(config.incentiveV2),
-        tx.object(config.incentiveV3),
-        parseTxValue(options.accountCap, tx.object),
-        tx.object('0x05')
-      ],
-      typeArguments: [pool.suiCoinType]
-    })
-    borrowBalance = ret
+    if (!options?.accountCap) {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::borrow_v2`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          borrowAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      borrowBalance = ret
+    } else {
+      const [ret] = tx.moveCall({
+        target: `${config.package}::incentive_v3::borrow_with_account_cap_v2`,
+        arguments: [
+          tx.object('0x06'),
+          tx.object(config.priceOracle),
+          tx.object(config.storage),
+          tx.object(pool.contract.pool),
+          tx.pure.u8(pool.id),
+          borrowAmount,
+          tx.object(config.incentiveV2),
+          tx.object(config.incentiveV3),
+          parseTxValue(options.accountCap, tx.object),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      borrowBalance = ret
+    }
   }
 
   const coin = tx.moveCall({
