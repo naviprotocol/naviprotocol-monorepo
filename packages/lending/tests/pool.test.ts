@@ -166,7 +166,11 @@ describe('repayCoinPTB', () => {
 
 describe('getBorrowFee', () => {
   it('check response', async () => {
-    const fee = await getBorrowFee()
+    const fee = await getBorrowFee({
+      env: 'dev',
+      address: '0xf89bf436d166578e84fcd4e726ae206ff24851f1647b0a264114180cc2591914',
+      asset: 0
+    })
     expect(fee).toBeDefined()
     expect(fee).toBeGreaterThan(0)
   })
