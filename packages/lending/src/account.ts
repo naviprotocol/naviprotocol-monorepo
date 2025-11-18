@@ -32,7 +32,8 @@ import {
   parseTxPoolValue,
   withCache,
   normalizeCoinType,
-  rayMathMulIndex
+  rayMathMulIndex,
+  requestHeaders
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
@@ -371,7 +372,7 @@ export const getTransactions = withSingleton(
 
     // Fetch transaction history from Navi protocol API
     const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }
 )

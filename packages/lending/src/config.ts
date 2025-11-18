@@ -9,7 +9,7 @@
  */
 
 import type { LendingConfig, EnvOption, CacheOption } from './types'
-import { withCache, withSingleton } from './utils'
+import { withCache, withSingleton, requestHeaders } from './utils'
 import packageJson from '../package.json'
 
 /**
@@ -33,7 +33,7 @@ export const getConfig = withCache(
     const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
 
     // Fetch configuration from API
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   })
 )
