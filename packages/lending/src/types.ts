@@ -394,6 +394,8 @@ export type LendingConfig = {
   flashloanConfig: string
   /** Flash loan supported assets address */
   flashloanSupportedAssets: string
+  /** lending protocol version */
+  version: number
   /** Oracle configuration */
   oracle: {
     /** Package ID */
@@ -457,3 +459,8 @@ export type CoinObject =
       type?: 'object'
     }
   | string
+
+export type BorrowFeeOption = {
+  asset: AssetIdentifier
+  address: string
+}

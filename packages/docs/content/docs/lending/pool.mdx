@@ -277,28 +277,59 @@ const stats = await getStats({
 
 ### getBorrowFee
 
-Get the current borrowing fee rate. See [documentation](/typedoc/variables/_naviprotocol_lending.getBorrowFee.html) for details.
+Get the current borrowing fee rate. This function supports two modes:
 
-**Usage Example**
+- **Global fee rate**: Returns the protocol-wide borrow fee rate
+- **Specific fee rate**: Calculates the borrow fee rate for a specific address and asset combination
+
+See [documentation](/typedoc/variables/_naviprotocol_lending.getBorrowFee.html) for details.
+
+**Usage Example - Global Fee Rate**
 
 ```typescript
 import { getBorrowFee } from '@naviprotocol/lending'
 
+// Get the global borrow fee rate
 const borrowFee = await getBorrowFee({
+  env: 'prod', // Optional: environment configuration ('dev' or 'prod')
+  cacheTime: 30000, // Optional: cache expiration time in milliseconds
+  disableCache: false // Optional: whether to disable caching
+})
+```
+
+**Usage Example - Specific Fee Rate**
+
+```typescript
+import { getBorrowFee } from '@naviprotocol/lending'
+
+// Get the borrow fee rate for a specific address and asset
+const borrowFee = await getBorrowFee({
+  address: '0x...', // user address
+  asset: 'USDC', // asset identifier
   env: 'prod', // Optional: environment configuration
-  cacheTime: 30000 // Optional: cache time
+  client: suiClient, // Optional: Sui client instance for on-chain queries
+  cacheTime: 30000 // Optional: cache expiration time in milliseconds
 })
 ```
 
 **Return Example**
 
 ```typescript
-0.3 // Represents a 0.3% borrowing fee rate
+3 // Represents a 3% borrowing fee rate
 ```
+
+**Parameters**
+
+- `address` (optional): User address to calculate specific borrow fee. Requires `asset` to be set.
+- `asset` (optional): Asset identifier to calculate specific borrow fee. Requires `address` to be set.
+- `env` (optional): Environment setting ('dev' or 'prod'). Defaults to 'prod'.
+- `client` (optional): Sui client instance for on-chain queries.
+- `cacheTime` (optional): Cache expiration time in milliseconds.
+- `disableCache` (optional): Whether to disable caching for this operation.
 
 **Notes**
 
-- This fee rate applies to all borrowing operations
+- The fee rate is returned as a decimal number (e.g., 3 represents 3%)
 - The fee rate may be adjusted based on protocol governance decisions
 
 ### getFees
@@ -394,7 +425,10 @@ await depositCoinPTB(tx, '0x2::sui::SUI', coinObject, {
 })
 ```
 
-<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#deposit">deposit feature of @naviprotocol/wallet-client</a></Callout>
+<Callout>
+  If you don't want to construct the transaction yourself, you can refer to the{' '}
+  <a href="/wallet-client/lending#deposit">deposit feature of @naviprotocol/wallet-client</a>
+</Callout>
 
 ### withdrawCoinPTB
 
@@ -424,7 +458,10 @@ const withdrawnCoin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
 })
 ```
 
-<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#withdraw">withdraw feature of @naviprotocol/wallet-client</a></Callout>
+<Callout>
+  If you don't want to construct the transaction yourself, you can refer to the{' '}
+  <a href="/wallet-client/lending#withdraw">withdraw feature of @naviprotocol/wallet-client</a>
+</Callout>
 
 ### borrowCoinPTB
 
@@ -454,8 +491,10 @@ const borrowedCoin = await borrowCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
 })
 ```
 
-<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#borrow">borrow feature of @naviprotocol/wallet-client</a></Callout>
-
+<Callout>
+  If you don't want to construct the transaction yourself, you can refer to the{' '}
+  <a href="/wallet-client/lending#borrow">borrow feature of @naviprotocol/wallet-client</a>
+</Callout>
 
 ### repayCoinPTB
 
@@ -487,8 +526,10 @@ await repayCoinPTB(tx, '0x2::sui::SUI', coinObject, {
 })
 ```
 
-<Callout>If you don't want to construct the transaction yourself, you can refer to the <a href="/wallet-client/lending#repay">repay feature of @naviprotocol/wallet-client</a></Callout>
-
+<Callout>
+  If you don't want to construct the transaction yourself, you can refer to the{' '}
+  <a href="/wallet-client/lending#repay">repay feature of @naviprotocol/wallet-client</a>
+</Callout>
 
 ### PoolOperator
 

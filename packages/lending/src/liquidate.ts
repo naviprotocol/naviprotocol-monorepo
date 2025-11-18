@@ -47,24 +47,48 @@ export async function liquidatePTB(
   const payPool = await getPool(payAsset, commonOptions)
   const collateralPool = await getPool(collateralAsset, commonOptions)
 
-  // Execute the liquidation transaction
-  const [collateralBalance, remainDebtBalance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::liquidation`,
-    arguments: [
-      tx.object('0x06'), // Clock object
-      tx.object(config.priceOracle), // Price oracle for asset pricing
-      tx.object(config.storage), // Protocol storage
-      tx.pure.u8(payPool.id), // Pay asset ID
-      tx.object(payPool.contract.pool), // Pay asset pool contract
-      parseTxValue(payCoinObject, tx.object), // Debt repayment amount
-      tx.pure.u8(collateralPool.id), // Collateral asset ID
-      tx.object(collateralPool.contract.pool), // Collateral asset pool contract
-      parseTxValue(liquidateAddress, tx.pure.address), // Borrower address
-      tx.object(config.incentiveV2), // Incentive V2 contract
-      tx.object(config.incentiveV3) // Incentive V3 contract
-    ],
-    typeArguments: [payPool.suiCoinType, collateralPool.suiCoinType]
-  })
+  if (config.version === 1) {
+    // Execute the liquidation transaction
+    const [collateralBalance, remainDebtBalance] = tx.moveCall({
+      target: `${config.package}::incentive_v3::liquidation`,
+      arguments: [
+        tx.object('0x06'), // Clock object
+        tx.object(config.priceOracle), // Price oracle for asset pricing
+        tx.object(config.storage), // Protocol storage
+        tx.pure.u8(payPool.id), // Pay asset ID
+        tx.object(payPool.contract.pool), // Pay asset pool contract
+        parseTxValue(payCoinObject, tx.object), // Debt repayment amount
+        tx.pure.u8(collateralPool.id), // Collateral asset ID
+        tx.object(collateralPool.contract.pool), // Collateral asset pool contract
+        parseTxValue(liquidateAddress, tx.pure.address), // Borrower address
+        tx.object(config.incentiveV2), // Incentive V2 contract
+        tx.object(config.incentiveV3) // Incentive V3 contract
+      ],
+      typeArguments: [payPool.suiCoinType, collateralPool.suiCoinType]
+    })
 
-  return [collateralBalance, remainDebtBalance]
+    return [collateralBalance, remainDebtBalance]
+  } else {
+    // Execute the liquidation transaction
+    const [collateralBalance, remainDebtBalance] = tx.moveCall({
+      target: `${config.package}::incentive_v3::liquidation_v2`,
+      arguments: [
+        tx.object('0x06'), // Clock object
+        tx.object(config.priceOracle), // Price oracle for asset pricing
+        tx.object(config.storage), // Protocol storage
+        tx.pure.u8(payPool.id), // Pay asset ID
+        tx.object(payPool.contract.pool), // Pay asset pool contract
+        parseTxValue(payCoinObject, tx.object), // Debt repayment amount
+        tx.pure.u8(collateralPool.id), // Collateral asset ID
+        tx.object(collateralPool.contract.pool), // Collateral asset pool contract
+        parseTxValue(liquidateAddress, tx.pure.address), // Borrower address
+        tx.object(config.incentiveV2), // Incentive V2 contract
+        tx.object(config.incentiveV3), // Incentive V3 contract
+        tx.object('0x05') // SuiSystemState object
+      ],
+      typeArguments: [payPool.suiCoinType, collateralPool.suiCoinType]
+    })
+
+    return [collateralBalance, remainDebtBalance]
+  }
 }
