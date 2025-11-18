@@ -25,7 +25,8 @@ import {
   parseDevInspectResult,
   normalizeCoinType,
   withSingleton,
-  parseTxValue
+  parseTxValue,
+  requestHeaders
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
@@ -197,7 +198,7 @@ export const getUserTotalClaimedReward = withSingleton(
     USDValue: number
   }> => {
     const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }
 )
@@ -224,7 +225,7 @@ export const getUserClaimedRewardHistory = withSingleton(
     cursor?: string
   }> => {
     const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}`
-    const res = await fetch(endpoint).then((res) => res.json())
+    const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
     })

@@ -22,7 +22,14 @@ import type {
   BorrowFeeOption,
   SuiClientOption
 } from './types'
-import { normalizeCoinType, withCache, withSingleton, parseTxValue, suiClient } from './utils'
+import {
+  normalizeCoinType,
+  withCache,
+  withSingleton,
+  parseTxValue,
+  suiClient,
+  requestHeaders
+} from './utils'
 import { Transaction } from '@mysten/sui/transactions'
 import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
@@ -56,7 +63,7 @@ export enum PoolOperator {
 export const getPools = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<Pool[]> => {
     const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   })
 )
@@ -117,7 +124,7 @@ export async function getPool(
 export const getStats = withCache(
   withSingleton(async (options?: Partial<CacheOption>): Promise<PoolStats> => {
     const url = `https://open-api.naviprotocol.io/api/navi/stats`
-    const res = await fetch(url).then((res) => res.json())
+    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   })
 )
@@ -154,7 +161,7 @@ export const getFees = withCache(
       }
     }> => {
       const url = `https://open-api.naviprotocol.io/api/navi/fee`
-      const res = await fetch(url).then((res) => res.json())
+      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
       return res
     }
   )

@@ -1,5 +1,4 @@
-import './fetch'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   getPools,
   getStats,
@@ -12,8 +11,16 @@ import {
 } from '../src/pool'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from '../src/utils'
+import { updateOraclePricesPTB, getPriceFeeds } from '../src/oracle'
+import { OraclePriceFeed } from '../src/types'
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+
+let allFeeds: OraclePriceFeed[] = []
+
+beforeAll(async () => {
+  allFeeds = await getPriceFeeds()
+})
 
 describe('getPools', () => {
   it('prod pools', async () => {
@@ -72,6 +79,7 @@ describe('depositCoinPTB', () => {
   it('should success deposit 1 Sui', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
+    updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 0.2])
     await depositCoinPTB(tx, coinType, toDeposit)
     tx.setSender(testAddress)
@@ -88,6 +96,7 @@ describe('depositCoinPTB', () => {
   it('should failed insufficient SUI balance for deposit', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
+    updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 1000])
     await depositCoinPTB(tx, coinType, toDeposit, {
       amount: 1e9 * 1000
@@ -109,6 +118,7 @@ describe('withdrawCoinPTB', () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
+    updateOraclePricesPTB(tx, allFeeds)
     const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9 * 0.2)
     tx.transferObjects([withdrawCoins], testAddress)
     tx.setSender(testAddress)
@@ -130,6 +140,7 @@ describe('borrowCoinPTB', () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
+    updateOraclePricesPTB(tx, allFeeds)
     const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9 * 0.1)
     tx.transferObjects([borrowCoin], testAddress)
     tx.setSender(testAddress)
@@ -148,6 +159,7 @@ describe('repayCoinPTB', () => {
   it('should success repay 0.1 SUI', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
+    updateOraclePricesPTB(tx, allFeeds)
     await repayCoinPTB(tx, coinType, tx.gas, {
       amount: 1e9 * 0.1
     })

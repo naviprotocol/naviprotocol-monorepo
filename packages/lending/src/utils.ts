@@ -8,7 +8,7 @@
  * @module LendingUtils
  */
 
-import type { SuiClientOption, CacheOption, Pool, TransactionResult } from './types'
+import type { CacheOption, Pool, TransactionResult } from './types'
 import type { DevInspectResults } from '@mysten/sui/client'
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 import camelCase from 'lodash.camelcase'
@@ -17,6 +17,7 @@ import { BcsType } from '@mysten/sui/bcs'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js'
 import BigNumber from 'bignumber.js'
+import { userAgent } from './ua'
 
 /**
  * Default Sui client instance configured for mainnet
@@ -265,3 +266,9 @@ export const rayMathMulIndex = (amount: string | number, index: string | number)
     .dividedBy(ray)
     .integerValue(BigNumber.ROUND_DOWN)
 }
+
+export const requestHeaders = !!userAgent
+  ? {
+      'User-Agent': userAgent
+    }
+  : ({} as HeadersInit)
