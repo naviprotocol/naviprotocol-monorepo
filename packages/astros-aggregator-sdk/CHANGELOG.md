@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.10.0
+
+### Minor Changes
+
+- Improve setting option for slippage
+
 ## 1.9.1
 
 ### Patch Changes
