@@ -91,19 +91,19 @@ export async function getCoinPTB(
  *
  * @param userAddress - User's wallet address
  * @param txb - Transaction object to build
- * @param minAmountOut - Minimum output amount (slippage protection)
+ * @param minAmountOut - Minimum output amount (slippage protection). Will be ignored if slippage is provided in swapOptions. Optional, deprecated - use swapOptions.slippage instead.
  * @param coinIn - Input coin for the swap
  * @param quote - Quote from the aggregator
  * @param referral - Referral ID for tracking
  * @param ifPrint - Whether to print debug information
  * @param apiKey - API key for aggregator access
- * @param swapOptions - Swap configuration options
+ * @param swapOptions - Swap configuration options. If slippage is provided, it will be used to calculate minAmountOut instead of the minAmountOut parameter.
  * @returns Transaction result representing the output coin
  */
 export async function buildSwapPTBFromQuote(
   userAddress: string,
   txb: Transaction,
-  minAmountOut: number,
+  minAmountOut: number | undefined,
   coinIn: TransactionResult,
   quote: Quote,
   referral: number = 0,
@@ -122,6 +122,35 @@ export async function buildSwapPTBFromQuote(
     quote.routes.reduce((sum: number, route: any) => sum + Number(route.amount_in), 0)
   ) {
     throw new Error('Outer amount_in does not match the sum of route amount_in values')
+  }
+
+  // Calculate final minAmountOut from slippage if provided, otherwise use the deprecated parameter
+  let finalMinAmountOut: number
+  if (swapOptions?.slippage !== undefined) {
+    // Validate slippage value
+    if (swapOptions.slippage < 0 || swapOptions.slippage > 1) {
+      throw new Error('Slippage must be between 0 and 1 (e.g., 0.01 for 1%)')
+    }
+    // Priority: slippage takes precedence over minAmountOut
+    // Calculate minAmountOut from slippage: amount_out * (1 - slippage)
+    // Using Math.round to match frontend behavior (rounds to nearest integer)
+    // Note: This will be floored again in buildSwapWithoutServiceFee, but we use rounding here
+    // to match the frontend calculation pattern
+    const calculatedMin = Number(quote.amount_out) * (1 - swapOptions.slippage)
+    finalMinAmountOut = Math.round(calculatedMin)
+    // Ensure minAmountOut is at least 1 if the original amount_out is greater than 0
+    // This prevents slippage protection from being completely disabled for small amounts
+    if (Number(quote.amount_out) > 0 && finalMinAmountOut === 0) {
+      finalMinAmountOut = 1
+    }
+  } else {
+    // Use the deprecated minAmountOut parameter for backward compatibility
+    if (minAmountOut === undefined) {
+      throw new Error(
+        'Either slippage in swapOptions or minAmountOut parameter must be provided for slippage protection'
+      )
+    }
+    finalMinAmountOut = minAmountOut
   }
 
   const serviceFee = swapOptions?.serviceFee || swapOptions?.feeOption
@@ -146,7 +175,15 @@ export async function buildSwapPTBFromQuote(
 
     // Build main swap and fee swap transactions in parallel
     const [coinOut, feeCoinOut] = await Promise.all([
-      buildSwapWithoutServiceFee(userAddress, txb, coinIn, router, minAmountOut, referral, ifPrint),
+      buildSwapWithoutServiceFee(
+        userAddress,
+        txb,
+        coinIn,
+        router,
+        finalMinAmountOut,
+        referral,
+        ifPrint
+      ),
       !!serviceFeeRouter
         ? serviceFeeRouter.from === serviceFeeRouter.target
           ? serviceFeeCoinIn
@@ -180,7 +217,7 @@ export async function buildSwapPTBFromQuote(
     txb,
     coinIn,
     quote,
-    minAmountOut,
+    finalMinAmountOut,
     referral,
     ifPrint
   )
@@ -200,10 +237,11 @@ export async function buildSwapPTBFromQuote(
  * @param toCoinAddress - Target coin address
  * @param coin - Input coin for the swap
  * @param amountIn - Amount to swap
- * @param minAmountOut - Minimum output amount
+ * @param minAmountOut - Minimum output amount (slippage protection). Will be ignored if slippage is provided in swapOptions. Optional, deprecated - use swapOptions.slippage instead.
  * @param apiKey - API key for aggregator access
- * @param swapOptions - Swap configuration options
+ * @param swapOptions - Swap configuration options. If slippage is provided, it will be used to calculate minAmountOut instead of the minAmountOut parameter.
  * @returns Transaction result representing the output coin
+ * @deprecated The minAmountOut parameter is deprecated. Use swapOptions.slippage instead.
  */
 export async function swapPTB(
   address: string,
@@ -212,7 +250,7 @@ export async function swapPTB(
   toCoinAddress: string,
   coin: TransactionResult,
   amountIn: number | string | bigint,
-  minAmountOut: number,
+  minAmountOut?: number,
   apiKey?: string,
   swapOptions: SwapOptions = {
     baseUrl: undefined,
@@ -222,11 +260,37 @@ export async function swapPTB(
     ifPrint: true
   }
 ): Promise<TransactionResult> {
+  // Set default swap options
+  const options: SwapOptions = {
+    baseUrl: undefined,
+    dexList: [],
+    byAmountIn: true,
+    depth: 3,
+    ifPrint: true,
+    ...swapOptions
+  }
+
+  // Validate slippage protection: must provide either slippage or minAmountOut
+  if (options.slippage !== undefined) {
+    // If slippage is provided, validate it
+    if (options.slippage < 0 || options.slippage > 1) {
+      throw new Error('Slippage must be between 0 and 1 (e.g., 0.01 for 1%)')
+    }
+    // If both are provided, slippage takes precedence and minAmountOut will be ignored
+  } else {
+    // If no slippage is provided, minAmountOut parameter must be provided
+    if (minAmountOut === undefined) {
+      throw new Error(
+        'Either slippage in swapOptions or minAmountOut parameter must be provided for slippage protection'
+      )
+    }
+  }
+
   // Generate referral ID if API key is provided
   const refId = apiKey ? generateRefId(apiKey) : 0
 
   // Get the output coin from the swap route and transfer it to the user
-  const quote = await getQuote(fromCoinAddress, toCoinAddress, amountIn, apiKey, swapOptions)
+  const quote = await getQuote(fromCoinAddress, toCoinAddress, amountIn, apiKey, options)
 
   const finalCoinB = await buildSwapPTBFromQuote(
     address,
@@ -235,9 +299,9 @@ export async function swapPTB(
     coin,
     quote,
     refId,
-    swapOptions.ifPrint,
+    options.ifPrint,
     apiKey,
-    swapOptions
+    options
   )
 
   return finalCoinB
