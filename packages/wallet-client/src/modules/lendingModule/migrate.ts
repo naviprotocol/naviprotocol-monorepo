@@ -55,6 +55,10 @@ export async function migrateBetweenSupplyPTB(
     throw new Error('Amount is less than supply balance')
   }
 
+  const slippage = options?.slippage ?? 0.005
+
+  const formAmount = options?.amount ?? Number(fromPoolLending.supplyBalance)
+
   const priceFeeds = await getPriceFeeds()
   const pools = await Promise.all([fromPool, toPool])
   await updateOraclePricesPTB(
@@ -65,6 +69,18 @@ export async function migrateBetweenSupplyPTB(
     })
   )
 
+  if (protocolName !== 'navi' && fromPool.id === toPool.id) {
+    const withdrawnFromCoin = await fromProtocol.withdrawCoinPTB(
+      tx,
+      fromPool.suiCoinType,
+      formAmount
+    )
+    await depositCoinPTB(tx, toPool, withdrawnFromCoin, {
+      amount: formAmount
+    })
+    return tx
+  }
+
   const toPoolFlashloanAsset = await getFlashLoanAsset(toPool, {
     env: this.config.env
   })
@@ -72,10 +88,6 @@ export async function migrateBetweenSupplyPTB(
   if (!toPoolFlashloanAsset) {
     throw new Error(`${toPool.token.symbol} pool not support flashloan`)
   }
-
-  const slippage = options?.slippage ?? 0.005
-
-  const formAmount = options?.amount ?? Number(fromPoolLending.supplyBalance)
 
   const quote = await this.walletClient.swap.getQuote(
     fromPool.suiCoinType,
