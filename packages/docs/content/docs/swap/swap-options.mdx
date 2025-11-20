@@ -26,6 +26,8 @@ type SwapOptions = {
     // Address to receive the fee
     receiverAddress: string;
   }
+  /** Slippage tolerance as a ratio (e.g., 0.01 for 1%). Only used in swapPTB, not in getQuote. If provided, it will be used to calculate minAmountOut instead of using the minAmountOut parameter. */
+  slippage?: number
 }
 ```
 
@@ -42,7 +44,8 @@ const swapOptions: SwapOptions = {
   feeOption: {
     fee: 0.03, // 3% fee
     receiverAddress: '0x...'
-  }
+  },
+  slippage: 0.01 // 1% slippage
 }
 
 const quote = await getQuote(
