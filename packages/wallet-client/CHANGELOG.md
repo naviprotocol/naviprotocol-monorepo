@@ -1,6 +1,6 @@
 # @naviprotocol/wallet-client
 
-## 1.4.1
+## 1.4.2
 
 ### Patch Changes
 
