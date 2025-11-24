@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.11.0
+
+### Minor Changes
+
+- Update FlowX
+
 ## 1.10.0
 
 ### Minor Changes
