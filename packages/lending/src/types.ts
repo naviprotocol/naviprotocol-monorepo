@@ -301,6 +301,10 @@ export type Pool = {
     /** Optional reward fund ID */
     rewardFundId?: string
   }
+  /** Whether this pool is deprecated */
+  isDeprecated: boolean
+  /** Deprecated at timestamp */
+  deprecatedAt?: number
 }
 
 /**
