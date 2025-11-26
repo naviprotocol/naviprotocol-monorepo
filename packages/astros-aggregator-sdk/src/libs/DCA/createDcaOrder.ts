@@ -111,10 +111,10 @@ export async function createDcaOrder(
   })
 
   const receipt = tx.moveCall({
-    target: `${dcaConfig.dcaContract}::main::create_order`,
+    target: `${dcaConfig.dcaContract}::order_registry::create_order`,
     arguments: [
-      tx.object(dcaConfig.dcaGlobalConfig),
       tx.object(dcaConfig.dcaRegistry),
+      tx.object(dcaConfig.dcaGlobalConfig),
       balance,
       tx.pure.u64(rawParams.gapFrequency), // Gap frequency value
       tx.pure.u8(rawParams.gapUnit), // Gap time unit (0=second, 1=minute, 2=hour, 3=day)
