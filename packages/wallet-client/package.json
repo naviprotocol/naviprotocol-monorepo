@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/wallet-client",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "NAVI Wallet Client",
   "license": "MIT",
   "keywords": [
@@ -52,7 +52,7 @@
     "@naviprotocol/lending": "workspace:*",
     "@suilend/sdk": "1.1.75",
     "@suilend/sui-fe": "0.3.20",
-    "axios": "1.11.0",
+    "axios": "1.13.2",
     "bignumber.js": "9.1.2",
     "date-fns": "4.1.0",
     "mitt": "3.0.1",

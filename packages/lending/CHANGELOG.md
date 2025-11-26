@@ -1,5 +1,11 @@
 # @naviprotocol/lending
 
+## 1.3.2
+
+### Patch Changes
+
+- c0484fb: Add support for deprecating token pools.
+
 ## 1.2.0
 
 ### Minor Changes

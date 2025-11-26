@@ -109,6 +109,10 @@ export async function getPool(
   if (!pool) {
     throw new Error(`Pool not found`)
   }
+
+  if (pool.isDeprecated) {
+    console.log(`The lending pool for coinType ${pool.suiCoinType} is going to be deprecated.`)
+  }
   return pool
 }
 
@@ -196,6 +200,11 @@ export async function depositCoinPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
   const pool = await getPool(identifier, options)
+
+  if (pool?.deprecatedAt && Date.now() > pool.deprecatedAt) {
+    throw new Error(`The lending pool for coinType ${pool.suiCoinType} has been deprecated.`)
+  }
+
   const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
 
   // Handle SUI gas coin deposits
@@ -387,6 +396,10 @@ export async function borrowCoinPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
   const pool = await getPool(identifier, options)
+
+  if (pool?.deprecatedAt && Date.now() > pool.deprecatedAt) {
+    throw new Error(`The lending pool for coinType ${pool.suiCoinType} has been deprecated.`)
+  }
 
   const borrowAmount = parseTxValue(amount, tx.pure.u64)
 

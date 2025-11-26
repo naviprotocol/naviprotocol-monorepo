@@ -50,7 +50,7 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "axios": "1.12.2",
+    "axios": "1.13.2",
     "bignumber.js": "9.1.2",
     "crypto-js": "4.2.0",
     "dotenv": "16.4.7",

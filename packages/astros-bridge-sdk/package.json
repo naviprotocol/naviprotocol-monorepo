@@ -52,7 +52,7 @@
   "dependencies": {
     "@mayanfinance/swap-sdk": "10.9.0",
     "@solana/web3.js": "1.98.2",
-    "axios": "1.11.0",
+    "axios": "1.13.2",
     "ethers": "6.13.5"
   },
   "devDependencies": {
