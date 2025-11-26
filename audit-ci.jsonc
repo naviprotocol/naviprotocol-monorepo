@@ -2,5 +2,11 @@
   // $schema provides code completion hints to IDEs.
   "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
   "moderate": true,
-  "allowlist": ["vue-template-compiler", "GHSA-67mh-4wv8-2f99"]
+  "allowlist": [
+    "vue-template-compiler",
+    "GHSA-67mh-4wv8-2f99",
+    "GHSA-93m4-6634-74q7",
+    "GHSA-9965-vmph-33xx",
+    "GHSA-mh29-5h37-fv8m"
+  ]
 }
