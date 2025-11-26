@@ -65,15 +65,15 @@ export async function cancelDcaOrder(
 
   const tx = new Transaction()
 
-  const [remainingInput, accumulatedOutput] = tx.moveCall({
-    target: `${dcaConfig.dcaContract}::main::cancel_order`,
+  // cancel_order returns only the remaining input balance (output is paid directly during execution)
+  const remainingInput = tx.moveCall({
+    target: `${dcaConfig.dcaContract}::order_registry::cancel_order`,
     arguments: [
-      tx.object(dcaConfig.dcaGlobalConfig),
       tx.object(dcaConfig.dcaRegistry),
-      tx.object(receiptId),
-      tx.object('0x6')
+      tx.object(dcaConfig.dcaGlobalConfig),
+      tx.object(receiptId)
     ],
-    typeArguments: [params.fromCoinType, params.toCoinType]
+    typeArguments: [params.fromCoinType]
   })
 
   const inputCoin = tx.moveCall({
@@ -82,14 +82,8 @@ export async function cancelDcaOrder(
     typeArguments: [params.fromCoinType]
   })
 
-  const outputCoin = tx.moveCall({
-    target: `0x2::coin::from_balance`,
-    arguments: [accumulatedOutput],
-    typeArguments: [params.toCoinType]
-  })
-
   // Ensure returned coins are transferred to the owner to avoid unused value errors
-  tx.transferObjects([inputCoin, outputCoin], tx.pure.address(ownerAddress))
+  tx.transferObjects([inputCoin], tx.pure.address(ownerAddress))
 
   return tx
 }
