@@ -55,7 +55,8 @@ export async function handleServiceFee(
           amount_out: serviceFeeAmount,
           from: quote.from,
           target: quote.from,
-          dexList: []
+          dexList: [],
+          high_price_impact: false
         })
         return
       }
