@@ -32,11 +32,21 @@ export type Duration = {
 }
 
 /**
- * Price range for slippage protection (in atomic units)
+ * Price limit for slippage protection
+ * Price is expressed as: 1 toCoin = X fromCoin (how much fromCoin to pay for 1 toCoin)
+ *
+ * Example: SUI -> NAVX order (buying NAVX with SUI)
+ * - If current rate is 1 NAVX = 0.02 SUI
+ * - minBuyPrice: 0.018 = minimum cost per NAVX (best rate, you get MORE NAVX)
+ * - maxBuyPrice: 0.025 = maximum cost per NAVX (worst rate, you get LESS NAVX)
+ *
+ * The order will only execute when: minBuyPrice <= actual price <= maxBuyPrice
+ *
+ * NOTE: Decimals are automatically fetched by the SDK, you don't need to provide them!
  */
 export type PriceRange = {
-  min: string | number | bigint | null // Minimum acceptable output amount in atomic units, null = no minimum
-  max: string | number | bigint | null // Maximum acceptable output amount in atomic units, null = no maximum
+  minBuyPrice: number | null // Min cost per toCoin (best rate, most output), null = no limit
+  maxBuyPrice: number | null // Max cost per toCoin (worst rate, least output), null = no limit
 }
 
 /**
@@ -60,8 +70,8 @@ export type DcaOrderParams = {
   depositedAmount: string | number | bigint // Total deposit amount in atomic units (e.g., '1500000000' for 1.5 SUI)
   frequency: Duration // How often to execute (e.g., { value: 1, unit: TimeUnit.HOURS })
   totalExecutions: number // How many times to execute (must be > 0)
-  cliff?: Duration // Delay before first execution (optional, defaults to 0)
-  priceRange?: PriceRange // Price protection in atomic units (optional, defaults to no limits)
+  startTime?: number // Absolute timestamp in ms for first execution (optional, defaults to immediate)
+  priceRange?: PriceRange // Price protection (optional, defaults to no limits)
 }
 
 /**
