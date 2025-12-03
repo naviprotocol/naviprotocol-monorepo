@@ -321,7 +321,6 @@ export async function buildSwapWithoutServiceFee(
             coinB,
             poolId,
             amountInPTB,
-            minAmountOut,
             a2b,
             userAddress
           )
