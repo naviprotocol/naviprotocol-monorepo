@@ -1,5 +1,12 @@
 # @naviprotocol/wallet-client
 
+## 1.4.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @naviprotocol/astros-aggregator-sdk@1.13.0
+
 ## 1.4.4
 
 ### Patch Changes
