@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.12.0
+
+### Minor Changes
+
+- Fix Magma ALMM and add high price impact warning
+
 ## 1.11.0
 
 ### Minor Changes
