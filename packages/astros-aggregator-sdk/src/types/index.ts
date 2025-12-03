@@ -83,6 +83,8 @@ export type Quote = {
   is_accurate?: boolean
   /** If dry run fails, the trace id of the quote. */
   trace_id?: string
+  /** Whether the quote has a high price impact. If true, it is suggested to proceed with caution. */
+  high_price_impact: boolean
 }
 
 /**

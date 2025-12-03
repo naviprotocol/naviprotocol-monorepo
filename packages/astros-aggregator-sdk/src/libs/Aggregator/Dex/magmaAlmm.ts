@@ -9,7 +9,6 @@ export async function makeMAGMAALMMPTB(
   coinB: any,
   pair: string,
   amount: any,
-  minAmountOut: any,
   a2b: boolean,
   userAddress: string
 ) {
@@ -21,7 +20,7 @@ export async function makeMAGMAALMMPTB(
     coinA,
     coinB,
     amount,
-    txb.pure.u64(minAmountOut),
+    txb.pure.u64(0),
     txb.pure.bool(a2b),
     txb.pure.address(userAddress),
     txb.object(AggregatorConfig.clockAddress)
