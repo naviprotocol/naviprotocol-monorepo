@@ -27,68 +27,24 @@ import { getCoinForDca } from './coinUtils'
  *     depositedAmount: '1000000000', // 1 SUI total (in atomic units: 1 * 10^9)
  *     frequency: { value: 1, unit: TimeUnit.HOURS },
  *     totalExecutions: 10,
-<<<<<<< HEAD
- *   }
- * )
- *
- * // Override for testing environment
- * const testTx = await createDcaOrder(
- *   client,
- *   params,
- *   coinObjectId,
- *   ownerAddress,
- *   {
- *     dcaContract: '0xTEST_PACKAGE_ID',
- *     dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
- *     dcaRegistry: '0xTEST_REGISTRY'
-=======
->>>>>>> 4275cb8 (fix few bugs)
  *   }
  * )
  * ```
  *
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 4275cb8 (fix few bugs)
  * @param client - SuiClient instance for fetching coins
  * @param userAddress - User's wallet address (owner of coins and receipt)
  * @param params - DCA order configuration parameters (amounts in atomic units)
  * @param dcaOptions - Optional: DCA contract configuration overrides (for testing)
-<<<<<<< HEAD
-=======
- * @param client - SuiClient instance for fetching coin metadata
- * @param params - DCA order configuration parameters (user-friendly format)
- * @param coinObjectId - Coin object ID to deposit from
- * @param ownerAddress - Address to receive the Receipt object
- * @param dcaOptions - Optional DCA contract configuration overrides (for testing)
->>>>>>> a3e7397 (create dcaOption)
-=======
->>>>>>> 4275cb8 (fix few bugs)
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
   client: SuiClient,
   userAddress: string,
   params: DcaOrderParams,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-  coinObjectId: string,
-  ownerAddress: string,
->>>>>>> a3e7397 (create dcaOption)
-=======
->>>>>>> 4275cb8 (fix few bugs)
   dcaOptions?: DcaOptions
 ): Promise<Transaction> {
   // Convert parameters to raw on-chain format
   const rawParams = convertToRawParams(params)
-<<<<<<< HEAD
-
-  // Get DCA configuration (with optional overrides)
-  const dcaConfig = getDcaConfig(dcaOptions)
-=======
->>>>>>> 4275cb8 (fix few bugs)
 
   // Get DCA configuration (with optional overrides)
   const dcaConfig = getDcaConfig(dcaOptions)
