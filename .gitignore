@@ -62,3 +62,7 @@ out/
 .direnv/
 
 /.vscode/
+/.scripts/
+
+# Ignore SDK test scripts
+/packages/astros-aggregator-sdk/scripts/
