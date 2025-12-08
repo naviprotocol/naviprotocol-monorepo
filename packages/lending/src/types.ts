@@ -305,6 +305,9 @@ export type Pool = {
   isDeprecated: boolean
   /** Deprecated at timestamp */
   deprecatedAt?: number
+  isSuiBridge: boolean
+  isLayerZero: boolean
+  isWormhole: boolean
 }
 
 /**
