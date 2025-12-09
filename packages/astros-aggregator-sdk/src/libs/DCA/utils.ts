@@ -177,20 +177,13 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
   }
 }
 
+const U64_MAX = 18446744073709551615n
+
 /**
  * Convert price to minAmountOut/maxAmountOut
  *
- * Price is expressed as: 1 toCoin = X fromCoin (e.g., 1 USDC = 49.5 NAVX)
- * minAmountOut = amountPerCycle / price (in toCoin atomic units)
- *
- * Formula:
- *   minAmountOut = (amountPerCycle × 10^toDecimals) / (price × 10^fromDecimals)
- *
- * @param amountPerCycle - Amount of fromCoin per execution (atomic units)
- * @param price - Price as 1 toCoin = X fromCoin (human readable, e.g., 49.5)
- * @param fromDecimals - Decimals of fromCoin
- * @param toDecimals - Decimals of toCoin
- * @returns Amount in toCoin atomic units
+ * Price should be human-readable (e.g., 0.02), NOT atomic units.
+ * Throws if price is invalid. Result is clamped to [0, U64_MAX].
  */
 function priceToAmountOut(
   amountPerCycle: bigint,
@@ -198,21 +191,33 @@ function priceToAmountOut(
   fromDecimals: number,
   toDecimals: number
 ): bigint {
-  // Use high precision to avoid rounding errors
-  // Multiply price by 10^18 to preserve decimal precision
+  if (price <= 0) {
+    throw new Error(`Invalid price: ${price}. Price must be positive.`)
+  }
+  if (!Number.isFinite(price)) {
+    throw new Error(`Invalid price: ${price}. Price must be a finite number.`)
+  }
+  if (price > Number.MAX_SAFE_INTEGER) {
+    throw new Error(
+      `Invalid price: ${price}. Price exceeds MAX_SAFE_INTEGER (${Number.MAX_SAFE_INTEGER}). Use human-readable price like 0.02, not atomic units.`
+    )
+  }
+
   const PRECISION = 18
   const priceBigInt = BigInt(Math.round(price * Math.pow(10, PRECISION)))
 
-  // amountOut = amountPerCycle × 10^toDecimals × 10^PRECISION / (priceBigInt × 10^fromDecimals)
-  //           = amountPerCycle × 10^(toDecimals + PRECISION - fromDecimals) / priceBigInt
   const exponent = toDecimals + PRECISION - fromDecimals
   const multiplier = BigInt(Math.pow(10, Math.abs(exponent)))
 
-  if (exponent >= 0) {
-    return (amountPerCycle * multiplier) / priceBigInt
-  } else {
-    return amountPerCycle / (priceBigInt * multiplier)
-  }
+  const result =
+    exponent >= 0
+      ? (amountPerCycle * multiplier) / priceBigInt
+      : amountPerCycle / (priceBigInt * multiplier)
+
+  // Clamp to u64 range
+  if (result < 0n) return 0n
+  if (result > U64_MAX) return U64_MAX
+  return result
 }
 
 /**
@@ -251,9 +256,9 @@ export function convertToRawParams(
 
   // Convert price range to minAmountOut/maxAmountOut
   // Default: no min (0) and no max (u64::MAX)
-  const U64_MAX = '18446744073709551615'
+  const U64_MAX_STR = U64_MAX.toString()
   let minAmountOut = '0'
-  let maxAmountOut = U64_MAX
+  let maxAmountOut = U64_MAX_STR
 
   // Check if priceRange is set with actual values
   const hasPriceRange =
@@ -273,22 +278,25 @@ export function convertToRawParams(
     const { fromDecimals, toDecimals } = decimals
     const { minBuyPrice, maxBuyPrice } = params.priceRange!
 
+    // Validate: maxBuyPrice must be >= minBuyPrice
+    if (minBuyPrice !== null && maxBuyPrice !== null && maxBuyPrice < minBuyPrice) {
+      throw new Error(
+        `Invalid priceRange: maxBuyPrice (${maxBuyPrice}) must be >= minBuyPrice (${minBuyPrice}).`
+      )
+    }
+
     // Price = how much fromCoin to pay for 1 toCoin
-    // maxBuyPrice (worst rate) -> minAmountOut (least output)
-    // minBuyPrice (best rate) -> maxAmountOut (most output)
+    // maxBuyPrice (price ceiling, expensive) -> minAmountOut (get less, worst case protection)
+    // minBuyPrice (price floor, cheap) -> maxAmountOut (get more, anomaly protection)
 
     if (maxBuyPrice !== null && maxBuyPrice > 0) {
       const minAmount = priceToAmountOut(amountPerCycle, maxBuyPrice, fromDecimals, toDecimals)
-      if (minAmount > 0n) {
-        minAmountOut = minAmount.toString()
-      }
+      if (minAmount > 0n) minAmountOut = minAmount.toString()
     }
 
     if (minBuyPrice !== null && minBuyPrice > 0) {
       const maxAmount = priceToAmountOut(amountPerCycle, minBuyPrice, fromDecimals, toDecimals)
-      if (maxAmount > 0n) {
-        maxAmountOut = maxAmount.toString()
-      }
+      if (maxAmount > 0n) maxAmountOut = maxAmount.toString()
     }
   }
 
