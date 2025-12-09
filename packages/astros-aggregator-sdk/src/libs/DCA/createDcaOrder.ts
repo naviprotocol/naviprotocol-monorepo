@@ -6,8 +6,19 @@ import { Transaction } from '@mysten/sui/transactions'
 import { SuiClient } from '@mysten/sui/client'
 import { DcaOrderParams, DcaOptions } from './types'
 import { getDcaConfig } from './getDcaConfig'
-import { convertToRawParams } from './utils'
+import { convertToRawParams, CoinDecimals } from './utils'
 import { getCoinForDca } from './coinUtils'
+
+/**
+ * Fetch coin decimals from chain
+ */
+async function fetchCoinDecimals(client: SuiClient, coinType: string): Promise<number> {
+  const metadata = await client.getCoinMetadata({ coinType })
+  if (metadata?.decimals === undefined) {
+    throw new Error(`Failed to fetch decimals for coin type: ${coinType}`)
+  }
+  return metadata.decimals
+}
 
 /**
  * Creates a new DCA order with automatic coin selection and merging
@@ -27,6 +38,7 @@ import { getCoinForDca } from './coinUtils'
  *     depositedAmount: '1000000000', // 1 SUI total (in atomic units: 1 * 10^9)
  *     frequency: { value: 1, unit: TimeUnit.HOURS },
  *     totalExecutions: 10,
+ *     priceRange: { minBuyPrice: 0.008, maxBuyPrice: 0.02 } // optional price limits
  *   }
  * )
  * ```
@@ -43,8 +55,15 @@ export async function createDcaOrder(
   params: DcaOrderParams,
   dcaOptions?: DcaOptions
 ): Promise<Transaction> {
-  // Convert parameters to raw on-chain format
-  const rawParams = convertToRawParams(params)
+  // Always fetch coin decimals (required for price conversion if priceRange is set)
+  const [fromDecimals, toDecimals] = await Promise.all([
+    fetchCoinDecimals(client, params.fromCoinType),
+    fetchCoinDecimals(client, params.toCoinType)
+  ])
+  const decimals: CoinDecimals = { fromDecimals, toDecimals }
+
+  // Convert parameters to raw on-chain format (with decimals for price conversion)
+  const rawParams = convertToRawParams(params, decimals)
 
   // Get DCA configuration (with optional overrides)
   const dcaConfig = getDcaConfig(dcaOptions)
@@ -72,11 +91,11 @@ export async function createDcaOrder(
       tx.object(dcaConfig.dcaRegistry),
       tx.object(dcaConfig.dcaGlobalConfig),
       balance,
-      tx.pure.u64(rawParams.gapFrequency), // Gap frequency value
-      tx.pure.u8(rawParams.gapUnit), // Gap time unit (0=second, 1=minute, 2=hour, 3=day)
+      tx.pure.u64(rawParams.gapFrequency),
+      tx.pure.u8(rawParams.gapUnit),
       tx.pure.u64(rawParams.orderNum),
-      tx.pure.u64(rawParams.cliffFrequency), // Cliff frequency value
-      tx.pure.u8(rawParams.cliffUnit), // Cliff time unit
+      tx.pure.u64(rawParams.cliffFrequency),
+      tx.pure.u8(rawParams.cliffUnit),
       tx.pure.u64(rawParams.minAmountOut),
       tx.pure.u64(rawParams.maxAmountOut),
       tx.object('0x6')
@@ -84,7 +103,7 @@ export async function createDcaOrder(
     typeArguments: [rawParams.fromCoinType, rawParams.toCoinType]
   })
 
-  // Ensure the created Receipt object is transferred to the owner to avoid unused value error
+  // Ensure the created Receipt object is transferred to the owner
   tx.transferObjects([receipt], tx.pure.address(userAddress))
 
   return tx
