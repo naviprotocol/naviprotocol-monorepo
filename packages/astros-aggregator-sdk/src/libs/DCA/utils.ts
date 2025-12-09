@@ -255,19 +255,28 @@ export function convertToRawParams(
   let minAmountOut = '0'
   let maxAmountOut = U64_MAX
 
-  if (params.priceRange && decimals) {
+  // Check if priceRange is set with actual values
+  const hasPriceRange =
+    params.priceRange &&
+    (params.priceRange.minBuyPrice !== null || params.priceRange.maxBuyPrice !== null)
+
+  if (hasPriceRange) {
+    // If priceRange is set, decimals MUST be provided
+    // This prevents silent failures where price guards don't work
+    if (!decimals) {
+      throw new Error(
+        'decimals is required when priceRange is set. ' +
+          'Use createDcaOrder() which handles this automatically, or provide decimals manually.'
+      )
+    }
+
     const { fromDecimals, toDecimals } = decimals
-    const { minBuyPrice, maxBuyPrice } = params.priceRange
+    const { minBuyPrice, maxBuyPrice } = params.priceRange!
 
     // Price = how much fromCoin to pay for 1 toCoin
-    // Higher price = LESS output (pay more per toCoin)
-    // Lower price = MORE output (pay less per toCoin)
-    //
-    // Mapping:
-    //   maxBuyPrice (worst rate, pay most) -> minAmountOut (get least toCoin)
-    //   minBuyPrice (best rate, pay least) -> maxAmountOut (get most toCoin)
+    // maxBuyPrice (worst rate) -> minAmountOut (least output)
+    // minBuyPrice (best rate) -> maxAmountOut (most output)
 
-    // maxBuyPrice -> minAmountOut (highest cost = least output)
     if (maxBuyPrice !== null && maxBuyPrice > 0) {
       const minAmount = priceToAmountOut(amountPerCycle, maxBuyPrice, fromDecimals, toDecimals)
       if (minAmount > 0n) {
@@ -275,7 +284,6 @@ export function convertToRawParams(
       }
     }
 
-    // minBuyPrice -> maxAmountOut (lowest cost = most output)
     if (minBuyPrice !== null && minBuyPrice > 0) {
       const maxAmount = priceToAmountOut(amountPerCycle, minBuyPrice, fromDecimals, toDecimals)
       if (maxAmount > 0n) {
