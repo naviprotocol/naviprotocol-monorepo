@@ -29,6 +29,8 @@ async function fetchCoinDecimals(client: SuiClient, coinType: string): Promise<n
  * ```typescript
  * import { createDcaOrder, TimeUnit } from '@astros/sdk'
  *
+ * // Example: SUI -> NAVX (NAVX has 6 decimals)
+ * // If 1 SUI = 22 NAVX, pass 22000000 (22 * 10^6)
  * const tx = await createDcaOrder(
  *   client,
  *   userAddress,
@@ -38,7 +40,7 @@ async function fetchCoinDecimals(client: SuiClient, coinType: string): Promise<n
  *     depositedAmount: '1000000000', // 1 SUI total (in atomic units: 1 * 10^9)
  *     frequency: { value: 1, unit: TimeUnit.HOURS },
  *     totalExecutions: 10,
- *     priceRange: { minBuyPrice: 0.008, maxBuyPrice: 0.02 } // optional price limits
+ *     priceRange: { minBuyPrice: 20000000, maxBuyPrice: 25000000 } // optional: 1 SUI = 20~25 NAVX
  *   }
  * )
  * ```
@@ -55,12 +57,9 @@ export async function createDcaOrder(
   params: DcaOrderParams,
   dcaOptions?: DcaOptions
 ): Promise<Transaction> {
-  // Always fetch coin decimals (required for price conversion if priceRange is set)
-  const [fromDecimals, toDecimals] = await Promise.all([
-    fetchCoinDecimals(client, params.fromCoinType),
-    fetchCoinDecimals(client, params.toCoinType)
-  ])
-  const decimals: CoinDecimals = { fromDecimals, toDecimals }
+  // Fetch fromCoin decimals (required for price conversion if priceRange is set)
+  const fromDecimals = await fetchCoinDecimals(client, params.fromCoinType)
+  const decimals: CoinDecimals = { fromDecimals }
 
   // Convert parameters to raw on-chain format (with decimals for price conversion)
   const rawParams = convertToRawParams(params, decimals)
