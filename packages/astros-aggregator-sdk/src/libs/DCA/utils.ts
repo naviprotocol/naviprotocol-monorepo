@@ -180,19 +180,25 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
 const U64_MAX = 18446744073709551615n
 
 /**
- * Convert price rate to amountOut
+ * Convert buy price to amountOut
+ *
+ * buyPrice = how many atomic fromCoin to buy 1 whole toCoin
+ * amountOut = amountPerCycle * 10^toDecimals / buyPrice
  *
  * @param amountPerCycle - Amount of fromCoin per cycle (in atomic units)
- * @param rate - How many atomic toCoin per 1 whole fromCoin
- * @param fromDecimals - Decimals of fromCoin
+ * @param buyPrice - How many atomic fromCoin per 1 whole toCoin
+ * @param toDecimals - Decimals of toCoin
  * @returns amountOut in atomic toCoin units
  */
-function rateToAmountOut(amountPerCycle: bigint, rate: bigint, fromDecimals: number): bigint {
+function buyPriceToAmountOut(amountPerCycle: bigint, buyPrice: bigint, toDecimals: number): bigint {
+  if (buyPrice <= 0n) return U64_MAX
+
   // amountPerCycle is in atomic fromCoin
-  // rate is atomic toCoin per 1 whole fromCoin
-  // amountOut = amountPerCycle * rate / (10^fromDecimals)
-  const divisor = BigInt(10 ** fromDecimals)
-  const result = (amountPerCycle * rate) / divisor
+  // buyPrice is atomic fromCoin per 1 whole toCoin
+  // amountOut (whole toCoin) = amountPerCycle / buyPrice
+  // amountOut (atomic toCoin) = amountPerCycle * 10^toDecimals / buyPrice
+  const multiplier = BigInt(10 ** toDecimals)
+  const result = (amountPerCycle * multiplier) / buyPrice
 
   // Clamp to u64 range
   if (result < 0n) return 0n
@@ -205,6 +211,7 @@ function rateToAmountOut(amountPerCycle: bigint, rate: bigint, fromDecimals: num
  */
 export type CoinDecimals = {
   fromDecimals: number
+  toDecimals: number
 }
 
 /**
@@ -254,31 +261,29 @@ export function convertToRawParams(
       )
     }
 
-    const { fromDecimals } = decimals
+    const { toDecimals } = decimals
     const { minBuyPrice, maxBuyPrice } = params.priceRange!
 
-    // Validate: minBuyPrice <= maxBuyPrice (already validated in validateDcaOrderParams)
-
-    // Price = how many atomic toCoin per 1 whole fromCoin
-    // minBuyPrice (worst rate, less output) -> minAmountOut
-    // maxBuyPrice (best rate, more output) -> maxAmountOut
+    // buyPrice = how many atomic fromCoin to buy 1 whole toCoin
+    // minBuyPrice (lowest price, cheapest) -> maxAmountOut (get most output)
+    // maxBuyPrice (highest price, most expensive) -> minAmountOut (get least output)
 
     if (minBuyPrice !== null && minBuyPrice > 0) {
-      const minAmount = rateToAmountOut(
+      const maxAmount = buyPriceToAmountOut(
         amountPerCycle,
         BigInt(Math.floor(minBuyPrice)),
-        fromDecimals
+        toDecimals
       )
-      if (minAmount > 0n) minAmountOut = minAmount.toString()
+      if (maxAmount > 0n) maxAmountOut = maxAmount.toString()
     }
 
     if (maxBuyPrice !== null && maxBuyPrice > 0) {
-      const maxAmount = rateToAmountOut(
+      const minAmount = buyPriceToAmountOut(
         amountPerCycle,
         BigInt(Math.floor(maxBuyPrice)),
-        fromDecimals
+        toDecimals
       )
-      if (maxAmount > 0n) maxAmountOut = maxAmount.toString()
+      if (minAmount > 0n) minAmountOut = minAmount.toString()
     }
   }
 

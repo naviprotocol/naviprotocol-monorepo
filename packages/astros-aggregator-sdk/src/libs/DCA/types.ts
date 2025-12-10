@@ -33,19 +33,19 @@ export type Duration = {
 
 /**
  * Price limit for slippage protection
- * Price is expressed as: 1 fromCoin = X atomic toCoin
+ * buyPrice = how many atomic fromCoin to buy 1 whole toCoin
  *
- * Example: SUI -> NAVX order (buying NAVX with SUI, NAVX has 6 decimals)
- * - If current rate is 1 SUI = 22 NAVX
- * - User should pass: 22000000 (22 * 10^6 atomic NAVX)
- * - minBuyPrice: minimum atomic toCoin per fromCoin (worst rate, you get LESS toCoin)
- * - maxBuyPrice: maximum atomic toCoin per fromCoin (best rate, you get MORE toCoin)
+ * Example: SUI -> NAVX order (buying NAVX with SUI)
+ * - If current rate is 1 NAVX = 0.04 SUI (SUI has 9 decimals)
+ * - User should pass: 40000000 (0.04 * 10^9 atomic SUI)
+ * - minBuyPrice: lowest price (cheapest, you get MORE toCoin)
+ * - maxBuyPrice: highest price (most expensive, you get LESS toCoin)
  *
- * The order will only execute when: minBuyPrice <= actual rate <= maxBuyPrice
+ * The order will only execute when: minBuyPrice <= actual price <= maxBuyPrice
  */
 export type PriceRange = {
-  minBuyPrice: number | null // Min atomic toCoin per fromCoin (worst rate), null = no limit
-  maxBuyPrice: number | null // Max atomic toCoin per fromCoin (best rate), null = no limit
+  minBuyPrice: number | null // Lowest buy price (cheapest), null = no limit
+  maxBuyPrice: number | null // Highest buy price (most expensive), null = no limit
 }
 
 /**
