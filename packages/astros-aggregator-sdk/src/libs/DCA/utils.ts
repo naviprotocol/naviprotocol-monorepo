@@ -161,8 +161,8 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
       }
     }
     if (params.priceRange.maxBuyPrice !== null) {
-      if (typeof params.priceRange.maxBuyPrice !== 'number' || params.priceRange.maxBuyPrice < 0) {
-        throw new Error('priceRange.maxBuyPrice must be a non-negative number or null')
+      if (typeof params.priceRange.maxBuyPrice !== 'number' || params.priceRange.maxBuyPrice <= 0) {
+        throw new Error('priceRange.maxBuyPrice must be a positive number or null')
       }
     }
 
