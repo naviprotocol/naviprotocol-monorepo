@@ -57,7 +57,7 @@ export const AggregatorConfig = {
     '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
 
   // Bluefin DEX configuration
-  bluefinPackageId: '0x67b34b728c4e28e704dcfecf7c5cf55c7fc593b6c65c20d1836d97c209c1928a',
+  bluefinPackageId: '0xd075338d105482f1527cbfd363d6413558f184dec36d9138a70261e87f486e9c',
   bluefinGlobalConfig: '0x03db251ba509a8d5d8777b6338836082335d93eecbdd09a11e190a1cff51c352',
 
   // vSui DEX configuration
