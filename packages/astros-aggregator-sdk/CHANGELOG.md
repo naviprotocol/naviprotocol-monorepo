@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.13.0
+
+### Minor Changes
+
+- Update bluefin package id
+
 ## 1.12.0
 
 ### Minor Changes
