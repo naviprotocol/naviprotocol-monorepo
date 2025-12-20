@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { parseTxValue, normalizeCoinType, withCache, withSingleton, requestHeaders } from './utils'
 import { getPool } from './pool'
+import packageJson from '../package.json'
 
 /**
  * Get all available flash loan assets from the API
@@ -28,7 +29,7 @@ import { getPool } from './pool'
  */
 export const getAllFlashLoanAssets = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<FloashloanAsset[]> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}`
+    const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return Object.keys(res.data).map((coinType) => {
       return {

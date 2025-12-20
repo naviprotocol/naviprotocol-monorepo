@@ -38,6 +38,7 @@ import {
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
 import { getPool, getPools, PoolOperator } from './pool'
+import packageJson from '../package.json'
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -371,7 +372,7 @@ export const getTransactions = withSingleton(
     params.set('userAddress', address)
 
     // Fetch transaction history from Navi protocol API
-    const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}`
+    const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}&sdk=${packageJson.version}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }

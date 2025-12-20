@@ -308,6 +308,7 @@ export type Pool = {
   isSuiBridge: boolean
   isLayerZero: boolean
   isWormhole: boolean
+  status: 'active' | 'deprecating' | 'deprecated'
 }
 
 /**

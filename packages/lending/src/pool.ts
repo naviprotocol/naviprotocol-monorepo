@@ -33,6 +33,7 @@ import {
 import { Transaction } from '@mysten/sui/transactions'
 import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
+import packageJson from '../package.json'
 
 /**
  * Enumeration of pool operations
@@ -62,7 +63,7 @@ export enum PoolOperator {
  */
 export const getPools = withCache(
   withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<Pool[]> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}`
+    const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   })
@@ -127,7 +128,7 @@ export async function getPool(
  */
 export const getStats = withCache(
   withSingleton(async (options?: Partial<CacheOption>): Promise<PoolStats> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/stats`
+    const url = `https://open-api.naviprotocol.io/api/navi/stats?sdk=${packageJson.version}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   })
@@ -164,7 +165,7 @@ export const getFees = withCache(
         details: FeeDetail[]
       }
     }> => {
-      const url = `https://open-api.naviprotocol.io/api/navi/fee`
+      const url = `https://open-api.naviprotocol.io/api/navi/fee?sdk=${packageJson.version}`
       const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
       return res
     }

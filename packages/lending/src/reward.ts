@@ -32,6 +32,7 @@ import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
 import BigNumber from 'bignumber.js'
+import packageJson from '../package.json'
 
 /**
  * Get user's available lending rewards
@@ -197,7 +198,7 @@ export const getUserTotalClaimedReward = withSingleton(
   ): Promise<{
     USDValue: number
   }> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}`
+    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }
@@ -224,7 +225,7 @@ export const getUserClaimedRewardHistory = withSingleton(
     data: HistoryClaimedReward[]
     cursor?: string
   }> => {
-    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}`
+    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}`
     const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
