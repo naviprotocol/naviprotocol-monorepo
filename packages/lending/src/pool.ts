@@ -505,7 +505,7 @@ export async function borrowCoinPTB(
  *   - `env` - Environment configuration
  *   - `cacheTime` - Cache duration for configuration data
  *
- * @returns Promise<Transaction> - The modified transaction object with repayment operations added
+ * @returns Promise<Transaction | TransactionResult> - The modified transaction object with repayment operations added
  *
  * @throws {Error} When amount is not provided for SUI gas coin repayments
  * @throws Will throw if pool doesn't exist or repayment validation fails
@@ -520,7 +520,7 @@ export async function repayCoinPTB(
         amount: number | TransactionResult
       }
   >
-): Promise<Transaction> {
+): Promise<Transaction | TransactionResult> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -548,7 +548,7 @@ export async function repayCoinPTB(
   }
 
   if (options?.accountCap) {
-    tx.moveCall({
+    const [ret] = tx.moveCall({
       target: `${config.package}::incentive_v3::repay_with_account_cap`,
       arguments: [
         tx.object('0x06'),
@@ -557,13 +557,18 @@ export async function repayCoinPTB(
         tx.object(pool.contract.pool),
         tx.pure.u8(pool.id),
         parseTxValue(coinObject, tx.object),
-        repayAmount,
         tx.object(config.incentiveV2),
         tx.object(config.incentiveV3),
         parseTxValue(options.accountCap, tx.object)
       ],
       typeArguments: [pool.suiCoinType]
     })
+    const coin = tx.moveCall({
+      target: `0x2::coin::from_balance`,
+      arguments: [ret],
+      typeArguments: [pool.suiCoinType]
+    })
+    return coin
   } else {
     tx.moveCall({
       target: `${config.package}::incentive_v3::entry_repay`,
@@ -580,9 +585,8 @@ export async function repayCoinPTB(
       ],
       typeArguments: [pool.suiCoinType]
     })
+    return tx
   }
-
-  return tx
 }
 
 /**
