@@ -58,6 +58,42 @@ export async function createDcaOrder(
   params: DcaOrderParams,
   dcaOptions?: DcaOptions
 ): Promise<Transaction> {
+  if (
+    typeof params.totalExecutions !== 'number' ||
+    isNaN(params.totalExecutions) ||
+    !Number.isInteger(params.totalExecutions)
+  ) {
+    throw new Error('Total executions must be a valid integer')
+  }
+
+  if (params.totalExecutions < 2) {
+    throw new Error('Order number must be greater than 2')
+  }
+
+  if (params.startTime && params.startTime < Date.now()) {
+    throw new Error('Start time must be in the future')
+  }
+
+  if (
+    typeof params.frequency.value !== 'number' ||
+    isNaN(params.frequency.value) ||
+    !Number.isInteger(params.frequency.value)
+  ) {
+    throw new Error('Frequency value must be a valid integer')
+  }
+
+  if (params.frequency.value < 1) {
+    throw new Error('Frequency must be greater than 1')
+  }
+
+  if (
+    params.priceRange?.maxBuyPrice !== null &&
+    params.priceRange?.minBuyPrice !== null &&
+    params.priceRange!.maxBuyPrice < params.priceRange!.minBuyPrice
+  ) {
+    throw new Error('Price range max buy price must be greater than min buy price')
+  }
+
   // Fetch coin decimals (required for price conversion if priceRange is set)
   const [fromDecimals, toDecimals] = await Promise.all([
     fetchCoinDecimals(client, params.fromCoinType),
