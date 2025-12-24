@@ -204,7 +204,7 @@ function buyPriceToAmountOut(amountPerCycle: bigint, buyPrice: bigint, toDecimal
   // buyPrice is atomic fromCoin per 1 whole toCoin
   // amountOut (whole toCoin) = amountPerCycle / buyPrice
   // amountOut (atomic toCoin) = amountPerCycle * 10^toDecimals / buyPrice
-  const multiplier = BigInt(10 ** toDecimals)
+  const multiplier = 10n ** BigInt(toDecimals)
   const result = (amountPerCycle * multiplier) / buyPrice
 
   // Clamp to u64 range
