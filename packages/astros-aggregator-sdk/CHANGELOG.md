@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.0
+
+### Major Changes
+
+- DCA Module
+
 ## 1.13.0
 
 ### Minor Changes

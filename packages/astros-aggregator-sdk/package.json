@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.13.0",
+  "version": "2.0.0",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
