@@ -149,8 +149,20 @@ export function validateDcaOrderParams(params: DcaOrderParams): void {
     throw new Error('totalExecutions must be a positive integer')
   }
 
-  if (params.frequency.value <= 0) {
-    throw new Error('frequency value must be greater than 0')
+  if (params.totalExecutions < 2) {
+    throw new Error('totalExecutions must be greater than or equal to 2')
+  }
+
+  if (params.frequency.value < 1) {
+    throw new Error('frequency value must be greater than or equal to 1')
+  }
+
+  if (
+    typeof params.frequency.value !== 'number' ||
+    isNaN(params.frequency.value) ||
+    !Number.isInteger(params.frequency.value)
+  ) {
+    throw new Error('Frequency value must be a valid integer')
   }
 
   // Validate startTime (absolute timestamp in ms)
