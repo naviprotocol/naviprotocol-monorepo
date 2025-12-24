@@ -38,11 +38,18 @@ export function timeUnitToNumber(unit: TimeUnit): number {
 /**
  * Normalize duration to contract-supported units
  * If unit is WEEKS, convert to days (7 days per week)
+ * If unit is MONTH, convert to days (30 days per month)
  */
 export function normalizeDuration(duration: Duration): { value: number; unit: number } {
   if (duration.unit === TimeUnit.WEEK) {
     return {
       value: duration.value * 7,
+      unit: UNIT_DAY
+    }
+  }
+  if (duration.unit === TimeUnit.MONTH) {
+    return {
+      value: duration.value * 30,
       unit: UNIT_DAY
     }
   }

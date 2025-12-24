@@ -67,7 +67,7 @@ export async function createDcaOrder(
   }
 
   if (params.totalExecutions < 2) {
-    throw new Error('Order number must be greater than 2')
+    throw new Error('Order number must be greater than or equal to 2')
   }
 
   if (params.startTime && params.startTime < Date.now()) {
@@ -83,13 +83,14 @@ export async function createDcaOrder(
   }
 
   if (params.frequency.value < 1) {
-    throw new Error('Frequency must be greater than 1')
+    throw new Error('Frequency must be greater than or equal to 1')
   }
 
   if (
-    params.priceRange?.maxBuyPrice !== null &&
-    params.priceRange?.minBuyPrice !== null &&
-    params.priceRange!.maxBuyPrice < params.priceRange!.minBuyPrice
+    params.priceRange &&
+    params.priceRange.maxBuyPrice !== null &&
+    params.priceRange.minBuyPrice !== null &&
+    params.priceRange.maxBuyPrice < params.priceRange.minBuyPrice
   ) {
     throw new Error('Price range max buy price must be greater than min buy price')
   }
