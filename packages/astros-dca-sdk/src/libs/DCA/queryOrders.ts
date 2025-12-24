@@ -5,7 +5,7 @@
  */
 
 import axios from 'axios'
-import { AggregatorConfig } from '../Aggregator/config'
+import { DcaConfiguration } from '../../config'
 
 // Use existing DcaOrderStatus from types
 export type DcaOrderStatusFilter = 'active' | 'completed' | 'canceled'
@@ -81,7 +81,6 @@ export type UserOrdersResponse = {
  *
  * @param userAddress - Sui address of the user
  * @param options - Query options
- * @param baseUrlParam - Base URL parameter
  * @returns User orders with pagination info
  */
 export async function getUserDcaOrders(
@@ -90,10 +89,10 @@ export async function getUserDcaOrders(
     page?: number
     pageSize?: number
     status?: DcaOrderStatusFilter
-  },
-  baseUrlParam?: string
+    baseUrl?: string
+  }
 ): Promise<UserOrdersResponse> {
-  const baseUrl = baseUrlParam ?? AggregatorConfig.aggregatorBaseUrl.replace('/find_routes', '')
+  const baseUrl = options?.baseUrl ?? DcaConfiguration.aggregatorBaseUrl.replace('/find_routes', '')
 
   const params = new URLSearchParams()
   if (options?.page !== undefined) params.append('page', String(options.page))
@@ -117,7 +116,7 @@ export async function getDcaOrderDetails(
   orderId: string,
   baseUrlParam?: string
 ): Promise<DcaOrderDetails> {
-  const baseUrl = baseUrlParam ?? AggregatorConfig.aggregatorBaseUrl.replace('/find_routes', '')
+  const baseUrl = baseUrlParam ?? DcaConfiguration.aggregatorBaseUrl.replace('/find_routes', '')
 
   const url = `${baseUrl}/dca/orders/${orderId}`
 
@@ -129,20 +128,17 @@ export async function getDcaOrderDetails(
  * List all DCA orders grouped by status
  *
  * @param options - Query options
- * @param baseUrlParam - Base URL parameter
  * @returns Orders grouped by status or filtered list
  */
-export async function listDcaOrders(
-  options?: {
-    status?: DcaOrderStatusFilter
-    creator?: string
-  },
-  baseUrlParam?: string
-): Promise<
+export async function listDcaOrders(options?: {
+  status?: DcaOrderStatusFilter
+  creator?: string
+  baseUrl?: string
+}): Promise<
   | DcaOrderSummary[]
   | { active: DcaOrderSummary[]; completed: DcaOrderSummary[]; canceled: DcaOrderSummary[] }
 > {
-  const baseUrl = baseUrlParam ?? AggregatorConfig.aggregatorBaseUrl.replace('/find_routes', '')
+  const baseUrl = options?.baseUrl ?? DcaConfiguration.aggregatorBaseUrl.replace('/find_routes', '')
 
   const params = new URLSearchParams()
   if (options?.status) params.append('status', options.status)

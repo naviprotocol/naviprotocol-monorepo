@@ -13,8 +13,5 @@ export * from './astros-sdk'
 // Export the aggregator library with DEX integrations
 export * from './libs/Aggregator'
 
-// Export the DCA library
-export * from './libs/DCA'
-
 // Export type definitions for the aggregator SDK
 export * from './types'

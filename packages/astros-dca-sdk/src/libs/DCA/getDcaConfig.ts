@@ -4,7 +4,7 @@
  * Merges default production config with optional overrides (for testing)
  */
 
-import { AggregatorConfig } from '../Aggregator'
+import { DcaConfiguration } from '../../config'
 import { DcaOptions } from './types'
 
 /**
@@ -37,8 +37,8 @@ export type DcaConfig = {
  */
 export function getDcaConfig(options?: DcaOptions): DcaConfig {
   return {
-    dcaContract: options?.dcaContract ?? AggregatorConfig.dcaContract,
-    dcaGlobalConfig: options?.dcaGlobalConfig ?? AggregatorConfig.dcaGlobalConfig,
-    dcaRegistry: options?.dcaRegistry ?? AggregatorConfig.dcaRegistry
+    dcaContract: options?.dcaContract ?? DcaConfiguration.dcaContract,
+    dcaGlobalConfig: options?.dcaGlobalConfig ?? DcaConfiguration.dcaGlobalConfig,
+    dcaRegistry: options?.dcaRegistry ?? DcaConfiguration.dcaRegistry
   }
 }

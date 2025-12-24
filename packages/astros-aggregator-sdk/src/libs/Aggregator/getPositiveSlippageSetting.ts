@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { withCache, withSingleton } from './utils'
+import { requestHeaders } from '../../../../lending/src/utils'
+import { AxiosHeaders } from 'axios'
 
 /**
  * Fetches the remote positive slippage setting from the API
@@ -13,9 +15,7 @@ export const getRemotePositiveSlippageSetting = withCache(
       const resp = await axios.get(
         'https://open-api.naviprotocol.io/api/internal/ag/positive-slippage',
         {
-          headers: {
-            'User-Agent': 'navi-aggregator-sdk'
-          }
+          headers: requestHeaders as AxiosHeaders
         }
       )
       return resp.data.data.should_enable_positive_slippage
