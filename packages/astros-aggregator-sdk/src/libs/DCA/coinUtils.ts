@@ -4,22 +4,45 @@
  */
 
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
+import { SuiClient, PaginatedCoins } from '@mysten/sui/client'
 
 /**
  * Get coins for a specific address and coin type
+ * Handles pagination automatically to fetch all coins
  */
 export async function getCoins(
   client: SuiClient,
   address: string,
   coinType: string = '0x2::sui::SUI'
-) {
-  const coinDetails = await client.getCoins({
-    owner: address,
-    coinType
-  })
+): Promise<PaginatedCoins> {
+  let cursor: string | null | undefined = null
+  const allCoinData: any[] = []
 
-  return coinDetails
+  // Fetch all coins using pagination
+  do {
+    const response = await client.getCoins({
+      owner: address,
+      coinType,
+      cursor,
+      limit: 100 // Maximum limit per page
+    })
+
+    // Break if no more data
+    if (!response.data || response.data.length === 0) {
+      break
+    }
+
+    // Collect coin data and continue with next page
+    allCoinData.push(...response.data)
+    cursor = response.nextCursor
+  } while (cursor)
+
+  // Return all coins in the same format as PaginatedCoins
+  return {
+    data: allCoinData,
+    nextCursor: null,
+    hasNextPage: false
+  }
 }
 
 /**
