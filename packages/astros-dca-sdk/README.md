@@ -31,8 +31,8 @@ const tx = await createDcaOrder(
       unit: TimeUnit.HOUR
     },
     priceRange: {
-      minBuyPrice: 0.018, // Min cost per toCoin (best rate)
-      maxBuyPrice: 0.025  // Max cost per toCoin (worst rate)
+      minBuyPrice: 18000000, // Min cost in atomic fromCoin per 1 whole toCoin (best rate, e.g., 0.018 SUI)
+      maxBuyPrice: 25000000  // Max cost in atomic fromCoin per 1 whole toCoin (worst rate, e.g., 0.025 SUI)
     }
   }
 )
