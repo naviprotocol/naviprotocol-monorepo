@@ -31,27 +31,30 @@ const tx = await createDcaOrder(
       unit: TimeUnit.HOUR
     },
     priceRange: {
-      minBuyPrice: 18000000, // Min cost in atomic fromCoin per 1 whole toCoin (best rate, e.g., 0.018 SUI = 18000000)
-      maxBuyPrice: 25000000 // Max cost in atomic fromCoin per 1 whole toCoin (worst rate, e.g., 0.025 SUI = 25000000)
+      minBuyPrice: 0.018, // Min cost per toCoin (best rate)
+      maxBuyPrice: 0.025  // Max cost per toCoin (worst rate)
     }
   }
 )
 
 // Override for testing environment
-const testTx = await createDcaOrder(client, userAddress, params, {
-  dcaContract: '0xTEST_PACKAGE_ID',
-  dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
-  dcaRegistry: '0xTEST_REGISTRY'
-})
+const testTx = await createDcaOrder(
+  client,
+  userAddress,
+  params,
+  {
+    dcaContract: '0xTEST_PACKAGE_ID',
+    dcaGlobalConfig: '0xTEST_GLOBAL_CONFIG',
+    dcaRegistry: '0xTEST_REGISTRY'
+  }
+)
 ```
 
 **Note:** All amount fields must be in atomic units. For example:
-
-- 1 SUI = 1000000000 (1 \* 10^9)
-- 1 USDC = 1000000 (1 \* 10^6)
+- 1 SUI = 1000000000 (1 * 10^9)
+- 1 USDC = 1000000 (1 * 10^6)
 
 The SDK automatically:
-
 - ✅ Fetches all coins of the specified type
 - ✅ Merges multiple coins if needed
 - ✅ Checks if balance is sufficient
