@@ -1,16 +1,16 @@
 {
-  "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.13.0",
-  "description": "NAVI Astros Aggregator SDK",
+  "name": "@naviprotocol/astros-dca-sdk",
+  "version": "1.0.0",
+  "description": "NAVI Astros DCA SDK",
   "license": "MIT",
   "keywords": [
     "navi",
     "astros",
     "aggregator",
+    "dca",
     "sui"
   ],
   "author": "NAVI",
-  "homepage": "https://sdk.naviprotocol.io/swap",
   "bugs": "https://github.com/naviprotocol/naviprotocol-monorepo/issues",
   "repository": {
     "type": "git",
