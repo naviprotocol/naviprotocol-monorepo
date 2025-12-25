@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.13.1
+
+### Patch Changes
+
+- Fix user agent of the get slippage setting api call
+
 ## 1.13.0
 
 ### Minor Changes
