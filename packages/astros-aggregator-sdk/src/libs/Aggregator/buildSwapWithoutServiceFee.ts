@@ -131,10 +131,20 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            txb.transferObjects([coinABs[0]], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinABs[0]],
+              typeArguments: [poolA]
+            })
             pathTempCoin = coinABs[1]
           } else {
-            txb.transferObjects([coinABs[1]], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinABs[1]],
+              typeArguments: [poolB]
+            })
             pathTempCoin = coinABs[0]
           }
           break
@@ -154,7 +164,12 @@ export async function buildSwapWithoutServiceFee(
             userAddress,
             tuborsVersion
           )
-          txb.transferObjects([turbosCoinA], userAddress)
+          // Destroy zero-balance coin to reduce storage fee
+          txb.moveCall({
+            target: '0x2::coin::destroy_zero',
+            arguments: [turbosCoinA],
+            typeArguments: [a2b ? typeArguments[0] : typeArguments[1]]
+          })
           pathTempCoin = turbosCoinB
           break
         }
@@ -206,10 +221,20 @@ export async function buildSwapWithoutServiceFee(
           )
           if (a2b) {
             pathTempCoin = quoteCoinOut
-            txb.transferObjects([baseCoinOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [baseCoinOut],
+              typeArguments: [typeArguments[0]]
+            })
           } else {
             pathTempCoin = baseCoinOut
-            txb.transferObjects([quoteCoinOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [quoteCoinOut],
+              typeArguments: [typeArguments[1]]
+            })
           }
           break
         }
@@ -223,10 +248,20 @@ export async function buildSwapWithoutServiceFee(
             typeArguments
           )
           if (a2b) {
-            txb.transferObjects([coinAOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinAOut],
+              typeArguments: [typeArguments[0]]
+            })
             pathTempCoin = coinBOut
           } else {
-            txb.transferObjects([coinBOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinBOut],
+              typeArguments: [typeArguments[1]]
+            })
             pathTempCoin = coinAOut
           }
           break
@@ -254,10 +289,20 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            txb.transferObjects([coinABs[0]], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinABs[0]],
+              typeArguments: [poolA]
+            })
             pathTempCoin = coinABs[1]
           } else {
-            txb.transferObjects([coinABs[1]], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinABs[1]],
+              typeArguments: [poolB]
+            })
             pathTempCoin = coinABs[0]
           }
           break
@@ -279,7 +324,12 @@ export async function buildSwapWithoutServiceFee(
             a2b,
             typeArguments
           )
-          txb.transferObjects([pathTempCoin], userAddress)
+          // Destroy zero-balance coin to reduce storage fee
+          txb.moveCall({
+            target: '0x2::coin::destroy_zero',
+            arguments: [pathTempCoin],
+            typeArguments: [tempTokenA]
+          })
           pathTempCoin = outputCoin
           break
         }
@@ -325,10 +375,20 @@ export async function buildSwapWithoutServiceFee(
             userAddress
           )
           if (a2b) {
-            txb.transferObjects([coinAOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinAOut],
+              typeArguments: [poolA]
+            })
             pathTempCoin = coinBOut
           } else {
-            txb.transferObjects([coinBOut], userAddress)
+            // Destroy zero-balance coin to reduce storage fee
+            txb.moveCall({
+              target: '0x2::coin::destroy_zero',
+              arguments: [coinBOut],
+              typeArguments: [poolB]
+            })
             pathTempCoin = coinAOut
           }
           break
