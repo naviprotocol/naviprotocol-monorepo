@@ -309,6 +309,7 @@ export type Pool = {
   isLayerZero: boolean
   isWormhole: boolean
   status: 'active' | 'deprecating' | 'deprecated'
+  tags: string[]
 }
 
 /**

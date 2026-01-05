@@ -39,7 +39,7 @@ function argsKey(args: any[]) {
   const serializergs = [] as any[]
   args.forEach((option: any, index) => {
     const isLast = index === args.length - 1
-    if (typeof option === 'object' && isLast) {
+    if (typeof option === 'object' && option !== null && isLast) {
       const { client, disableCache, cacheTime, ...rest } = option
       serializergs.push(rest)
     } else {
@@ -64,11 +64,12 @@ export function withSingleton<T extends (...args: any[]) => Promise<any>>(fn: T)
 
   return ((...args: any[]) => {
     const key = argsKey(args)
-    if (!promiseMap[key]) {
-      promiseMap[key] = fn(...args).finally(() => {
-        promiseMap[key] = null
-      })
+    if (promiseMap[key]) {
+      return promiseMap[key]
     }
+    promiseMap[key] = fn(...args).finally(() => {
+      delete promiseMap[key]
+    })
     return promiseMap[key]
   }) as T
 }
