@@ -107,12 +107,10 @@ export function mergeCoinsPTB(
   }
 
   // Merge coins and optionally split
-  const coin =
-    mergeList.length === 1
-      ? tx.object(mergeList[0])
-      : tx.mergeCoins(mergeList[0], mergeList.slice(1))
 
-  return needSplit ? tx.splitCoins(coin, [tx.pure.u64(splitBalance)]) : coin
+  mergeList.length === 1 ? tx.object(mergeList[0]) : tx.mergeCoins(mergeList[0], mergeList.slice(1))
+
+  return needSplit ? tx.splitCoins(mergeList[0], [tx.pure.u64(splitBalance)]) : mergeList[0]
 }
 
 /**
