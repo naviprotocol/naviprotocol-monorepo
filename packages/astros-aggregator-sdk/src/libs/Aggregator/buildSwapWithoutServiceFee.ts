@@ -17,7 +17,7 @@ import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
 import { parsePoolTypeArgs } from './utils'
-
+import { moveCallTransferNonzero } from '../PTB/commonFunctions'
 /**
  * Build a swap transaction without service fee
  * @param userAddress - The address of the user
@@ -71,7 +71,6 @@ export async function buildSwapWithoutServiceFee(
 
     for (let j = 0; j < path.path.length; j++) {
       const route = path.path[j]
-
       const poolId = route.id
       const provider = route.provider
       const tempTokenA = route.from
@@ -84,6 +83,23 @@ export async function buildSwapWithoutServiceFee(
 
       if (provider === 'turbos') {
         tuborsVersion = route.info_for_ptb.contractVersionId
+      }
+
+      let coinAtype: string
+      let coinBtype: string
+
+      const dexNeedsParsing = [
+        Dex.CETUS,
+        Dex.TURBOS,
+        Dex.DEEPBOOK,
+        Dex.BLUEFIN,
+        Dex.MAGMA,
+        Dex.MOMENTUM,
+        Dex.MAGMA_ALMM
+      ]
+
+      if (dexNeedsParsing.includes(provider)) {
+        ;[coinAtype, coinBtype] = parsePoolTypeArgs(route.type)
       }
 
       if (ifPrint) {
@@ -131,10 +147,10 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            txb.transferObjects([coinABs[0]], userAddress)
+            moveCallTransferNonzero(txb, coinABs[0], userAddress, coinAtype)
             pathTempCoin = coinABs[1]
           } else {
-            txb.transferObjects([coinABs[1]], userAddress)
+            moveCallTransferNonzero(txb, coinABs[1], userAddress, coinBtype)
             pathTempCoin = coinABs[0]
           }
           break
@@ -154,7 +170,12 @@ export async function buildSwapWithoutServiceFee(
             userAddress,
             tuborsVersion
           )
-          txb.transferObjects([turbosCoinA], userAddress)
+          if (a2b) {
+            moveCallTransferNonzero(txb, turbosCoinA, userAddress, coinAtype)
+          } else {
+            moveCallTransferNonzero(txb, turbosCoinA, userAddress, coinBtype)
+          }
+
           pathTempCoin = turbosCoinB
           break
         }
@@ -206,10 +227,10 @@ export async function buildSwapWithoutServiceFee(
           )
           if (a2b) {
             pathTempCoin = quoteCoinOut
-            txb.transferObjects([baseCoinOut], userAddress)
+            moveCallTransferNonzero(txb, baseCoinOut, userAddress, coinAtype)
           } else {
             pathTempCoin = baseCoinOut
-            txb.transferObjects([quoteCoinOut], userAddress)
+            moveCallTransferNonzero(txb, quoteCoinOut, userAddress, coinBtype)
           }
           break
         }
@@ -223,10 +244,10 @@ export async function buildSwapWithoutServiceFee(
             typeArguments
           )
           if (a2b) {
-            txb.transferObjects([coinAOut], userAddress)
+            moveCallTransferNonzero(txb, coinAOut, userAddress, coinAtype)
             pathTempCoin = coinBOut
           } else {
-            txb.transferObjects([coinBOut], userAddress)
+            moveCallTransferNonzero(txb, coinBOut, userAddress, coinBtype)
             pathTempCoin = coinAOut
           }
           break
@@ -254,10 +275,10 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            txb.transferObjects([coinABs[0]], userAddress)
+            moveCallTransferNonzero(txb, coinABs[0], userAddress, coinAtype)
             pathTempCoin = coinABs[1]
           } else {
-            txb.transferObjects([coinABs[1]], userAddress)
+            moveCallTransferNonzero(txb, coinABs[1], userAddress, coinBtype)
             pathTempCoin = coinABs[0]
           }
           break
@@ -279,7 +300,11 @@ export async function buildSwapWithoutServiceFee(
             a2b,
             typeArguments
           )
-          txb.transferObjects([pathTempCoin], userAddress)
+          if (a2b) {
+            moveCallTransferNonzero(txb, pathTempCoin, userAddress, coinAtype)
+          } else {
+            moveCallTransferNonzero(txb, pathTempCoin, userAddress, coinBtype)
+          }
           pathTempCoin = outputCoin
           break
         }
@@ -325,10 +350,10 @@ export async function buildSwapWithoutServiceFee(
             userAddress
           )
           if (a2b) {
-            txb.transferObjects([coinAOut], userAddress)
+            moveCallTransferNonzero(txb, coinAOut, userAddress, coinAtype)
             pathTempCoin = coinBOut
           } else {
-            txb.transferObjects([coinBOut], userAddress)
+            moveCallTransferNonzero(txb, coinBOut, userAddress, coinBtype)
             pathTempCoin = coinAOut
           }
           break
@@ -346,7 +371,7 @@ export async function buildSwapWithoutServiceFee(
     cacheTime: Date.now() + 5 * 60 * 1000 // 5 minutes
   })
 
-  txb.transferObjects([coinIn], userAddress)
+  moveCallTransferNonzero(txb, coinIn, userAddress, tokenA)
   const amountInValue = quote.from_token
     ? (Number(quote.amount_in) / Math.pow(10, quote.from_token.decimals)) *
       (quote.from_token.price ?? 0) *

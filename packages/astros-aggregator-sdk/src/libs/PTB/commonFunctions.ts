@@ -1,5 +1,5 @@
-import { Transaction } from '@mysten/sui/transactions'
-
+import { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions'
+import { AggregatorConfig } from '../Aggregator/config'
 /**
  * Merges multiple coins into a single coin object.
  *
@@ -36,4 +36,17 @@ export async function SignAndSubmitTXB(txb: Transaction, client: any, keypair: a
     }
   })
   return result
+}
+
+export function moveCallTransferNonzero(
+  tx: Transaction,
+  coinArg: TransactionObjectArgument | string,
+  recipient: string,
+  coinType: string
+) {
+  return tx.moveCall({
+    target: `${AggregatorConfig.aggregatorUtilsContract}::coin_utils::transfer_nonzero`,
+    typeArguments: [coinType],
+    arguments: [tx.object(coinArg), tx.pure.address(recipient)]
+  })
 }
