@@ -100,6 +100,9 @@ export async function buildSwapWithoutServiceFee(
 
       if (dexNeedsParsing.includes(provider)) {
         ;[coinAtype, coinBtype] = parsePoolTypeArgs(route.type)
+      } else {
+        coinAtype = ''
+        coinBtype = ''
       }
 
       if (ifPrint) {
