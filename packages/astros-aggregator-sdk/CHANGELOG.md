@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.14.0
+
+### Minor Changes
+
+- Improve gas usage
+
 ## 1.13.1
 
 ### Patch Changes

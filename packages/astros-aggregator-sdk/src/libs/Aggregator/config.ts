@@ -23,6 +23,9 @@ export const AggregatorConfig = {
   // Main aggregator contract address
   aggregatorContract: '0xdd21f177ec772046619e401c7a44eb78c233c0d53b4b2213ad83122eef4147db',
 
+  // coin utils contract address
+  aggregatorUtilsContract: '0x044f4654db587bc811831778933f4a12215e74fd2af8cd99f22fdad30c7cf6e3',
+
   // Slippage config address
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
