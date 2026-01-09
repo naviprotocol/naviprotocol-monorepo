@@ -337,12 +337,12 @@ export async function migrateBalanceToSupplyPTB(
 
   if (normalizeStructTag(coinType) !== normalizeStructTag(toPool.suiCoinType)) {
     const quote = await this.walletClient.swap.getQuote(coinType, toPool.suiCoinType, formAmount)
-    depositCoin = await this.walletClient.swap.buildSwapPTBFromQuote(
+    depositCoin = (await this.walletClient.swap.buildSwapPTBFromQuote(
       tx,
       quote,
       depositCoin,
       slippage
-    )
+    )) as typeof depositCoin
   }
 
   await depositCoinPTB(tx, toPool, depositCoin)
