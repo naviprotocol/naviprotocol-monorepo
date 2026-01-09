@@ -291,6 +291,8 @@ export type Pool = {
     logoUri: string
     /** Token symbol */
     symbol: string
+    /** Token market price */
+    price: number
   }
   /** Contract addresses */
   contract: {
