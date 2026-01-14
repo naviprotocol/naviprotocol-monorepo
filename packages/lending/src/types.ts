@@ -34,7 +34,7 @@ export type AccountCap = string
  */
 export type EnvOption = {
   /** Environment setting: 'dev' for development, 'prod' for production */
-  env: 'dev' | 'prod'
+  env: 'dev' | 'prod' | 'test'
 }
 
 /**
