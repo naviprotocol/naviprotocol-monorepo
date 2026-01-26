@@ -22,7 +22,7 @@ export const MARKETS = {
   }
 }
 
-class Market {
+export class Market {
   readonly config: MarketConfig
   readonly pools: Pool[] = []
   readonly emodes: EMode[] = []
