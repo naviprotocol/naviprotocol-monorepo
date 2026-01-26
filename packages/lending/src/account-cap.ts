@@ -5,9 +5,10 @@
  * Account capabilities are required to interact with lending pools and manage positions.
  */
 
-import { getConfig } from './config'
+import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import type { EnvOption } from './types'
-import { Transaction } from '@mysten/sui/transactions'
+import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+import { parseTxValue } from './utils'
 
 /**
  * Create an account capability transaction in the PTB (Programmable Transaction Block)
@@ -22,10 +23,26 @@ import { Transaction } from '@mysten/sui/transactions'
  */
 export async function createAccountCapPTB(tx: Transaction, options?: Partial<EnvOption>) {
   const config = await getConfig({
+    cacheTime: DEFAULT_CACHE_TIME,
     ...options
   })
   return tx.moveCall({
     target: `${config.package}::lending::create_account`,
     arguments: []
+  })
+}
+
+export async function getAccountCapOwnerPTB(
+  tx: Transaction,
+  accountCap: TransactionResult,
+  options?: Partial<EnvOption>
+) {
+  const config = await getConfig({
+    cacheTime: DEFAULT_CACHE_TIME,
+    ...options
+  })
+  return tx.moveCall({
+    target: `${config.package}::lending_core::account_owner`,
+    arguments: [accountCap]
   })
 }

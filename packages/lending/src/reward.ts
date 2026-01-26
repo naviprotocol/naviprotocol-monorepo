@@ -15,7 +15,8 @@ import type {
   LendingClaimedReward,
   TransactionResult,
   AccountCapOption,
-  AccountCap
+  AccountCap,
+  MarketOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -33,6 +34,7 @@ import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
 import BigNumber from 'bignumber.js'
 import packageJson from '../package.json'
+import { DEFAULT_MARKET_IDENTITY } from './market'
 
 /**
  * Get user's available lending rewards
@@ -47,7 +49,7 @@ import packageJson from '../package.json'
  */
 export async function getUserAvailableLendingRewards(
   address: string | AccountCap,
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ): Promise<LendingReward[]> {
   const feeds = await getPriceFeeds(options)
   const pools = await getPools({
@@ -194,11 +196,12 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
  */
 export const getUserTotalClaimedReward = withSingleton(
   async (
-    address: string | AccountCap
+    address: string | AccountCap,
+    options?: Partial<MarketOption>
   ): Promise<{
     USDValue: number
   }> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}`
+    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }
@@ -217,15 +220,17 @@ export const getUserTotalClaimedReward = withSingleton(
 export const getUserClaimedRewardHistory = withSingleton(
   async (
     address: string | AccountCap,
-    options?: {
-      page?: number
-      size?: number
-    }
+    options?: Partial<
+      MarketOption & {
+        page: number
+        size: number
+      }
+    >
   ): Promise<{
     data: HistoryClaimedReward[]
     cursor?: string
   }> => {
-    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}`
+    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
     const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
@@ -254,7 +259,8 @@ export async function claimLendingRewardsPTB(
   rewards: LendingReward[],
   options?: Partial<
     EnvOption &
-      AccountCapOption & {
+      AccountCapOption &
+      MarketOption & {
         customCoinReceive?: {
           type: 'transfer' | 'depositNAVI' | 'skip'
           transfer?: string | TransactionResult

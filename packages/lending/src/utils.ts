@@ -8,7 +8,7 @@
  * @module LendingUtils
  */
 
-import type { CacheOption, Pool, TransactionResult } from './types'
+import type { CacheOption, EMode, EModeIdentity, EModePool, Pool, TransactionResult } from './types'
 import type { DevInspectResults } from '@mysten/sui/client'
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 import camelCase from 'lodash.camelcase'
@@ -273,3 +273,46 @@ export const requestHeaders = !!userAgent
       'User-Agent': userAgent
     }
   : ({} as HeadersInit)
+
+export function getPoolsMap(pools: Pool[]) {
+  return pools.reduce(
+    (acc, pool) => {
+      acc[pool.id] = pool
+      return acc
+    },
+    {} as Record<number, Pool>
+  )
+}
+
+export function getEmodesMap(emodes: EMode[]) {
+  return emodes.reduce(
+    (acc, emode) => {
+      acc[emode.emodeId] = emode
+      return acc
+    },
+    {} as Record<number, EMode>
+  )
+}
+
+export function poolToEModePool(pool: Pool, emodeIdentity: EModeIdentity): EModePool {
+  const emode = pool.emodes.find((emode) => emode.emodeId === emodeIdentity.emodeId)
+  if (!emode) {
+    throw new Error('EMode not found in pool')
+  }
+  return {
+    ...pool,
+    emode,
+    isEMode: true
+  }
+}
+
+export function parsePoolUID(uid: string) {
+  const [marketKey, poolId] = uid.split('-')
+  if (!marketKey || !poolId) {
+    return null
+  }
+  return {
+    marketKey: marketKey,
+    poolId: parseInt(poolId)
+  }
+}

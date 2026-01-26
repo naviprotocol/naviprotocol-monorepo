@@ -10,6 +10,41 @@
 import type { SuiClient } from '@mysten/sui/client'
 import type { TransactionResult as TransactionResultType } from '@mysten/sui/transactions'
 
+export type MarketConfig = {
+  id: number
+  key: string
+  name: string
+}
+
+export type MarketIdentity = number | string | MarketConfig
+
+export type EModeIdentity = {
+  emodeId: number
+  marketId: number
+}
+
+export type EMode = EModeIdentity & {
+  isActive: boolean
+  assets: [
+    {
+      assetId: number
+      ltv: number
+      lt: number
+      bonus: number
+      isCollateral: boolean
+      isDebt: boolean
+    }
+  ]
+}
+
+export type EModeCap = {
+  emodeId: number
+  marketId: number
+  accountCap: string
+}
+
+export type EModeCapIdentify = EModeCap | string | TransactionResultType
+
 /**
  * Union type for transaction results from Sui blockchain
  *
@@ -162,6 +197,8 @@ export type Transaction = {
  * Comprehensive pool information for lending operations
  */
 export type Pool = {
+  /** Unique identifier */
+  uid: string
   /** Maximum borrow capacity */
   borrowCapCeiling: string
   /** Coin type for this pool */
@@ -312,6 +349,15 @@ export type Pool = {
   isWormhole: boolean
   status: 'active' | 'deprecating' | 'deprecated'
   tags: string[]
+  /** Market configuration */
+  market: MarketConfig
+  /** Emodes associated with the current pool */
+  emodes: EMode[]
+}
+
+export type EModePool = Pool & {
+  emode: EMode
+  isEMode: boolean
 }
 
 /**
@@ -430,6 +476,12 @@ export type LendingConfig = {
     /** Price feeds */
     feeds: OraclePriceFeed[]
   }
+  emode: {
+    contract: {
+      registryPackage: string
+      registryObject: string
+    }
+  }
 }
 
 /**
@@ -474,4 +526,53 @@ export type CoinObject =
 export type BorrowFeeOption = {
   asset: AssetIdentifier
   address: string
+}
+
+export type MarketOption = {
+  market?: MarketIdentity
+}
+
+export type LendingPositionType =
+  | 'navi-lending-supply'
+  | 'navi-lending-borrow'
+  | 'navi-lending-emode-supply'
+  | 'navi-lending-emode-borrow'
+
+export type PositionToken = {
+  coinType: string
+  decimals: number
+  logoUri: string
+  symbol: string
+  price: number
+}
+
+export type LendingPosition = {
+  id: string
+  wallet: string
+  protocol: 'navi'
+  type: LendingPositionType
+  'navi-lending-supply'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: Pool
+  }
+  'navi-lending-borrow'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: Pool
+  }
+  'navi-lending-emode-supply'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: EModePool
+  }
+  'navi-lending-emode-borrow'?: {
+    amount: string
+    token: PositionToken
+    valueUSD: string
+    pool: EModePool
+  }
 }

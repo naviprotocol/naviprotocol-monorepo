@@ -7,7 +7,14 @@
  */
 
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
-import type { OraclePriceFeed, EnvOption, UserLendingInfo, Pool, SuiClientOption } from './types'
+import type {
+  OraclePriceFeed,
+  EnvOption,
+  UserLendingInfo,
+  Pool,
+  SuiClientOption,
+  MarketOption
+} from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from './utils'
@@ -75,7 +82,7 @@ export async function getPythStalePriceFeedId(priceIds: string[]): Promise<strin
 export async function updatePythPriceFeeds(
   tx: Transaction,
   priceFeedIds: string[],
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ) {
   const client = options?.client ?? suiClient
   const config = await getConfig({
@@ -112,9 +119,10 @@ export async function updateOraclePricesPTB(
   tx: Transaction,
   priceFeeds: OraclePriceFeed[],
   options?: Partial<
-    EnvOption & {
-      updatePythPriceFeeds?: boolean
-    }
+    EnvOption &
+      MarketOption & {
+        updatePythPriceFeeds?: boolean
+      }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -159,7 +167,9 @@ export async function updateOraclePricesPTB(
  * @param options - Optional environment configuration
  * @returns Array of oracle price feed configurations
  */
-export async function getPriceFeeds(options?: Partial<EnvOption>): Promise<OraclePriceFeed[]> {
+export async function getPriceFeeds(
+  options?: Partial<EnvOption & MarketOption>
+): Promise<OraclePriceFeed[]> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
