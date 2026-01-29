@@ -5,7 +5,10 @@
 	"pages": [
 		"index",
 		"account",
+		"position",
 		"pool",
+		"market",
+		"emode",
 		"flashloan",
 		"oracle",
 		"reward",

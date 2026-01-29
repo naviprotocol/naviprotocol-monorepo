@@ -1,0 +1,424 @@
+---
+title: Position Management
+---
+
+The Position module provides a more structured and feature-rich way to manage user lending positions compared to `getLendingState`. It includes support for EMode positions, automatic value calculations, and comprehensive position overview statistics.
+
+## Core Concepts
+
+### Position vs LendingState
+
+**LendingState** provides raw balance data with fixed precision (9 decimals), while **Position** provides:
+- **Normalized amounts**: Amounts are already converted to token decimals
+- **USD values**: Pre-calculated USD values for each position
+- **EMode support**: Includes EMode supply and borrow positions
+- **Structured data**: Each position is a self-contained object with all relevant information
+- **Overview statistics**: Automatic calculation of health factor, net worth, APY, etc.
+
+### Position Types
+
+Positions are categorized into four types:
+- `navi-lending-supply`: Regular supply positions
+- `navi-lending-borrow`: Regular borrow positions
+- `navi-lending-emode-supply`: EMode supply positions
+- `navi-lending-emode-borrow`: EMode borrow positions
+
+## API Reference
+
+### getLendingPositions
+
+Get user's lending positions including supply and borrow positions, with support for EMode positions. This function returns normalized amounts (using token decimals) and pre-calculated USD values. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingPositions.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getLendingPositions } from '@naviprotocol/lending'
+
+// Get lending positions from all markets
+const positions = await getLendingPositions('0x...')
+
+// Get lending positions from specific market(s)
+const mainMarketPositions = await getLendingPositions('0x...', {
+  markets: ['main'] // Optional: filter by market(s)
+})
+
+// Get lending positions from multiple markets
+const multipleMarketsPositions = await getLendingPositions('0x...', {
+  markets: ['main', 0] // Can use string or number identifiers
+})
+```
+
+**Return Example**
+
+```json
+[
+  {
+    "id": "main-0_navi-lending-supply",
+    "wallet": "0x...",
+    "protocol": "navi",
+    "market": "main",
+    "type": "navi-lending-supply",
+    "navi-lending-supply": {
+      "amount": "1000.5",
+      "valueUSD": "3658.23",
+      "token": {
+        "coinType": "0x2::sui::SUI",
+        "decimals": 9,
+        "logoUri": "...",
+        "symbol": "SUI",
+        "price": 3.658
+      },
+      "pool": { ... }
+    }
+  },
+  {
+    "id": "main-1_navi-lending-borrow",
+    "wallet": "0x...",
+    "protocol": "navi",
+    "market": "main",
+    "type": "navi-lending-borrow",
+    "navi-lending-borrow": {
+      "amount": "500.2",
+      "valueUSD": "1829.11",
+      "token": {
+        "coinType": "0x2::sui::SUI",
+        "decimals": 9,
+        "logoUri": "...",
+        "symbol": "SUI",
+        "price": 3.658
+      },
+      "pool": { ... }
+    }
+  },
+  {
+    "id": "main-0_1_navi-lending-emode-supply",
+    "wallet": "0x...",
+    "protocol": "navi",
+    "market": "main",
+    "type": "navi-lending-emode-supply",
+    "navi-lending-emode-supply": {
+      "amount": "2000.0",
+      "valueUSD": "7316.46",
+      "token": {
+        "coinType": "0x2::sui::SUI",
+        "decimals": 9,
+        "logoUri": "...",
+        "symbol": "SUI",
+        "price": 3.658
+      },
+      "pool": {
+        ...,
+        "emode": {
+          "emodeId": 1,
+          "marketId": 0,
+          "isActive": true,
+          "uniqueId": "main-1",
+          "assets": [...]
+        },
+        "isEMode": true
+      }
+    }
+  }
+]
+```
+
+**Parameters**
+
+- `address`: User address
+- `options` (optional):
+  - `markets`: Array of market identifiers to filter by (if not specified, returns data from all markets)
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `client`: Sui client instance
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+**Returns**
+
+Returns an array of `LendingPosition[]` objects, which can include:
+- `navi-lending-supply`: Supply positions
+- `navi-lending-borrow`: Borrow positions
+- `navi-lending-emode-supply`: EMode supply positions
+- `navi-lending-emode-borrow`: EMode borrow positions
+
+### UserPositions Class
+
+The `UserPositions` class provides a convenient way to manage and analyze lending positions. It automatically calculates overview statistics and provides methods to simulate position changes.
+
+**Constructor**
+
+```typescript
+import { UserPositions } from '@naviprotocol/lending'
+
+const positions = await getLendingPositions('0x...')
+const userPositions = new UserPositions(positions)
+```
+
+**Properties**
+
+- `positions`: Array of `LendingPosition[]` - All user positions
+- `overview`: Position overview statistics including:
+  - `hf`: Health factor
+  - `netVaule`: Net value (total supply value - total borrow value)
+  - `netWorthApr`: Net worth APY
+  - `totalSupplyValue`: Total supply value in USD
+  - `totalBorrowValue`: Total borrow value in USD
+  - `totalsupplyApy`: Weighted average supply APY
+  - `totalBorrowApy`: Weighted average borrow APY
+  - `maxLiquidationValue`: Maximum liquidation value
+  - `maxLoanToVaule`: Maximum loan-to-value
+
+**Methods**
+
+#### deposit
+
+Simulate a deposit operation and add it to positions.
+
+```typescript
+const userPositions = new UserPositions(positions)
+userPositions.deposit(pool, 1000) // Deposit 1000 tokens
+console.log(userPositions.overview.totalSupplyValue) // Updated value
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `amount`: Amount to deposit (in token decimals)
+
+#### withdraw
+
+Simulate a withdrawal operation and add it to positions.
+
+```typescript
+userPositions.withdraw(pool, 500) // Withdraw 500 tokens
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `amount`: Amount to withdraw (in token decimals)
+
+#### borrow
+
+Simulate a borrow operation and add it to positions.
+
+```typescript
+userPositions.borrow(pool, 200) // Borrow 200 tokens
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `amount`: Amount to borrow (in token decimals)
+
+#### repay
+
+Simulate a repay operation and add it to positions.
+
+```typescript
+userPositions.repay(pool, 100) // Repay 100 tokens
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `amount`: Amount to repay (in token decimals)
+
+#### findPositionsByPool
+
+Find positions by pool and operation type.
+
+```typescript
+const supplyPositions = userPositions.findPositionsByPool(pool, true) // Find supply positions
+const borrowPositions = userPositions.findPositionsByPool(pool, false) // Find borrow positions
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `isSupply`: Whether to find supply positions (true) or borrow positions (false)
+
+**Returns**
+
+Returns an array of `LendingPosition[]` matching the criteria.
+
+## Type Definitions
+
+### LendingPosition
+
+```typescript
+type LendingPosition = {
+  id: string
+  wallet: string
+  protocol: 'navi'
+  market: string
+  type: LendingPositionType
+  'navi-lending-supply'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: Pool
+  }
+  'navi-lending-borrow'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: Pool
+  }
+  'navi-lending-emode-supply'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: EModePool
+  }
+  'navi-lending-emode-borrow'?: {
+    amount: string
+    valueUSD: string
+    token: PositionToken
+    pool: EModePool
+  }
+}
+```
+
+### LendingPositionType
+
+```typescript
+type LendingPositionType =
+  | 'navi-lending-supply'
+  | 'navi-lending-borrow'
+  | 'navi-lending-emode-supply'
+  | 'navi-lending-emode-borrow'
+```
+
+### PositionToken
+
+```typescript
+type PositionToken = {
+  coinType: string
+  decimals: number
+  logoUri: string
+  symbol: string
+  price: number
+}
+```
+
+## Benefits Over getLendingState
+
+### 1. Normalized Amounts
+
+**getLendingState** returns balances with fixed 9-decimal precision, requiring manual conversion:
+
+```typescript
+// Using getLendingState - manual conversion needed
+const lendingState = await getLendingState('0x...')
+const supplyAmount = BigNumber(lendingState[0].supplyBalance)
+  .shiftedBy(-9)
+  .decimalPlaces(lendingState[0].pool.token.decimals, BigNumber.ROUND_DOWN)
+```
+
+**getLendingPositions** returns amounts already normalized to token decimals:
+
+```typescript
+// Using getLendingPositions - already normalized
+const positions = await getLendingPositions('0x...')
+const supplyAmount = positions[0]['navi-lending-supply']?.amount // Already in token decimals
+```
+
+### 2. Pre-calculated USD Values
+
+**getLendingState** requires manual calculation of USD values:
+
+```typescript
+const lendingState = await getLendingState('0x...')
+const supplyAmount = BigNumber(lendingState[0].supplyBalance)
+  .shiftedBy(-9)
+  .decimalPlaces(lendingState[0].pool.token.decimals, BigNumber.ROUND_DOWN)
+const valueUSD = supplyAmount.multipliedBy(lendingState[0].pool.oracle.price)
+```
+
+**getLendingPositions** provides pre-calculated USD values:
+
+```typescript
+const positions = await getLendingPositions('0x...')
+const valueUSD = positions[0]['navi-lending-supply']?.valueUSD // Already calculated
+```
+
+### 3. EMode Support
+
+**getLendingState** doesn't include EMode positions directly - you need to query EMode caps separately:
+
+```typescript
+const lendingState = await getLendingState('0x...')
+const emodeCaps = await getUserEModeCaps('0x...')
+// Need to manually combine and process
+```
+
+**getLendingPositions** includes EMode positions automatically:
+
+```typescript
+const positions = await getLendingPositions('0x...')
+const emodePositions = positions.filter(p => 
+  p.type === 'navi-lending-emode-supply' || 
+  p.type === 'navi-lending-emode-borrow'
+)
+```
+
+### 4. Structured Data
+
+**getLendingState** returns flat data structure:
+
+```typescript
+{
+  assetId: 19,
+  borrowBalance: '1979162',
+  supplyBalance: '0',
+  market: 'main',
+  pool: { ... }
+}
+```
+
+**getLendingPositions** returns structured, self-contained position objects:
+
+```typescript
+{
+  id: "main-0_navi-lending-supply",
+  type: "navi-lending-supply",
+  "navi-lending-supply": {
+    amount: "1000.5",
+    valueUSD: "3658.23",
+    token: { ... },
+    pool: { ... }
+  }
+}
+```
+
+### 5. Automatic Overview Statistics
+
+**getLendingState** requires manual calculation of statistics:
+
+```typescript
+const lendingState = await getLendingState('0x...')
+// Need to manually calculate:
+// - Total supply value
+// - Total borrow value
+// - Health factor
+// - Net worth
+// - APY
+```
+
+**UserPositions** provides automatic overview calculation:
+
+```typescript
+const positions = await getLendingPositions('0x...')
+const userPositions = new UserPositions(positions)
+console.log(userPositions.overview.hf) // Health factor
+console.log(userPositions.overview.netVaule) // Net value
+console.log(userPositions.overview.totalSupplyValue) // Total supply value
+```
+
+### 6. Position Simulation
+
+**getLendingState** doesn't support position simulation - you need to manually calculate changes.
+
+**UserPositions** supports easy position simulation:
+
+```typescript
+const userPositions = new UserPositions(positions)
+userPositions.deposit(pool, 1000) // Simulate deposit
+console.log(userPositions.overview) // See updated statistics
+```
+

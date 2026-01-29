@@ -17,7 +17,13 @@ Get all available price feeds from the configuration. See [documentation](/typed
 ```typescript
 import { getPriceFeeds } from '@naviprotocol/lending'
 
+// Get all price feeds
 const priceFeeds = await getPriceFeeds()
+
+// Get price feeds for specific market
+const marketPriceFeeds = await getPriceFeeds({
+  market: 'main' // Optional: market identifier
+})
 ```
 
 **Result Example**
@@ -132,7 +138,8 @@ const tx = new Transaction()
 const allPriceFeeds = await getPriceFeeds()
 
 await updateOraclePricesPTB(tx, allPriceFeeds, {
-  updatePythPriceFeeds: true // Optional: update Pyth feeds if stale
+  updatePythPriceFeeds: true, // Optional: update Pyth feeds if stale
+  market: 'main' // Optional: market identifier
 })
 ```
 

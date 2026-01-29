@@ -15,7 +15,13 @@ Get the complete configuration information for the NAVI lending protocol. See [d
 ```typescript
 import { getConfig } from '@naviprotocol/lending'
 
+// Get default config
 const config = await getConfig()
+
+// Get config for specific market
+const marketConfig = await getConfig({
+  market: 'main' // Optional: market identifier
+})
 ```
 
 **Result Example**

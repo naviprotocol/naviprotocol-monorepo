@@ -80,7 +80,13 @@ Get user's total claimed rewards in USD value. See [documentation](/typedoc/vari
 ```typescript
 import { getUserTotalClaimedReward } from '@naviprotocol/lending'
 
+// Get total claimed rewards
 const totalRewards = await getUserTotalClaimedReward('0x...')
+
+// Get total claimed rewards for specific market
+const marketRewards = await getUserTotalClaimedReward('0x...', {
+  market: 'main' // Optional: market identifier
+})
 ```
 
 **Result Example**
@@ -100,9 +106,17 @@ Get user's claimed reward history. See [documentation](/typedoc/variables/_navip
 ```typescript
 import { getUserClaimedRewardHistory } from '@naviprotocol/lending'
 
+// Get reward history
 const history = await getUserClaimedRewardHistory('0x...', {
   page: 1,
   size: 20
+})
+
+// Get reward history for specific market
+const marketHistory = await getUserClaimedRewardHistory('0x...', {
+  page: 1,
+  size: 20,
+  market: 'main' // Optional: market identifier
 })
 ```
 
@@ -162,4 +176,8 @@ await claimLendingRewardsPTB(tx, rewards, {
     type: 'depositNAVI'
   }
 })
-```
+
+// Claiming with market option
+await claimLendingRewardsPTB(tx, rewards, {
+  market: 'main' // Optional: market identifier
+})

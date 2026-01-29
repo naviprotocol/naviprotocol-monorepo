@@ -54,6 +54,20 @@ export type EModeCapIdentify = EModeCap | string | TransactionResultType
  */
 export type TransactionResult =
   | {
+      $kind: 'GasCoin'
+      GasCoin: true
+    }
+  | {
+      $kind: 'Input'
+      Input: number
+      type?: 'pure'
+    }
+  | {
+      $kind: 'Input'
+      Input: number
+      type?: 'object'
+    }
+  | {
       $kind: 'Result'
       Result: number
     }

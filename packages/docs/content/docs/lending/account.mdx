@@ -15,7 +15,7 @@ The account module provides comprehensive lending account functionality, includi
 
 ### getLendingState
 
-Get user's lending account information. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingState.html) for details.
+Get user's lending account information. You can filter by specific market(s). See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingState.html) for details.
 
 <Callout>We standardized the precision of the `borrowBalance` and `supplyBalance`, with all decimal places set to `9`. </Callout>
 
@@ -25,8 +25,18 @@ Get user's lending account information. See [documentation](/typedoc/variables/_
 ```ts
 import { getLendingState } from '@naviprotocol/lending'
 
+// Get lending state from all markets
 const lendingState = await getLendingState('0x...')
 
+// Get lending state from specific market(s)
+const mainMarketState = await getLendingState('0x...', {
+  markets: ['main'] // Optional: filter by market(s)
+})
+
+// Get lending state from multiple markets
+const multipleMarketsState = await getLendingState('0x...', {
+  markets: ['main', 0] // Can use string or number identifiers
+})
 ```
 
 **Result Example**
@@ -35,6 +45,7 @@ const lendingState = await getLendingState('0x...')
   assetId: 19,
   borrowBalance: '1979162', // The precision is fixed at 9, not the decimal part of the token.
   supplyBalance: '0', // The precision is fixed at 9, not the decimal part of the token.
+  market: 'main', // Market identifier
   pool: {
     coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
     id: 19,
@@ -42,6 +53,20 @@ const lendingState = await getLendingState('0x...')
   }
 }]
 ```
+
+**Parameters**
+
+- `address`: User address or Account Cap object ID
+- `options` (optional):
+  - `markets`: Array of market identifiers to filter by (if not specified, returns data from all markets)
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `client`: Sui client instance
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+<Callout>
+  For a more structured way to manage positions with automatic value calculations, EMode support, and overview statistics, see the <a href="/lending/position">Position Management</a> documentation.
+</Callout>
 
 ### getTransactions
 
@@ -298,6 +323,7 @@ Get dynamic health factor in a programmable transaction block. See [documentatio
 ```typescript
 import { getSimulatedHealthFactorPTB } from '@naviprotocol/lending'
 
+// Basic usage
 const healthFactorResult = await getSimulatedHealthFactorPTB(
   tx,
   '0x...',
@@ -306,6 +332,31 @@ const healthFactorResult = await getSimulatedHealthFactorPTB(
   estimatedBorrow, // Estimated borrow amount
   isIncrease
 )
+
+// With market option
+const healthFactorResultWithMarket = await getSimulatedHealthFactorPTB(
+  tx,
+  '0x...',
+  assetIdentifier,
+  estimatedSupply,
+  estimatedBorrow,
+  isIncrease,
+  {
+    market: 'main' // Optional: market identifier
+  }
+)
 ```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `address`: User address
+- `assetIdentifier`: Asset identifier
+- `estimatedSupply`: Estimated supply amount
+- `estimatedBorrow`: Estimated borrow amount
+- `isIncrease`: Whether the operation increases the position
+- `options` (optional):
+  - `market`: Market identifier
+  - `env`: Environment configuration ('dev' or 'prod')
 
 
