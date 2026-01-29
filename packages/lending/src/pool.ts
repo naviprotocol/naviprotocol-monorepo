@@ -70,7 +70,7 @@ export enum PoolOperator {
 export const getPools = withCache(
   withSingleton(
     async (options?: Partial<EnvOption & CacheOption & MarketsOption>): Promise<Pool[]> => {
-      const markets = (options?.markets || Object.keys(MARKETS)).map((identity) => {
+      const markets = (options?.markets || [MARKETS.main]).map((identity) => {
         return getMarketConfig(identity)
       })
       const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(

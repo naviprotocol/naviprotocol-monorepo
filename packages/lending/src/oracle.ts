@@ -170,9 +170,7 @@ export async function updateOraclePricesPTB(
  * @param options - Optional environment configuration
  * @returns Array of oracle price feed configurations
  */
-export async function getPriceFeeds(
-  options?: Partial<EnvOption & MarketOption>
-): Promise<OraclePriceFeed[]> {
+export async function getPriceFeeds(options?: Partial<EnvOption>): Promise<OraclePriceFeed[]> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME

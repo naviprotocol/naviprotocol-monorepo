@@ -185,6 +185,86 @@ export async function getHealthFactorPTB(
   return getSimulatedHealthFactorPTB(tx, address, 0, 0, 0, false, options)
 }
 
+async function getLendingStateBatch(
+  address: string,
+  tasks: {
+    address: string
+    market: string
+    emodeId?: number
+  }[],
+  options?: Partial<SuiClientOption & EnvOption & CacheOption>
+): Promise<UserLendingInfo[]> {
+  const tx = new Transaction()
+  const client = options?.client ?? suiClient
+  const pools = await getPools({
+    ...options,
+    markets: Object.values(MARKETS)
+  })
+  const poolsMap = getPoolsMap(pools)
+  for (let task of tasks) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market: task.market
+    })
+    tx.moveCall({
+      target: `${config.uiGetter}::getter_unchecked::get_user_state`,
+      arguments: [tx.object(config.storage), tx.pure.address(task.address)]
+    })
+  }
+
+  const resp = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: address
+  })
+
+  const stateList = (resp.results || []).map((result) => {
+    return (
+      result.returnValues?.map((item) => {
+        return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
+      })[0] || []
+    )
+  }) as {
+    supply_balance: string
+    borrow_balance: string
+    asset_id: number
+  }[][]
+
+  const result = [] as UserLendingInfo[]
+
+  stateList.forEach((states, index) => {
+    const task = tasks[index]
+    const market = getMarketConfig(task.market)
+    states.forEach((state) => {
+      if (state.supply_balance === '0' && state.borrow_balance === '0') {
+        return
+      }
+      const pool = poolsMap[`${market.key}-${state.asset_id}`]
+      if (!pool) {
+        return
+      }
+      const supplyBalance = rayMathMulIndex(
+        state.supply_balance,
+        pool!.currentSupplyIndex
+      ).toString()
+      const borrowBalance = rayMathMulIndex(
+        state.borrow_balance,
+        pool!.currentBorrowIndex
+      ).toString()
+      result.push({
+        supplyBalance,
+        borrowBalance,
+        assetId: state.asset_id,
+        market: market.key,
+        pool,
+        emodeId: task.emodeId
+      })
+    })
+  })
+
+  return result
+}
+
 /**
  * Retrieves the current lending state for a user
  *
@@ -203,71 +283,15 @@ export const getLendingState = withCache(
     const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
       return getMarketConfig(item)
     })
-    const tx = new Transaction()
-    const client = options?.client ?? suiClient
-    const pools = await getPools(options)
-    const poolsMap = getPoolsMap(pools)
 
-    for (let market of markets) {
-      const config = await getConfig({
-        ...options,
-        cacheTime: DEFAULT_CACHE_TIME,
-        market: market
-      })
-      tx.moveCall({
-        target: `${config.uiGetter}::getter_unchecked::get_user_state`,
-        arguments: [tx.object(config.storage), tx.pure.address(address!)]
-      })
-    }
-
-    const resp = await client.devInspectTransactionBlock({
-      transactionBlock: tx,
-      sender: address
+    const tasks = markets.map((market) => {
+      return {
+        address,
+        market: market.key
+      }
     })
 
-    const stateList = (resp.results || []).map((result) => {
-      return (
-        result.returnValues?.map((item) => {
-          return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
-        })[0] || []
-      )
-    }) as {
-      supply_balance: string
-      borrow_balance: string
-      asset_id: number
-    }[][]
-
-    const result = [] as UserLendingInfo[]
-
-    stateList.forEach((states, index) => {
-      const market = markets[index]
-      states.forEach((state) => {
-        if (state.supply_balance === '0' && state.borrow_balance === '0') {
-          return
-        }
-        const pool = poolsMap[`${market.key}-${state.asset_id}`]
-        if (!pool) {
-          return
-        }
-        const supplyBalance = rayMathMulIndex(
-          state.supply_balance,
-          pool!.currentSupplyIndex
-        ).toString()
-        const borrowBalance = rayMathMulIndex(
-          state.borrow_balance,
-          pool!.currentBorrowIndex
-        ).toString()
-        result.push({
-          supplyBalance,
-          borrowBalance,
-          assetId: state.asset_id,
-          market: market.key,
-          pool
-        })
-      })
-    })
-
-    return result
+    return await getLendingStateBatch(address, tasks, options)
   }
 )
 
@@ -458,59 +482,43 @@ export const getLendingPositions = withCache(
     options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
   ): Promise<LendingPosition[]> => {
     const positions: LendingPosition[] = []
-    const [lendingStates, emodeCaps] = await Promise.all([
-      getLendingState(address, options),
-      getUserEModeCaps(address, options)
-    ])
-    lendingStates.forEach((lendingState) => {
-      if (BigNumber(lendingState.supplyBalance).gt(0)) {
-        const supplyAmount = BigNumber(lendingState.supplyBalance)
-          .shiftedBy(-9)
-          .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-        positions.push({
-          id: `${lendingState.pool.uniqueId}_navi-lending-supply`,
-          wallet: address,
-          protocol: 'navi',
-          type: 'navi-lending-supply',
-          market: lendingState.market,
-          'navi-lending-supply': {
-            amount: supplyAmount.toString(),
-            pool: lendingState.pool,
-            token: lendingState.pool.token,
-            valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString()
-          }
-        })
-      }
-      if (BigNumber(lendingState.borrowBalance).gt(0)) {
-        const borrowAmount = BigNumber(lendingState.borrowBalance)
-          .shiftedBy(-9)
-          .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-        positions.push({
-          id: `${lendingState.pool.uniqueId}_navi-lending-borrow`,
-          wallet: address,
-          protocol: 'navi',
-          market: lendingState.market,
-          type: 'navi-lending-borrow',
-          'navi-lending-borrow': {
-            amount: borrowAmount.toString(),
-            pool: lendingState.pool,
-            token: lendingState.pool.token,
-            valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString()
-          }
-        })
-      }
+    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
+      return getMarketConfig(item)
     })
-    const emodeLendingStates = await Promise.all(
-      emodeCaps.map(async (emodeCap) => {
-        return getLendingState(emodeCap.accountCap, {
-          ...options,
-          markets: [emodeCap.marketId]
-        })
+
+    const emodeCaps = await getUserEModeCaps(address, options)
+
+    const tasks = markets
+      .map((market) => {
+        return {
+          address,
+          market: market.key
+        }
       })
-    )
-    emodeLendingStates.forEach((lendingStates, index) => {
-      const emodeCap = emodeCaps[index]
-      lendingStates.forEach((lendingState) => {
+      .concat(
+        emodeCaps
+          .filter((cap) => {
+            return !!markets.find((market) => market.id === cap.marketId)
+          })
+          .map((emodeCap) => {
+            return {
+              address,
+              market: getMarketConfig(emodeCap.marketId).key,
+              emodeId: emodeCap.emodeId
+            }
+          })
+      )
+
+    const lendingStates = await getLendingStateBatch(address, tasks, options)
+
+    lendingStates.forEach((lendingState) => {
+      const emodeCap = lendingState.emodeId
+        ? emodeCaps.find((cap) => {
+            const market = getMarketConfig(lendingState.market)
+            return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
+          })
+        : undefined
+      if (emodeCap) {
         if (BigNumber(lendingState.supplyBalance).gt(0)) {
           const supplyAmount = BigNumber(lendingState.supplyBalance)
             .shiftedBy(-9)
@@ -547,7 +555,44 @@ export const getLendingPositions = withCache(
             }
           })
         }
-      })
+      } else {
+        if (BigNumber(lendingState.supplyBalance).gt(0)) {
+          const supplyAmount = BigNumber(lendingState.supplyBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          positions.push({
+            id: `${lendingState.pool.uniqueId}_navi-lending-supply`,
+            wallet: address,
+            protocol: 'navi',
+            type: 'navi-lending-supply',
+            market: lendingState.market,
+            'navi-lending-supply': {
+              amount: supplyAmount.toString(),
+              pool: lendingState.pool,
+              token: lendingState.pool.token,
+              valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+            }
+          })
+        }
+        if (BigNumber(lendingState.borrowBalance).gt(0)) {
+          const borrowAmount = BigNumber(lendingState.borrowBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          positions.push({
+            id: `${lendingState.pool.uniqueId}_navi-lending-borrow`,
+            wallet: address,
+            protocol: 'navi',
+            market: lendingState.market,
+            type: 'navi-lending-borrow',
+            'navi-lending-borrow': {
+              amount: borrowAmount.toString(),
+              pool: lendingState.pool,
+              token: lendingState.pool.token,
+              valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+            }
+          })
+        }
+      }
     })
     return positions
   }
@@ -784,27 +829,33 @@ export class UserPositions {
       } else if (position.type === 'navi-lending-borrow') {
         const data = position['navi-lending-borrow']!
         const apy = data.pool.borrowIncentiveApyInfo.apy
-        totalBorrowApy = totalBorrowApy.plus(
-          new BigNumber(data.valueUSD)
-            .dividedBy(totalBorrowValue)
-            .multipliedBy(new BigNumber(apy).dividedBy(100))
-        )
+        if (totalBorrowValue.gt(0)) {
+          totalBorrowApy = totalBorrowApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalBorrowValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
       } else if (position.type === 'navi-lending-emode-supply') {
         const data = position['navi-lending-emode-supply']!
         const apy = data.pool.supplyIncentiveApyInfo.apy
-        totalsupplyApy = totalsupplyApy.plus(
-          new BigNumber(data.valueUSD)
-            .dividedBy(totalSupplyValue)
-            .multipliedBy(new BigNumber(apy).dividedBy(100))
-        )
+        if (totalSupplyValue.gt(0)) {
+          totalsupplyApy = totalsupplyApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalSupplyValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
       } else if (position.type === 'navi-lending-emode-borrow') {
         const data = position['navi-lending-emode-borrow']!
         const apy = data.pool.borrowIncentiveApyInfo.apy
-        totalBorrowApy = totalBorrowApy.plus(
-          new BigNumber(data.valueUSD)
-            .dividedBy(totalBorrowValue)
-            .multipliedBy(new BigNumber(apy).dividedBy(100))
-        )
+        if (totalBorrowValue.gt(0)) {
+          totalBorrowApy = totalBorrowApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalBorrowValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
       }
     })
 

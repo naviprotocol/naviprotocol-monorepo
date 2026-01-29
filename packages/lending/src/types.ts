@@ -126,6 +126,7 @@ export type UserLendingInfo = {
   /** Pool information */
   pool: Pool
   market: string
+  emodeId?: number
 }
 
 /**
@@ -146,6 +147,9 @@ export type LendingReward = {
   rewardCoinType: string
   /** Asset identifier */
   assetId: number
+  market: string
+  owner: string
+  emodeId?: number
 }
 
 /**
@@ -156,6 +160,7 @@ export type LendingRewardSummary = {
   assetId: number
   /** Type of reward */
   rewardType: number
+  market: string
   /** Available rewards by coin type */
   rewards: { coinType: string; available: string }[]
 }
@@ -186,6 +191,8 @@ export type LendingClaimedReward = {
   coin: TransactionResult
   /** Pool identifier */
   identifier: Pool
+  owner: string
+  isEMode: boolean
 }
 
 /**
