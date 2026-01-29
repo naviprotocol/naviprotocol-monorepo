@@ -22,8 +22,8 @@ import type {
   BorrowFeeOption,
   SuiClientOption,
   MarketOption,
-  MarketConfig,
-  EMode
+  EMode,
+  MarketsOption
 } from './types'
 import {
   normalizeCoinType,
@@ -35,10 +35,11 @@ import {
   parsePoolUID
 } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
+import BigNumber from 'bignumber.js'
 import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import packageJson from '../package.json'
-import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
 
 /**
  * Enumeration of pool operations
@@ -68,22 +69,70 @@ export enum PoolOperator {
  */
 export const getPools = withCache(
   withSingleton(
-    async (options?: Partial<EnvOption & CacheOption & MarketOption>): Promise<Pool[]> => {
-      const marketConfig = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
-      const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${marketConfig?.key || DEFAULT_MARKET_IDENTITY}`
+    async (options?: Partial<EnvOption & CacheOption & MarketsOption>): Promise<Pool[]> => {
+      const markets = (options?.markets || Object.keys(MARKETS)).map((identity) => {
+        return getMarketConfig(identity)
+      })
+      const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
+        (market) => {
+          return market.key
+        }
+      )}`
       const res: {
         data: Pool[]
         meta: {
-          market: MarketConfig
           emodes: EMode[]
         }
       } = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+
       res.data.forEach((pool) => {
-        const emodes = res.meta.emodes.filter(
-          (emode) => !!emode.assets.find((asset) => asset.assetId === pool.id) && emode.isActive
-        )
+        const filterEmodes = res.meta.emodes.filter((emode) => {
+          const market = getMarketConfig(emode.marketId)
+          return pool.market === market.key && emode.isActive
+        })
+        const emodes = filterEmodes.filter((emode) => {
+          return !!emode.assets.find((asset) => asset.assetId === pool.id)
+        })
         pool.emodes = emodes
-        pool.market = res.meta.market
+        const poolSupplyAmount = BigNumber(pool.totalSupplyAmount)
+          .div(Math.pow(10, 9))
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolBorrowAmount = BigNumber(pool.borrowedAmount)
+          .shiftedBy(-9)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolSupplyValue = BigNumber(poolSupplyAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolBorrowValue = BigNumber(poolBorrowAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolSupplyCapAmount = BigNumber(pool.supplyCapCeiling)
+          .shiftedBy(-27)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolBorrowCapAmount = BigNumber.max(
+          BigNumber(pool.borrowedAmount),
+          BigNumber(pool.validBorrowAmount)
+        )
+          .shiftedBy(-9)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolSupplyCapValue = BigNumber(poolSupplyCapAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolBorrowCapValue = BigNumber(poolBorrowCapAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        pool.poolSupplyAmount = poolSupplyAmount
+        pool.poolBorrowAmount = poolBorrowAmount
+        pool.poolSupplyValue = poolSupplyValue
+        pool.poolBorrowValue = poolBorrowValue
+        pool.poolSupplyCapAmount = poolSupplyCapAmount
+        pool.poolBorrowCapAmount = poolBorrowCapAmount
+        pool.poolSupplyCapValue = poolSupplyCapValue
+        pool.poolBorrowCapValue = poolBorrowCapValue
       })
       return res.data
     }
@@ -117,7 +166,7 @@ export async function getPool(
   }
   const pools = await getPools({
     ...options,
-    market,
+    markets: [market || DEFAULT_MARKET_IDENTITY],
     cacheTime: DEFAULT_CACHE_TIME
   })
 

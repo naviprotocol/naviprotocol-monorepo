@@ -13,11 +13,14 @@ import type {
   UserLendingInfo,
   Pool,
   SuiClientOption,
-  MarketOption
+  MarketOption,
+  LendingPosition
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from './utils'
+import { getPools } from './pool'
+import { getLendingPositions } from './account'
 
 /**
  * Pyth Network connection for price feed data
@@ -192,6 +195,7 @@ export function filterPriceFeeds(
   filters: {
     lendingState?: UserLendingInfo[]
     pools?: Pool[]
+    lendingPositions?: LendingPosition[]
   }
 ): OraclePriceFeed[] {
   return feeds.filter((feed) => {
@@ -201,6 +205,25 @@ export function filterPriceFeeds(
         return state.assetId === feed.assetId
       })
       if (inState) {
+        return true
+      }
+    }
+
+    if (filters?.lendingPositions) {
+      const inPosition = filters.lendingPositions.find((position) => {
+        const availableTypes = [
+          'navi-lending-supply',
+          'navi-lending-borrow',
+          'navi-lending-emode-supply',
+          'navi-lending-emode-borrow'
+        ]
+        if (!availableTypes.includes(position.type)) {
+          return false
+        }
+        const pool = position[position.type]?.pool
+        return pool?.id === feed.assetId
+      })
+      if (inPosition) {
         return true
       }
     }
@@ -216,4 +239,53 @@ export function filterPriceFeeds(
     }
     return false
   })
+}
+
+export async function updateOraclePriceBeforeUserOperationPTB(
+  tx: Transaction,
+  address: string,
+  pools: Pool[],
+  options?: Partial<
+    EnvOption &
+      SuiClientOption &
+      MarketOption & {
+        throws?: boolean
+      }
+  >
+) {
+  try {
+    const allPriceFeeds = await getPriceFeeds({
+      ...options
+    })
+
+    const markets = [] as string[]
+
+    pools.forEach((pool) => {
+      if (!markets.includes(pool.market)) {
+        markets.push(pool.market)
+      }
+    })
+
+    const lendingPositions = await getLendingPositions(address, {
+      ...options,
+      markets
+    })
+
+    const relevantFeeds = filterPriceFeeds(allPriceFeeds, {
+      lendingPositions,
+      pools
+    })
+
+    const updatedTx = await updateOraclePricesPTB(tx, relevantFeeds, {
+      updatePythPriceFeeds: true,
+      ...options
+    })
+    return updatedTx
+  } catch (e) {
+    if (options?.throws) {
+      throw e
+    }
+    console.error(e)
+    return tx
+  }
 }

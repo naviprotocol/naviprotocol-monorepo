@@ -277,20 +277,20 @@ export const requestHeaders = !!userAgent
 export function getPoolsMap(pools: Pool[]) {
   return pools.reduce(
     (acc, pool) => {
-      acc[pool.id] = pool
+      acc[pool.uniqueId] = pool
       return acc
     },
-    {} as Record<number, Pool>
+    {} as Record<string, Pool>
   )
 }
 
 export function getEmodesMap(emodes: EMode[]) {
   return emodes.reduce(
     (acc, emode) => {
-      acc[emode.emodeId] = emode
+      acc[emode.uniqueId] = emode
       return acc
     },
-    {} as Record<number, EMode>
+    {} as Record<string, EMode>
   )
 }
 
@@ -315,4 +315,11 @@ export function parsePoolUID(uid: string) {
     marketKey: marketKey,
     poolId: parseInt(poolId)
   }
+}
+
+export function uuid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 }

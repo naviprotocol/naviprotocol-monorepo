@@ -5,7 +5,8 @@ import {
   AccountCapOption,
   MarketOption,
   TransactionResult,
-  SuiClientOption
+  SuiClientOption,
+  EModeIdentity
 } from './types'
 import { withSingleton, withCache, parseTxValue, suiClient } from './utils'
 import { DEFAULT_MARKET_IDENTITY, getMarket, getMarketConfig } from './market'
@@ -129,3 +130,8 @@ export const getUserEModeCaps = withCache(
     }
   )
 )
+
+export function emodeIdentityId(identifier: EModeIdentity) {
+  const market = getMarketConfig(identifier.marketId)
+  return `${market.key}-${identifier.emodeId}`
+}

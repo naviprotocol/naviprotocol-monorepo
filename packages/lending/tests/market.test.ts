@@ -132,7 +132,7 @@ describe('Market class', () => {
       const pools = testPools.slice(0, 2)
       const market = new Market('main', pools)
       market.pools.forEach((pool) => {
-        expect(pool.market.id).toBe(0)
+        expect(pool.market).toBe(market.config.key)
       })
     })
   })
@@ -166,7 +166,7 @@ describe('Market class', () => {
       const differentMarketPool: Pool = {
         ...pools[0],
         id: 999,
-        market: { id: 999, key: 'other', name: 'Other Market' }
+        market: 'other'
       }
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

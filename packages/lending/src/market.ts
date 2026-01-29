@@ -1,4 +1,4 @@
-import { withCache, withSingleton } from './utils'
+import { withCache, withSingleton, getPoolsMap, getEmodesMap } from './utils'
 import type {
   MarketIdentity,
   EnvOption,
@@ -10,7 +10,8 @@ import type {
   EModePool
 } from './types'
 import { getPools } from './pool'
-import { getPoolsMap, getEmodesMap } from './utils'
+import { emodeIdentityId } from './emode'
+import BigNumber from 'bignumber.js'
 
 export const DEFAULT_MARKET_IDENTITY = 'main'
 
@@ -27,6 +28,15 @@ export class Market {
   readonly pools: Pool[] = []
   readonly emodes: EMode[] = []
 
+  private _overview = {
+    marketTotalSupplyValue: '0',
+    marketTotalBorrowValue: '0'
+  }
+
+  get overview() {
+    return this._overview
+  }
+
   constructor(marketIdentity: MarketIdentity, pools: Pool[]) {
     this.config = getMarketConfig(marketIdentity)
     this.addPools(pools)
@@ -35,21 +45,29 @@ export class Market {
   public addPools(pools: Pool[]) {
     const poolsMap = getPoolsMap(this.pools)
     const emodesMap = getEmodesMap(this.emodes)
+    let marketTotalSupplyValue = BigNumber(0)
+    let marketTotalBorrowValue = BigNumber(0)
     pools.forEach((pool) => {
       const isMatch = this.checkMarket(pool.market)
       if (!isMatch) {
         console.warn(`Pool is not in market ${this.config.name}`, pool)
         return
       }
-      if (!poolsMap[pool.id]) {
+      if (!poolsMap[pool.uniqueId]) {
         this.pools.push(pool)
       }
       pool.emodes.forEach((emode) => {
-        if (!emodesMap[emode.emodeId]) {
+        if (!emodesMap[emode.uniqueId]) {
           this.emodes.push(emode)
         }
       })
+      marketTotalBorrowValue = marketTotalBorrowValue.plus(pool.poolBorrowValue)
+      marketTotalSupplyValue = marketTotalSupplyValue.plus(pool.poolSupplyValue)
     })
+    this._overview = {
+      marketTotalSupplyValue: marketTotalSupplyValue.toString(),
+      marketTotalBorrowValue: marketTotalBorrowValue.toString()
+    }
   }
 
   public getEMode(emodeIdentity: EModeIdentity): EMode | null {
@@ -62,7 +80,7 @@ export class Market {
       return null
     }
     const emodesMap = getEmodesMap(this.emodes)
-    const emode = emodesMap[emodeIdentity.emodeId]
+    const emode = emodesMap[emodeIdentityId(emodeIdentity)]
     if (!emode) {
       console.warn(
         `EMode not found ${emodeIdentity.emodeId} in market ${this.config.name}`,
@@ -129,18 +147,17 @@ export const getMarkets = withCache(
       markets: MarketIdentity[],
       options?: Partial<EnvOption & CacheOption>
     ): Promise<Market[]> => {
-      const res = await Promise.all(
-        markets.map((marketConfig) => {
-          return getPools({
-            cacheTime: 1000 * 60,
-            ...options,
-            market: marketConfig
-          })
+      const pools = await getPools({
+        cacheTime: 1000 * 60,
+        ...options,
+        markets
+      })
+      return markets.map((market) => {
+        const marketConfig = getMarketConfig(market)
+        const marketPools = pools.filter((pool) => {
+          return pool.market === marketConfig.key
         })
-      )
-      return res.map((pools) => {
-        const marketConfig = pools[0].market
-        return new Market(marketConfig, pools)
+        return new Market(market, marketPools)
       })
     }
   )

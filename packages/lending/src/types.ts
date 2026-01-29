@@ -25,6 +25,7 @@ export type EModeIdentity = {
 
 export type EMode = EModeIdentity & {
   isActive: boolean
+  uniqueId: string
   assets: [
     {
       assetId: number
@@ -110,6 +111,7 @@ export type UserLendingInfo = {
   supplyBalance: string
   /** Pool information */
   pool: Pool
+  market: string
 }
 
 /**
@@ -198,7 +200,7 @@ export type Transaction = {
  */
 export type Pool = {
   /** Unique identifier */
-  uid: string
+  uniqueId: string
   /** Maximum borrow capacity */
   borrowCapCeiling: string
   /** Coin type for this pool */
@@ -221,6 +223,7 @@ export type Pool = {
   lastUpdateTimestamp: string
   /** Loan-to-value ratio */
   ltv: string
+  ltvValue: number
   /** Oracle identifier */
   oracleId: number
   /** Maximum supply capacity */
@@ -349,10 +352,17 @@ export type Pool = {
   isWormhole: boolean
   status: 'active' | 'deprecating' | 'deprecated'
   tags: string[]
-  /** Market configuration */
-  market: MarketConfig
+  market: string
   /** Emodes associated with the current pool */
   emodes: EMode[]
+  poolSupplyAmount: string
+  poolSupplyValue: string
+  poolSupplyCapAmount: string
+  poolSupplyCapValue: string
+  poolBorrowAmount: string
+  poolBorrowValue: string
+  poolBorrowCapAmount: string
+  poolBorrowCapValue: string
 }
 
 export type EModePool = Pool & {
@@ -532,6 +542,10 @@ export type MarketOption = {
   market?: MarketIdentity
 }
 
+export type MarketsOption = {
+  markets?: MarketIdentity[]
+}
+
 export type LendingPositionType =
   | 'navi-lending-supply'
   | 'navi-lending-borrow'
@@ -550,6 +564,7 @@ export type LendingPosition = {
   id: string
   wallet: string
   protocol: 'navi'
+  market: string
   type: LendingPositionType
   'navi-lending-supply'?: {
     amount: string
@@ -576,3 +591,10 @@ export type LendingPosition = {
     pool: EModePool
   }
 }
+
+export type LendingPositionByType<T extends LendingPositionType> = Pick<
+  LendingPosition,
+  'id' | 'wallet' | 'protocol' | 'market'
+> & {
+  type: T
+} & Required<Pick<LendingPosition, T>>
