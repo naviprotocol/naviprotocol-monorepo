@@ -11,7 +11,6 @@ The Position module provides a more structured and feature-rich way to manage us
 **LendingState** provides raw balance data with fixed precision (9 decimals), while **Position** provides:
 - **Normalized amounts**: Amounts are already converted to token decimals
 - **USD values**: Pre-calculated USD values for each position
-- **EMode support**: Includes EMode supply and borrow positions
 - **Structured data**: Each position is a self-contained object with all relevant information
 - **Overview statistics**: Automatic calculation of health factor, net worth, APY, etc.
 
@@ -27,7 +26,7 @@ Positions are categorized into four types:
 
 ### getLendingPositions
 
-Get user's lending positions including supply and borrow positions, with support for EMode positions. This function returns normalized amounts (using token decimals) and pre-calculated USD values. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingPositions.html) for details.
+Get user's lending positions including supply and borrow positions, with support for EMode positions. See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingPositions.html) for details.
 
 **Usage Example**
 
@@ -339,22 +338,25 @@ const valueUSD = positions[0]['navi-lending-supply']?.valueUSD // Already calcul
 
 ### 3. EMode Support
 
-**getLendingState** doesn't include EMode positions directly - you need to query EMode caps separately:
+**getLendingState** returns `emodeId` field for EMode positions, but you need to manually query EMode caps and process them:
 
 ```typescript
 const lendingState = await getLendingState('0x...')
 const emodeCaps = await getUserEModeCaps('0x...')
-// Need to manually combine and process
+// Need to manually match emodeId with emodeCaps and process
+const emodeStates = lendingState.filter(state => state.emodeId !== undefined)
 ```
 
-**getLendingPositions** includes EMode positions automatically:
+**getLendingPositions** automatically queries EMode Caps and includes EMode positions with full EMode pool information:
 
 ```typescript
 const positions = await getLendingPositions('0x...')
+// EMode positions are automatically included
 const emodePositions = positions.filter(p => 
   p.type === 'navi-lending-emode-supply' || 
   p.type === 'navi-lending-emode-borrow'
 )
+// Each EMode position includes full EMode pool data with emode configuration
 ```
 
 ### 4. Structured Data

@@ -46,6 +46,7 @@ const multipleMarketsState = await getLendingState('0x...', {
   borrowBalance: '1979162', // The precision is fixed at 9, not the decimal part of the token.
   supplyBalance: '0', // The precision is fixed at 9, not the decimal part of the token.
   market: 'main', // Market identifier
+  emodeId: 1, // Optional EMode ID if the position is in EMode
   pool: {
     coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
     id: 19,
@@ -53,6 +54,15 @@ const multipleMarketsState = await getLendingState('0x...', {
   }
 }]
 ```
+
+**Return Fields**
+
+- `assetId`: Asset identifier
+- `borrowBalance`: Current borrow balance (precision fixed at 9)
+- `supplyBalance`: Current supply balance (precision fixed at 9)
+- `market`: Market identifier (e.g., "main")
+- `emodeId`: Optional EMode ID if the position is in EMode
+- `pool`: Pool information object
 
 **Parameters**
 
