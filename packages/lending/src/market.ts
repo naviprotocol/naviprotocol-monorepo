@@ -6,11 +6,9 @@ import type {
   EMode,
   MarketConfig,
   Pool,
-  EModeIdentity,
   EModePool
 } from './types'
 import { getPools } from './pool'
-import { emodeIdentityId } from './emode'
 import BigNumber from 'bignumber.js'
 
 export const DEFAULT_MARKET_IDENTITY = 'main'
@@ -24,9 +22,14 @@ export const MARKETS = {
 }
 
 export class Market {
+  private poolMap = {} as Record<string, Pool>
+  private emodeMap = {} as Record<string, EMode>
   readonly config: MarketConfig
   readonly pools: Pool[] = []
   readonly emodes: EMode[] = []
+  readonly emodePools: EModePool[] = []
+  emodeBorrowablePools: Pool[] = []
+  emodeSupplyablePools: Pool[] = []
 
   private _overview = {
     marketTotalSupplyValue: '0',
@@ -45,8 +48,11 @@ export class Market {
   public addPools(pools: Pool[]) {
     const poolsMap = getPoolsMap(this.pools)
     const emodesMap = getEmodesMap(this.emodes)
+    const emodeBorrowablePoolIds = new Set<string>()
+    const emodeSupplyablePoolIds = new Set<string>()
     let marketTotalSupplyValue = BigNumber(0)
     let marketTotalBorrowValue = BigNumber(0)
+
     pools.forEach((pool) => {
       const isMatch = this.checkMarket(pool.market)
       if (!isMatch) {
@@ -60,50 +66,91 @@ export class Market {
         if (!emodesMap[emode.uniqueId]) {
           this.emodes.push(emode)
         }
+        emode.assets.forEach((asset) => {
+          if (asset.isDebt) {
+            emodeBorrowablePoolIds.add(pool.uniqueId)
+          }
+          if (asset.isCollateral) {
+            emodeSupplyablePoolIds.add(pool.uniqueId)
+          }
+        })
       })
       marketTotalBorrowValue = marketTotalBorrowValue.plus(pool.poolBorrowValue)
       marketTotalSupplyValue = marketTotalSupplyValue.plus(pool.poolSupplyValue)
+    })
+    this.poolMap = getPoolsMap(this.pools, 'id')
+    this.emodeMap = getEmodesMap(this.emodes, 'emodeId')
+    this.emodes.forEach((emode) => {
+      const emodePools = this.getEModePools(emode.emodeId)
+      this.emodePools.push(...emodePools)
     })
     this._overview = {
       marketTotalSupplyValue: marketTotalSupplyValue.toString(),
       marketTotalBorrowValue: marketTotalBorrowValue.toString()
     }
+    this.emodeBorrowablePools = this.pools.filter((pool) => {
+      return emodeBorrowablePoolIds.has(pool.uniqueId)
+    })
+    this.emodeSupplyablePools = this.pools.filter((pool) => {
+      return emodeSupplyablePoolIds.has(pool.uniqueId)
+    })
   }
 
-  public getEMode(emodeIdentity: EModeIdentity): EMode | null {
-    const isMatch = this.checkMarket(emodeIdentity.marketId)
-    if (!isMatch) {
-      console.warn(
-        `EMode market mismatch ${this.config.id} !== ${emodeIdentity.marketId}`,
-        emodeIdentity
-      )
-      return null
-    }
-    const emodesMap = getEmodesMap(this.emodes)
-    const emode = emodesMap[emodeIdentityId(emodeIdentity)]
-    if (!emode) {
-      console.warn(
-        `EMode not found ${emodeIdentity.emodeId} in market ${this.config.name}`,
-        emodeIdentity
-      )
-      return null
-    }
-    return emode
+  public getEMode(emodeId: number): EMode | null {
+    const emode = this.emodeMap[emodeId]
+    return emode || null
   }
 
-  public getEModePools(emodeIdentity: EModeIdentity): EModePool[] {
-    const emode = this.getEMode(emodeIdentity)
+  public getEModeRelatePools(
+    pool: Pool,
+    options?: {
+      collateral?: boolean
+      debt?: boolean
+      emodeId?: number
+    }
+  ): Pool[] {
+    const { collateral, debt, emodeId } = options || {}
+    const relatePools = [] as Pool[]
+    pool.emodes.forEach((emode) => {
+      if (typeof emodeId === 'number' && emodeId !== emode.emodeId) {
+        return
+      }
+      emode.assets.forEach((asset) => {
+        if (
+          typeof collateral === 'boolean' &&
+          collateral &&
+          asset.isCollateral &&
+          asset.assetId === pool.id
+        ) {
+          relatePools.push(this.poolMap[asset.assetId])
+        }
+        if (typeof debt === 'boolean' && debt && asset.isDebt && asset.assetId === pool.id) {
+          relatePools.push(this.poolMap[asset.assetId])
+        }
+      })
+    })
+    return relatePools
+  }
+
+  public getEModePools(emodeId: number): EModePool[] {
+    const emode = this.getEMode(emodeId)
     if (!emode) {
       return []
     }
-    const assetIds = emode.assets.map((asset) => asset.assetId)
-    const pools = this.pools.filter((pool) => {
-      return assetIds.includes(pool.id)
-    })
+    const pools = emode.assets
+      .map((asset) => asset.assetId)
+      .map((id) => {
+        return this.poolMap[id]
+      })
+      .filter((pool) => !!pool)
     return pools.map((pool) => {
+      const asset = emode.assets.find((asset) => asset.assetId === pool.id)!
       return {
         ...pool,
-        emode,
+        emode: {
+          ...asset,
+          emodeId: emode.emodeId
+        },
         isEMode: true
       }
     })

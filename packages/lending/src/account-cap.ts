@@ -42,7 +42,7 @@ export async function getAccountCapOwnerPTB(
     ...options
   })
   return tx.moveCall({
-    target: `${config.package}::lending_core::account_owner`,
+    target: `${config.package}::account::account_owner`,
     arguments: [accountCap]
   })
 }

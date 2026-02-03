@@ -274,20 +274,20 @@ export const requestHeaders = !!userAgent
     }
   : ({} as HeadersInit)
 
-export function getPoolsMap(pools: Pool[]) {
+export function getPoolsMap(pools: Pool[], key: 'uniqueId' | 'id' = 'uniqueId') {
   return pools.reduce(
     (acc, pool) => {
-      acc[pool.uniqueId] = pool
+      acc[pool[key]] = pool
       return acc
     },
     {} as Record<string, Pool>
   )
 }
 
-export function getEmodesMap(emodes: EMode[]) {
+export function getEmodesMap(emodes: EMode[], key: 'uniqueId' | 'emodeId' = 'uniqueId') {
   return emodes.reduce(
     (acc, emode) => {
-      acc[emode.uniqueId] = emode
+      acc[emode[key]] = emode
       return acc
     },
     {} as Record<string, EMode>
@@ -299,9 +299,13 @@ export function poolToEModePool(pool: Pool, emodeIdentity: EModeIdentity): EMode
   if (!emode) {
     throw new Error('EMode not found in pool')
   }
+  const emodeAsset = emode.assets.find((asset) => asset.assetId === pool.id)!
   return {
     ...pool,
-    emode,
+    emode: {
+      ...emodeAsset,
+      emodeId: emode.emodeId
+    },
     isEMode: true
   }
 }

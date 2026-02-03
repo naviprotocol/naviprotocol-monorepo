@@ -533,7 +533,8 @@ export const getLendingPositions = withCache(
               amount: supplyAmount.toString(),
               pool: poolToEModePool(lendingState.pool, emodeCap),
               token: lendingState.pool.token,
-              valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+              valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+              emodeCap: emodeCap
             }
           })
         }
@@ -551,7 +552,8 @@ export const getLendingPositions = withCache(
               amount: borrowAmount.toString(),
               pool: poolToEModePool(lendingState.pool, emodeCap),
               token: lendingState.pool.token,
-              valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+              valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+              emodeCap: emodeCap
             }
           })
         }
@@ -629,6 +631,19 @@ export class UserPositions {
     this.positions = positions
   }
 
+  public filterPositionsByPool(pool: Pool | EModePool) {
+    const isEmode = !!(pool as EModePool).isEMode
+    const types = isEmode
+      ? ['navi-lending-emode-supply', 'navi-lending-emode-borrow']
+      : ['navi-lending-supply', 'navi-lending-borrow']
+    return new UserPositions(
+      this.positions.filter((position) => {
+        const positionData = position[position.type]!
+        return types.includes(position.type) && positionData.pool.uniqueId === pool.uniqueId
+      })
+    )
+  }
+
   public deposit(pool: Pool | EModePool, amount: number) {
     const isEmode = !!(pool as EModePool).isEMode
     let position: LendingPosition
@@ -643,7 +658,8 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as any,
+          emodeCap: {} as any
         }
       }
     } else {
@@ -661,7 +677,7 @@ export class UserPositions {
         }
       }
     }
-    this.positions = [...this.positions, position]
+    return new UserPositions([...this.positions, position])
   }
 
   public withdraw(pool: Pool | EModePool, amount: number) {
@@ -678,7 +694,8 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as any,
+          emodeCap: {} as any
         }
       }
     } else {
@@ -696,7 +713,7 @@ export class UserPositions {
         }
       }
     }
-    this.positions = [...this.positions, position]
+    return new UserPositions([...this.positions, position])
   }
 
   public borrow(pool: Pool | EModePool, amount: number) {
@@ -713,7 +730,8 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as any,
+          emodeCap: {} as any
         }
       }
     } else {
@@ -731,7 +749,7 @@ export class UserPositions {
         }
       }
     }
-    this.positions = [...this.positions, position]
+    return new UserPositions([...this.positions, position])
   }
 
   public repay(pool: Pool | EModePool, amount: number) {
@@ -748,7 +766,8 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as any,
+          emodeCap: {} as any
         }
       }
     } else {
@@ -766,20 +785,7 @@ export class UserPositions {
         }
       }
     }
-    this.positions = [...this.positions, position]
-  }
-
-  findPositionsByPool(pool: Pool | EModePool, isSupply: boolean) {
-    const isEmode = !!(pool as EModePool).isEMode
-    return this.positions.filter((position) => {
-      if (isEmode) {
-        return (
-          position.type === (isSupply ? 'navi-lending-emode-supply' : 'navi-lending-emode-borrow')
-        )
-      } else {
-        return position.type === (isSupply ? 'navi-lending-supply' : 'navi-lending-borrow')
-      }
-    })
+    return new UserPositions([...this.positions, position])
   }
 
   getPositionsOverview(positions: LendingPosition[]) {
@@ -804,9 +810,7 @@ export class UserPositions {
       } else if (position.type === 'navi-lending-emode-supply') {
         const data = position['navi-lending-emode-supply']!
         totalSupplyValue = totalSupplyValue.plus(data.valueUSD)
-        const poolEmodeConfig = data.pool.emode.assets.find(
-          (asset) => asset.assetId === data.pool.id
-        )!
+        const poolEmodeConfig = data.pool.emode
         maxLiquidationValue = maxLiquidationValue.plus(
           new BigNumber(data.valueUSD).multipliedBy(poolEmodeConfig.lt)
         )

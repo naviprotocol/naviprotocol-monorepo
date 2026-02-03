@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/lending",
-  "version": "1.4.0",
+  "version": "1.4.0-emode.15",
   "description": "NAVI Lending SDK",
   "license": "MIT",
   "keywords": [
@@ -43,7 +43,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
-    "test": "vitest --config ./vite.config.unit.js",
+    "test": "vitest --config ./vite.config.unit.js tests/emode.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },

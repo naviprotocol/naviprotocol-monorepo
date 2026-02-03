@@ -343,7 +343,7 @@ export async function depositCoinPTB(
   }
 
   // refresh stake for sui pool to balance the stake after deposit
-  if (config.version === 2 && pool.id === 0) {
+  if (config.version === 2 && pool.id === 0 && (!options?.env || options?.env === 'prod')) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
       arguments: [tx.object(pool.contract.pool), tx.object('0x05')]

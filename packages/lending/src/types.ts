@@ -23,19 +23,19 @@ export type EModeIdentity = {
   marketId: number
 }
 
+export type EModeAsset = {
+  assetId: number
+  ltv: number
+  lt: number
+  bonus: number
+  isCollateral: boolean
+  isDebt: boolean
+}
+
 export type EMode = EModeIdentity & {
   isActive: boolean
   uniqueId: string
-  assets: [
-    {
-      assetId: number
-      ltv: number
-      lt: number
-      bonus: number
-      isCollateral: boolean
-      isDebt: boolean
-    }
-  ]
+  assets: EModeAsset[]
 }
 
 export type EModeCap = {
@@ -387,7 +387,9 @@ export type Pool = {
 }
 
 export type EModePool = Pool & {
-  emode: EMode
+  emode: {
+    emodeId: number
+  } & EModeAsset
   isEMode: boolean
 }
 
@@ -604,12 +606,14 @@ export type LendingPosition = {
     valueUSD: string
     token: PositionToken
     pool: EModePool
+    emodeCap: EModeCap
   }
   'navi-lending-emode-borrow'?: {
     amount: string
     token: PositionToken
     valueUSD: string
     pool: EModePool
+    emodeCap: EModeCap
   }
 }
 
