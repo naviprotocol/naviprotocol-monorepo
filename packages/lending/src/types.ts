@@ -63,6 +63,11 @@ export type CacheOption = {
   cacheTime?: number
 }
 
+export type CampaignOption = {
+  /** Campaign identifier */
+  campaign: string
+}
+
 /**
  * User lending information for a specific asset
  */
@@ -337,6 +342,11 @@ export type FloashloanAsset = {
   flashloanFee: number
   /** Coin type */
   coinType: string
+  /** Charged by */
+  chargedBy: {
+    type: 'contract' | 'address'
+    address?: string
+  }
 }
 
 /**

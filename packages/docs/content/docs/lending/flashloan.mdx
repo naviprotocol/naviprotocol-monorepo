@@ -25,15 +25,23 @@ Flash loans allow users to borrow assets without collateral, but must meet the f
 
 ### getAllFlashLoanAssets
 
-Get all available flash loan assets from the API. Uses caching to avoid repeated API calls. See [documentation](/typedoc/variables/_naviprotocol_lending.getAllFlashLoanAssets.html) for details.
+Get all available flash loan assets from the API. Uses caching to avoid repeated API calls. Supports campaign parameter for campaign-specific flash loan configurations. See [documentation](/typedoc/variables/_naviprotocol_lending.getAllFlashLoanAssets.html) for details.
 
 **Usage Example**
 
 ```typescript
 import { getAllFlashLoanAssets } from '@naviprotocol/lending'
 
+// Get all flash loan assets
 const flashLoanAssets = await getAllFlashLoanAssets({
   env: 'prod',
+  cacheTime: 30000
+})
+
+// Get flash loan assets for a specific campaign
+const campaignAssets = await getAllFlashLoanAssets({
+  env: 'prod',
+  campaign: 'campaign-id',
   cacheTime: 30000
 })
 ```
@@ -49,14 +57,51 @@ const flashLoanAssets = await getAllFlashLoanAssets({
     "poolId": "0x71b9f6e822c48ce827bceadce82201d6a7559f7b0350ed1daa1dc2ba3ac41b56",
     "supplierFee": 0,
     "flashloanFee": 0.0006,
-    "coinType": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN"
+    "coinType": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN",
+    "chargedBy": {
+      "type": "contract"
+    }
+  },
+  {
+    "max": "50000000000",
+    "min": "0",
+    "assetId": 5,
+    "poolId": "0x...",
+    "supplierFee": 0,
+    "flashloanFee": 0.0006,
+    "coinType": "0x2::sui::SUI",
+    "chargedBy": {
+      "type": "address",
+      "address": "0x..."
+    }
   }
 ]
 ```
 
+**Parameters**
+
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `campaign`: Campaign identifier for campaign-specific flash loan configurations
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+**Return Fields**
+
+- `max`: Maximum flash loan amount
+- `min`: Minimum flash loan amount
+- `assetId`: Asset identifier
+- `poolId`: Pool identifier
+- `supplierFee`: Supplier fee percentage
+- `flashloanFee`: Flash loan fee percentage
+- `coinType`: Coin type
+- `chargedBy`: Fee charging configuration
+  - `type`: Fee charging type ('contract' or 'address')
+  - `address`: Optional address to receive fees (only when type is 'address')
+
 ### getFlashLoanAsset
 
-Get a specific flash loan asset by identifier. See [documentation](/typedoc/functions/_naviprotocol_lending.getFlashLoanAsset.html) for details.
+Get a specific flash loan asset by identifier. Supports campaign parameter for campaign-specific configurations. See [documentation](/typedoc/functions/_naviprotocol_lending.getFlashLoanAsset.html) for details.
 
 **Usage Example**
 
@@ -72,6 +117,11 @@ const assetById = await getFlashLoanAsset(0)
 // Get by pool
 const pool = await getPool('0x2::sui::SUI')
 const assetByObject = await getFlashLoanAsset(pool)
+
+// Get with campaign parameter
+const campaignAsset = await getFlashLoanAsset('0x2::sui::SUI', {
+  campaign: 'campaign-id'
+})
 ```
 
 **Result Example**
@@ -84,13 +134,25 @@ const assetByObject = await getFlashLoanAsset(pool)
   "poolId": "0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5",
   "supplierFee": 0,
   "flashloanFee": 0.0006,
-  "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
+  "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+  "chargedBy": {
+    "type": "contract"
+  }
 }
 ```
 
+**Parameters**
+
+- `identifier`: Asset identifier (coin type string, asset ID number, or pool object)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `campaign`: Campaign identifier for campaign-specific configurations
+
 ### flashloanPTB
 
-Create a flash loan transaction in the PTB (Programmable Transaction Block). This function initiates a flash loan by borrowing the specified amount of assets. The borrowed assets must be repaid within the same transaction using `repayFlashLoanPTB`. See [documentation](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html) for details.
+Create a flash loan transaction in the PTB (Programmable Transaction Block). This function initiates a flash loan by borrowing the specified amount of assets. The borrowed assets must be repaid within the same transaction using `repayFlashLoanPTB`. 
+
+For assets with `chargedBy.type === 'address'`, the function automatically handles fee calculation and transfer: it borrows the amount plus fees, splits the fee portion, and transfers it to the specified address. See [documentation](/typedoc/functions/_naviprotocol_lending.flashloanPTB.html) for details.
 
 **Usage Example**
 
@@ -100,11 +162,23 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
+// Standard flash loan (fee charged by contract)
 const [balance, receipt] = await flashloanPTB(
   tx,
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Amount to borrow
   { env: 'prod' }
+)
+
+// Flash loan with campaign parameter
+const [balance2, receipt2] = await flashloanPTB(
+  tx,
+  '0x2::sui::SUI',
+  1000000000,
+  { 
+    env: 'prod',
+    campaign: 'campaign-id'
+  }
 )
 ```
 
@@ -134,24 +208,35 @@ const [balance] = await repayFlashLoanPTB(
 Here's a complete example of how to use flash loans for arbitrage:
 
 ```typescript
-import { flashloanPTB, repayFlashLoanPTB } from '@naviprotocol/lending'
+import { flashloanPTB, repayFlashLoanPTB, getAllFlashLoanAssets } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 
 async function executeFlashLoanArbitrage() {
   const tx = new Transaction()
 
-  // Step 1: Initiate flash loan
+  // Step 1: Check flash loan asset configuration
+  const assets = await getAllFlashLoanAssets({ env: 'prod' })
+  const asset = assets.find(a => a.coinType === '0x2::sui::SUI')
+  
+  if (!asset) {
+    throw new Error('Flash loan not available for SUI')
+  }
+
+  // Step 2: Initiate flash loan
+  // For address-based fees, the function automatically handles fee calculation and transfer
   const [borrowedBalance, receipt] = await flashloanPTB(
     tx,
     '0x2::sui::SUI',
-    1000000000, // 1 SUI
+    1000000000, // 1 SUI (you'll receive this amount, fees are handled automatically)
     { env: 'prod' }
   )
 
-  // Step 2: Execute arbitrage logic with borrowed funds
+  // Step 3: Execute arbitrage logic with borrowed funds
   // ... your arbitrage trading logic here ...
+  // Note: If chargedBy.type === 'address', fees were already transferred automatically
 
-  // Step 3: Repay the flash loan
+  // Step 4: Repay the flash loan
+  // For address-based fees, you only need to repay the original amount
   const [remainingBalance] = await repayFlashLoanPTB(
     tx,
     '0x2::sui::SUI',
@@ -160,7 +245,7 @@ async function executeFlashLoanArbitrage() {
     { env: 'prod' }
   )
 
-  // Step 4: Execute the transaction
+  // Step 5: Execute the transaction
   ...
 }
 ```
@@ -174,3 +259,5 @@ async function executeFlashLoanArbitrage() {
 3. **Pool Support**: Not all pools support flash loans. Always check if the pool supports flash loans before attempting to use them.
 
 4. **Amount Limits**: Each asset has a maximum flash loan amount. Exceeding this limit will cause the transaction to fail.
+
+5. **Campaign Support**: Some flash loan configurations may be campaign-specific. Use the `campaign` parameter to access campaign-specific flash loan assets and configurations.

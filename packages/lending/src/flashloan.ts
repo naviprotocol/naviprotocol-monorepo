@@ -13,12 +13,14 @@ import type {
   CoinObject,
   CacheOption,
   FloashloanAsset,
-  TransactionResult
+  TransactionResult,
+  CampaignOption
 } from './types'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { parseTxValue, normalizeCoinType, withCache, withSingleton, requestHeaders } from './utils'
 import { getPool } from './pool'
 import packageJson from '../package.json'
+import BigNumber from 'bignumber.js'
 
 /**
  * Get all available flash loan assets from the API
@@ -28,16 +30,20 @@ import packageJson from '../package.json'
  * @returns Array of flash loan asset configurations
  */
 export const getAllFlashLoanAssets = withCache(
-  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<FloashloanAsset[]> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
-    return Object.keys(res.data).map((coinType) => {
-      return {
-        ...res.data[coinType],
-        coinType
-      }
-    })
-  })
+  withSingleton(
+    async (
+      options?: Partial<EnvOption & CacheOption & CampaignOption>
+    ): Promise<FloashloanAsset[]> => {
+      const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&campaign=${options?.campaign || ''}`
+      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      return Object.keys(res.data).map((coinType) => {
+        return {
+          ...res.data[coinType],
+          coinType
+        }
+      })
+    }
+  )
 )
 
 /**
@@ -49,7 +55,7 @@ export const getAllFlashLoanAssets = withCache(
  */
 export async function getFlashLoanAsset(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & CampaignOption>
 ): Promise<FloashloanAsset | null> {
   const assets = await getAllFlashLoanAssets(options)
   return (
@@ -82,7 +88,7 @@ export async function flashloanPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & CampaignOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -95,11 +101,11 @@ export async function flashloanPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
 
-  const isSupport = flashLoanAssets.some(
+  const asset = flashLoanAssets.find(
     (asset) => normalizeCoinType(asset.coinType) === normalizeCoinType(pool.suiCoinType)
   )
 
-  if (!isSupport) {
+  if (!asset) {
     throw new Error('Pool does not support flashloan')
   }
 
@@ -116,18 +122,47 @@ export async function flashloanPTB(
 
     return [balance, receipt]
   } else {
-    const [balance, receipt] = tx.moveCall({
-      target: `${config.package}::lending::flash_loan_with_ctx_v2`,
-      arguments: [
-        tx.object(config.flashloanConfig),
-        tx.object(pool.contract.pool),
-        parseTxValue(amount, tx.pure.u64),
-        tx.object('0x05')
-      ],
-      typeArguments: [pool.suiCoinType]
-    })
-
-    return [balance, receipt]
+    if (asset.chargedBy && asset.chargedBy.type === 'address' && typeof amount === 'number') {
+      const floashloanAmount = BigNumber(amount)
+        .multipliedBy(1 + asset.flashloanFee)
+        .integerValue()
+        .toNumber()
+      let [balance, receipt] = tx.moveCall({
+        target: `${config.package}::lending::flash_loan_with_ctx_v2`,
+        arguments: [
+          tx.object(config.flashloanConfig),
+          tx.object(pool.contract.pool),
+          parseTxValue(floashloanAmount, tx.pure.u64),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      const [balanceCoin] = tx.moveCall({
+        target: '0x2::coin::from_balance',
+        arguments: [balance],
+        typeArguments: [pool.suiCoinType]
+      })
+      const feeCoin = tx.splitCoins(balanceCoin, [tx.pure.u64(floashloanAmount - amount)])
+      tx.transferObjects([feeCoin], asset.chargedBy.address!)
+      const returnBalance = tx.moveCall({
+        target: '0x2::coin::into_balance',
+        arguments: [balanceCoin],
+        typeArguments: [pool.suiCoinType]
+      })
+      return [returnBalance, receipt]
+    } else {
+      const [balance, receipt] = tx.moveCall({
+        target: `${config.package}::lending::flash_loan_with_ctx_v2`,
+        arguments: [
+          tx.object(config.flashloanConfig),
+          tx.object(pool.contract.pool),
+          parseTxValue(amount, tx.pure.u64),
+          tx.object('0x05')
+        ],
+        typeArguments: [pool.suiCoinType]
+      })
+      return [balance, receipt]
+    }
   }
 }
 
