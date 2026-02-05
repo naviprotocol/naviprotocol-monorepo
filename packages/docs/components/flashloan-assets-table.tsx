@@ -52,7 +52,7 @@ export default function FlashloanAssetsTable() {
   }, [])
 
   useEffect(() => {
-    let active = true
+    const active = true
 
     const loadPools = async () => {
       try {
@@ -77,13 +77,6 @@ export default function FlashloanAssetsTable() {
     }
 
     loadPools()
-    run()
-    const timer = setInterval(run, REFRESH_INTERVAL_MS)
-
-    return () => {
-      active = false
-      clearInterval(timer)
-    }
   }, [campaign, loadAssets])
 
   const rows = useMemo(() => {
@@ -145,14 +138,14 @@ export default function FlashloanAssetsTable() {
           </label>
           <button
             type="button"
-            className="rounded-md border border-neutral-200 bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800"
+            className="rounded-md border cursor-pointer border-neutral-200 bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800"
             onClick={handleApply}
           >
             Apply
           </button>
           <button
             type="button"
-            className="rounded-md border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+            className="rounded-md border cursor-pointer border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
             onClick={handleClear}
           >
             Reset
