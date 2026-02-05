@@ -1,8 +1,10 @@
 'use client'
 
-import { getAllFlashLoanAssets } from '@naviprotocol/lending'
-import type { FloashloanAsset } from '@naviprotocol/lending'
+import { getAllFlashLoanAssets, getPools, normalizeCoinType } from '@naviprotocol/lending'
+import type { FloashloanAsset, Pool } from '@naviprotocol/lending'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+const REFRESH_INTERVAL_MS = 15000
 
 function formatCoinType(coinType: string) {
   const parts = coinType.split('::')
@@ -20,6 +22,7 @@ function formatFee(fee: number) {
 
 export default function FlashloanAssetsTable() {
   const [assets, setAssets] = useState<FloashloanAsset[]>([])
+  const [poolMap, setPoolMap] = useState<Map<string, Pool>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [campaignInput, setCampaignInput] = useState('')
@@ -49,27 +52,57 @@ export default function FlashloanAssetsTable() {
   }, [])
 
   useEffect(() => {
-    const active = true
+    let active = true
+
+    const loadPools = async () => {
+      try {
+        const pools = await getPools({ env: 'prod', cacheTime: 60000 })
+        if (!active) return
+        const map = new Map<string, Pool>()
+        pools.forEach((pool) => {
+          map.set(normalizeCoinType(pool.suiCoinType), pool)
+          map.set(normalizeCoinType(pool.coinType), pool)
+          map.set(normalizeCoinType(pool.token.coinType), pool)
+        })
+        setPoolMap(map)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load pool data'
+        setError(message)
+      }
+    }
 
     const run = async () => {
       if (!active) return
       await loadAssets(campaign)
     }
 
+    loadPools()
     run()
+    const timer = setInterval(run, REFRESH_INTERVAL_MS)
+
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
   }, [campaign, loadAssets])
 
   const rows = useMemo(() => {
     return assets.map((asset) => {
+      const normalizedCoinType = normalizeCoinType(asset.coinType)
+      const pool = poolMap.get(normalizedCoinType)
+      const tokenSymbol = pool?.token.symbol ?? formatCoinType(asset.coinType).symbol
+      const tokenName = tokenSymbol
+      const tokenLogo = pool?.token.logoUri ?? ''
       const { symbol, full } = formatCoinType(asset.coinType)
       return {
         symbol,
+        tokenName,
+        tokenLogo,
         full,
         flashloanFee: formatFee(asset.flashloanFee)
-        // chargedBy: asset.chargedBy?.type ?? 'contract'
       }
     })
-  }, [assets])
+  }, [assets, poolMap])
 
   const handleApply = () => {
     const trimmed = campaignInput.trim()
@@ -86,10 +119,18 @@ export default function FlashloanAssetsTable() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-neutral-800">Live Flashloan Fees</p>
-          <p className="text-xs text-neutral-500">{campaignLabel}</p>
+          <p className="text-xs text-neutral-500">
+            Auto refresh every 15 seconds · {campaignLabel}
+          </p>
+          {lastUpdated ? (
+            <p className="text-xs text-neutral-400">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-neutral-500">
+            Campaign
             <input
               className="mt-1 w-44 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-800"
               placeholder="campaign-id"
@@ -115,13 +156,6 @@ export default function FlashloanAssetsTable() {
             onClick={handleClear}
           >
             Reset
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
-            onClick={() => loadAssets(campaign)}
-          >
-            Refresh
           </button>
         </div>
       </div>
@@ -157,7 +191,27 @@ export default function FlashloanAssetsTable() {
             ) : (
               rows.map((row) => (
                 <tr key={row.full} className="hover:bg-neutral-50">
-                  <td className="px-4 py-3 font-semibold text-neutral-900">{row.symbol}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {row.tokenLogo ? (
+                        <img
+                          src={row.tokenLogo}
+                          alt={row.tokenName}
+                          className="h-6 w-6 rounded-full border border-neutral-200 object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-300 text-[10px] font-semibold text-neutral-400">
+                          {row.symbol.slice(0, 2)}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-neutral-900">
+                          {row.tokenName}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-xs text-neutral-500">{row.full}</td>
                   <td className="px-4 py-3 text-neutral-900">{row.flashloanFee}</td>
                 </tr>
