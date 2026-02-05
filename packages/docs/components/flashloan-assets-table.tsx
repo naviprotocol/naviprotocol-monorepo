@@ -77,6 +77,7 @@ export default function FlashloanAssetsTable() {
     }
 
     loadPools()
+    run()
   }, [campaign, loadAssets])
 
   const rows = useMemo(() => {
@@ -108,17 +109,18 @@ export default function FlashloanAssetsTable() {
   }
 
   return (
-    <div className="not-prose rounded-xl border border-neutral-200 bg-white/60 p-4 shadow-sm backdrop-blur">
+    <div className="not-prose rounded-xl border border-neutral-200 bg-white/60 p-4 shadow-sm backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/60">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-neutral-800">Live Flashloan Fees</p>
-          <p className="text-xs text-neutral-500">{campaignLabel}</p>
+          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+            Live Flashloan Fees
+          </p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">{campaignLabel}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-neutral-500">
-            Campaign
+          <label className="text-xs text-neutral-500 dark:text-neutral-400">
             <input
-              className="mt-1 w-44 rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-800"
+              className="mt-1 w-44 rounded-md border border-neutral-200 bg-white px-2 py-1 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500"
               placeholder="campaign-id"
               value={campaignInput}
               onChange={(event) => setCampaignInput(event.target.value)}
@@ -131,14 +133,14 @@ export default function FlashloanAssetsTable() {
           </label>
           <button
             type="button"
-            className="rounded-md border cursor-pointer border-neutral-200 bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800"
+            className="rounded-md border cursor-pointer border-neutral-200 bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:border-neutral-600 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
             onClick={handleApply}
           >
             Apply
           </button>
           <button
             type="button"
-            className="rounded-md border cursor-pointer border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+            className="rounded-md border cursor-pointer border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             onClick={handleClear}
           >
             Reset
@@ -146,60 +148,64 @@ export default function FlashloanAssetsTable() {
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 max-h-[500px] overflow-y-auto">
+      <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 max-h-[500px] overflow-y-auto dark:border-neutral-700">
         <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-100 text-xs uppercase text-neutral-500">
+          <thead className="bg-neutral-100 text-xs uppercase text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
             <tr>
               <th className="px-4 py-2">Token</th>
               <th className="px-4 py-2">Coin Type</th>
               <th className="px-4 py-2">Fee</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">
+          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700">
             {isLoading ? (
               <tr>
-                <td className="px-4 py-3 text-neutral-500" colSpan={4}>
+                <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400" colSpan={4}>
                   Loading supported assets...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td className="px-4 py-3 text-red-500" colSpan={4}>
+                <td className="px-4 py-3 text-red-500 dark:text-red-400" colSpan={4}>
                   {error}
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-3 text-neutral-500" colSpan={4}>
+                <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400" colSpan={4}>
                   No flashloan assets found for this campaign.
                 </td>
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.full} className="hover:bg-neutral-50">
+                <tr key={row.full} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {row.tokenLogo ? (
                         <img
                           src={row.tokenLogo}
                           alt={row.tokenName}
-                          className="h-6 w-6 rounded-full border border-neutral-200 object-cover"
+                          className="h-6 w-6 rounded-full border border-neutral-200 object-cover dark:border-neutral-600"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-300 text-[10px] font-semibold text-neutral-400">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-300 text-[10px] font-semibold text-neutral-400 dark:border-neutral-600 dark:text-neutral-500">
                           {row.symbol.slice(0, 2)}
                         </div>
                       )}
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-900">
+                        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                           {row.tokenName}
                         </span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-neutral-500">{row.full}</td>
-                  <td className="px-4 py-3 text-neutral-900">{row.flashloanFee}</td>
+                  <td className="px-4 py-3 text-xs text-neutral-500 dark:text-neutral-400">
+                    {row.full}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-900 dark:text-neutral-100">
+                    {row.flashloanFee}
+                  </td>
                 </tr>
               ))
             )}
