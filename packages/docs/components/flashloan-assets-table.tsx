@@ -112,14 +112,7 @@ export default function FlashloanAssetsTable() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-neutral-800">Live Flashloan Fees</p>
-          <p className="text-xs text-neutral-500">
-            Auto refresh every 15 seconds · {campaignLabel}
-          </p>
-          {lastUpdated ? (
-            <p className="text-xs text-neutral-400">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-          ) : null}
+          <p className="text-xs text-neutral-500">{campaignLabel}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-neutral-500">
