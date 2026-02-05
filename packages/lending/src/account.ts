@@ -502,7 +502,7 @@ export const getLendingPositions = withCache(
           })
           .map((emodeCap) => {
             return {
-              address,
+              address: emodeCap.accountCap,
               market: getMarketConfig(emodeCap.marketId).key,
               emodeId: emodeCap.emodeId
             }
@@ -611,7 +611,9 @@ export class UserPositions {
     totalsupplyApy: '0',
     totalBorrowApy: '0',
     maxLiquidationValue: '0',
-    maxLoanToVaule: '0'
+    maxLoanToVaule: '0',
+    supply: {} as Record<string, string>,
+    borrow: {} as Record<string, string>
   }
 
   get positions() {
@@ -789,6 +791,8 @@ export class UserPositions {
   }
 
   getPositionsOverview(positions: LendingPosition[]) {
+    const supply = {} as Record<string, string>
+    const borrow = {} as Record<string, string>
     let totalSupplyValue = new BigNumber(0)
     let totalBorrowValue = new BigNumber(0)
     let totalsupplyApy = new BigNumber(0)
@@ -830,6 +834,9 @@ export class UserPositions {
             .dividedBy(totalSupplyValue)
             .multipliedBy(new BigNumber(apy).dividedBy(100))
         )
+        supply[data.pool.suiCoinType] = BigNumber(supply[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
       } else if (position.type === 'navi-lending-borrow') {
         const data = position['navi-lending-borrow']!
         const apy = data.pool.borrowIncentiveApyInfo.apy
@@ -840,6 +847,9 @@ export class UserPositions {
               .multipliedBy(new BigNumber(apy).dividedBy(100))
           )
         }
+        borrow[data.pool.suiCoinType] = BigNumber(borrow[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
       } else if (position.type === 'navi-lending-emode-supply') {
         const data = position['navi-lending-emode-supply']!
         const apy = data.pool.supplyIncentiveApyInfo.apy
@@ -850,6 +860,9 @@ export class UserPositions {
               .multipliedBy(new BigNumber(apy).dividedBy(100))
           )
         }
+        supply[data.pool.suiCoinType] = BigNumber(supply[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
       } else if (position.type === 'navi-lending-emode-borrow') {
         const data = position['navi-lending-emode-borrow']!
         const apy = data.pool.borrowIncentiveApyInfo.apy
@@ -860,6 +873,9 @@ export class UserPositions {
               .multipliedBy(new BigNumber(apy).dividedBy(100))
           )
         }
+        borrow[data.pool.suiCoinType] = BigNumber(borrow[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
       }
     })
 
@@ -884,7 +900,9 @@ export class UserPositions {
       totalsupplyApy: totalsupplyApy.toString(),
       totalBorrowApy: totalBorrowApy.toString(),
       maxLiquidationValue: maxLiquidationValue.toString(),
-      maxLoanToVaule: maxLoanToVaule.toString()
+      maxLoanToVaule: maxLoanToVaule.toString(),
+      supply,
+      borrow
     }
   }
 }

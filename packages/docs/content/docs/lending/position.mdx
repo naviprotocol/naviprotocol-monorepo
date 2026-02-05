@@ -218,6 +218,23 @@ userPositions.repay(pool, 100) // Repay 100 tokens
 - `pool`: Pool or EModePool object
 - `amount`: Amount to repay (in token decimals)
 
+#### findPositionsByPool
+
+Find positions by pool and operation type.
+
+```typescript
+const supplyPositions = userPositions.findPositionsByPool(pool, true) // Find supply positions
+const borrowPositions = userPositions.findPositionsByPool(pool, false) // Find borrow positions
+```
+
+**Parameters**
+- `pool`: Pool or EModePool object
+- `isSupply`: Whether to find supply positions (true) or borrow positions (false)
+
+**Returns**
+
+Returns an array of `LendingPosition[]` matching the criteria.
+
 ## Type Definitions
 
 ### LendingPosition

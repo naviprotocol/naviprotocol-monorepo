@@ -6,6 +6,7 @@ import {
   getUserEModeCaps,
   emodeIdentityId
 } from '../src/emode'
+import { getLendingPositions } from '../src'
 import { depositCoinPTB, getAccountCapOwnerPTB } from '../src'
 import { getPools, createAccountCapPTB } from '../src'
 import { Transaction } from '@mysten/sui/transactions'
@@ -145,7 +146,7 @@ describe('createEModeCapPTB', () => {
   it('should create emode cap transaction', async () => {
     const tx = new Transaction()
     const accountCap = await createEModeCapPTB(tx, testEmodeId, options)
-    tx.transferObjects([accountCap], testAddress)
+
     await depositCoinPTB(
       tx,
       0,
@@ -155,6 +156,8 @@ describe('createEModeCapPTB', () => {
         accountCap: accountCap
       }
     )
+
+    tx.transferObjects([accountCap], testAddress)
 
     tx.setSender(testAddress)
     const dryRunTxBytes: Uint8Array = await tx.build({
