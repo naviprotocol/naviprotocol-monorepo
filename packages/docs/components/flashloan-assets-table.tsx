@@ -23,24 +23,17 @@ export default function FlashloanAssetsTable() {
   const [poolMap, setPoolMap] = useState<Map<string, Pool>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [campaignInput, setCampaignInput] = useState('')
-  const [campaign, setCampaign] = useState<string | undefined>(undefined)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const campaignLabel = campaign ? `campaign: ${campaign}` : 'default'
-
-  const loadAssets = useCallback(async (nextCampaign?: string) => {
+  const loadAssets = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
     try {
       const data = await getAllFlashLoanAssets({
         env: 'prod',
-        campaign: nextCampaign,
         cacheTime: 10000
       } as any)
       setAssets(data)
-      setLastUpdated(new Date())
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load flashloan assets'
       setError(message)
@@ -71,12 +64,12 @@ export default function FlashloanAssetsTable() {
 
     const run = async () => {
       if (!active) return
-      await loadAssets(campaign)
+      await loadAssets()
     }
 
     loadPools()
     run()
-  }, [campaign, loadAssets])
+  }, [loadAssets])
 
   const rows = useMemo(() => {
     return assets.map((asset) => {
@@ -96,54 +89,12 @@ export default function FlashloanAssetsTable() {
     })
   }, [assets, poolMap])
 
-  const handleApply = () => {
-    const trimmed = campaignInput.trim()
-    setCampaign(trimmed.length > 0 ? trimmed : undefined)
-  }
-
-  const handleClear = () => {
-    setCampaignInput('')
-    setCampaign(undefined)
-  }
-
   return (
     <div className="not-prose rounded-xl border border-neutral-200 bg-white/60 p-4 shadow-sm backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/60">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-            Live Flashloan Fees
-          </p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">{campaignLabel}</p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-neutral-500 dark:text-neutral-400">
-            <input
-              className="mt-1 w-44 rounded-md border border-neutral-200 bg-white px-2 py-1 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500"
-              placeholder="campaign-id"
-              value={campaignInput}
-              onChange={(event) => setCampaignInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  handleApply()
-                }
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            className="rounded-md border cursor-pointer border-neutral-200 bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:border-neutral-600 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
-            onClick={handleApply}
-          >
-            Apply
-          </button>
-          <button
-            type="button"
-            className="rounded-md border cursor-pointer border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-            onClick={handleClear}
-          >
-            Reset
-          </button>
-        </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+          Live Flashloan Fees
+        </p>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 max-h-[500px] overflow-y-auto dark:border-neutral-700">
@@ -171,7 +122,7 @@ export default function FlashloanAssetsTable() {
             ) : rows.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400" colSpan={4}>
-                  No flashloan assets found for this campaign.
+                  No flashloan assets found.
                 </td>
               </tr>
             ) : (
