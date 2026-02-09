@@ -21,7 +21,8 @@ import type {
   MarketOption,
   LendingPosition,
   MarketsOption,
-  EModePool
+  EModePool,
+  EModeCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo } from './bcs'
@@ -486,7 +487,13 @@ export const getLendingPositions = withCache(
       return getMarketConfig(item)
     })
 
-    const emodeCaps = await getUserEModeCaps(address, options)
+    let emodeCaps: EModeCap[] = []
+
+    try {
+      emodeCaps = await getUserEModeCaps(address, options)
+    } catch (e) {
+      console.error(e)
+    }
 
     const tasks = markets
       .map((market) => {
@@ -524,7 +531,7 @@ export const getLendingPositions = withCache(
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
           positions.push({
-            id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply`,
+            id: `${address}_${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply`,
             wallet: address,
             protocol: 'navi',
             market: lendingState.market,
@@ -563,7 +570,7 @@ export const getLendingPositions = withCache(
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
           positions.push({
-            id: `${lendingState.pool.uniqueId}_navi-lending-supply`,
+            id: `${address}_${lendingState.pool.uniqueId}_navi-lending-supply`,
             wallet: address,
             protocol: 'navi',
             type: 'navi-lending-supply',
