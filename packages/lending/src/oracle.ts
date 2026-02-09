@@ -7,10 +7,20 @@
  */
 
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
-import type { OraclePriceFeed, EnvOption, UserLendingInfo, Pool, SuiClientOption } from './types'
+import type {
+  OraclePriceFeed,
+  EnvOption,
+  UserLendingInfo,
+  Pool,
+  SuiClientOption,
+  MarketOption,
+  LendingPosition
+} from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from './utils'
+import { getPools } from './pool'
+import { getLendingPositions } from './account'
 
 /**
  * Pyth Network connection for price feed data
@@ -75,7 +85,7 @@ export async function getPythStalePriceFeedId(priceIds: string[]): Promise<strin
 export async function updatePythPriceFeeds(
   tx: Transaction,
   priceFeedIds: string[],
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ) {
   const client = options?.client ?? suiClient
   const config = await getConfig({
@@ -112,9 +122,10 @@ export async function updateOraclePricesPTB(
   tx: Transaction,
   priceFeeds: OraclePriceFeed[],
   options?: Partial<
-    EnvOption & {
-      updatePythPriceFeeds?: boolean
-    }
+    EnvOption &
+      MarketOption & {
+        updatePythPriceFeeds?: boolean
+      }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -139,13 +150,14 @@ export async function updateOraclePricesPTB(
   // Update individual price feeds in the oracle contract
   for (const priceFeed of priceFeeds) {
     tx.moveCall({
-      target: `${config.oracle.packageId}::oracle_pro::update_single_price`,
+      target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
       arguments: [
         tx.object('0x6'), // Clock object
         tx.object(config.oracle.oracleConfig), // Oracle configuration
         tx.object(config.oracle.priceOracle), // Price oracle contract
         tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
         tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
+        tx.object(config.oracle.switchboardAggregator),
         tx.pure.address(priceFeed.feedId) // Price feed ID
       ]
     })
@@ -182,6 +194,7 @@ export function filterPriceFeeds(
   filters: {
     lendingState?: UserLendingInfo[]
     pools?: Pool[]
+    lendingPositions?: LendingPosition[]
   }
 ): OraclePriceFeed[] {
   return feeds.filter((feed) => {
@@ -191,6 +204,25 @@ export function filterPriceFeeds(
         return state.assetId === feed.assetId
       })
       if (inState) {
+        return true
+      }
+    }
+
+    if (filters?.lendingPositions) {
+      const inPosition = filters.lendingPositions.find((position) => {
+        const availableTypes = [
+          'navi-lending-supply',
+          'navi-lending-borrow',
+          'navi-lending-emode-supply',
+          'navi-lending-emode-borrow'
+        ]
+        if (!availableTypes.includes(position.type)) {
+          return false
+        }
+        const pool = position[position.type]?.pool
+        return pool?.id === feed.assetId
+      })
+      if (inPosition) {
         return true
       }
     }
@@ -206,4 +238,53 @@ export function filterPriceFeeds(
     }
     return false
   })
+}
+
+export async function updateOraclePriceBeforeUserOperationPTB(
+  tx: Transaction,
+  address: string,
+  pools: Pool[],
+  options?: Partial<
+    EnvOption &
+      SuiClientOption &
+      MarketOption & {
+        throws?: boolean
+      }
+  >
+) {
+  try {
+    const allPriceFeeds = await getPriceFeeds({
+      ...options
+    })
+
+    const markets = [] as string[]
+
+    pools.forEach((pool) => {
+      if (!markets.includes(pool.market)) {
+        markets.push(pool.market)
+      }
+    })
+
+    const lendingPositions = await getLendingPositions(address, {
+      ...options,
+      markets
+    })
+
+    const relevantFeeds = filterPriceFeeds(allPriceFeeds, {
+      lendingPositions,
+      pools
+    })
+
+    const updatedTx = await updateOraclePricesPTB(tx, relevantFeeds, {
+      updatePythPriceFeeds: true,
+      ...options
+    })
+    return updatedTx
+  } catch (e) {
+    if (options?.throws) {
+      throw e
+    }
+    console.error(e)
+    return tx
+  }
 }

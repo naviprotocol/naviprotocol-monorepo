@@ -20,7 +20,10 @@ import type {
   TransactionResult,
   AccountCapOption,
   BorrowFeeOption,
-  SuiClientOption
+  SuiClientOption,
+  MarketOption,
+  EMode,
+  MarketsOption
 } from './types'
 import {
   normalizeCoinType,
@@ -28,12 +31,15 @@ import {
   withSingleton,
   parseTxValue,
   suiClient,
-  requestHeaders
+  requestHeaders,
+  parsePoolUID
 } from './utils'
 import { Transaction } from '@mysten/sui/transactions'
+import BigNumber from 'bignumber.js'
 import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import packageJson from '../package.json'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
 
 /**
  * Enumeration of pool operations
@@ -62,11 +68,75 @@ export enum PoolOperator {
  * @returns Promise<Pool[]> - Array of all available lending pools
  */
 export const getPools = withCache(
-  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<Pool[]> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
-    return res.data
-  })
+  withSingleton(
+    async (options?: Partial<EnvOption & CacheOption & MarketsOption>): Promise<Pool[]> => {
+      const markets = (options?.markets || [MARKETS.main]).map((identity) => {
+        return getMarketConfig(identity)
+      })
+      const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
+        (market) => {
+          return market.key
+        }
+      )}`
+      const res: {
+        data: Pool[]
+        meta: {
+          emodes: EMode[]
+        }
+      } = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+
+      res.data.forEach((pool) => {
+        const filterEmodes = res.meta.emodes.filter((emode) => {
+          const market = getMarketConfig(emode.marketId)
+          return pool.market === market.key && emode.isActive
+        })
+        const emodes = filterEmodes.filter((emode) => {
+          return !!emode.assets.find((asset) => asset.assetId === pool.id)
+        })
+        pool.emodes = emodes
+        const poolSupplyAmount = BigNumber(pool.totalSupplyAmount)
+          .div(Math.pow(10, 9))
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolBorrowAmount = BigNumber(pool.borrowedAmount)
+          .shiftedBy(-9)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolSupplyValue = BigNumber(poolSupplyAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolBorrowValue = BigNumber(poolBorrowAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolSupplyCapAmount = BigNumber(pool.supplyCapCeiling)
+          .shiftedBy(-27)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolBorrowCapAmount = BigNumber.max(
+          BigNumber(pool.borrowedAmount),
+          BigNumber(pool.validBorrowAmount)
+        )
+          .shiftedBy(-9)
+          .decimalPlaces(pool.token.decimals, BigNumber.ROUND_DOWN)
+          .toString()
+        const poolSupplyCapValue = BigNumber(poolSupplyCapAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        const poolBorrowCapValue = BigNumber(poolBorrowCapAmount)
+          .multipliedBy(pool.oracle.price)
+          .toString()
+        pool.poolSupplyAmount = poolSupplyAmount
+        pool.poolBorrowAmount = poolBorrowAmount
+        pool.poolSupplyValue = poolSupplyValue
+        pool.poolBorrowValue = poolBorrowValue
+        pool.poolSupplyCapAmount = poolSupplyCapAmount
+        pool.poolBorrowCapAmount = poolBorrowCapAmount
+        pool.poolSupplyCapValue = poolSupplyCapValue
+        pool.poolBorrowCapValue = poolBorrowCapValue
+      })
+      return res.data
+    }
+  )
 )
 
 /**
@@ -84,10 +154,19 @@ export const getPools = withCache(
  */
 export async function getPool(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ): Promise<Pool> {
+  let market = options?.market
+  if (typeof identifier === 'string') {
+    const parsedUID = parsePoolUID(identifier)
+    if (parsedUID) {
+      market = parsedUID.marketKey
+      identifier = parsedUID.poolId
+    }
+  }
   const pools = await getPools({
     ...options,
+    markets: [market || DEFAULT_MARKET_IDENTITY],
     cacheTime: DEFAULT_CACHE_TIME
   })
 
@@ -191,7 +270,8 @@ export async function depositCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption & {
+      AccountCapOption &
+      MarketOption & {
         amount: number | TransactionResult
       }
   >
@@ -263,7 +343,7 @@ export async function depositCoinPTB(
   }
 
   // refresh stake for sui pool to balance the stake after deposit
-  if (config.version === 2 && pool.id === 0) {
+  if (config.version === 2 && pool.id === 0 && (!options?.env || options?.env === 'prod')) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
       arguments: [tx.object(pool.contract.pool), tx.object('0x05')]
@@ -289,7 +369,7 @@ export async function withdrawCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption>
+  options?: Partial<EnvOption & AccountCapOption & MarketOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -390,7 +470,7 @@ export async function borrowCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption>
+  options?: Partial<EnvOption & AccountCapOption & MarketOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -517,7 +597,8 @@ export async function repayCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption & {
+      AccountCapOption &
+      MarketOption & {
         amount: number | TransactionResult
       }
   >
@@ -612,7 +693,7 @@ export async function repayCoinPTB(
 export const getBorrowFee = withCache(
   withSingleton(
     async (
-      options?: Partial<EnvOption & CacheOption & BorrowFeeOption & SuiClientOption>
+      options?: Partial<EnvOption & CacheOption & BorrowFeeOption & SuiClientOption & MarketOption>
     ): Promise<number> => {
       const config = await getConfig({
         ...options

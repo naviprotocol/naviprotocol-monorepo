@@ -1,0 +1,343 @@
+---
+title: Market
+---
+
+The Market module provides management functionality for different markets in the NAVI lending protocol. Each market contains multiple pools and EMode configurations, allowing independent management of different asset categories.
+
+## Core Concepts
+
+### Market Structure
+
+- **Market Config**: Market configuration information, including ID, key, and name
+- **Pools**: All lending pools in the market
+- **EModes**: All EMode configurations in the market
+- **Overview**: Market overview information, including total supply value and total borrow value
+
+### Market Identifiers
+
+Markets can be identified by:
+- Numeric ID (e.g., `0`)
+- String key (e.g., `'main'`)
+- MarketConfig object
+
+## API Reference
+
+### getMarketConfig
+
+Get market configuration information. See [documentation](/typedoc/functions/_naviprotocol_lending.getMarketConfig.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getMarketConfig } from '@naviprotocol/lending'
+
+// Get by string key
+const configByKey = getMarketConfig('main')
+
+// Get by numeric ID
+const configById = getMarketConfig(0)
+
+// Get by MarketConfig object
+const configByObject = getMarketConfig({ id: 0, key: 'main', name: 'Main Market' })
+```
+
+**Return Example**
+
+```json
+{
+  "id": 0,
+  "key": "main",
+  "name": "Main Market"
+}
+```
+
+**Parameters**
+
+- `marketIdentity`: Market identifier (number, string, or MarketConfig object)
+
+**Returns**
+
+Returns a `MarketConfig` object containing:
+- `id`: Market ID
+- `key`: Market key
+- `name`: Market name
+
+### getMarket
+
+Get complete information for a single market, including all pools and EMode configurations. See [documentation](/typedoc/variables/_naviprotocol_lending.getMarket.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getMarket } from '@naviprotocol/lending'
+
+// Get market by string key
+const market = await getMarket('main', {
+  env: 'prod', // Optional: environment configuration
+  cacheTime: 30000 // Optional: cache time
+})
+
+// Get market by numeric ID
+const marketById = await getMarket(0, {
+  env: 'prod'
+})
+```
+
+**Return Example**
+
+```json
+{
+  "config": {
+    "id": 0,
+    "key": "main",
+    "name": "Main Market"
+  },
+  "pools": [...],
+  "emodes": [...],
+  "overview": {
+    "marketTotalSupplyValue": "783569131.844162",
+    "marketTotalBorrowValue": "210513450.154468"
+  }
+}
+```
+
+**Parameters**
+
+- `market`: Market identifier (number, string, or MarketConfig object)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+**Returns**
+
+Returns a `Market` instance containing:
+- `config`: Market configuration
+- `pools`: Array of pools
+- `emodes`: Array of EMode configurations
+- `overview`: Market overview information
+
+### getMarkets
+
+Get complete information for multiple markets. See [documentation](/typedoc/variables/_naviprotocol_lending.getMarkets.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getMarkets } from '@naviprotocol/lending'
+
+// Get multiple markets
+const markets = await getMarkets(['main'], {
+  env: 'prod', // Optional: environment configuration
+  cacheTime: 30000 // Optional: cache time
+})
+
+// Use different identifiers
+const marketsMixed = await getMarkets([0, 'main'], {
+  env: 'prod'
+})
+```
+
+**Return Example**
+
+```json
+[
+  {
+    "config": {
+      "id": 0,
+      "key": "main",
+      "name": "Main Market"
+    },
+    "pools": [...],
+    "emodes": [...],
+    "overview": {
+      "marketTotalSupplyValue": "783569131.844162",
+      "marketTotalBorrowValue": "210513450.154468"
+    }
+  }
+]
+```
+
+**Parameters**
+
+- `markets`: Array of market identifiers
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+**Returns**
+
+Returns an array of `Market[]`.
+
+### Market Class
+
+The Market class provides methods for market instance operations.
+
+#### Constructor
+
+```typescript
+const market = new Market('main', pools)
+```
+
+**Parameters**
+
+- `marketIdentity`: Market identifier
+- `pools`: Array of pools
+
+#### addPools
+
+Add pools to the market.
+
+```typescript
+market.addPools(newPools)
+```
+
+**Parameters**
+
+- `pools`: Array of pools to add
+
+#### getEMode
+
+Get EMode by EModeIdentity.
+
+```typescript
+const emode = market.getEMode({
+  emodeId: 1,
+  marketId: 0
+})
+```
+
+**Parameters**
+
+- `emodeIdentity`: EModeIdentity object
+
+**Returns**
+
+Returns an `EMode` object, or `null` if not found.
+
+#### getEModePools
+
+Get all pools for a specific EMode.
+
+```typescript
+const emodePools = market.getEModePools({
+  emodeId: 1,
+  marketId: 0
+})
+```
+
+**Parameters**
+
+- `emodeIdentity`: EModeIdentity object
+
+**Returns**
+
+Returns an array of `EModePool[]`, where each pool contains `emode` and `isEMode: true` properties.
+
+#### overview
+
+Get market overview information.
+
+```typescript
+const overview = market.overview
+// {
+//   marketTotalSupplyValue: "783569131.844162",
+//   marketTotalBorrowValue: "210513450.154468"
+// }
+```
+
+### MARKETS
+
+Predefined market constants.
+
+```typescript
+import { MARKETS } from '@naviprotocol/lending'
+
+// Access main market
+const mainMarket = MARKETS.main
+// {
+//   id: 0,
+//   key: 'main',
+//   name: 'Main Market'
+// }
+```
+
+### DEFAULT_MARKET_IDENTITY
+
+Default market identifier.
+
+```typescript
+import { DEFAULT_MARKET_IDENTITY } from '@naviprotocol/lending'
+
+// Value is 'main'
+```
+
+## Type Definitions
+
+### MarketConfig
+
+```typescript
+type MarketConfig = {
+  id: number
+  key: string
+  name: string
+}
+```
+
+### MarketIdentity
+
+```typescript
+type MarketIdentity = number | string | MarketConfig
+```
+
+### EModePool
+
+```typescript
+type EModePool = Pool & {
+  emode: EMode
+  isEMode: boolean
+}
+```
+
+## Usage Scenarios
+
+### Get Market Overview
+
+```typescript
+import { getMarket } from '@naviprotocol/lending'
+
+const market = await getMarket('main')
+console.log('Total Supply Value:', market.overview.marketTotalSupplyValue)
+console.log('Total Borrow Value:', market.overview.marketTotalBorrowValue)
+```
+
+### Find EMode Related Pools
+
+```typescript
+import { getMarket } from '@naviprotocol/lending'
+
+const market = await getMarket('main')
+const emodePools = market.getEModePools({
+  emodeId: 1,
+  marketId: 0
+})
+
+emodePools.forEach(pool => {
+  console.log('Pool:', pool.token.symbol)
+  console.log('EMode LTV:', pool.emode.assets.find(a => a.assetId === pool.id)?.ltv)
+})
+```
+
+### Batch Get Multiple Markets
+
+```typescript
+import { getMarkets } from '@naviprotocol/lending'
+
+const markets = await getMarkets(['main'])
+markets.forEach(market => {
+  console.log(`Market ${market.config.name}:`)
+  console.log(`  Pool count: ${market.pools.length}`)
+  console.log(`  EMode count: ${market.emodes.length}`)
+})
+```

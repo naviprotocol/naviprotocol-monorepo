@@ -17,16 +17,30 @@ The pool operations module provides comprehensive lending functionality, includi
 
 ### getPools
 
-Get information for all available lending pools. See [documentation](/typedoc/variables/_naviprotocol_lending.getPools.html) for details.
+Get information for all available lending pools. You can filter pools by market(s). See [documentation](/typedoc/variables/_naviprotocol_lending.getPools.html) for details.
 
 **Usage Example**
 
 ```typescript
 import { getPools } from '@naviprotocol/lending'
 
+// Get all pools from all markets
 const pools = await getPools({
   env: 'prod', // Optional: environment configuration
   cacheTime: 30000 // Optional: cache time
+})
+
+// Get pools from specific market(s)
+const mainMarketPools = await getPools({
+  markets: ['main'], // Optional: filter by market(s)
+  env: 'prod',
+  cacheTime: 30000
+})
+
+// Get pools from multiple markets
+const multipleMarketPools = await getPools({
+  markets: ['main', 0], // Can use string or number identifiers
+  env: 'prod'
 })
 ```
 
@@ -42,9 +56,11 @@ const pools = await getPools({
     "currentSupplyIndex": "1000001102786832645895049380",
     "currentSupplyRate": "78340321505350785743471",
     "id": 26,
+    "uniqueId": "main-26",
     "isIsolated": false,
     "lastUpdateTimestamp": "1753430822702",
     "ltv": "600000000000000000000000000",
+    "ltvValue": 0.6,
     "oracleId": 26,
     "supplyCapCeiling": "5e+29",
     "treasuryBalance": "3518",
@@ -109,7 +125,34 @@ const pools = await getPools({
       "voloApy": "0",
       "stakingYieldApy": "0",
       "treasuryApy": "0"
-    }
+    },
+    "market": "main",
+    "emodes": [
+      {
+        "emodeId": 1,
+        "marketId": 0,
+        "isActive": true,
+        "uniqueId": "main-1",
+        "assets": [
+          {
+            "assetId": 26,
+            "ltv": 0.9,
+            "lt": 0.95,
+            "bonus": 0,
+            "isCollateral": true,
+            "isDebt": true
+          }
+        ]
+      }
+    ],
+    "poolSupplyAmount": "3620.93101737",
+    "poolSupplyValue": "418123456.78",
+    "poolSupplyCapAmount": "5000000",
+    "poolSupplyCapValue": "577666250000",
+    "poolBorrowAmount": "85.65425673",
+    "poolBorrowValue": "9887654.32",
+    "poolBorrowCapAmount": "108627.9305211",
+    "poolBorrowCapValue": "12543210987.65"
   }
 ]
 ```
@@ -131,6 +174,11 @@ const poolById = await getPool(19)
 
 // Get pool information by pool object
 const poolByObject = await getPool(poolByType)
+
+// Get pool from specific market
+const poolFromMarket = await getPool('0x2::sui::SUI', {
+  market: 'main' // Optional: market identifier
+})
 ```
 
 **Return Example**
@@ -211,7 +259,36 @@ const poolByObject = await getPool(poolByType)
     "voloApy": "0",
     "stakingYieldApy": "0",
     "treasuryApy": "0"
-  }
+  },
+  "uniqueId": "main-0",
+  "ltvValue": 0.75,
+  "market": "main",
+  "emodes": [
+    {
+      "emodeId": 1,
+      "marketId": 0,
+      "isActive": true,
+      "uniqueId": "main-1",
+      "assets": [
+        {
+          "assetId": 0,
+          "ltv": 900000000000000000000000000,
+          "lt": 950000000000000000000000000,
+          "bonus": 0,
+          "isCollateral": true,
+          "isDebt": true
+        }
+      ]
+    }
+  ],
+  "poolSupplyAmount": "39071.087342302",
+  "poolSupplyValue": "142857.14",
+  "poolSupplyCapAmount": "55000000000",
+  "poolSupplyCapValue": "201202142500",
+  "poolBorrowAmount": "20883.415846591",
+  "poolBorrowValue": "76400.00",
+  "poolBorrowCapAmount": "31256.869873841",
+  "poolBorrowCapValue": "114400.00"
 }
 ```
 
@@ -308,7 +385,8 @@ const borrowFee = await getBorrowFee({
   asset: 'USDC', // asset identifier
   env: 'prod', // Optional: environment configuration
   client: suiClient, // Optional: Sui client instance for on-chain queries
-  cacheTime: 30000 // Optional: cache expiration time in milliseconds
+  cacheTime: 30000, // Optional: cache expiration time in milliseconds
+  market: 'main' // Optional: market identifier
 })
 ```
 
@@ -423,6 +501,12 @@ await depositCoinPTB(tx, '0x2::sui::SUI', coinObject, {
   accountCap: accountCapObjectId,
   amount: 1000000000
 })
+
+// Deposit operation with market option
+await depositCoinPTB(tx, '0x2::sui::SUI', coinObject, {
+  amount: 1000000000,
+  market: 'main' // Optional: market identifier
+})
 ```
 
 <Callout>
@@ -456,6 +540,11 @@ const withdrawnCoin = await withdrawCoinPTB(
 const withdrawnCoin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
   accountCap: accountCapObjectId
 })
+
+// Withdrawal operation with market option
+const withdrawnCoin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
+  market: 'main' // Optional: market identifier
+})
 ```
 
 <Callout>
@@ -488,6 +577,11 @@ const borrowedCoin = await borrowCoinPTB(
 // Borrowing operation using account cap
 const borrowedCoin = await borrowCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
   accountCap: accountCapObjectId
+})
+
+// Borrowing operation with market option
+const borrowedCoin = await borrowCoinPTB(tx, '0x2::sui::SUI', 1000000000, {
+  market: 'main' // Optional: market identifier
 })
 ```
 
@@ -523,6 +617,12 @@ await repayCoinPTB(
 await repayCoinPTB(tx, '0x2::sui::SUI', coinObject, {
   accountCap: accountCapObjectId,
   amount: 1000000000
+})
+
+// Repayment operation with market option
+await repayCoinPTB(tx, '0x2::sui::SUI', coinObject, {
+  amount: 1000000000,
+  market: 'main' // Optional: market identifier
 })
 ```
 
