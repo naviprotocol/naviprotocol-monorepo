@@ -150,13 +150,14 @@ export async function updateOraclePricesPTB(
   // Update individual price feeds in the oracle contract
   for (const priceFeed of priceFeeds) {
     tx.moveCall({
-      target: `${config.oracle.packageId}::oracle_pro::update_single_price`,
+      target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
       arguments: [
         tx.object('0x6'), // Clock object
         tx.object(config.oracle.oracleConfig), // Oracle configuration
         tx.object(config.oracle.priceOracle), // Price oracle contract
         tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
         tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
+        tx.object(config.oracle.switchboardAggregator),
         tx.pure.address(priceFeed.feedId) // Price feed ID
       ]
     })

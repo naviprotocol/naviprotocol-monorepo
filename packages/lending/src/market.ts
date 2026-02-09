@@ -62,7 +62,7 @@ export class Market {
       if (!poolsMap[pool.uniqueId]) {
         this.pools.push(pool)
       }
-      pool.emodes.forEach((emode) => {
+      pool?.emodes?.forEach((emode) => {
         if (!emodesMap[emode.uniqueId]) {
           this.emodes.push(emode)
         }
