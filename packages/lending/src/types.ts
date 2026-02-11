@@ -429,6 +429,7 @@ export type LendingConfig = {
     gasObject: string
     /** Price feeds */
     feeds: OraclePriceFeed[]
+    switchboardAggregator: string
   }
 }
 
