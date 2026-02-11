@@ -146,7 +146,7 @@ export async function updateOraclePricesPTB(
         tx.object(config.oracle.priceOracle), // Price oracle contract
         tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
         tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
-        tx.object(config.oracle.switchboardAggregator), // Gas object
+        tx.object(config.oracle.switchboardAggregator),
         tx.pure.address(priceFeed.feedId) // Price feed ID
       ]
     })
