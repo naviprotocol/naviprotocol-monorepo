@@ -17,7 +17,12 @@ import type {
   AssetIdentifier,
   TransactionResult,
   CacheOption,
-  AccountCap
+  AccountCap,
+  MarketOption,
+  LendingPosition,
+  MarketsOption,
+  EModePool,
+  EModeCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo } from './bcs'
@@ -33,12 +38,18 @@ import {
   withCache,
   normalizeCoinType,
   rayMathMulIndex,
-  requestHeaders
+  requestHeaders,
+  poolToEModePool,
+  getPoolsMap,
+  uuid
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
-import { getPool, getPools, PoolOperator } from './pool'
+import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
+import { getUserEModeCaps } from './emode'
+import BigNumber from 'bignumber.js'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -135,7 +146,7 @@ export async function getSimulatedHealthFactorPTB(
   estimatedSupply: number | TransactionResult,
   estimatedBorrow: number | TransactionResult,
   isIncrease: boolean | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ): Promise<TransactionResult> {
   const config = await getConfig({
     ...options,
@@ -175,6 +186,86 @@ export async function getHealthFactorPTB(
   return getSimulatedHealthFactorPTB(tx, address, 0, 0, 0, false, options)
 }
 
+async function getLendingStateBatch(
+  address: string,
+  tasks: {
+    address: string
+    market: string
+    emodeId?: number
+  }[],
+  options?: Partial<SuiClientOption & EnvOption & CacheOption>
+): Promise<UserLendingInfo[]> {
+  const tx = new Transaction()
+  const client = options?.client ?? suiClient
+  const pools = await getPools({
+    ...options,
+    markets: Object.values(MARKETS)
+  })
+  const poolsMap = getPoolsMap(pools)
+  for (let task of tasks) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market: task.market
+    })
+    tx.moveCall({
+      target: `${config.uiGetter}::getter_unchecked::get_user_state`,
+      arguments: [tx.object(config.storage), tx.pure.address(task.address)]
+    })
+  }
+
+  const resp = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: address
+  })
+
+  const stateList = (resp.results || []).map((result) => {
+    return (
+      result.returnValues?.map((item) => {
+        return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
+      })[0] || []
+    )
+  }) as {
+    supply_balance: string
+    borrow_balance: string
+    asset_id: number
+  }[][]
+
+  const result = [] as UserLendingInfo[]
+
+  stateList.forEach((states, index) => {
+    const task = tasks[index]
+    const market = getMarketConfig(task.market)
+    states.forEach((state) => {
+      if (state.supply_balance === '0' && state.borrow_balance === '0') {
+        return
+      }
+      const pool = poolsMap[`${market.key}-${state.asset_id}`]
+      if (!pool) {
+        return
+      }
+      const supplyBalance = rayMathMulIndex(
+        state.supply_balance,
+        pool!.currentSupplyIndex
+      ).toString()
+      const borrowBalance = rayMathMulIndex(
+        state.borrow_balance,
+        pool!.currentBorrowIndex
+      ).toString()
+      result.push({
+        supplyBalance,
+        borrowBalance,
+        assetId: state.asset_id,
+        market: market.key,
+        pool,
+        emodeId: task.emodeId
+      })
+    })
+  })
+
+  return result
+}
+
 /**
  * Retrieves the current lending state for a user
  *
@@ -188,67 +279,20 @@ export async function getHealthFactorPTB(
 export const getLendingState = withCache(
   async (
     address: string | AccountCap,
-    options?: Partial<SuiClientOption & EnvOption & CacheOption>
+    options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
   ): Promise<UserLendingInfo[]> => {
-    const config = await getConfig({
-      ...options,
-      cacheTime: DEFAULT_CACHE_TIME
-    })
-    const tx = new Transaction()
-    const client = options?.client ?? suiClient
-
-    const pools = await getPools(options)
-
-    // Create transaction call to get user state
-    tx.moveCall({
-      target: `${config.uiGetter}::getter_unchecked::get_user_state`,
-      arguments: [tx.object(config.storage), tx.pure.address(address!)]
+    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
+      return getMarketConfig(item)
     })
 
-    // Execute dry run to get user state
-    const result = await client.devInspectTransactionBlock({
-      transactionBlock: tx,
-      sender: address
+    const tasks = markets.map((market) => {
+      return {
+        address,
+        market: market.key
+      }
     })
 
-    // Parse the result and filter out zero balances
-    const res = parseDevInspectResult<
-      {
-        supply_balance: string
-        borrow_balance: string
-        asset_id: number
-      }[][]
-    >(result, [bcs.vector(UserStateInfo as any)])
-
-    const lendingStates = camelize(
-      res[0].filter((item) => {
-        return item.supply_balance !== '0' || item.borrow_balance !== '0'
-      })
-    ) as any as {
-      supplyBalance: string
-      borrowBalance: string
-      assetId: number
-    }[]
-
-    return lendingStates
-      .map((lendingState) => {
-        const pool = pools.find((pool) => pool.id === lendingState.assetId)
-        const supplyBalance = rayMathMulIndex(
-          lendingState.supplyBalance,
-          pool!.currentSupplyIndex
-        ).toString()
-        const borrowBalance = rayMathMulIndex(
-          lendingState.borrowBalance,
-          pool!.currentBorrowIndex
-        ).toString()
-        return {
-          ...lendingState,
-          supplyBalance,
-          borrowBalance,
-          pool
-        }
-      })
-      .filter((lendingState) => !!lendingState.pool) as any
+    return await getLendingStateBatch(address, tasks, options)
   }
 )
 
@@ -431,4 +475,482 @@ export async function getCoins(
   } while (cursor)
 
   return allCoinDatas
+}
+
+export const getLendingPositions = withCache(
+  async (
+    address: string,
+    options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
+  ): Promise<LendingPosition[]> => {
+    const positions: LendingPosition[] = []
+    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
+      return getMarketConfig(item)
+    })
+
+    let emodeCaps: EModeCap[] = []
+
+    try {
+      emodeCaps = await getUserEModeCaps(address, options)
+    } catch (e) {
+      console.error(e)
+    }
+
+    const tasks = markets
+      .map((market) => {
+        return {
+          address,
+          market: market.key
+        }
+      })
+      .concat(
+        emodeCaps
+          .filter((cap) => {
+            return !!markets.find((market) => market.id === cap.marketId)
+          })
+          .map((emodeCap) => {
+            return {
+              address: emodeCap.accountCap,
+              market: getMarketConfig(emodeCap.marketId).key,
+              emodeId: emodeCap.emodeId
+            }
+          })
+      )
+
+    const lendingStates = await getLendingStateBatch(address, tasks, options)
+
+    lendingStates.forEach((lendingState) => {
+      const emodeCap =
+        typeof lendingState.emodeId === 'number'
+          ? emodeCaps.find((cap) => {
+              const market = getMarketConfig(lendingState.market)
+              return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
+            })
+          : undefined
+      if (emodeCap) {
+        if (BigNumber(lendingState.supplyBalance).gt(0)) {
+          const supplyAmount = BigNumber(lendingState.supplyBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          try {
+            positions.push({
+              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply-${uuid()}`,
+              wallet: address,
+              protocol: 'navi',
+              market: lendingState.market,
+              type: 'navi-lending-emode-supply',
+              'navi-lending-emode-supply': {
+                amount: supplyAmount.toString(),
+                pool: poolToEModePool(lendingState.pool, emodeCap),
+                token: lendingState.pool.token,
+                valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                emodeCap: emodeCap
+              }
+            })
+          } catch (e) {
+            console.error(e)
+          }
+        }
+        if (BigNumber(lendingState.borrowBalance).gt(0)) {
+          const borrowAmount = BigNumber(lendingState.borrowBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          try {
+            positions.push({
+              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-borrow-${uuid()}`,
+              wallet: address,
+              protocol: 'navi',
+              market: lendingState.market,
+              type: 'navi-lending-emode-borrow',
+              'navi-lending-emode-borrow': {
+                amount: borrowAmount.toString(),
+                pool: poolToEModePool(lendingState.pool, emodeCap),
+                token: lendingState.pool.token,
+                valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                emodeCap: emodeCap
+              }
+            })
+          } catch (e) {
+            console.error(e)
+          }
+        }
+      } else {
+        if (BigNumber(lendingState.supplyBalance).gt(0)) {
+          const supplyAmount = BigNumber(lendingState.supplyBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          positions.push({
+            id: `${lendingState.pool.uniqueId}_navi-lending-supply-${uuid()}`,
+            wallet: address,
+            protocol: 'navi',
+            type: 'navi-lending-supply',
+            market: lendingState.market,
+            'navi-lending-supply': {
+              amount: supplyAmount.toString(),
+              pool: lendingState.pool,
+              token: lendingState.pool.token,
+              valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+            }
+          })
+        }
+        if (BigNumber(lendingState.borrowBalance).gt(0)) {
+          const borrowAmount = BigNumber(lendingState.borrowBalance)
+            .shiftedBy(-9)
+            .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
+          positions.push({
+            id: `${lendingState.pool.uniqueId}_navi-lending-borrow-${uuid()}`,
+            wallet: address,
+            protocol: 'navi',
+            market: lendingState.market,
+            type: 'navi-lending-borrow',
+            'navi-lending-borrow': {
+              amount: borrowAmount.toString(),
+              pool: lendingState.pool,
+              token: lendingState.pool.token,
+              valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString()
+            }
+          })
+        }
+      }
+    })
+    return positions
+  }
+)
+
+export class UserPositions {
+  private _positions: LendingPosition[] = []
+  private _overview = {
+    hf: Infinity,
+    netVaule: '0',
+    netWorthApr: '0',
+    totalSupplyValue: '0',
+    totalBorrowValue: '0',
+    totalsupplyApy: '0',
+    totalBorrowApy: '0',
+    maxLiquidationValue: '0',
+    maxLoanToVaule: '0',
+    supply: {} as Record<string, string>,
+    borrow: {} as Record<string, string>
+  }
+
+  get positions() {
+    return this._positions
+  }
+
+  get overview() {
+    return this._overview
+  }
+
+  set positions(positions: LendingPosition[]) {
+    this._positions = positions
+    this._overview = this.getPositionsOverview(positions)
+  }
+
+  constructor(positions: LendingPosition[]) {
+    this.positions = positions
+  }
+
+  public filterPositionsByPool(pool: Pool | EModePool) {
+    const isEmode = !!(pool as EModePool).isEMode
+    const types = isEmode
+      ? ['navi-lending-emode-supply', 'navi-lending-emode-borrow']
+      : ['navi-lending-supply', 'navi-lending-borrow']
+    return new UserPositions(
+      this.positions.filter((position) => {
+        const positionData = position[position.type]!
+        return types.includes(position.type) && positionData.pool.uniqueId === pool.uniqueId
+      })
+    )
+  }
+
+  public deposit(pool: Pool | EModePool, amount: number) {
+    const isEmode = !!(pool as EModePool).isEMode
+    let position: LendingPosition
+    if (isEmode) {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-emode-supply',
+        'navi-lending-emode-supply': {
+          amount: amount.toString(),
+          valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any,
+          emodeCap: {} as any
+        }
+      }
+    } else {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-supply',
+        'navi-lending-supply': {
+          amount: amount.toString(),
+          valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any
+        }
+      }
+    }
+    return new UserPositions([...this.positions, position])
+  }
+
+  public withdraw(pool: Pool | EModePool, amount: number) {
+    const isEmode = !!(pool as EModePool).isEMode
+    let position: LendingPosition
+    if (isEmode) {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-emode-supply',
+        'navi-lending-emode-supply': {
+          amount: (-amount).toString(),
+          valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any,
+          emodeCap: {} as any
+        }
+      }
+    } else {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-supply',
+        'navi-lending-supply': {
+          amount: (-amount).toString(),
+          valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any
+        }
+      }
+    }
+    return new UserPositions([...this.positions, position])
+  }
+
+  public borrow(pool: Pool | EModePool, amount: number) {
+    const isEmode = !!(pool as EModePool).isEMode
+    let position: LendingPosition
+    if (isEmode) {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-emode-borrow',
+        'navi-lending-emode-borrow': {
+          amount: amount.toString(),
+          valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any,
+          emodeCap: {} as any
+        }
+      }
+    } else {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-borrow',
+        'navi-lending-borrow': {
+          amount: amount.toString(),
+          valueUSD: BigNumber(amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any
+        }
+      }
+    }
+    return new UserPositions([...this.positions, position])
+  }
+
+  public repay(pool: Pool | EModePool, amount: number) {
+    const isEmode = !!(pool as EModePool).isEMode
+    let position: LendingPosition
+    if (isEmode) {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-emode-borrow',
+        'navi-lending-emode-borrow': {
+          amount: (-amount).toString(),
+          valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any,
+          emodeCap: {} as any
+        }
+      }
+    } else {
+      position = {
+        id: uuid(),
+        wallet: '',
+        protocol: 'navi',
+        market: '',
+        type: 'navi-lending-borrow',
+        'navi-lending-borrow': {
+          amount: (-amount).toString(),
+          valueUSD: BigNumber(-amount).multipliedBy(pool.oracle.price).toString(),
+          token: pool.token,
+          pool: pool as any
+        }
+      }
+    }
+    return new UserPositions([...this.positions, position])
+  }
+
+  getPositionsOverview(positions: LendingPosition[]) {
+    const supply = {} as Record<string, string>
+    const borrow = {} as Record<string, string>
+    let totalSupplyValue = new BigNumber(0)
+    let totalBorrowValue = new BigNumber(0)
+    let totalsupplyApy = new BigNumber(0)
+    let totalBorrowApy = new BigNumber(0)
+    let maxLiquidationValue = new BigNumber(0)
+    let maxLoanToVaule = new BigNumber(0)
+    positions.forEach((position) => {
+      if (position.type === 'navi-lending-supply') {
+        const data = position['navi-lending-supply']!
+        totalSupplyValue = totalSupplyValue.plus(data.valueUSD)
+        maxLiquidationValue = maxLiquidationValue.plus(
+          new BigNumber(data.valueUSD).multipliedBy(data.pool.liquidationFactor.threshold)
+        )
+        maxLoanToVaule = maxLoanToVaule.plus(
+          new BigNumber(data.valueUSD).multipliedBy(data.pool.ltvValue)
+        )
+      } else if (position.type === 'navi-lending-borrow') {
+        totalBorrowValue = totalBorrowValue.plus(position['navi-lending-borrow']!.valueUSD)
+      } else if (position.type === 'navi-lending-emode-supply') {
+        const data = position['navi-lending-emode-supply']!
+        totalSupplyValue = totalSupplyValue.plus(data.valueUSD)
+        const poolEmodeConfig = data.pool.emode
+        maxLiquidationValue = maxLiquidationValue.plus(
+          new BigNumber(data.valueUSD).multipliedBy(poolEmodeConfig.lt)
+        )
+        maxLoanToVaule = maxLoanToVaule.plus(
+          new BigNumber(data.valueUSD).multipliedBy(poolEmodeConfig.ltv)
+        )
+      } else if (position.type === 'navi-lending-emode-borrow') {
+        totalBorrowValue = totalBorrowValue.plus(position['navi-lending-emode-borrow']!.valueUSD)
+      }
+    })
+
+    totalBorrowValue = BigNumber.max(totalBorrowValue, 0)
+    totalSupplyValue = BigNumber.max(totalSupplyValue, 0)
+    maxLiquidationValue = BigNumber.max(maxLiquidationValue, 0)
+    maxLoanToVaule = BigNumber.max(maxLoanToVaule, 0)
+
+    positions.forEach((position) => {
+      if (position.type === 'navi-lending-supply') {
+        const data = position['navi-lending-supply']!
+        const apy = data.pool.supplyIncentiveApyInfo.apy
+        if (totalSupplyValue.gt(0)) {
+          totalsupplyApy = totalsupplyApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalSupplyValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
+        supply[data.pool.suiCoinType] = BigNumber(supply[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
+      } else if (position.type === 'navi-lending-borrow') {
+        const data = position['navi-lending-borrow']!
+        const apy = data.pool.borrowIncentiveApyInfo.apy
+        if (totalBorrowValue.gt(0)) {
+          totalBorrowApy = totalBorrowApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalBorrowValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
+        borrow[data.pool.suiCoinType] = BigNumber(borrow[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
+      } else if (position.type === 'navi-lending-emode-supply') {
+        const data = position['navi-lending-emode-supply']!
+        const apy = data.pool.supplyIncentiveApyInfo.apy
+        if (totalSupplyValue.gt(0)) {
+          totalsupplyApy = totalsupplyApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalSupplyValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
+        supply[data.pool.suiCoinType] = BigNumber(supply[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
+      } else if (position.type === 'navi-lending-emode-borrow') {
+        const data = position['navi-lending-emode-borrow']!
+        const apy = data.pool.borrowIncentiveApyInfo.apy
+        if (totalBorrowValue.gt(0)) {
+          totalBorrowApy = totalBorrowApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalBorrowValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
+        borrow[data.pool.suiCoinType] = BigNumber(borrow[data.pool.suiCoinType] || 0)
+          .plus(data.amount)
+          .toString()
+      }
+    })
+
+    const netVaule = totalSupplyValue.minus(totalBorrowValue)
+    const netWorthApr = totalSupplyValue.minus(totalBorrowValue).eq(0)
+      ? new BigNumber(0)
+      : totalSupplyValue
+          .multipliedBy(totalsupplyApy)
+          .minus(totalBorrowValue.multipliedBy(totalBorrowApy))
+          .div(totalSupplyValue.minus(totalBorrowValue))
+    const hf =
+      totalBorrowValue.toNumber() !== 0
+        ? maxLiquidationValue.dividedBy(totalBorrowValue).toNumber()
+        : Infinity
+
+    return {
+      hf,
+      netVaule: netVaule.toString(),
+      netWorthApr: netWorthApr.toString(),
+      totalSupplyValue: totalSupplyValue.toString(),
+      totalBorrowValue: totalBorrowValue.toString(),
+      totalsupplyApy: totalsupplyApy.toString(),
+      totalBorrowApy: totalBorrowApy.toString(),
+      maxLiquidationValue: maxLiquidationValue.toString(),
+      maxLoanToVaule: maxLoanToVaule.toString(),
+      supply,
+      borrow
+    }
+  }
+}
+
+export async function verifyHealthFactorPTB(
+  tx: Transaction,
+  address: string | AccountCap | TransactionResult,
+  hf: number,
+  options?: Partial<EnvOption>
+) {
+  const config = await getConfig({
+    ...options,
+    cacheTime: DEFAULT_CACHE_TIME
+  })
+  if (config.limter) {
+    tx.moveCall({
+      target: `${config.limter}::navi_adaptor::verify_navi_position_healthy`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.storage),
+        tx.object(config.priceOracle),
+        parseTxValue(address, tx.pure.address),
+        tx.pure.u256(new BigNumber(hf).shiftedBy(27).toNumber())
+      ]
+    })
+  }
 }

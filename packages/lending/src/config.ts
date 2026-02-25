@@ -8,9 +8,10 @@
  * @module LendingConfig
  */
 
-import type { LendingConfig, EnvOption, CacheOption } from './types'
+import type { LendingConfig, EnvOption, CacheOption, MarketOption } from './types'
 import { withCache, withSingleton, requestHeaders } from './utils'
 import packageJson from '../package.json'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 
 /**
  * Fetches lending protocol configuration from the API
@@ -29,13 +30,16 @@ import packageJson from '../package.json'
  * @returns Promise<LendingConfig> - Complete lending protocol configuration
  */
 export const getConfig = withCache(
-  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<LendingConfig> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
+  withSingleton(
+    async (options?: Partial<EnvOption & CacheOption & MarketOption>): Promise<LendingConfig> => {
+      const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
+      const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${market.key}`
 
-    // Fetch configuration from API
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
-    return res.data
-  })
+      // Fetch configuration from API
+      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      return res.data
+    }
+  )
 )
 
 /**

@@ -36,13 +36,29 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
+// Basic liquidation
 const [collateralBalance, remainDebtBalance] = await liquidatePTB(
   tx,
   payAsset, // Asset identifier for the debt being repaid
   payCoinObject, // Coin object containing the debt repayment amount
   collateralAsset, // Asset identifier for the collateral being liquidated
   liquidateAddress, // Address of the borrower being liquidated
-  options // Optional environment configuration
+  {
+    env: 'prod' // Optional: environment configuration
+  }
+)
+
+// Liquidation with market option
+const [collateralBalanceWithMarket, remainDebtBalanceWithMarket] = await liquidatePTB(
+  tx,
+  payAsset,
+  payCoinObject,
+  collateralAsset,
+  liquidateAddress,
+  {
+    env: 'prod',
+    market: 'main' // Optional: market identifier
+  }
 )
 ```
 

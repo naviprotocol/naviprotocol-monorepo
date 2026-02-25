@@ -13,12 +13,14 @@ import type {
   CoinObject,
   CacheOption,
   FloashloanAsset,
-  TransactionResult
+  TransactionResult,
+  MarketOption
 } from './types'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { parseTxValue, normalizeCoinType, withCache, withSingleton, requestHeaders } from './utils'
 import { getPool } from './pool'
 import packageJson from '../package.json'
+import { DEFAULT_MARKET_IDENTITY } from './market'
 
 /**
  * Get all available flash loan assets from the API
@@ -28,16 +30,20 @@ import packageJson from '../package.json'
  * @returns Array of flash loan asset configurations
  */
 export const getAllFlashLoanAssets = withCache(
-  withSingleton(async (options?: Partial<EnvOption & CacheOption>): Promise<FloashloanAsset[]> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
-    return Object.keys(res.data).map((coinType) => {
-      return {
-        ...res.data[coinType],
-        coinType
-      }
-    })
-  })
+  withSingleton(
+    async (
+      options?: Partial<EnvOption & CacheOption & MarketOption>
+    ): Promise<FloashloanAsset[]> => {
+      const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
+      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      return Object.keys(res.data).map((coinType) => {
+        return {
+          ...res.data[coinType],
+          coinType
+        }
+      })
+    }
+  )
 )
 
 /**
@@ -82,7 +88,7 @@ export async function flashloanPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -150,7 +156,7 @@ export async function repayFlashLoanPTB(
   identifier: AssetIdentifier,
   receipt: TransactionResult | string,
   coinObject: CoinObject,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ) {
   const config = await getConfig({
     ...options,

@@ -15,7 +15,10 @@ import type {
   LendingClaimedReward,
   TransactionResult,
   AccountCapOption,
-  AccountCap
+  AccountCap,
+  MarketOption,
+  MarketsOption,
+  EModeCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -33,6 +36,119 @@ import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
 import BigNumber from 'bignumber.js'
 import packageJson from '../package.json'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
+import { getUserEModeCaps } from './emode'
+
+async function getLendingRewardsBatch(
+  address: string,
+  tasks: {
+    address: string
+    market: string
+    owner: string
+    emodeId?: number
+  }[],
+  options?: Partial<SuiClientOption & EnvOption>
+): Promise<LendingReward[]> {
+  const client = options?.client ?? suiClient
+  const tx = new Transaction()
+
+  const pools = await getPools({
+    ...options,
+    markets: Object.values(MARKETS),
+    cacheTime: DEFAULT_CACHE_TIME
+  })
+
+  const feeds = await getPriceFeeds(options)
+
+  for (let task of tasks) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market: task.market
+    })
+    tx.moveCall({
+      target: `${config.uiGetter}::incentive_v3_getter::get_user_atomic_claimable_rewards`,
+      arguments: [
+        tx.object('0x06'), // Clock object
+        tx.object(config.storage), // Protocol storage
+        tx.object(config.incentiveV3), // Incentive V3 contract
+        tx.pure.address(task.address) // User address
+      ]
+    })
+  }
+
+  const result = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: address
+  })
+
+  const data = [] as [string[], string[], number[], string[], number[]][]
+
+  result?.results?.forEach((item) => {
+    data.push(
+      parseDevInspectResult<[string[], string[], number[], string[], number[]]>(
+        {
+          results: [item]
+        } as any,
+        [
+          bcs.vector(bcs.string()), // Asset coin types
+          bcs.vector(bcs.string()), // Reward coin types
+          bcs.vector(bcs.u8()), // Reward options
+          bcs.vector(bcs.Address), // Rule IDs
+          bcs.vector(bcs.u256()) // Claimable amounts
+        ]
+      )
+    )
+  })
+
+  const rewardsList: {
+    userClaimableReward: number
+    userClaimedReward?: string
+    option: number
+    ruleIds: string[]
+    assetCoinType: string
+    rewardCoinType: string
+    assetId: number
+    market: string
+    owner: string
+    address: string
+    emodeId?: number
+  }[] = []
+
+  data.forEach((rewardsData, index) => {
+    const task = tasks[index]
+    if (rewardsData.length === 5 && Array.isArray(rewardsData[0])) {
+      const count = rewardsData[0].length
+      for (let i = 0; i < count; i++) {
+        const feed = feeds.find(
+          (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
+        )
+        const pool = pools.find(
+          (pool) => normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i])
+        )
+        if (!feed || !pool) {
+          continue
+        }
+        rewardsList.push({
+          assetId: pool.id,
+          assetCoinType: normalizeCoinType(rewardsData[0][i]),
+          rewardCoinType: normalizeCoinType(rewardsData[1][i]),
+          option: Number(rewardsData[2][i]),
+          userClaimableReward: Number(rewardsData[4][i]) / Math.pow(10, feed.priceDecimal),
+          ruleIds: Array.isArray(rewardsData[3][i])
+            ? (rewardsData[3][i] as any)
+            : [rewardsData[3][i]],
+          market: task.market,
+          owner: task.owner,
+          address: task.address,
+          emodeId: task.emodeId
+        })
+      }
+    }
+  })
+
+  return rewardsList
+}
 
 /**
  * Get user's available lending rewards
@@ -47,83 +163,45 @@ import packageJson from '../package.json'
  */
 export async function getUserAvailableLendingRewards(
   address: string | AccountCap,
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketsOption>
 ): Promise<LendingReward[]> {
-  const feeds = await getPriceFeeds(options)
-  const pools = await getPools({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-  const client = options?.client ?? suiClient
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
+  const markets = (options?.markets || [MARKETS.main]).map((identity) => {
+    return getMarketConfig(identity)
   })
 
-  // Create transaction to simulate reward calculation
-  const tx = new Transaction()
-  tx.moveCall({
-    target: `${config.uiGetter}::incentive_v3_getter::get_user_atomic_claimable_rewards`,
-    arguments: [
-      tx.object('0x06'), // Clock object
-      tx.object(config.storage), // Protocol storage
-      tx.object(config.incentiveV3), // Incentive V3 contract
-      tx.pure.address(address) // User address
-    ]
-  })
+  let emodeCaps: EModeCap[] = []
 
-  // Simulate the transaction to get reward data
-  const result = await client.devInspectTransactionBlock({
-    transactionBlock: tx,
-    sender: address
-  })
-
-  // Parse the result using BCS schemas
-  const rewardsData = parseDevInspectResult<[string[], string[], number[], string[], number[]]>(
-    result,
-    [
-      bcs.vector(bcs.string()), // Asset coin types
-      bcs.vector(bcs.string()), // Reward coin types
-      bcs.vector(bcs.u8()), // Reward options
-      bcs.vector(bcs.Address), // Rule IDs
-      bcs.vector(bcs.u256()) // Claimable amounts
-    ]
-  )
-
-  const rewardsList: {
-    userClaimableReward: number
-    userClaimedReward?: string
-    option: number
-    ruleIds: string[]
-    assetCoinType: string
-    rewardCoinType: string
-    assetId: number
-  }[] = []
-
-  // Process the reward data and match with feeds and pools
-  if (rewardsData.length === 5 && Array.isArray(rewardsData[0])) {
-    const count = rewardsData[0].length
-    for (let i = 0; i < count; i++) {
-      const feed = feeds.find(
-        (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
-      )
-      const pool = pools.find(
-        (pool) => normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i])
-      )
-      if (!feed || !pool) {
-        continue
-      }
-      rewardsList.push({
-        assetId: pool.id,
-        assetCoinType: normalizeCoinType(rewardsData[0][i]),
-        rewardCoinType: normalizeCoinType(rewardsData[1][i]),
-        option: Number(rewardsData[2][i]),
-        userClaimableReward: Number(rewardsData[4][i]) / Math.pow(10, feed.priceDecimal),
-        ruleIds: Array.isArray(rewardsData[3][i]) ? (rewardsData[3][i] as any) : [rewardsData[3][i]]
-      })
-    }
+  try {
+    emodeCaps = await getUserEModeCaps(address, options)
+  } catch (e) {
+    console.error(e)
   }
-  return rewardsList
+
+  const tasks = markets
+    .map((market) => {
+      return {
+        address,
+        owner: address,
+        market: market.key
+      }
+    })
+    .concat(
+      emodeCaps
+        .filter((cap) => {
+          return !!markets.find((market) => market.id === cap.marketId)
+        })
+        .map((cap) => {
+          const market = getMarketConfig(cap.marketId)
+          return {
+            address: cap.accountCap,
+            owner: address,
+            market: market.key,
+            emodeId: cap.emodeId
+          }
+        })
+    )
+
+  return await getLendingRewardsBatch(address, tasks, options)
 }
 
 /**
@@ -139,13 +217,13 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
   // Aggregate rewards by asset ID, reward type, and coin type
   const agg = new Map<
     string,
-    { assetId: number; rewardType: number; coinType: string; total: number }
+    { assetId: number; rewardType: number; coinType: string; total: number; market: string }
   >()
 
   rewards.forEach((reward) => {
     const assetId = reward.assetId
     const rewardType = reward.option
-    const key = `${assetId}-${rewardType}-${reward.rewardCoinType}`
+    const key = `${assetId}-${rewardType}-${reward.rewardCoinType}-${reward.market}`
     if (agg.has(key)) {
       agg.get(key)!.total += reward.userClaimableReward
     } else {
@@ -153,7 +231,8 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
         assetId,
         rewardType,
         coinType: reward.rewardCoinType,
-        total: Number(reward.userClaimableReward)
+        total: Number(reward.userClaimableReward),
+        market: reward.market
       })
     }
   })
@@ -161,12 +240,12 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
   // Group rewards by asset ID and reward type
   const groupMap = new Map<
     string,
-    { assetId: number; rewardType: number; rewards: Map<string, number> }
+    { assetId: number; rewardType: number; market: string; rewards: Map<string, number> }
   >()
-  for (const { assetId, rewardType, coinType, total } of agg.values()) {
-    const groupKey = `${assetId}-${rewardType}`
+  for (const { assetId, rewardType, coinType, total, market } of agg.values()) {
+    const groupKey = `${assetId}-${rewardType}-${market}`
     if (!groupMap.has(groupKey)) {
-      groupMap.set(groupKey, { assetId, rewardType, rewards: new Map<string, number>() })
+      groupMap.set(groupKey, { assetId, rewardType, market, rewards: new Map<string, number>() })
     }
     const rewardMap = groupMap.get(groupKey)!
     rewardMap.rewards.set(coinType, (rewardMap.rewards.get(coinType) || 0) + total)
@@ -176,6 +255,7 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
   return Array.from(groupMap.values()).map((group) => ({
     assetId: group.assetId,
     rewardType: group.rewardType,
+    market: group.market,
     rewards: Array.from(group.rewards.entries()).map(([coinType, available]) => ({
       coinType,
       available: available.toFixed(6)
@@ -194,11 +274,12 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
  */
 export const getUserTotalClaimedReward = withSingleton(
   async (
-    address: string | AccountCap
+    address: string | AccountCap,
+    options?: Partial<MarketOption>
   ): Promise<{
     USDValue: number
   }> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}`
+    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
     const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
     return res.data
   }
@@ -217,15 +298,17 @@ export const getUserTotalClaimedReward = withSingleton(
 export const getUserClaimedRewardHistory = withSingleton(
   async (
     address: string | AccountCap,
-    options?: {
-      page?: number
-      size?: number
-    }
+    options?: Partial<
+      MarketOption & {
+        page: number
+        size: number
+      }
+    >
   ): Promise<{
     data: HistoryClaimedReward[]
     cursor?: string
   }> => {
-    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}`
+    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
     const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
@@ -254,7 +337,8 @@ export async function claimLendingRewardsPTB(
   rewards: LendingReward[],
   options?: Partial<
     EnvOption &
-      AccountCapOption & {
+      AccountCapOption &
+      MarketOption & {
         customCoinReceive?: {
           type: 'transfer' | 'depositNAVI' | 'skip'
           transfer?: string | TransactionResult
@@ -265,28 +349,45 @@ export async function claimLendingRewardsPTB(
       }
   >
 ) {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-
   const pools = await getPools({
     ...options,
+    markets: Object.values(MARKETS),
     cacheTime: DEFAULT_CACHE_TIME
   })
 
   // Group rewards by reward coin type and collect asset IDs and rule IDs
-  const rewardMap = new Map<string, { assetIds: string[]; ruleIds: string[]; amount: number }>()
+  const rewardMap = new Map<
+    string,
+    {
+      assetIds: string[]
+      ruleIds: string[]
+      amount: number
+      market: string
+      owner: string
+      address: string
+      isEMode: boolean
+    }
+  >()
 
   for (const reward of rewards) {
-    const { rewardCoinType, ruleIds } = reward
+    const { rewardCoinType, ruleIds, market, owner, address, emodeId } = reward
+
+    const key = `${rewardCoinType}___${address}`
 
     for (const ruleId of ruleIds) {
-      if (!rewardMap.has(rewardCoinType)) {
-        rewardMap.set(rewardCoinType, { assetIds: [], ruleIds: [], amount: 0 })
+      if (!rewardMap.has(key)) {
+        rewardMap.set(key, {
+          assetIds: [],
+          ruleIds: [],
+          amount: 0,
+          market,
+          owner,
+          address,
+          isEMode: typeof emodeId !== 'undefined'
+        })
       }
 
-      const group = rewardMap.get(rewardCoinType)!
+      const group = rewardMap.get(key)!
       group.assetIds.push(reward.assetCoinType.replace('0x', ''))
       group.ruleIds.push(ruleId)
       group.amount += reward.userClaimableReward
@@ -296,12 +397,21 @@ export async function claimLendingRewardsPTB(
   const rewardCoins = [] as LendingClaimedReward[]
 
   // Process each reward coin type
-  for (const [rewardCoinType, { assetIds, ruleIds, amount }] of rewardMap) {
+  for (const [
+    rewardCoinType,
+    { assetIds, ruleIds, amount, market, owner, address, isEMode }
+  ] of rewardMap) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market
+    })
+    const coinType = rewardCoinType.split('___')[0]
     const pool = pools.find(
-      (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(rewardCoinType)
+      (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType) && p.market === market
     )
     if (!pool || !pool.contract.rewardFundId) {
-      throw new Error(`No matching rewardFund found for reward coin: ${rewardCoinType}`)
+      throw new Error(`No matching rewardFund found for reward coin: ${coinType} ${market}`)
     }
     const matchedRewardFund = pool.contract.rewardFundId
 
@@ -327,7 +437,21 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('address', ruleIds), // Rule IDs
             parseTxValue(options.accountCap, tx.object) // Account capability
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
+        })
+      } else if (isEMode) {
+        rewardBalance = tx.moveCall({
+          target: `${config.package}::incentive_v3::claim_reward_with_account_cap`,
+          arguments: [
+            tx.object('0x06'), // Clock object
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.object(config.storage), // Protocol storage
+            tx.object(matchedRewardFund), // Reward fund
+            tx.pure.vector('string', assetIds), // Asset IDs
+            tx.pure.vector('address', ruleIds), // Rule IDs
+            parseTxValue(address, tx.object) // Account capability
+          ],
+          typeArguments: [coinType]
         })
       } else {
         rewardBalance = tx.moveCall({
@@ -340,7 +464,7 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds) // Rule IDs
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
       }
 
@@ -348,7 +472,7 @@ export async function claimLendingRewardsPTB(
       const [rewardCoin]: any = tx.moveCall({
         target: '0x2::coin::from_balance',
         arguments: [rewardBalance],
-        typeArguments: [rewardCoinType]
+        typeArguments: [coinType]
       })
 
       // Handle different custom coin receiving types
@@ -380,23 +504,52 @@ export async function claimLendingRewardsPTB(
       } else {
         rewardCoins.push({
           coin: rewardCoin,
-          identifier: pool
+          identifier: pool,
+          owner,
+          isEMode
         })
       }
     } else {
       // Standard reward claiming without custom handling
-      tx.moveCall({
-        target: `${config.package}::incentive_v3::claim_reward_entry`,
-        arguments: [
-          tx.object('0x06'), // Clock object
-          tx.object(config.incentiveV3), // Incentive V3 contract
-          tx.object(config.storage), // Protocol storage
-          tx.object(matchedRewardFund), // Reward fund
-          tx.pure.vector('string', assetIds), // Asset IDs
-          tx.pure.vector('address', ruleIds) // Rule IDs
-        ],
-        typeArguments: [rewardCoinType]
-      })
+      if (!!options?.accountCap || isEMode) {
+        const rewardBalance = tx.moveCall({
+          target: `${config.package}::incentive_v3::claim_reward_with_account_cap`,
+          arguments: [
+            tx.object('0x06'), // Clock object
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.object(config.storage), // Protocol storage
+            tx.object(matchedRewardFund), // Reward fund
+            tx.pure.vector('string', assetIds), // Asset IDs
+            tx.pure.vector('address', ruleIds), // Rule IDs
+            parseTxValue(options?.accountCap || address, tx.object) // Account capability
+          ],
+          typeArguments: [coinType]
+        })
+
+        const [rewardCoin]: any = tx.moveCall({
+          target: '0x2::coin::from_balance',
+          arguments: [rewardBalance],
+          typeArguments: [coinType]
+        })
+
+        tx.transferObjects(
+          [rewardCoin],
+          parseTxValue(options?.accountCap || owner, tx.pure.address)
+        )
+      } else {
+        tx.moveCall({
+          target: `${config.package}::incentive_v3::claim_reward_entry`,
+          arguments: [
+            tx.object('0x06'), // Clock object
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.object(config.storage), // Protocol storage
+            tx.object(matchedRewardFund), // Reward fund
+            tx.pure.vector('string', assetIds), // Asset IDs
+            tx.pure.vector('address', ruleIds) // Rule IDs
+          ],
+          typeArguments: [coinType]
+        })
+      }
     }
   }
   return rewardCoins
