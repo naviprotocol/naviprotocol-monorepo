@@ -508,7 +508,6 @@ export type LendingConfig = {
     sender: string
     /** Gas object ID for oracle updates */
     gasObject: string
-    switchboardAggregator: string
     /** Price feeds */
     feeds: OraclePriceFeed[]
     switchboardAggregator: string

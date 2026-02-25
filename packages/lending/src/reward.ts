@@ -17,7 +17,8 @@ import type {
   AccountCapOption,
   AccountCap,
   MarketOption,
-  MarketsOption
+  MarketsOption,
+  EModeCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -168,7 +169,13 @@ export async function getUserAvailableLendingRewards(
     return getMarketConfig(identity)
   })
 
-  const emodeCaps = await getUserEModeCaps(address, options)
+  let emodeCaps: EModeCap[] = []
+
+  try {
+    emodeCaps = await getUserEModeCaps(address, options)
+  } catch (e) {
+    console.error(e)
+  }
 
   const tasks = markets
     .map((market) => {
@@ -342,11 +349,6 @@ export async function claimLendingRewardsPTB(
       }
   >
 ) {
-  const config = await getConfig({
-    ...options,
-    cacheTime: DEFAULT_CACHE_TIME
-  })
-
   const pools = await getPools({
     ...options,
     markets: Object.values(MARKETS),
@@ -399,6 +401,11 @@ export async function claimLendingRewardsPTB(
     rewardCoinType,
     { assetIds, ruleIds, amount, market, owner, address, isEMode }
   ] of rewardMap) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market
+    })
     const coinType = rewardCoinType.split('___')[0]
     const pool = pools.find(
       (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType) && p.market === market
