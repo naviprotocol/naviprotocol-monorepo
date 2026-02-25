@@ -511,6 +511,7 @@ export type LendingConfig = {
     switchboardAggregator: string
     /** Price feeds */
     feeds: OraclePriceFeed[]
+    switchboardAggregator: string
   }
   emode: {
     contract: {
