@@ -137,57 +137,6 @@ describe('Market class', () => {
     })
   })
 
-  describe('addPools', () => {
-    it('should add new pools', () => {
-      const initialPools = testPools.slice(0, 2)
-      const market = new Market('main', initialPools)
-      const initialLength = market.pools.length
-
-      const newPools = testPools.slice(2, 4)
-      market.addPools(newPools)
-      expect(market.pools.length).toBeGreaterThanOrEqual(initialLength)
-    })
-
-    it('should not add duplicate pools', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-      const initialLength = market.pools.length
-
-      market.addPools(pools)
-      expect(market.pools.length).toBe(initialLength)
-    })
-
-    it('should warn and skip pools from different market', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-      const initialLength = market.pools.length
-
-      // Create a pool with different market id
-      const differentMarketPool: Pool = {
-        ...pools[0],
-        id: 999,
-        market: 'other'
-      }
-
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      market.addPools([differentMarketPool])
-      expect(market.pools.length).toBe(initialLength)
-      expect(consoleSpy).toHaveBeenCalled()
-      consoleSpy.mockRestore()
-    })
-
-    it('should add emodes from pools', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-      const initialEmodeLength = market.emodes.length
-
-      const newPools = testPools.slice(2, 4)
-      market.addPools(newPools)
-      // Emodes might increase if new pools have new emodes
-      expect(market.emodes.length).toBeGreaterThanOrEqual(initialEmodeLength)
-    })
-  })
-
   describe('getEMode', () => {
     it('should get emode by emodeId', () => {
       const pools = testPools.slice(0, 5)

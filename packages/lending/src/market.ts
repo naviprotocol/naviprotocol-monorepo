@@ -42,10 +42,10 @@ export class Market {
 
   constructor(marketIdentity: MarketIdentity, pools: Pool[]) {
     this.config = getMarketConfig(marketIdentity)
-    this.addPools(pools)
+    this.initPools(pools)
   }
 
-  public addPools(pools: Pool[]) {
+  private initPools(pools: Pool[]) {
     const poolsMap = getPoolsMap(this.pools)
     const emodesMap = getEmodesMap(this.emodes)
     const emodeBorrowablePoolIds = new Set<string>()
