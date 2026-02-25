@@ -851,11 +851,13 @@ export class UserPositions {
       if (position.type === 'navi-lending-supply') {
         const data = position['navi-lending-supply']!
         const apy = data.pool.supplyIncentiveApyInfo.apy
-        totalsupplyApy = totalsupplyApy.plus(
-          new BigNumber(data.valueUSD)
-            .dividedBy(totalSupplyValue)
-            .multipliedBy(new BigNumber(apy).dividedBy(100))
-        )
+        if (totalSupplyValue.gt(0)) {
+          totalsupplyApy = totalsupplyApy.plus(
+            new BigNumber(data.valueUSD)
+              .dividedBy(totalSupplyValue)
+              .multipliedBy(new BigNumber(apy).dividedBy(100))
+          )
+        }
         supply[data.pool.suiCoinType] = BigNumber(supply[data.pool.suiCoinType] || 0)
           .plus(data.amount)
           .toString()

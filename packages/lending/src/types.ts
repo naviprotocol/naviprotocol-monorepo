@@ -149,6 +149,7 @@ export type LendingReward = {
   assetId: number
   market: string
   owner: string
+  address: string
   emodeId?: number
 }
 

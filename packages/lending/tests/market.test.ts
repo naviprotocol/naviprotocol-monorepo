@@ -8,7 +8,7 @@ import {
   Market
 } from '../src/market'
 import { getPools } from '../src/pool'
-import type { Pool, EModeIdentity, EnvOption } from '../src/types'
+import type { Pool, EnvOption } from '../src/types'
 
 const options = {
   env: 'test'
@@ -189,20 +189,15 @@ describe('Market class', () => {
   })
 
   describe('getEMode', () => {
-    it('should get emode by EModeIdentity', () => {
+    it('should get emode by emodeId', () => {
       const pools = testPools.slice(0, 5)
       const market = new Market('main', pools)
 
       if (market.emodes.length > 0) {
         const emode = market.emodes[0]
-        const emodeIdentity: EModeIdentity = {
-          emodeId: emode.emodeId,
-          marketId: emode.marketId
-        }
-        const result = market.getEMode(emodeIdentity)
+        const result = market.getEMode(emode.emodeId)
         expect(result).toBeDefined()
         expect(result?.emodeId).toBe(emode.emodeId)
-        expect(result?.marketId).toBe(emode.marketId)
       }
     })
 
@@ -210,35 +205,8 @@ describe('Market class', () => {
       const pools = testPools.slice(0, 2)
       const market = new Market('main', pools)
 
-      const emodeIdentity: EModeIdentity = {
-        emodeId: 99999,
-        marketId: 0
-      }
-
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      const result = market.getEMode(emodeIdentity)
+      const result = market.getEMode(99999)
       expect(result).toBeNull()
-      expect(consoleSpy).toHaveBeenCalled()
-      consoleSpy.mockRestore()
-    })
-
-    it('should return null and warn for different market emode', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-
-      if (market.emodes.length > 0) {
-        const emode = market.emodes[0]
-        const emodeIdentity: EModeIdentity = {
-          emodeId: emode.emodeId,
-          marketId: 999 // Different market
-        }
-
-        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        const result = market.getEMode(emodeIdentity)
-        expect(result).toBeNull()
-        expect(consoleSpy).toHaveBeenCalled()
-        consoleSpy.mockRestore()
-      }
     })
   })
 
@@ -249,11 +217,7 @@ describe('Market class', () => {
 
       if (market.emodes.length > 0) {
         const emode = market.emodes[0]
-        const emodeIdentity: EModeIdentity = {
-          emodeId: emode.emodeId,
-          marketId: emode.marketId
-        }
-        const emodePools = market.getEModePools(emodeIdentity)
+        const emodePools = market.getEModePools(emode.emodeId)
         expect(Array.isArray(emodePools)).toBe(true)
         emodePools.forEach((pool) => {
           expect(pool.isEMode).toBe(true)
@@ -267,29 +231,8 @@ describe('Market class', () => {
       const pools = testPools.slice(0, 2)
       const market = new Market('main', pools)
 
-      const emodeIdentity: EModeIdentity = {
-        emodeId: 99999,
-        marketId: 0
-      }
-
-      const emodePools = market.getEModePools(emodeIdentity)
+      const emodePools = market.getEModePools(99999)
       expect(emodePools).toEqual([])
-    })
-
-    it('should return empty array for different market emode', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-
-      if (market.emodes.length > 0) {
-        const emode = market.emodes[0]
-        const emodeIdentity: EModeIdentity = {
-          emodeId: emode.emodeId,
-          marketId: 999 // Different market
-        }
-
-        const emodePools = market.getEModePools(emodeIdentity)
-        expect(emodePools).toEqual([])
-      }
     })
   })
 })

@@ -9,7 +9,7 @@ import {
   EModeIdentity
 } from './types'
 import { withSingleton, withCache, parseTxValue, suiClient } from './utils'
-import { DEFAULT_MARKET_IDENTITY, getMarket, getMarketConfig } from './market'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import { Transaction } from '@mysten/sui/transactions'
 import { createAccountCapPTB, getAccountCapOwnerPTB } from './account-cap'

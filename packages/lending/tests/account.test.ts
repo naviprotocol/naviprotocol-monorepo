@@ -5,7 +5,8 @@ import {
   getSimulatedHealthFactor,
   getTransactions,
   getCoins,
-  mergeCoinsPTB
+  mergeCoinsPTB,
+  UserPositions
 } from '../src/account'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { Transaction as NAVITransaction } from '../src/types'
@@ -246,5 +247,44 @@ describe('mergeCoinsPTB', () => {
     const suiBalance = a.balanceChanges.find((b) => b.coinType === coinType)
     expect(suiBalance).toBeDefined()
     expect(Math.abs(Number(suiBalance?.amount))).toBeGreaterThan(1000000000)
+  })
+})
+
+describe('UserPositions.getPositionsOverview', () => {
+  it('should avoid NaN when totalSupplyValue is zero', () => {
+    const positions = [
+      {
+        id: 'supply-zero',
+        wallet: testAddress,
+        protocol: 'navi',
+        market: 'main',
+        type: 'navi-lending-supply',
+        'navi-lending-supply': {
+          amount: '100',
+          valueUSD: '0',
+          token: {
+            coinType: '0x2::sui::SUI',
+            decimals: 9,
+            logoUri: '',
+            symbol: 'SUI',
+            price: 0
+          },
+          pool: {
+            supplyIncentiveApyInfo: { apy: '12.34' },
+            liquidationFactor: { threshold: 0.8 },
+            ltvValue: 0.75,
+            suiCoinType: '0x2::sui::SUI'
+          } as any
+        }
+      }
+    ] as any
+
+    const overview = new UserPositions([]).getPositionsOverview(positions)
+
+    expect(overview.totalSupplyValue).toBe('0')
+    expect(overview.totalsupplyApy).toBe('0')
+    expect(overview.netWorthApr).toBe('0')
+    expect(overview.totalsupplyApy).not.toBe('NaN')
+    expect(overview.netWorthApr).not.toBe('NaN')
   })
 })

@@ -32,17 +32,9 @@ Get all available flash loan assets from the API. Uses caching to avoid repeated
 ```typescript
 import { getAllFlashLoanAssets } from '@naviprotocol/lending'
 
-// Get all flash loan assets
 const flashLoanAssets = await getAllFlashLoanAssets({
   env: 'prod',
   cacheTime: 30000
-})
-
-// Get flash loan assets for specific market
-const marketFlashLoanAssets = await getAllFlashLoanAssets({
-  env: 'prod',
-  cacheTime: 30000,
-  market: 'main' // Optional: market identifier
 })
 ```
 
@@ -108,23 +100,11 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
-// Basic flash loan
 const [balance, receipt] = await flashloanPTB(
   tx,
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Amount to borrow
   { env: 'prod' }
-)
-
-// Flash loan with market option
-const [balanceWithMarket, receiptWithMarket] = await flashloanPTB(
-  tx,
-  '0x2::sui::SUI',
-  1000000000,
-  { 
-    env: 'prod',
-    market: 'main' // Optional: market identifier
-  }
 )
 ```
 
@@ -140,25 +120,12 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
-// Basic repayment
 const [balance] = await repayFlashLoanPTB(
   tx,
   '0x2::sui::SUI', // Asset identifier
   receipt, // Receipt from original flash loan
   coinObject, // Coin object containing repayment amount
   { env: 'prod' }
-)
-
-// Repayment with market option
-const [balanceWithMarket] = await repayFlashLoanPTB(
-  tx,
-  '0x2::sui::SUI',
-  receipt,
-  coinObject,
-  { 
-    env: 'prod',
-    market: 'main' // Optional: market identifier
-  }
 )
 ```
 

@@ -43,6 +43,7 @@ async function getLendingRewardsBatch(
   tasks: {
     address: string
     market: string
+    owner: string
     emodeId?: number
   }[],
   options?: Partial<SuiClientOption & EnvOption>
@@ -109,6 +110,7 @@ async function getLendingRewardsBatch(
     assetId: number
     market: string
     owner: string
+    address: string
     emodeId?: number
   }[] = []
 
@@ -136,7 +138,8 @@ async function getLendingRewardsBatch(
             ? (rewardsData[3][i] as any)
             : [rewardsData[3][i]],
           market: task.market,
-          owner: task.address,
+          owner: task.owner,
+          address: task.address,
           emodeId: task.emodeId
         })
       }
@@ -171,6 +174,7 @@ export async function getUserAvailableLendingRewards(
     .map((market) => {
       return {
         address,
+        owner: address,
         market: market.key
       }
     })
@@ -182,7 +186,8 @@ export async function getUserAvailableLendingRewards(
         .map((cap) => {
           const market = getMarketConfig(cap.marketId)
           return {
-            address,
+            address: cap.accountCap,
+            owner: address,
             market: market.key,
             emodeId: cap.emodeId
           }
@@ -357,14 +362,15 @@ export async function claimLendingRewardsPTB(
       amount: number
       market: string
       owner: string
+      address: string
       isEMode: boolean
     }
   >()
 
   for (const reward of rewards) {
-    const { rewardCoinType, ruleIds, market, owner, emodeId } = reward
+    const { rewardCoinType, ruleIds, market, owner, address, emodeId } = reward
 
-    const key = `${rewardCoinType}___${owner}`
+    const key = `${rewardCoinType}___${address}`
 
     for (const ruleId of ruleIds) {
       if (!rewardMap.has(key)) {
@@ -374,6 +380,7 @@ export async function claimLendingRewardsPTB(
           amount: 0,
           market,
           owner,
+          address,
           isEMode: typeof emodeId !== 'undefined'
         })
       }
@@ -388,7 +395,10 @@ export async function claimLendingRewardsPTB(
   const rewardCoins = [] as LendingClaimedReward[]
 
   // Process each reward coin type
-  for (const [rewardCoinType, { assetIds, ruleIds, amount, market, owner, isEMode }] of rewardMap) {
+  for (const [
+    rewardCoinType,
+    { assetIds, ruleIds, amount, market, owner, address, isEMode }
+  ] of rewardMap) {
     const coinType = rewardCoinType.split('___')[0]
     const pool = pools.find(
       (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType) && p.market === market
@@ -432,7 +442,7 @@ export async function claimLendingRewardsPTB(
             tx.object(matchedRewardFund), // Reward fund
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds), // Rule IDs
-            parseTxValue(owner, tx.object) // Account capability
+            parseTxValue(address, tx.object) // Account capability
           ],
           typeArguments: [coinType]
         })
@@ -504,7 +514,7 @@ export async function claimLendingRewardsPTB(
             tx.object(matchedRewardFund), // Reward fund
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds), // Rule IDs
-            parseTxValue(options?.accountCap || owner, tx.object) // Account capability
+            parseTxValue(options?.accountCap || address, tx.object) // Account capability
           ],
           typeArguments: [coinType]
         })

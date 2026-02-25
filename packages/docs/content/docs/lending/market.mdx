@@ -16,6 +16,7 @@ The Market module provides management functionality for different markets in the
 ### Market Identifiers
 
 Markets can be identified by:
+
 - Numeric ID (e.g., `0`)
 - String key (e.g., `'main'`)
 - MarketConfig object
@@ -58,6 +59,7 @@ const configByObject = getMarketConfig({ id: 0, key: 'main', name: 'Main Market'
 **Returns**
 
 Returns a `MarketConfig` object containing:
+
 - `id`: Market ID
 - `key`: Market key
 - `name`: Market name
@@ -112,6 +114,7 @@ const marketById = await getMarket(0, {
 **Returns**
 
 Returns a `Market` instance containing:
+
 - `config`: Market configuration
 - `pools`: Array of pools
 - `emodes`: Array of EMode configurations
@@ -202,15 +205,12 @@ market.addPools(newPools)
 Get EMode by EModeIdentity.
 
 ```typescript
-const emode = market.getEMode({
-  emodeId: 1,
-  marketId: 0
-})
+const emode = market.getEMode(1)
 ```
 
 **Parameters**
 
-- `emodeIdentity`: EModeIdentity object
+- `emodeId`: EMode id
 
 **Returns**
 
@@ -221,15 +221,12 @@ Returns an `EMode` object, or `null` if not found.
 Get all pools for a specific EMode.
 
 ```typescript
-const emodePools = market.getEModePools({
-  emodeId: 1,
-  marketId: 0
-})
+const emodePools = market.getEModePools(1)
 ```
 
 **Parameters**
 
-- `emodeIdentity`: EModeIdentity object
+- `emodeId`: Emode id
 
 **Returns**
 
@@ -318,14 +315,11 @@ console.log('Total Borrow Value:', market.overview.marketTotalBorrowValue)
 import { getMarket } from '@naviprotocol/lending'
 
 const market = await getMarket('main')
-const emodePools = market.getEModePools({
-  emodeId: 1,
-  marketId: 0
-})
+const emodePools = market.getEModePools(1)
 
-emodePools.forEach(pool => {
+emodePools.forEach((pool) => {
   console.log('Pool:', pool.token.symbol)
-  console.log('EMode LTV:', pool.emode.assets.find(a => a.assetId === pool.id)?.ltv)
+  console.log('EMode LTV:', pool.emode.assets.find((a) => a.assetId === pool.id)?.ltv)
 })
 ```
 
@@ -335,7 +329,7 @@ emodePools.forEach(pool => {
 import { getMarkets } from '@naviprotocol/lending'
 
 const markets = await getMarkets(['main'])
-markets.forEach(market => {
+markets.forEach((market) => {
   console.log(`Market ${market.config.name}:`)
   console.log(`  Pool count: ${market.pools.length}`)
   console.log(`  EMode count: ${market.emodes.length}`)
