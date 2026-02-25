@@ -519,50 +519,59 @@ export const getLendingPositions = withCache(
     const lendingStates = await getLendingStateBatch(address, tasks, options)
 
     lendingStates.forEach((lendingState) => {
-      const emodeCap = lendingState.emodeId
-        ? emodeCaps.find((cap) => {
-            const market = getMarketConfig(lendingState.market)
-            return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
-          })
-        : undefined
+      const emodeCap =
+        typeof lendingState.emodeId === 'number'
+          ? emodeCaps.find((cap) => {
+              const market = getMarketConfig(lendingState.market)
+              return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
+            })
+          : undefined
       if (emodeCap) {
         if (BigNumber(lendingState.supplyBalance).gt(0)) {
           const supplyAmount = BigNumber(lendingState.supplyBalance)
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-          positions.push({
-            id: `${address}_${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply`,
-            wallet: address,
-            protocol: 'navi',
-            market: lendingState.market,
-            type: 'navi-lending-emode-supply',
-            'navi-lending-emode-supply': {
-              amount: supplyAmount.toString(),
-              pool: poolToEModePool(lendingState.pool, emodeCap),
-              token: lendingState.pool.token,
-              valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
-              emodeCap: emodeCap
-            }
-          })
+          try {
+            positions.push({
+              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply-${uuid()}`,
+              wallet: address,
+              protocol: 'navi',
+              market: lendingState.market,
+              type: 'navi-lending-emode-supply',
+              'navi-lending-emode-supply': {
+                amount: supplyAmount.toString(),
+                pool: poolToEModePool(lendingState.pool, emodeCap),
+                token: lendingState.pool.token,
+                valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                emodeCap: emodeCap
+              }
+            })
+          } catch (e) {
+            console.error(e)
+          }
         }
         if (BigNumber(lendingState.borrowBalance).gt(0)) {
           const borrowAmount = BigNumber(lendingState.borrowBalance)
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-          positions.push({
-            id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-borrow`,
-            wallet: address,
-            protocol: 'navi',
-            market: lendingState.market,
-            type: 'navi-lending-emode-borrow',
-            'navi-lending-emode-borrow': {
-              amount: borrowAmount.toString(),
-              pool: poolToEModePool(lendingState.pool, emodeCap),
-              token: lendingState.pool.token,
-              valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
-              emodeCap: emodeCap
-            }
-          })
+          try {
+            positions.push({
+              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-borrow-${uuid()}`,
+              wallet: address,
+              protocol: 'navi',
+              market: lendingState.market,
+              type: 'navi-lending-emode-borrow',
+              'navi-lending-emode-borrow': {
+                amount: borrowAmount.toString(),
+                pool: poolToEModePool(lendingState.pool, emodeCap),
+                token: lendingState.pool.token,
+                valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                emodeCap: emodeCap
+              }
+            })
+          } catch (e) {
+            console.error(e)
+          }
         }
       } else {
         if (BigNumber(lendingState.supplyBalance).gt(0)) {
@@ -570,7 +579,7 @@ export const getLendingPositions = withCache(
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
           positions.push({
-            id: `${address}_${lendingState.pool.uniqueId}_navi-lending-supply`,
+            id: `${lendingState.pool.uniqueId}_navi-lending-supply-${uuid()}`,
             wallet: address,
             protocol: 'navi',
             type: 'navi-lending-supply',
@@ -588,7 +597,7 @@ export const getLendingPositions = withCache(
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
           positions.push({
-            id: `${lendingState.pool.uniqueId}_navi-lending-borrow`,
+            id: `${lendingState.pool.uniqueId}_navi-lending-borrow-${uuid()}`,
             wallet: address,
             protocol: 'navi',
             market: lendingState.market,
@@ -832,6 +841,12 @@ export class UserPositions {
         totalBorrowValue = totalBorrowValue.plus(position['navi-lending-emode-borrow']!.valueUSD)
       }
     })
+
+    totalBorrowValue = BigNumber.max(totalBorrowValue, 0)
+    totalSupplyValue = BigNumber.max(totalSupplyValue, 0)
+    maxLiquidationValue = BigNumber.max(maxLiquidationValue, 0)
+    maxLoanToVaule = BigNumber.max(maxLoanToVaule, 0)
+
     positions.forEach((position) => {
       if (position.type === 'navi-lending-supply') {
         const data = position['navi-lending-supply']!
@@ -911,5 +926,29 @@ export class UserPositions {
       supply,
       borrow
     }
+  }
+}
+
+export async function verifyHealthFactorPTB(
+  tx: Transaction,
+  address: string | AccountCap | TransactionResult,
+  hf: number,
+  options?: Partial<EnvOption>
+) {
+  const config = await getConfig({
+    ...options,
+    cacheTime: DEFAULT_CACHE_TIME
+  })
+  if (config.limter) {
+    tx.moveCall({
+      target: `${config.limter}::navi_adaptor::verify_navi_position_healthy`,
+      arguments: [
+        tx.object('0x06'),
+        tx.object(config.storage),
+        tx.object(config.priceOracle),
+        parseTxValue(address, tx.pure.address),
+        tx.pure.u256(new BigNumber(hf).shiftedBy(27).toNumber())
+      ]
+    })
   }
 }

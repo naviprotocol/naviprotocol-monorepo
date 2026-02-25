@@ -486,6 +486,7 @@ export type LendingConfig = {
   flashloanSupportedAssets: string
   /** lending protocol version */
   version: number
+  limter?: string
   /** Oracle configuration */
   oracle: {
     /** Package ID */

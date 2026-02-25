@@ -22,6 +22,21 @@ import { suiClient } from './utils'
 import { getPools } from './pool'
 import { getLendingPositions } from './account'
 
+type PythInfo = {
+  priceFeedId: string
+  priceInfoObject: string
+  expiration?: number
+}
+
+export type PythPriceInfo = {
+  priceFeedId: string
+  priceInfoObject: string
+  price: string
+  conf: string
+  publishTime: number
+  expiration?: number
+}
+
 /**
  * Pyth Network connection for price feed data
  * Connects to the Hermes endpoint for real-time price updates
@@ -62,6 +77,89 @@ export async function getPythStalePriceFeedId(priceIds: string[]): Promise<strin
           `stale price feed, id: ${priceFeed.id}, publish time: ${uncheckedPrice.publishTime}, current timestamp: ${currentTimestamp}`
         )
         returnData.push(priceFeed.id)
+      }
+    }
+    return returnData
+  } catch (error) {
+    throw new Error(`failed to get pyth stale price feed id, msg: ${(error as Error).message}`)
+  }
+}
+
+async function getOnChainPriceInfo(
+  pythInfos: PythInfo[],
+  options?: Partial<SuiClientOption>
+): Promise<PythPriceInfo[] | undefined> {
+  try {
+    const priceInfos: PythPriceInfo[] = []
+    const client = options?.client ?? suiClient
+
+    const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
+    const priceInfoObjects = await client.multiGetObjects({
+      ids: Array.from(new Set(priceInfoObjectIds)),
+      options: { showContent: true }
+    })
+    for (const obj of priceInfoObjects) {
+      const data = obj.data
+      if (!data || !data.content || data.content.dataType !== 'moveObject') {
+        console.warn(`fetched object ${data?.objectId} datatype should be moveObject`)
+        continue
+      }
+
+      const pythInfo = pythInfos.find((v) => v.priceInfoObject == data.objectId)
+      if (!pythInfo) {
+        console.warn(`unable to find pyth info from array, priceInfoObject: ${data.objectId}`)
+        continue
+      }
+
+      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      const objectFields = data.content.fields.price_info.fields.price_feed.fields.price.fields
+      const { magnitude, negative } = objectFields.price.fields
+      const conf = objectFields.conf
+      const timestamp = objectFields.timestamp
+
+      priceInfos.push({
+        priceFeedId: pythInfo.priceFeedId,
+        priceInfoObject: pythInfo.priceInfoObject,
+        price: negative ? '-' + magnitude : magnitude,
+        conf,
+        publishTime: Number(timestamp),
+        expiration: pythInfo.expiration
+      })
+    }
+    return priceInfos
+  } catch (err) {
+    console.error(err, `Polling Sui on-chain price for ${pythInfos} failed.`)
+    return undefined
+  }
+}
+
+export async function getPythStalePriceFeedIdV2(
+  pythInfos: PythInfo[],
+  options?: Partial<SuiClientOption>
+): Promise<string[]> {
+  try {
+    const returnData: string[] = []
+    const latestPriceFeeds = await getOnChainPriceInfo(pythInfos, options)
+    if (!latestPriceFeeds) return returnData
+
+    const currentTimestamp = Math.floor(new Date().valueOf() / 1000)
+
+    for (const priceFeed of latestPriceFeeds) {
+      if (priceFeed.publishTime > currentTimestamp) {
+        console.warn(
+          `pyth price feed is invalid, id: ${priceFeed.priceFeedId}, publish time: ${priceFeed.publishTime}, current timestamp: ${currentTimestamp}`
+        )
+        continue
+      }
+
+      const maxTime = priceFeed.expiration || 60
+      // 3s is the margin of error for the price feed.
+      if (currentTimestamp - priceFeed.publishTime > maxTime) {
+        console.info(
+          `stale price feed, id: ${priceFeed.priceFeedId}, publish time: ${priceFeed.publishTime}, current timestamp: ${currentTimestamp}`
+        )
+        returnData.push(priceFeed.priceFeedId)
       }
     }
     return returnData
@@ -123,6 +221,7 @@ export async function updateOraclePricesPTB(
   priceFeeds: OraclePriceFeed[],
   options?: Partial<
     EnvOption &
+      SuiClientOption &
       MarketOption & {
         updatePythPriceFeeds?: boolean
       }
@@ -135,32 +234,52 @@ export async function updateOraclePricesPTB(
 
   // Optionally update Pyth price feeds if they are stale
   if (options?.updatePythPriceFeeds) {
-    const pythPriceFeedIds = priceFeeds
-      .filter((feed) => !!feed.pythPriceFeedId)
-      .map((feed) => feed.pythPriceFeedId)
+    const pythInfos = priceFeeds
+      .filter((feed) => !!feed.pythPriceFeedId && !!feed.pythPriceInfoObject)
+      .map((feed) => ({
+        priceFeedId: feed.pythPriceFeedId,
+        priceInfoObject: feed.pythPriceInfoObject,
+        expiration: 30
+      }))
 
     try {
-      const stalePriceFeedIds = await getPythStalePriceFeedId(pythPriceFeedIds)
+      const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
       if (stalePriceFeedIds.length > 0) {
         await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(`Failed to update Pyth price feeds`)
+    }
   }
 
   // Update individual price feeds in the oracle contract
   for (const priceFeed of priceFeeds) {
-    tx.moveCall({
-      target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
-      arguments: [
-        tx.object('0x6'), // Clock object
-        tx.object(config.oracle.oracleConfig), // Oracle configuration
-        tx.object(config.oracle.priceOracle), // Price oracle contract
-        tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
-        tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
-        tx.object(config.oracle.switchboardAggregator),
-        tx.pure.address(priceFeed.feedId) // Price feed ID
-      ]
-    })
+    if (options?.env === 'dev') {
+      tx.moveCall({
+        target: `${config.oracle.packageId}::oracle_pro::update_single_price`,
+        arguments: [
+          tx.object('0x6'), // Clock object
+          tx.object(config.oracle.oracleConfig), // Oracle configuration
+          tx.object(config.oracle.priceOracle), // Price oracle contract
+          tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
+          tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
+          tx.pure.address(priceFeed.feedId) // Price feed ID
+        ]
+      })
+    } else {
+      tx.moveCall({
+        target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
+        arguments: [
+          tx.object('0x6'), // Clock object
+          tx.object(config.oracle.oracleConfig), // Oracle configuration
+          tx.object(config.oracle.priceOracle), // Price oracle contract
+          tx.object(config.oracle.supraOracleHolder), // Supra oracle holder
+          tx.object(priceFeed.pythPriceInfoObject), // Pyth price info object
+          tx.object(config.oracle.switchboardAggregator),
+          tx.pure.address(priceFeed.feedId) // Price feed ID
+        ]
+      })
+    }
   }
   return tx
 }

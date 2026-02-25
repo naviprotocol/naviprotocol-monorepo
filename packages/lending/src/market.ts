@@ -68,7 +68,12 @@ export class Market {
         }
         emode.assets.forEach((asset) => {
           if (asset.isDebt) {
-            emodeBorrowablePoolIds.add(pool.uniqueId)
+            const supplyableAsset = emode.assets.find(
+              (a) => a.isCollateral && a.ltv > 0 && a.assetId !== pool.id
+            )
+            if (supplyableAsset) {
+              emodeBorrowablePoolIds.add(pool.uniqueId)
+            }
           }
           if (asset.isCollateral) {
             emodeSupplyablePoolIds.add(pool.uniqueId)

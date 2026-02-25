@@ -104,6 +104,41 @@ const stalePriceFeedIds = await getPythStalePriceFeedId([allPriceFeeds[0].pythPr
 ["0x..."]
 ```
 
+### getPythStalePriceFeedIdV2
+
+Get stale price feed IDs by reading on-chain PriceInfoObject data directly, instead of relying on the Pyth Hermes endpoint. This is a more reliable alternative to `getPythStalePriceFeedId` as it reads price freshness from the Sui blockchain. See [documentation](/typedoc/functions/_naviprotocol_lending.getPythStalePriceFeedIdV2.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPythStalePriceFeedIdV2, getPriceFeeds } from '@naviprotocol/lending'
+
+const allPriceFeeds = await getPriceFeeds()
+
+const stalePriceFeedIds = await getPythStalePriceFeedIdV2(
+  allPriceFeeds.map((feed) => ({
+    priceFeedId: feed.pythPriceFeedId,
+    priceInfoObject: feed.pythPriceInfoObject,
+    expiration: 30 // Optional: max age in seconds (default: 60)
+  }))
+)
+```
+
+**Parameters**
+
+- `pythInfos`: Array of Pyth info objects:
+  - `priceFeedId`: Pyth price feed ID
+  - `priceInfoObject`: On-chain PriceInfoObject ID
+  - `expiration` (optional): Maximum allowed age in seconds before a price is considered stale (default: 60)
+- `options` (optional):
+  - `client`: Sui client instance
+
+**Result Example**
+
+```json
+["0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744"]
+```
+
 ### updatePythPriceFeeds
 
 Update Pyth price feeds in a transaction. Fetches the latest price update data from Pyth Network and adds the update operations to the transaction block. See [documentation](/typedoc/functions/_naviprotocol_lending.updatePythPriceFeeds.html) for details.
@@ -125,7 +160,7 @@ await updatePythPriceFeeds(tx, stalePriceFeedIds)
 
 ### updateOraclePricesPTB
 
-Update oracle prices in the PTB (Programmable Transaction Block). This function updates price feeds for the lending protocol. See [documentation](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html) for details.
+Update oracle prices in the PTB (Programmable Transaction Block). This function updates price feeds for the lending protocol. When `updatePythPriceFeeds` is enabled, it uses on-chain price staleness detection (`getPythStalePriceFeedIdV2`) to automatically refresh stale Pyth feeds before updating oracle prices. See [documentation](/typedoc/functions/_naviprotocol_lending.updateOraclePricesPTB.html) for details.
 
 **Usage Example**
 
@@ -141,7 +176,27 @@ await updateOraclePricesPTB(tx, allPriceFeeds, {
   updatePythPriceFeeds: true, // Optional: update Pyth feeds if stale
   market: 'main' // Optional: market identifier
 })
+
+// With custom Sui client
+import { SuiClient } from '@mysten/sui/client'
+
+const client = new SuiClient({ url: 'https://fullnode.mainnet.sui.io' })
+await updateOraclePricesPTB(tx, allPriceFeeds, {
+  updatePythPriceFeeds: true,
+  client, // Optional: custom Sui client for on-chain price staleness detection
+  env: 'prod' // Optional: environment configuration
+})
 ```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `priceFeeds`: Array of `OraclePriceFeed` objects
+- `options` (optional):
+  - `updatePythPriceFeeds`: Whether to check and update stale Pyth price feeds before updating oracle prices
+  - `market`: Market identifier
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `client`: Sui client instance (used for on-chain price staleness detection)
 
 ## Complete Example
 
@@ -178,3 +233,27 @@ const updatedTx = await updateOraclePricesPTB(tx, relevantFeeds, {
 // 5. Execute the transaction
 // ... execute the transaction with your wallet
 ```
+
+## Type Definitions
+
+### PythPriceInfo
+
+On-chain Pyth price information retrieved from PriceInfoObject.
+
+```typescript
+type PythPriceInfo = {
+  priceFeedId: string
+  priceInfoObject: string
+  price: string
+  conf: string
+  publishTime: number
+  expiration?: number
+}
+```
+
+- `priceFeedId`: Pyth price feed ID
+- `priceInfoObject`: On-chain PriceInfoObject ID
+- `price`: Price value (negative if the price magnitude is negative)
+- `conf`: Confidence interval
+- `publishTime`: Unix timestamp when the price was published
+- `expiration`: Maximum allowed age in seconds (optional)

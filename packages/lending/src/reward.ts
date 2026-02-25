@@ -364,7 +364,7 @@ export async function claimLendingRewardsPTB(
   for (const reward of rewards) {
     const { rewardCoinType, ruleIds, market, owner, emodeId } = reward
 
-    const key = `${rewardCoinType}-${market}-${owner}`
+    const key = `${rewardCoinType}___${owner}`
 
     for (const ruleId of ruleIds) {
       if (!rewardMap.has(key)) {
@@ -389,13 +389,12 @@ export async function claimLendingRewardsPTB(
 
   // Process each reward coin type
   for (const [rewardCoinType, { assetIds, ruleIds, amount, market, owner, isEMode }] of rewardMap) {
+    const coinType = rewardCoinType.split('___')[0]
     const pool = pools.find(
-      (p) =>
-        normalizeCoinType(p.suiCoinType) === normalizeCoinType(rewardCoinType) &&
-        p.market === market
+      (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType) && p.market === market
     )
     if (!pool || !pool.contract.rewardFundId) {
-      throw new Error(`No matching rewardFund found for reward coin: ${rewardCoinType} ${market}`)
+      throw new Error(`No matching rewardFund found for reward coin: ${coinType} ${market}`)
     }
     const matchedRewardFund = pool.contract.rewardFundId
 
@@ -421,7 +420,7 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('address', ruleIds), // Rule IDs
             parseTxValue(options.accountCap, tx.object) // Account capability
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
       } else if (isEMode) {
         rewardBalance = tx.moveCall({
@@ -435,7 +434,7 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('address', ruleIds), // Rule IDs
             parseTxValue(owner, tx.object) // Account capability
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
       } else {
         rewardBalance = tx.moveCall({
@@ -448,7 +447,7 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds) // Rule IDs
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
       }
 
@@ -456,7 +455,7 @@ export async function claimLendingRewardsPTB(
       const [rewardCoin]: any = tx.moveCall({
         target: '0x2::coin::from_balance',
         arguments: [rewardBalance],
-        typeArguments: [rewardCoinType]
+        typeArguments: [coinType]
       })
 
       // Handle different custom coin receiving types
@@ -507,13 +506,13 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('address', ruleIds), // Rule IDs
             parseTxValue(options?.accountCap || owner, tx.object) // Account capability
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
 
         const [rewardCoin]: any = tx.moveCall({
           target: '0x2::coin::from_balance',
           arguments: [rewardBalance],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
 
         tx.transferObjects(
@@ -531,7 +530,7 @@ export async function claimLendingRewardsPTB(
             tx.pure.vector('string', assetIds), // Asset IDs
             tx.pure.vector('address', ruleIds) // Rule IDs
           ],
-          typeArguments: [rewardCoinType]
+          typeArguments: [coinType]
         })
       }
     }

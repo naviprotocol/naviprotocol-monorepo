@@ -17,8 +17,10 @@ The account module provides comprehensive lending account functionality, includi
 
 Get user's lending account information. You can filter by specific market(s). See [documentation](/typedoc/variables/_naviprotocol_lending.getLendingState.html) for details.
 
-<Callout>We standardized the precision of the `borrowBalance` and `supplyBalance`, with all decimal places set to `9`. </Callout>
-
+<Callout>
+  We standardized the precision of the `borrowBalance` and `supplyBalance`, with all decimal places
+  set to `9`.{' '}
+</Callout>
 
 **Usage Example**
 
@@ -40,6 +42,7 @@ const multipleMarketsState = await getLendingState('0x...', {
 ```
 
 **Result Example**
+
 ```json
 [{
   assetId: 19,
@@ -75,7 +78,9 @@ const multipleMarketsState = await getLendingState('0x...', {
   - `disableCache`: Whether to disable cache
 
 <Callout>
-  For a more structured way to manage positions with automatic value calculations, EMode support, and overview statistics, see the <a href="/lending/position">Position Management</a> documentation.
+  For a more structured way to manage positions with automatic value calculations, EMode support,
+  and overview statistics, see the <a href="/lending/position">Position Management</a>{' '}
+  documentation.
 </Callout>
 
 ### getTransactions
@@ -88,11 +93,12 @@ Get user's transaction history under the NAVI protocol. See [documentation](/typ
 import { getTransactions } from '@naviprotocol/lending'
 
 const transactionResult = await getTransactions('0x...', {
-  cursor: ""
+  cursor: ''
 })
 ```
 
 **Result Example**
+
 ```json
 {
   "cursor": "7dmAzBcvd6BcX5msm1UFJns1KdMyqWKfMfqmr6n7ZHEx::0",
@@ -216,7 +222,6 @@ const transactionResult = await getTransactions('0x...', {
 }
 ```
 
-
 ### getHealthFactor
 
 Get the current health factor of an account. See [documentation](/typedoc/functions/_naviprotocol_lending.getHealthFactor.html) for details.
@@ -230,6 +235,7 @@ const healthFactor = await getHealthFactor('0x...')
 ```
 
 **Result Example**
+
 ```json
 1.8
 ```
@@ -243,16 +249,13 @@ Simulate the impact of operations on health factors to predict account status af
 ```typescript
 import { getSimulatedHealthFactor } from '@naviprotocol/lending'
 
-const healthFactor = await getSimulatedHealthFactor(
-  '0x...',
-  '0x2::sui::SUI',
-  [
-    { type: PoolOperator.Supply, amount: 1000000000 },
-  ]
-)
+const healthFactor = await getSimulatedHealthFactor('0x...', '0x2::sui::SUI', [
+  { type: PoolOperator.Supply, amount: 1000000000 }
+])
 ```
 
 **Result Example**
+
 ```json
 2.1
 ```
@@ -268,21 +271,24 @@ import { getCoins } from '@naviprotocol/lending'
 
 const coins = await getCoins(
   '0x...', // User address
-  { 
-    coinType: '0x2::sui::SUI', // Optional token type filter
+  {
+    coinType: '0x2::sui::SUI' // Optional token type filter
   }
 )
 ```
 
 **Result Example**
+
 ```json
-[{
-  coinObjectId: '0x1',
-  balance: '1000000000',
-  coinType: '0x2::sui::SUI',
-  digest: '0x...',
-  version: '123456'
-}]
+[
+  {
+    "coinObjectId": "0x1",
+    "balance": "1000000000",
+    "coinType": "0x2::sui::SUI",
+    "digest": "0x...",
+    "version": "123456"
+  }
+]
 ```
 
 ### mergeCoinsPTB
@@ -303,13 +309,12 @@ const mergedCoin = mergeCoinsPTB(
     { coinObjectId: '0x1', balance: '1000000000', coinType: '0x2::sui::SUI' },
     { coinObjectId: '0x2', balance: '2000000000', coinType: '0x2::sui::SUI' }
   ], // Token list
-  { 
+  {
     balance: 2500000000, // Optional split balance
     useGasCoin: true // Whether to use tx.gas
   }
 )
 ```
-
 
 ### getHealthFactorPTB
 
@@ -322,7 +327,6 @@ import { getHealthFactorPTB } from '@naviprotocol/lending'
 
 const healthFactorResult = await getHealthFactorPTB(tx, '0x...')
 ```
-
 
 ### getSimulatedHealthFactorPTB
 
@@ -369,4 +373,31 @@ const healthFactorResultWithMarket = await getSimulatedHealthFactorPTB(
   - `market`: Market identifier
   - `env`: Environment configuration ('dev' or 'prod')
 
+### verifyHealthFactorPTB
 
+Verify that the user's health factor meets a minimum threshold in a programmable transaction block. This function calls the limiter contract's `verify_navi_position_healthy` method to ensure the account remains healthy after operations.
+
+**Usage Example**
+
+```typescript
+import { verifyHealthFactorPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Verify health factor >= 1.1 after operations
+await verifyHealthFactorPTB(tx, '0x...', 1.1)
+
+// With environment option
+await verifyHealthFactorPTB(tx, '0x...', 1.1, {
+  env: 'prod'
+})
+```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `address`: User address, Account Cap object ID, or TransactionResult
+- `hf`: Minimum health factor threshold (e.g., `1.1`)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
