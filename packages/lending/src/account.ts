@@ -193,7 +193,13 @@ async function getLendingStateBatch(
     market: string
     emodeId?: number
   }[],
-  options?: Partial<SuiClientOption & EnvOption & CacheOption>
+  options?: Partial<
+    SuiClientOption &
+      EnvOption &
+      CacheOption & {
+        includeZeroBalanceEmodePositions?: boolean
+      }
+  >
 ): Promise<UserLendingInfo[]> {
   const tx = new Transaction()
   const client = options?.client ?? suiClient
@@ -202,6 +208,7 @@ async function getLendingStateBatch(
     markets: Object.values(MARKETS)
   })
   const poolsMap = getPoolsMap(pools)
+
   for (let task of tasks) {
     const config = await getConfig({
       ...options,
@@ -238,7 +245,12 @@ async function getLendingStateBatch(
     const market = getMarketConfig(task.market)
     states.forEach((state) => {
       if (state.supply_balance === '0' && state.borrow_balance === '0') {
-        return
+        if (task.emodeId === undefined) {
+          return
+        }
+        if (!options?.includeZeroBalanceEmodePositions) {
+          return
+        }
       }
       const pool = poolsMap[`${market.key}-${state.asset_id}`]
       if (!pool) {
@@ -480,7 +492,14 @@ export async function getCoins(
 export const getLendingPositions = withCache(
   async (
     address: string,
-    options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
+    options?: Partial<
+      SuiClientOption &
+        EnvOption &
+        CacheOption &
+        MarketsOption & {
+          includeZeroBalanceEmodePositions?: boolean
+        }
+    >
   ): Promise<LendingPosition[]> => {
     const positions: LendingPosition[] = []
     const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
@@ -527,50 +546,64 @@ export const getLendingPositions = withCache(
             })
           : undefined
       if (emodeCap) {
-        if (BigNumber(lendingState.supplyBalance).gt(0)) {
+        const inEmode = lendingState.pool.emodes.find((emode) => emode.emodeId === emodeCap.emodeId)
+        if (!inEmode) {
+          return
+        }
+        if (BigNumber(lendingState.supplyBalance).gte(0)) {
           const supplyAmount = BigNumber(lendingState.supplyBalance)
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-          try {
-            positions.push({
-              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply-${uuid()}`,
-              wallet: address,
-              protocol: 'navi',
-              market: lendingState.market,
-              type: 'navi-lending-emode-supply',
-              'navi-lending-emode-supply': {
-                amount: supplyAmount.toString(),
-                pool: poolToEModePool(lendingState.pool, emodeCap),
-                token: lendingState.pool.token,
-                valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
-                emodeCap: emodeCap
-              }
-            })
-          } catch (e) {
-            console.error(e)
+
+          const emodePool = poolToEModePool(lendingState.pool, emodeCap)
+
+          if (supplyAmount.gt(0) || emodePool.emode.isCollateral) {
+            try {
+              positions.push({
+                id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-supply-${uuid()}`,
+                wallet: address,
+                protocol: 'navi',
+                market: lendingState.market,
+                type: 'navi-lending-emode-supply',
+                'navi-lending-emode-supply': {
+                  amount: supplyAmount.toString(),
+                  pool: poolToEModePool(lendingState.pool, emodeCap),
+                  token: lendingState.pool.token,
+                  valueUSD: supplyAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                  emodeCap: emodeCap
+                }
+              })
+            } catch (e) {
+              console.error(e)
+            }
           }
         }
-        if (BigNumber(lendingState.borrowBalance).gt(0)) {
+        if (BigNumber(lendingState.borrowBalance).gte(0)) {
           const borrowAmount = BigNumber(lendingState.borrowBalance)
             .shiftedBy(-9)
             .decimalPlaces(lendingState.pool.token.decimals, BigNumber.ROUND_DOWN)
-          try {
-            positions.push({
-              id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-borrow-${uuid()}`,
-              wallet: address,
-              protocol: 'navi',
-              market: lendingState.market,
-              type: 'navi-lending-emode-borrow',
-              'navi-lending-emode-borrow': {
-                amount: borrowAmount.toString(),
-                pool: poolToEModePool(lendingState.pool, emodeCap),
-                token: lendingState.pool.token,
-                valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
-                emodeCap: emodeCap
-              }
-            })
-          } catch (e) {
-            console.error(e)
+
+          const emodePool = poolToEModePool(lendingState.pool, emodeCap)
+
+          if (borrowAmount.gt(0) || emodePool.emode.isDebt) {
+            try {
+              positions.push({
+                id: `${lendingState.pool.uniqueId}_${emodeCap.emodeId}_navi-lending-emode-borrow-${uuid()}`,
+                wallet: address,
+                protocol: 'navi',
+                market: lendingState.market,
+                type: 'navi-lending-emode-borrow',
+                'navi-lending-emode-borrow': {
+                  amount: borrowAmount.toString(),
+                  pool: poolToEModePool(lendingState.pool, emodeCap),
+                  token: lendingState.pool.token,
+                  valueUSD: borrowAmount.multipliedBy(lendingState.pool.oracle.price).toString(),
+                  emodeCap: emodeCap
+                }
+              })
+            } catch (e) {
+              console.error(e)
+            }
           }
         }
       } else {

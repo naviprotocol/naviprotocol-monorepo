@@ -68,15 +68,18 @@ export class Market {
         }
         emode.assets.forEach((asset) => {
           if (asset.isDebt) {
-            const supplyableAsset = emode.assets.find(
+            const debtAsset = emode.assets.find(
               (a) => a.isCollateral && a.ltv > 0 && a.assetId !== pool.id
             )
-            if (supplyableAsset) {
+            if (debtAsset) {
               emodeBorrowablePoolIds.add(pool.uniqueId)
             }
           }
           if (asset.isCollateral) {
-            emodeSupplyablePoolIds.add(pool.uniqueId)
+            const supplyAsset = emode.assets.find((a) => a.isDebt && a.assetId !== pool.id)
+            if (supplyAsset) {
+              emodeSupplyablePoolIds.add(pool.uniqueId)
+            }
           }
         })
       })
