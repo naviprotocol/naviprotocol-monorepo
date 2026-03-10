@@ -1,0 +1,6 @@
+{
+  "name": "@naviprotocol/skills",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI skills for NAVI Protocol TypeScript SDK"
+}
