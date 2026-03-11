@@ -124,7 +124,9 @@ async function getLendingRewardsBatch(
           (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
         )
         const pool = pools.find(
-          (pool) => normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i])
+          (pool) =>
+            normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i]) &&
+            pool.market === task.market
         )
         if (!feed || !pool) {
           continue
