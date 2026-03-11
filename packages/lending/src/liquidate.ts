@@ -6,7 +6,7 @@
  * when the borrower's health factor falls below the liquidation threshold.
  */
 
-import { AssetIdentifier, CoinObject, EnvOption, TransactionResult } from './types'
+import { AssetIdentifier, CoinObject, EnvOption, TransactionResult, MarketOption } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { getPool } from './pool'
@@ -37,7 +37,7 @@ export async function liquidatePTB(
   payCoinObject: CoinObject,
   collateralAsset: AssetIdentifier,
   liquidateAddress: string | TransactionResult,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ) {
   const commonOptions = {
     ...options,

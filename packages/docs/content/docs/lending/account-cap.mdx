@@ -2,6 +2,8 @@
 title: Account Cap
 ---
 
+The Account Cap module provides functionality to create and manage account capabilities, which are required for certain operations within the NAVI protocol.
+
 ## API Reference
 
 ### createAccountCapPTB
@@ -16,6 +18,55 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
-const accountCap = await createAccountCapPTB(tx)
+const accountCap = await createAccountCapPTB(tx, {
+  env: 'prod' // Optional: environment configuration
+})
 ```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+
+**Returns**
+
+Returns a TransactionResult representing the Account Cap object.
+
+### getAccountCapOwnerPTB
+
+Get the owner address of an Account Cap in a programmable transaction block. This function is useful when you need to verify or use the owner address in transaction construction. See [documentation](/typedoc/functions/_naviprotocol_lending.getAccountCapOwnerPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getAccountCapOwnerPTB, createAccountCapPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// First create an Account Cap
+const accountCap = await createAccountCapPTB(tx, {
+  env: 'prod'
+})
+
+// Then get the owner address
+const ownerAddress = await getAccountCapOwnerPTB(tx, accountCap, {
+  env: 'prod'
+})
+
+// Use the owner address in subsequent operations
+// ...
+```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `accountCap`: Account Cap object (TransactionResult)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+
+**Returns**
+
+Returns a TransactionResult representing the owner address of the Account Cap.
 

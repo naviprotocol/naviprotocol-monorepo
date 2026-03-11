@@ -28,7 +28,10 @@ const rewards = await getUserAvailableLendingRewards('0x...')
     "rewardCoinType": "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT",
     "option": 3,
     "userClaimableReward": 0.005299,
-    "ruleIds": ["0x02d80d2d9a2b9fc65baf19c13a0e7d0584fe4bb69487f24b672c3e50de820150"]
+    "ruleIds": ["0x02d80d2d9a2b9fc65baf19c13a0e7d0584fe4bb69487f24b672c3e50de820150"],
+    "market": "main",
+    "owner": "0x...",
+    "emodeId": 1
   },
   {
     "assetId": 5,
@@ -36,10 +39,24 @@ const rewards = await getUserAvailableLendingRewards('0x...')
     "rewardCoinType": "0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX",
     "option": 1,
     "userClaimableReward": 0.345351397,
-    "ruleIds": ["0x3f2610eb38a4ff44b9e6e6ba292c9ddcc3b5a75e4a99169f4fc3bdbcd0d69676"]
+    "ruleIds": ["0x3f2610eb38a4ff44b9e6e6ba292c9ddcc3b5a75e4a99169f4fc3bdbcd0d69676"],
+    "market": "main",
+    "owner": "0x..."
   }
 ]
 ```
+
+**Return Fields**
+
+- `assetId`: Asset identifier
+- `assetCoinType`: Asset coin type
+- `rewardCoinType`: Reward coin type
+- `option`: Reward option identifier
+- `userClaimableReward`: Amount of reward available to claim
+- `ruleIds`: Array of rule IDs for this reward
+- `market`: Market identifier (e.g., "main")
+- `owner`: Owner address (user address or account cap)
+- `emodeId`: Optional EMode ID if the reward is from an EMode position
 
 ### summaryLendingRewards
 
@@ -61,6 +78,7 @@ const summary = summaryLendingRewards(rewards)
   {
     "assetId": 19,
     "rewardType": 1,
+    "market": "main",
     "rewards": [
       {
         "coinType": "0x2::sui::SUI",
@@ -71,6 +89,13 @@ const summary = summaryLendingRewards(rewards)
 ]
 ```
 
+**Return Fields**
+
+- `assetId`: Asset identifier
+- `rewardType`: Type of reward
+- `market`: Market identifier (e.g., "main")
+- `rewards`: Array of available rewards by coin type
+
 ### getUserTotalClaimedReward
 
 Get user's total claimed rewards in USD value. See [documentation](/typedoc/variables/_naviprotocol_lending.getUserTotalClaimedReward.html) for details.
@@ -80,7 +105,13 @@ Get user's total claimed rewards in USD value. See [documentation](/typedoc/vari
 ```typescript
 import { getUserTotalClaimedReward } from '@naviprotocol/lending'
 
+// Get total claimed rewards
 const totalRewards = await getUserTotalClaimedReward('0x...')
+
+// Get total claimed rewards for specific market
+const marketRewards = await getUserTotalClaimedReward('0x...', {
+  market: 'main' // Optional: market identifier
+})
 ```
 
 **Result Example**
@@ -100,9 +131,17 @@ Get user's claimed reward history. See [documentation](/typedoc/variables/_navip
 ```typescript
 import { getUserClaimedRewardHistory } from '@naviprotocol/lending'
 
+// Get reward history
 const history = await getUserClaimedRewardHistory('0x...', {
   page: 1,
   size: 20
+})
+
+// Get reward history for specific market
+const marketHistory = await getUserClaimedRewardHistory('0x...', {
+  page: 1,
+  size: 20,
+  market: 'main' // Optional: market identifier
 })
 ```
 
@@ -130,7 +169,7 @@ const history = await getUserClaimedRewardHistory('0x...', {
 
 ### claimLendingRewardsPTB
 
-Claim lending rewards in a programmable transaction block. See [documentation](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html) for details.
+Claim lending rewards in a programmable transaction block. This function automatically handles both standard rewards and EMode rewards. For EMode rewards, it will automatically use the account cap from the EMode Cap. See [documentation](/typedoc/functions/_naviprotocol_lending.claimLendingRewardsPTB.html) for details.
 
 **Usage Example**
 
@@ -143,7 +182,7 @@ const rewards = await getUserAvailableLendingRewards(
   '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 )
 
-// Standard claiming
+// Standard claiming (automatically handles both standard and EMode rewards)
 const rewardCoins = await claimLendingRewardsPTB(tx, rewards)
 
 // Claiming with account cap and custom coin handling (transfer reward to another address)
@@ -162,4 +201,13 @@ await claimLendingRewardsPTB(tx, rewards, {
     type: 'depositNAVI'
   }
 })
+
+// Claiming with market option
+await claimLendingRewardsPTB(tx, rewards, {
+  market: 'main' // Optional: market identifier
+})
 ```
+
+**Note on EMode Rewards**
+
+When claiming rewards that include EMode positions (rewards with `emodeId` field), the function will automatically use the account cap from the corresponding EMode Cap. You don't need to manually specify the account cap for EMode rewards - the SDK will handle it automatically based on the `isEMode` flag in the reward data.

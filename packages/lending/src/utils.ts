@@ -8,7 +8,7 @@
  * @module LendingUtils
  */
 
-import type { CacheOption, Pool, TransactionResult } from './types'
+import type { CacheOption, EMode, EModeIdentity, EModePool, Pool, TransactionResult } from './types'
 import type { DevInspectResults } from '@mysten/sui/client'
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 import camelCase from 'lodash.camelcase'
@@ -273,3 +273,57 @@ export const requestHeaders = !!userAgent
       'User-Agent': userAgent
     }
   : ({} as HeadersInit)
+
+export function getPoolsMap(pools: Pool[], key: 'uniqueId' | 'id' = 'uniqueId') {
+  return pools.reduce(
+    (acc, pool) => {
+      acc[pool[key]] = pool
+      return acc
+    },
+    {} as Record<string, Pool>
+  )
+}
+
+export function getEmodesMap(emodes: EMode[], key: 'uniqueId' | 'emodeId' = 'uniqueId') {
+  return emodes.reduce(
+    (acc, emode) => {
+      acc[emode[key]] = emode
+      return acc
+    },
+    {} as Record<string, EMode>
+  )
+}
+
+export function poolToEModePool(pool: Pool, emodeIdentity: EModeIdentity): EModePool {
+  const emode = pool.emodes.find((emode) => emode.emodeId === emodeIdentity.emodeId)
+  if (!emode) {
+    throw new Error('EMode not found in pool')
+  }
+  const emodeAsset = emode.assets.find((asset) => asset.assetId === pool.id)!
+  return {
+    ...pool,
+    emode: {
+      ...emodeAsset,
+      emodeId: emode.emodeId
+    },
+    isEMode: true
+  }
+}
+
+export function parsePoolUID(uid: string) {
+  const [marketKey, poolId] = uid.split('-')
+  if (!marketKey || !poolId) {
+    return null
+  }
+  return {
+    marketKey: marketKey,
+    poolId: parseInt(poolId)
+  }
+}
+
+export function uuid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+}

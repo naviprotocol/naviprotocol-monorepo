@@ -1,0 +1,228 @@
+---
+title: EMode
+---
+
+EMode (Efficiency Mode) is a special lending mode that allows users to borrow at higher LTV (Loan-to-Value) ratios within specific asset categories, improving capital efficiency.
+
+## Core Concepts
+
+### Benefits of EMode
+
+- **Higher LTV**: Related assets can use higher LTV ratios in EMode
+- **Lower Liquidation Threshold**: Reduces liquidation risk
+- **Capital Efficiency**: Improves capital utilization
+
+### EMode Cap
+
+EMode Cap is a special capability that combines Account Cap and EMode functionality, allowing users to perform EMode operations using Account Cap.
+
+## API Reference
+
+### enterEModePTB
+
+Enter EMode. In EMode, users can borrow at higher LTV ratios between related assets. See [documentation](/typedoc/functions/_naviprotocol_lending.enterEModePTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { enterEModePTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic enter EMode operation
+await enterEModePTB(tx, 1, {
+  env: 'prod' // Optional: environment configuration
+})
+
+// Enter EMode using Account Cap
+await enterEModePTB(tx, 1, {
+  accountCap: accountCapObjectId,
+  env: 'prod'
+})
+```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `emodeId`: EMode ID (number or TransactionResult)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `accountCap`: Account Cap object ID (if using Account Cap)
+  - `market`: Market identifier
+
+### exitEModePTB
+
+Exit EMode. See [documentation](/typedoc/functions/_naviprotocol_lending.exitEModePTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { exitEModePTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Basic exit EMode operation
+await exitEModePTB(tx, {
+  env: 'prod' // Optional: environment configuration
+})
+
+// Exit EMode using Account Cap
+await exitEModePTB(tx, {
+  accountCap: accountCapObjectId,
+  env: 'prod'
+})
+```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `accountCap`: Account Cap object ID (if using Account Cap)
+  - `market`: Market identifier
+
+### createEModeCapPTB
+
+Create an EMode Cap, which is a convenience function that combines Account Cap creation and EMode entry operations. See [documentation](/typedoc/functions/_naviprotocol_lending.createEModeCapPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { createEModeCapPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Create EMode Cap
+const accountCap = await createEModeCapPTB(tx, 1, {
+  env: 'prod', // Optional: environment configuration
+  market: 'main' // Optional: market identifier
+})
+
+// Transfer Account Cap to user
+tx.transferObjects([accountCap], userAddress)
+```
+
+**Parameters**
+
+- `tx`: Transaction object
+- `emodeId`: EMode ID (number or TransactionResult)
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `market`: Market identifier
+
+**Returns**
+
+Returns the created Account Cap object (TransactionResult) that can be used for subsequent operations.
+
+### getUserEModeCaps
+
+Get all EMode Caps for a user. See [documentation](/typedoc/variables/_naviprotocol_lending.getUserEModeCaps.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getUserEModeCaps } from '@naviprotocol/lending'
+
+// Get user's EMode Caps
+const caps = await getUserEModeCaps(userAddress, {
+  env: 'prod', // Optional: environment configuration
+  cacheTime: 30000 // Optional: cache time
+})
+```
+
+**Return Example**
+
+```json
+[
+  {
+    "marketId": 0,
+    "emodeId": 1,
+    "accountCap": "0x..."
+  }
+]
+```
+
+**Parameters**
+
+- `address`: User address
+- `options` (optional):
+  - `env`: Environment configuration ('dev' or 'prod')
+  - `client`: Sui client instance
+  - `cacheTime`: Cache time in milliseconds
+  - `disableCache`: Whether to disable cache
+
+**Returns**
+
+Returns an array of `EModeCap[]`, where each element contains:
+- `marketId`: Market ID
+- `emodeId`: EMode ID
+- `accountCap`: Account Cap object ID
+
+### emodeIdentityId
+
+Generate an EMode identity identifier. See [documentation](/typedoc/functions/_naviprotocol_lending.emodeIdentityId.html) for details.
+
+**Usage Example**
+
+```typescript
+import { emodeIdentityId } from '@naviprotocol/lending'
+
+const emodeIdentity = {
+  emodeId: 1,
+  marketId: 0
+}
+
+const id = emodeIdentityId(emodeIdentity)
+// Returns: "main-1"
+```
+
+**Parameters**
+
+- `identifier`: EModeIdentity object containing `emodeId` and `marketId`
+
+**Returns**
+
+Returns a string in the format `"{marketKey}-{emodeId}"`.
+
+## Type Definitions
+
+### EModeIdentity
+
+```typescript
+type EModeIdentity = {
+  emodeId: number
+  marketId: number
+}
+```
+
+### EModeCap
+
+```typescript
+type EModeCap = {
+  emodeId: number
+  marketId: number
+  accountCap: string
+}
+```
+
+### EMode
+
+```typescript
+type EMode = EModeIdentity & {
+  isActive: boolean
+  uniqueId: string
+  assets: [
+    {
+      assetId: number
+      ltv: number
+      lt: number
+      bonus: number
+      isCollateral: boolean
+      isDebt: boolean
+    }
+  ]
+}
+```
