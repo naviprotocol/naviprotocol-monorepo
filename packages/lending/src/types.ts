@@ -385,6 +385,8 @@ export type Pool = {
   poolBorrowValue: string
   poolBorrowCapAmount: string
   poolBorrowCapValue: string
+  // pool withdrawable balance
+  balance: string
 }
 
 export type EModePool = Pool & {
