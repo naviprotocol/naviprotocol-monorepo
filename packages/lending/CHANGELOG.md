@@ -1,5 +1,20 @@
 # @naviprotocol/lending
 
+## 1.4.0
+
+### Minor Changes
+
+- Add EMode support with enhanced data structures and reward handling
+- Upgrade oracle price update to v2 with switchboard aggregator
+- Support multi-market queries and refactor data structures
+- Improve lending rewards calculation with correct pool matching
+
+### Patch Changes
+
+- Fix lending position id and market issues
+- Add new balance field to the Pool type
+- Enhance documentation for oracle and account modules
+
 ## 1.3.2
 
 ### Patch Changes
