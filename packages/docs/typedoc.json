@@ -2,6 +2,7 @@
   "entryPoints": [
     "../astros-aggregator-sdk",
     "../astros-bridge-sdk",
+    "../lending-admin",
     "../lending",
     "../wallet-client"
   ],

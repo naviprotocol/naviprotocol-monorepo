@@ -1,0 +1,71 @@
+---
+title: Getting Started
+---
+
+`@naviprotocol/lending-admin` is the precision-safe admin companion package for NAVI Lending on Sui. It exposes public PTB builders for the externally callable admin surface in `lending_core::{manage,storage,pool}` and `oracle::{oracle_manage,oracle}`.
+
+## Installation
+
+```bash
+pnpm add @naviprotocol/lending-admin
+```
+
+## Admin Config
+
+Use `getAdminConfig()` to fetch the additive admin payload from `navi-open-api`.
+
+```ts
+import { getAdminConfig } from '@naviprotocol/lending-admin'
+
+const config = await getAdminConfig({
+  env: 'dev',
+  market: 'main'
+})
+
+console.log(config.lending.storageAdminCap)
+console.log(config.lending.poolAdminCap)
+console.log(config.oracle.oracleFeederCap)
+```
+
+## Safe and Raw Builders
+
+The package separates admin writes into two layers:
+
+- Safe builders accept explicit unit-tagged inputs such as `RayRateInput`, `AmountInput`, and `PriceInput`.
+- Raw builders accept already encoded on-chain integers as strings.
+
+```ts
+import { Transaction } from '@mysten/sui/transactions'
+import {
+  setBaseRatePTB,
+  setBaseRateRawPTB
+} from '@naviprotocol/lending-admin'
+
+const tx = new Transaction()
+
+await setBaseRatePTB({
+  tx,
+  assetId: 1,
+  value: { value: '4', unit: 'percent' }
+})
+
+await setBaseRateRawPTB({
+  tx,
+  assetId: 1,
+  value: '40000000000000000000000000'
+})
+```
+
+## Admin Families
+
+- `reserve-admin`
+- `flashloan-admin`
+- `oracle-admin`
+- `incentive-admin`
+- `borrow-fee-admin`
+- `emode-admin`
+- `liquidation-admin`
+- `market-admin`
+- `pool-admin`
+
+See the precision guide for the exact numeric contract used by each family.
