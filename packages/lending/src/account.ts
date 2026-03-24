@@ -968,7 +968,7 @@ export async function verifyHealthFactorPTB(
   tx: Transaction,
   address: string | AccountCap | TransactionResult,
   hf: number,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & MarketOption>
 ) {
   const config = await getConfig({
     ...options,
