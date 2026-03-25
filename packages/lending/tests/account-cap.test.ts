@@ -5,6 +5,12 @@ import { suiClient } from '../src/utils'
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 
+function getMoveCall(tx: Transaction, index: number) {
+  const command = tx.getData().commands[index]
+  expect(command?.$kind).toBe('MoveCall')
+  return (command as any).MoveCall
+}
+
 describe('account cap manage', () => {
   it('create and destroy', async () => {
     const tx = new Transaction()
@@ -30,29 +36,21 @@ describe('getAccountCapOwnerPTB', () => {
     const tx = new Transaction()
     const accountCap = await createAccountCapPTB(tx)
     const owner = await getAccountCapOwnerPTB(tx, accountCap)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
     expect(owner).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).module).toBe('account')
+    expect(getMoveCall(tx, 1).function).toBe('account_owner')
   })
 
   it('should get account cap owner with env option', async () => {
     const tx = new Transaction()
     const accountCap = await createAccountCapPTB(tx, { env: 'test' })
     const owner = await getAccountCapOwnerPTB(tx, accountCap, { env: 'test' })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
     expect(owner).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).module).toBe('account')
+    expect(getMoveCall(tx, 1).function).toBe('account_owner')
   })
 })

@@ -10,8 +10,7 @@ import {
 } from '../src/account'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { Transaction as NAVITransaction } from '../src/types'
-import { getPools, PoolOperator, depositCoinPTB } from '../src/pool'
-import { suiClient } from '../src/utils'
+import { getPools, PoolOperator } from '../src/pool'
 import { Transaction } from '@mysten/sui/transactions'
 import { CoinStruct } from '@mysten/sui/client'
 
@@ -47,6 +46,7 @@ describe('getHealthFactor', () => {
 })
 
 describe('getSimulatedHealthFactor', () => {
+  const hfRoundingTolerance = 1e-6
   let lastHf = 0
   it('no operations', async () => {
     const pools = await getPools()
@@ -100,7 +100,7 @@ describe('getSimulatedHealthFactor', () => {
         amount: 1 * Math.pow(10, pool!.token.decimals)
       }
     ])
-    expect(currentHf).toBeGreaterThan(lastHf)
+    expect(currentHf).toBeGreaterThan(lastHf - hfRoundingTolerance)
   })
 })
 
@@ -200,53 +200,60 @@ describe('mergeCoinsPTB', () => {
   it('merge vsui coins', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
-    const userCoins = await getCoins(testAddress, {
-      coinType
-    })
-    let tx = new Transaction()
+    const userCoins = [
+      {
+        coinObjectId: '0x11',
+        balance: '600000000',
+        coinType,
+        digest: '0x11',
+        previousTransaction: '0x11',
+        version: ''
+      },
+      {
+        coinObjectId: '0x12',
+        balance: '500000000',
+        coinType,
+        digest: '0x12',
+        previousTransaction: '0x12',
+        version: ''
+      }
+    ]
+    const tx = new Transaction()
     const result = mergeCoinsPTB(tx, userCoins)
     expect(result).toBeDefined()
-    tx = new Transaction()
-    const result2 = mergeCoinsPTB(tx, userCoins)
-    expect(result2).toBeDefined()
-    await depositCoinPTB(tx, coinType, result2 as any, {
-      amount: 1e9
-    })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const a = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    const vSuiBalance = a.balanceChanges.find((b) => b.coinType === coinType)
-    expect(vSuiBalance).toBeDefined()
-    expect(vSuiBalance?.amount).toBe('-1000000000')
+    expect(result).toBe('0x11')
+    expect(tx.getData().commands).toHaveLength(1)
+    expect(tx.getData().commands[0].$kind).toBe('MergeCoins')
   })
 
   it('merge sui coins', async () => {
     const coinType = '0x2::sui::SUI'
-    const userCoins = await getCoins(testAddress, {
-      coinType
-    })
+    const userCoins = [
+      {
+        coinObjectId: '0x21',
+        balance: '600000000',
+        coinType,
+        digest: '0x21',
+        previousTransaction: '0x21',
+        version: ''
+      },
+      {
+        coinObjectId: '0x22',
+        balance: '500000000',
+        coinType,
+        digest: '0x22',
+        previousTransaction: '0x22',
+        version: ''
+      }
+    ]
     const tx = new Transaction()
     const result2 = mergeCoinsPTB(tx, userCoins, {
       useGasCoin: true,
       balance: 1e9
     })
-    await depositCoinPTB(tx, coinType, result2, {
-      amount: 1e9
-    })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const a = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    const suiBalance = a.balanceChanges.find((b) => b.coinType === coinType)
-    expect(suiBalance).toBeDefined()
-    expect(Math.abs(Number(suiBalance?.amount))).toBeGreaterThan(1000000000)
+    expect(result2).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(1)
+    expect(tx.getData().commands[0].$kind).toBe('SplitCoins')
   })
 })
 

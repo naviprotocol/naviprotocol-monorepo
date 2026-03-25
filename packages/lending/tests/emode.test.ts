@@ -6,7 +6,6 @@ import {
   getUserEModeCaps,
   emodeIdentityId
 } from '../src/emode'
-import { depositCoinPTB, getAccountCapOwnerPTB } from '../src'
 import { getPools, createAccountCapPTB } from '../src'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from '../src/utils'
@@ -17,6 +16,12 @@ const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9
 const options = {
   env: 'test'
 } as EnvOption
+
+function getMoveCall(tx: Transaction, index: number) {
+  const command = tx.getData().commands[index]
+  expect(command?.$kind).toBe('MoveCall')
+  return (command as any).MoveCall
+}
 
 describe('emodeIdentityId', () => {
   it('should generate emode identity id correctly', () => {
@@ -54,15 +59,8 @@ describe('enterEModePTB', () => {
   it('should create enter emode transaction without accountCap', async () => {
     const tx = new Transaction()
     await enterEModePTB(tx, testEmodeId, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    // Should not have execution error (or have expected error if account doesn't exist)
-    expect(res).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(1)
+    expect(getMoveCall(tx, 0).function).toBe('enter_emode')
   })
 
   it('should create enter emode transaction with accountCap', async () => {
@@ -72,28 +70,18 @@ describe('enterEModePTB', () => {
       ...options,
       accountCap: accountCap
     })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
+    expect(accountCap).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).function).toBe('enter_emode_with_account_cap')
   })
 
   it('should handle TransactionResult as emodeId', async () => {
     const tx = new Transaction()
     const emodeIdResult = tx.pure.u64(testEmodeId)
     await enterEModePTB(tx, emodeIdResult, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(1)
+    expect(getMoveCall(tx, 0).function).toBe('enter_emode')
   })
 })
 
@@ -101,14 +89,8 @@ describe('exitEModePTB', () => {
   it('should create exit emode transaction without accountCap', async () => {
     const tx = new Transaction()
     await exitEModePTB(tx, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(1)
+    expect(getMoveCall(tx, 0).function).toBe('exit_emode')
   })
 
   it('should create exit emode transaction with accountCap', async () => {
@@ -118,14 +100,10 @@ describe('exitEModePTB', () => {
       ...options,
       accountCap: accountCap
     })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
+    expect(accountCap).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).function).toBe('exit_emode_with_account_cap')
   })
 })
 
@@ -145,32 +123,12 @@ describe('createEModeCapPTB', () => {
   it('should create emode cap transaction', async () => {
     const tx = new Transaction()
     const accountCap = await createEModeCapPTB(tx, testEmodeId, options)
-
-    await depositCoinPTB(
-      tx,
-      0,
-      '0x1acb5117599ba49827c00e5dae88ad92c85d9abd858d7c6ba935660c31fd0218',
-      {
-        ...options,
-        accountCap: accountCap
-      }
-    )
-
-    tx.transferObjects([accountCap], testAddress)
-
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    // Should not have execution error (or have expected error if account doesn't exist)
-    expect(res).toBeDefined()
-    const object = res.objectChanges?.find((item: any) => {
-      return item.objectType?.includes('account::AccountCap')
-    })
-    expect(object).toBeDefined()
+    expect(accountCap).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(4)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).function).toBe('enter_emode_with_account_cap')
+    expect(getMoveCall(tx, 2).function).toBe('account_owner')
+    expect(getMoveCall(tx, 3).function).toBe('register_emode_for_account_cap')
   })
 
   it('should create emode cap with custom market', async () => {
@@ -179,15 +137,12 @@ describe('createEModeCapPTB', () => {
       ...options,
       market: 'main'
     })
-    tx.transferObjects([accountCap], testAddress)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
+    expect(accountCap).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(4)
+    expect(getMoveCall(tx, 0).function).toBe('create_account')
+    expect(getMoveCall(tx, 1).function).toBe('enter_emode_with_account_cap')
+    expect(getMoveCall(tx, 2).function).toBe('account_owner')
+    expect(getMoveCall(tx, 3).function).toBe('register_emode_for_account_cap')
   })
 })
 

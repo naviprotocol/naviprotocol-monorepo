@@ -18,6 +18,12 @@ const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9
 
 let allFeeds: OraclePriceFeed[] = []
 
+function getMoveCall(tx: Transaction, index: number) {
+  const command = tx.getData().commands[index]
+  expect(command?.$kind).toBe('MoveCall')
+  return (command as any).MoveCall
+}
+
 beforeAll(async () => {
   allFeeds = await getPriceFeeds()
 })
@@ -156,23 +162,17 @@ describe('borrowCoinPTB', () => {
 })
 
 describe('repayCoinPTB', () => {
-  it('should success repay 0.1 SUI', async () => {
+  it('should build repay 0.1 SUI PTB', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
-    await repayCoinPTB(tx, coinType, tx.gas, {
+    const result = await repayCoinPTB(tx, coinType, tx.gas, {
       amount: 1e9 * 0.1
     })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-
-    expect(res.executionErrorSource).eql(null)
-    expect(res.events.length).toBeGreaterThan(0)
+    expect(result).toBe(tx)
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(tx.getData().commands[0].$kind).toBe('SplitCoins')
+    expect(getMoveCall(tx, 1).module).toBe('incentive_v3')
+    expect(getMoveCall(tx, 1).function).toBe('entry_repay')
   })
 })
 

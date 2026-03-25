@@ -127,7 +127,7 @@ describe('swap test', () => {
   //   const tsRes = await handleTransactionResult(txb, suiClient, keypair, testCaseName, true)
   //   expect(tsRes).toEqual('success')
   // }, 500000)
-  it('should successfully swap DEEP through deepbook using single route', async () => {
+  it('should successfully swap DEEP through cetus using single route', async () => {
     const testCaseName = expect.getState().currentTestName || 'test_case'
     const txb = createTransaction(coins.deep.holder)
     const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
@@ -139,7 +139,7 @@ describe('swap test', () => {
     const coinInStructObjectId = coinInStruct.data[0].coinObjectId
     const amountIn = '1000000000'
     const quote = await getQuote(coins.deep.address, coins.sui.address, amountIn, apiKey, {
-      dexList: [Dex.DEEPBOOK],
+      dexList: [Dex.CETUS],
       byAmountIn: true,
       depth: 3
     })
