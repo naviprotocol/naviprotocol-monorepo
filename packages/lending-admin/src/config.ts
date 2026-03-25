@@ -11,6 +11,13 @@ import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 
 export const DEFAULT_CACHE_TIME = 1000 * 60 * 5
+const DEFAULT_ENV: EnvOption['env'] = 'prod'
+
+type AdminConfigRequestOptions = Partial<EnvOption & CacheOption & MarketOption>
+type NormalizedAdminConfigOptions = CacheOption & {
+  env: EnvOption['env']
+  market: string
+}
 
 function assertNonEmptyString(value: string | undefined, fieldName: string) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -64,33 +71,39 @@ async function fetchAdminConfigResponse(url: string): Promise<AdminConfigApiResp
   return (await response.json()) as AdminConfigApiResponse
 }
 
+function normalizeAdminConfigOptions(
+  options?: AdminConfigRequestOptions
+): NormalizedAdminConfigOptions {
+  const market = getMarketConfig(options?.market ?? DEFAULT_MARKET_IDENTITY)
+
+  return {
+    env: options?.env ?? DEFAULT_ENV,
+    market: market.key,
+    disableCache: options?.disableCache,
+    cacheTime: options?.cacheTime ?? DEFAULT_CACHE_TIME
+  }
+}
+
 const getAdminConfigCached = withCache(
-  withSingleton(
-    async (options?: Partial<EnvOption & CacheOption & MarketOption>): Promise<AdminConfig> => {
-      const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
-      const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${market.key}`
+  withSingleton(async (options: NormalizedAdminConfigOptions): Promise<AdminConfig> => {
+    const market = getMarketConfig(options.market)
+    const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options.env}&sdk=${packageJson.version}&market=${market.key}`
 
-      const data = (await fetchAdminConfigResponse(url)).data
-      assertAdminConfigPayload(data)
+    const data = (await fetchAdminConfigResponse(url)).data
+    assertAdminConfigPayload(data)
 
-      return {
-        lending: data.lendingAdmin,
-        oracle: data.oracle,
-        reserveMetadata: data.reserveMetadata,
-        market,
-        version: data.version
-      }
+    return {
+      lending: data.lendingAdmin,
+      oracle: data.oracle,
+      reserveMetadata: data.reserveMetadata,
+      market,
+      version: data.version
     }
-  )
+  })
 )
 
 /**
  * Fetches the lending admin config required by admin PTB builders.
  */
-export const getAdminConfig = (
-  options?: Partial<EnvOption & CacheOption & MarketOption>
-): Promise<AdminConfig> =>
-  getAdminConfigCached({
-    ...(options ?? {}),
-    cacheTime: options?.cacheTime ?? DEFAULT_CACHE_TIME
-  })
+export const getAdminConfig = (options?: AdminConfigRequestOptions): Promise<AdminConfig> =>
+  getAdminConfigCached(normalizeAdminConfigOptions(options))

@@ -147,6 +147,29 @@ describe('getAdminConfig', () => {
     expect(third.version).toBe(3)
   })
 
+  it('normalizes default env and market values before generating the cache key', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-25T00:00:00Z'))
+
+    const firstPayload = buildAdminConfigPayload()
+    const secondPayload = buildAdminConfigPayload()
+    secondPayload.version = 3
+
+    fetchMock.mockResolvedValueOnce(mockConfigResponse(firstPayload))
+    fetchMock.mockResolvedValueOnce(mockConfigResponse(secondPayload))
+
+    const implicitDefaults = await getAdminConfig()
+    const explicitDefaults = await getAdminConfig({ env: 'prod', market: 'main' })
+    const marketById = await getAdminConfig({ env: 'prod', market: 0 })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('env=prod')
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('market=main')
+    expect(implicitDefaults.version).toBe(2)
+    expect(explicitDefaults.version).toBe(2)
+    expect(marketById.version).toBe(2)
+  })
+
   it('throws a descriptive error for non-2xx HTTP responses', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
