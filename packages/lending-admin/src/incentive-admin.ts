@@ -5,6 +5,7 @@ import {
   resolveObjectArgument,
   resolveReserveSelection
 } from './ptb'
+import { getReserveByCoinType } from './resolvers'
 import type { AmountInput } from './types'
 import type { AdminPTBOptions, PTBObjectArgument, ReserveSelector } from './ptb'
 
@@ -72,9 +73,15 @@ type RuleRateRawOptions = AdminPTBOptions &
     durationMs: string
   }
 
+type RewardRateAmountResolution = {
+  rewardCoinType?: string
+  rewardDecimals?: number
+}
+
 type RuleRateOptions = AdminPTBOptions &
   IncentiveObjects &
-  ReserveSelector & {
+  ReserveSelector &
+  RewardRateAmountResolution & {
     ruleId: string
     totalSupply: AmountInput
     durationMs: string
@@ -89,6 +96,32 @@ function resolveAmountDecimals(
   }
 
   return resolveReserveSelection(config, { coinType: options.coinType }).decimals
+}
+
+function resolveRewardAmountDecimals(
+  config: Awaited<ReturnType<typeof resolveAdminPTBContext>>['config'],
+  options: RewardRateAmountResolution
+) {
+  if (typeof options.rewardDecimals === 'number') {
+    return options.rewardDecimals
+  }
+
+  if (options.rewardCoinType) {
+    return getReserveByCoinType(config, options.rewardCoinType).decimals
+  }
+
+  throw new Error('token reward totalSupply requires rewardCoinType or rewardDecimals')
+}
+
+function encodeRewardTotalSupply(
+  config: Awaited<ReturnType<typeof resolveAdminPTBContext>>['config'],
+  options: Pick<RuleRateOptions, 'rewardCoinType' | 'rewardDecimals' | 'totalSupply'>
+) {
+  if (options.totalSupply.unit === 'atomic') {
+    return encodeAmountInput(options.totalSupply, 0)
+  }
+
+  return encodeAmountInput(options.totalSupply, resolveRewardAmountDecimals(config, options))
 }
 
 export async function createIncentiveV3PTB(
@@ -291,14 +324,20 @@ export async function setIncentiveV3RewardRateByRuleIdRawPTB(options: RuleRateRa
   return tx
 }
 
+/**
+ * Sets a rule reward rate from a reward-token amount distributed over `durationMs`.
+ *
+ * When `totalSupply.unit === 'token'`, pass `rewardCoinType` to resolve decimals from
+ * config metadata, or `rewardDecimals` for non-reserve reward tokens. Use the Raw variant
+ * to send a pre-encoded atomic amount directly.
+ */
 export async function setIncentiveV3RewardRateByRuleIdPTB(options: RuleRateOptions) {
   const { config } = await resolveAdminPTBContext(options)
-  const reserve = resolveReserveSelection(config, options)
 
   return setIncentiveV3RewardRateByRuleIdRawPTB({
     ...options,
     config,
-    totalSupply: encodeAmountInput(options.totalSupply, reserve.decimals)
+    totalSupply: encodeRewardTotalSupply(config, options)
   })
 }
 
@@ -321,14 +360,20 @@ export async function setIncentiveV3MaxRewardRateByRuleIdRawPTB(options: RuleRat
   return tx
 }
 
+/**
+ * Sets the maximum allowed rule reward rate from a reward-token amount over `durationMs`.
+ *
+ * When `totalSupply.unit === 'token'`, pass `rewardCoinType` to resolve decimals from
+ * config metadata, or `rewardDecimals` for non-reserve reward tokens. Use the Raw variant
+ * to send a pre-encoded atomic amount directly.
+ */
 export async function setIncentiveV3MaxRewardRateByRuleIdPTB(options: RuleRateOptions) {
   const { config } = await resolveAdminPTBContext(options)
-  const reserve = resolveReserveSelection(config, options)
 
   return setIncentiveV3MaxRewardRateByRuleIdRawPTB({
     ...options,
     config,
-    totalSupply: encodeAmountInput(options.totalSupply, reserve.decimals)
+    totalSupply: encodeRewardTotalSupply(config, options)
   })
 }
 

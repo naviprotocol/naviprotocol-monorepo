@@ -62,12 +62,31 @@ await setBaseRateRawPTB({
 
 The three calls above all serialize the same on-chain ray value.
 
+Reward-rate setters encode `totalSupply` in reward-token atomic units, not pool-asset units.
+
+```ts
+import { setIncentiveV3RewardRateByRuleIdPTB } from '@naviprotocol/lending-admin'
+
+await setIncentiveV3RewardRateByRuleIdPTB({
+  env: 'dev',
+  market: 'main',
+  assetId: 1,
+  ruleId: '0x2424242424242424242424242424242424242424',
+  rewardCoinType: '0x2::sui::SUI',
+  totalSupply: { value: '1.5', unit: 'token' },
+  durationMs: '86400000'
+})
+```
+
+For reward tokens that are not part of `reserveMetadata`, pass `rewardDecimals` explicitly or use the `Raw` builder with a pre-encoded atomic amount.
+
 ## Precision Matrix
 
 | Field category | Safe input | Raw input | Notes |
 | --- | --- | --- | --- |
 | Ray-backed ratio/rate fields | `RayRateInput` | `string` | `baseRate`, `multiplier`, `jumpRateMultiplier`, `reserveFactor`, `optimalUtilization`, `ltv`, `treasuryFactor`, `liquidationRatio`, `liquidationBonus`, `liquidationThreshold`, eMode `ltv/lt/bonus` |
 | Coin-native atomic amount fields | `AmountInput` | `string` | flashloan `min/max`, treasury withdraw amounts, SUI pool target amount |
+| Reward-token amount fields | `AmountInput` + `rewardCoinType` / `rewardDecimals` | `string` | incentive rule `totalSupply` / `maxTotalSupply` use reward-token decimals |
 | Oracle price fields | `PriceInput` | `string` | price registration, price updates, effective price bounds |
 | Explicit basis-point fields | `string` in a `*Bps*` API | `string` | borrow-fee setters, flashloan rate setters, borrow weights |
 

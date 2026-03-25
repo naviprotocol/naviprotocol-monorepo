@@ -4,6 +4,7 @@ import {
   createIncentiveV3PTB,
   createIncentiveV3PoolPTB,
   createIncentiveV3RewardFundPTB,
+  setIncentiveV3MaxRewardRateByRuleIdPTB,
   setIncentiveV3RewardRateByRuleIdPTB,
   withdrawBorrowFeePTB
 } from '../src/incentive-admin'
@@ -34,7 +35,7 @@ describe('incentive-admin', () => {
     expect(getObjectId(tx, 1)).toBe(testConfig.lending.storage)
   })
 
-  it('creates incentive pools and reward-rate setters with reserve selection and atomic conversion', async () => {
+  it('creates incentive pools with reserve selection', async () => {
     const poolTx = await createIncentiveV3PoolPTB({
       config: testConfig as any,
       assetId: 1
@@ -44,10 +45,13 @@ describe('incentive-admin', () => {
     expect(poolCall.function).toBe('create_incentive_v3_pool')
     expect(poolCall.typeArguments).toEqual([testConfig.reserveMetadata[0].coinType])
     expect(getPureValue(poolTx, 3, bcs.u8())).toBe(1)
+  })
 
+  it('serializes reward-rate setters with reward coin decimals instead of reserve decimals', async () => {
     const tx = await setIncentiveV3RewardRateByRuleIdPTB({
       config: testConfig as any,
       assetId: 1,
+      rewardCoinType: testConfig.reserveMetadata[1].coinType,
       ruleId: '0x2424242424242424242424242424242424242424',
       totalSupply: { value: '1.5', unit: 'token' },
       durationMs: '86400000'
@@ -58,8 +62,36 @@ describe('incentive-admin', () => {
     expect(getObjectId(tx, 1)).toBe(
       '0x0000000000000000000000000000000000000000000000000000000000000006'
     )
-    expect(String(getPureValue(tx, 5, bcs.u64()))).toBe('1500000')
+    expect(String(getPureValue(tx, 5, bcs.u64()))).toBe('1500000000')
     expect(String(getPureValue(tx, 6, bcs.u64()))).toBe('86400000')
+  })
+
+  it('serializes max reward-rate setters with explicit reward decimals', async () => {
+    const tx = await setIncentiveV3MaxRewardRateByRuleIdPTB({
+      config: testConfig as any,
+      assetId: 1,
+      rewardDecimals: 8,
+      ruleId: '0x2626262626262626262626262626262626262626',
+      totalSupply: { value: '2.25', unit: 'token' },
+      durationMs: '86400000'
+    })
+    const moveCall = getMoveCall(tx)
+
+    expect(moveCall.function).toBe('set_incentive_v3_max_reward_rate_by_rule_id')
+    expect(String(getPureValue(tx, 3, bcs.u64()))).toBe('225000000')
+    expect(String(getPureValue(tx, 4, bcs.u64()))).toBe('86400000')
+  })
+
+  it('rejects token reward-rate inputs without explicit reward token metadata', async () => {
+    await expect(
+      setIncentiveV3RewardRateByRuleIdPTB({
+        config: testConfig as any,
+        assetId: 1,
+        ruleId: '0x2727272727272727272727272727272727272727',
+        totalSupply: { value: '1.5', unit: 'token' },
+        durationMs: '86400000'
+      })
+    ).rejects.toThrow('token reward totalSupply requires rewardCoinType or rewardDecimals')
   })
 
   it('converts borrow-fee withdrawals to atomic reserve amounts', async () => {
