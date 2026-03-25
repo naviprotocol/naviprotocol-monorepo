@@ -2,6 +2,7 @@ import { bcs } from '@mysten/sui/bcs'
 import { encodeAmountInput } from './precision'
 import {
   lendingTarget,
+  resolveAdminConfig,
   resolveAdminPTBContext,
   resolveObjectArgument,
   resolveReserveSelection,
@@ -104,7 +105,7 @@ export async function withdrawPoolTreasuryRawPTB(options: PoolTreasuryRawOptions
 }
 
 export async function withdrawPoolTreasuryPTB(options: PoolTreasuryOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const reserve = resolveReserveSelection(config, options)
 
   return withdrawPoolTreasuryRawPTB({
@@ -145,7 +146,7 @@ export async function initSuiPoolManagerPTB(
     targetSuiAmount: AmountInput
   }
 ) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const reserve = resolveSuiReserve(config)
 
   return initSuiPoolManagerRawPTB({
@@ -236,7 +237,7 @@ export async function setTargetSuiAmountRawPTB(options: SuiTargetRawOptions) {
 }
 
 export async function setTargetSuiAmountPTB(options: SuiTargetOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const reserve = resolveSuiReserve(config)
 
   return setTargetSuiAmountRawPTB({

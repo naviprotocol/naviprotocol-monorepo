@@ -1,6 +1,7 @@
 import { encodeAmountInput, encodeRayRate } from './precision'
 import {
   lendingTarget,
+  resolveAdminConfig,
   resolveAdminPTBContext,
   resolveObjectArgument,
   resolveReserveSelection
@@ -114,7 +115,7 @@ function makeReserveRaySetterRaw(functionName: string) {
 
 function makeReserveAmountSetter(functionName: string) {
   return async (options: ReserveAmountSetterOptions) => {
-    const { config } = await resolveAdminPTBContext(options)
+    const config = await resolveAdminConfig(options)
     const reserve = resolveReserveSelection(config, options)
 
     return makeReserveAmountSetterRaw(functionName)({
@@ -294,7 +295,7 @@ export async function withdrawTreasuryRawPTB(options: WithdrawTreasuryRawOptions
 }
 
 export async function withdrawTreasuryPTB(options: WithdrawTreasuryOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const reserve = resolveReserveSelection(config, options)
 
   return withdrawTreasuryRawPTB({

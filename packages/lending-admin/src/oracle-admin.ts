@@ -1,6 +1,7 @@
 import { encodePriceInput } from './precision'
 import {
   oracleTarget,
+  resolveAdminConfig,
   resolveAdminPTBContext,
   resolveOracleFeedByFeedId,
   resolveOracleFeedByOracleId
@@ -224,7 +225,7 @@ export async function registerTokenPriceRawPTB(options: OraclePriceRawOptions) {
 }
 
 export async function registerTokenPricePTB(options: OraclePriceOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const feed = resolveOracleFeedByOracleId(config, options.oracleId)
 
   return registerTokenPriceRawPTB({
@@ -255,7 +256,7 @@ export async function updateTokenPriceRawPTB(
 }
 
 export async function updateTokenPricePTB(options: OraclePriceOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const feed = resolveOracleFeedByOracleId(config, options.oracleId)
 
   return updateTokenPriceRawPTB({
@@ -289,7 +290,7 @@ export async function updateTokenPriceBatchRawPTB(options: OraclePriceBatchRawOp
 }
 
 export async function updateTokenPriceBatchPTB(options: OraclePriceBatchOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return updateTokenPriceBatchRawPTB({
     ...options,
@@ -382,7 +383,7 @@ export async function setMaximumEffectivePriceToPriceFeedRawPTB(
 }
 
 export async function setMaximumEffectivePriceToPriceFeedPTB(options: OracleFeedPriceOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const feed = resolveOracleFeedByFeedId(config, options.feedId)
 
   return setMaximumEffectivePriceToPriceFeedRawPTB({
@@ -411,7 +412,7 @@ export async function setMinimumEffectivePriceToPriceFeedRawPTB(
 }
 
 export async function setMinimumEffectivePriceToPriceFeedPTB(options: OracleFeedPriceOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const feed = resolveOracleFeedByFeedId(config, options.feedId)
 
   return setMinimumEffectivePriceToPriceFeedRawPTB({

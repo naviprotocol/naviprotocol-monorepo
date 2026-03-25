@@ -1,6 +1,7 @@
 import { encodeAmountInput } from './precision'
 import {
   lendingTarget,
+  resolveAdminConfig,
   resolveAdminPTBContext,
   resolveObjectArgument,
   resolveReserveSelection
@@ -194,7 +195,7 @@ export async function depositIncentiveV3RewardFundRawPTB(options: RewardFundAmou
 }
 
 export async function depositIncentiveV3RewardFundPTB(options: RewardFundAmountOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return depositIncentiveV3RewardFundRawPTB({
     ...options,
@@ -221,7 +222,7 @@ export async function withdrawIncentiveV3RewardFundRawPTB(options: RewardFundWit
 }
 
 export async function withdrawIncentiveV3RewardFundPTB(options: RewardFundWithdrawOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return withdrawIncentiveV3RewardFundRawPTB({
     ...options,
@@ -332,7 +333,7 @@ export async function setIncentiveV3RewardRateByRuleIdRawPTB(options: RuleRateRa
  * to send a pre-encoded atomic amount directly.
  */
 export async function setIncentiveV3RewardRateByRuleIdPTB(options: RuleRateOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return setIncentiveV3RewardRateByRuleIdRawPTB({
     ...options,
@@ -368,7 +369,7 @@ export async function setIncentiveV3MaxRewardRateByRuleIdRawPTB(options: RuleRat
  * to send a pre-encoded atomic amount directly.
  */
 export async function setIncentiveV3MaxRewardRateByRuleIdPTB(options: RuleRateOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return setIncentiveV3MaxRewardRateByRuleIdRawPTB({
     ...options,
@@ -417,7 +418,7 @@ export async function withdrawBorrowFeeRawPTB(options: IncentiveAmountRawOptions
 }
 
 export async function withdrawBorrowFeePTB(options: IncentiveAmountOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
 
   return withdrawBorrowFeeRawPTB({
     ...options,

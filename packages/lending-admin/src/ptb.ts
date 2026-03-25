@@ -27,8 +27,12 @@ export type ReserveSelector =
 
 export type PTBObjectArgument = string | TransactionResult
 
+export async function resolveAdminConfig(options?: AdminPTBOptions) {
+  return options?.config ?? (await getAdminConfig(options))
+}
+
 export async function resolveAdminPTBContext(options?: AdminPTBOptions) {
-  const config = options?.config ?? (await getAdminConfig(options))
+  const config = await resolveAdminConfig(options)
   return {
     tx: options?.tx ?? new Transaction(),
     config,

@@ -1,5 +1,10 @@
 import { encodeAmountInput } from './precision'
-import { lendingTarget, resolveAdminPTBContext, resolveReserveSelection } from './ptb'
+import {
+  lendingTarget,
+  resolveAdminConfig,
+  resolveAdminPTBContext,
+  resolveReserveSelection
+} from './ptb'
 import type { AmountInput } from './types'
 import type { AdminPTBOptions, ReserveSelector } from './ptb'
 
@@ -31,7 +36,7 @@ type FlashLoanAmountOptions = AdminPTBOptions &
 
 function makeFlashLoanAmountSetter(functionName: string) {
   return async (options: FlashLoanAmountOptions) => {
-    const { config } = await resolveAdminPTBContext(options)
+    const config = await resolveAdminConfig(options)
     const reserve = resolveReserveSelection(config, options)
 
     return makeFlashLoanAmountSetterRaw(functionName)({
@@ -96,7 +101,7 @@ export async function createFlashLoanAssetRawPTB(options: FlashLoanAssetRawOptio
 }
 
 export async function createFlashLoanAssetPTB(options: FlashLoanAssetOptions) {
-  const { config } = await resolveAdminPTBContext(options)
+  const config = await resolveAdminConfig(options)
   const reserve = resolveReserveSelection(config, options)
 
   return createFlashLoanAssetRawPTB({
