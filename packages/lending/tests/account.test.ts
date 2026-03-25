@@ -46,7 +46,8 @@ describe('getHealthFactor', () => {
 })
 
 describe('getSimulatedHealthFactor', () => {
-  const hfRoundingTolerance = 1e-6
+  // Live protocol data can drift slightly between the baseline and repay simulation calls.
+  const hfRoundingTolerance = 1e-3
   let lastHf = 0
   it('no operations', async () => {
     const pools = await getPools()
