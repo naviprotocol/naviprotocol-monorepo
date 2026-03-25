@@ -1,22 +1,78 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { bcs } from '@mysten/sui/bcs'
+import { Transaction } from '@mysten/sui/transactions'
+
 import {
+  borrowCoinPTB,
+  depositCoinPTB,
+  getBorrowFee,
+  getFees,
   getPools,
   getStats,
-  getFees,
-  depositCoinPTB,
-  withdrawCoinPTB,
-  borrowCoinPTB,
   repayCoinPTB,
-  getBorrowFee
+  withdrawCoinPTB
 } from '../src/pool'
-import { Transaction } from '@mysten/sui/transactions'
-import { suiClient } from '../src/utils'
-import { updateOraclePricesPTB, getPriceFeeds } from '../src/oracle'
-import { OraclePriceFeed } from '../src/types'
+import type { FeeDetail, Pool, PoolStats } from '../src/types'
+import { TEST_CONFIG, TEST_EMODE, TEST_ADDRESS, createPoolFixture, testObjectId } from './fixtures'
 
-const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const { fetchMock, getConfigMock } = vi.hoisted(() => ({
+  fetchMock: vi.fn(),
+  getConfigMock: vi.fn()
+}))
 
-let allFeeds: OraclePriceFeed[] = []
+vi.mock('../src/config', () => ({
+  DEFAULT_CACHE_TIME: 1000 * 60 * 5,
+  getConfig: getConfigMock
+}))
+
+const USDC_COIN_TYPE = `${testObjectId(30)}::usdc::USDC`
+
+const TEST_STATS: PoolStats = {
+  tvl: 1000,
+  totalBorrowUsd: 250,
+  averageUtilization: 0.42,
+  maxApy: 0.18,
+  userAmount: 128,
+  interactionUserAmount: 64,
+  borrowFee: 0.2,
+  borrowFeeAddress: TEST_ADDRESS
+}
+
+const TEST_FEE_DETAIL: FeeDetail = {
+  coinId: testObjectId(31),
+  coinSymbol: 'SUI',
+  coinType: '0x2::sui::SUI',
+  feeObjectId: testObjectId(32),
+  currentAmount: 12,
+  price: 2,
+  currentValue: 24
+}
+
+const TEST_FEES = {
+  totalValue: 42,
+  v3BorrowFee: {
+    totalValue: 12,
+    details: [TEST_FEE_DETAIL]
+  },
+  borrowInterestFee: {
+    totalValue: 20,
+    details: [TEST_FEE_DETAIL]
+  },
+  flashloanAndLiquidationFee: {
+    totalValue: 10,
+    details: [TEST_FEE_DETAIL]
+  }
+}
+
+function mockJsonResponse(payload: unknown): Response {
+  return {
+    json: async () => structuredClone(payload)
+  } as Response
+}
+
+function encodeU64(value: number | bigint): Uint8Array {
+  return bcs.u64().serialize(BigInt(value)).toBytes()
+}
 
 function getMoveCall(tx: Transaction, index: number) {
   const command = tx.getData().commands[index]
@@ -24,166 +80,271 @@ function getMoveCall(tx: Transaction, index: number) {
   return (command as any).MoveCall
 }
 
-beforeAll(async () => {
-  allFeeds = await getPriceFeeds()
+function expectMoveCall(
+  tx: Transaction,
+  index: number,
+  expected: {
+    package?: string
+    module?: string
+    function?: string
+  }
+) {
+  const moveCall = getMoveCall(tx, index)
+  if (expected.package) {
+    expect(moveCall.package).toBe(expected.package)
+  }
+  if (expected.module) {
+    expect(moveCall.module).toBe(expected.module)
+  }
+  if (expected.function) {
+    expect(moveCall.function).toBe(expected.function)
+  }
+  return moveCall
+}
+
+function createPoolsResponse(env: 'prod' | 'dev') {
+  const suiPoolId = env === 'dev' ? 8 : 0
+  const stablePoolId = env === 'dev' ? 9 : 1
+
+  const suiPool = createPoolFixture({
+    uniqueId: `main-${suiPoolId}`,
+    id: suiPoolId,
+    totalSupplyAmount: '2500000000',
+    borrowedAmount: '500000000',
+    validBorrowAmount: '1000000000',
+    supplyCapCeiling: '5000000000000000000000000000',
+    oracle: {
+      price: '2'
+    }
+  })
+
+  const stablePool = createPoolFixture({
+    uniqueId: `main-${stablePoolId}`,
+    id: stablePoolId,
+    coinType: USDC_COIN_TYPE,
+    suiCoinType: USDC_COIN_TYPE,
+    totalSupplyAmount: '123450000000',
+    borrowedAmount: '1250000000',
+    validBorrowAmount: '2500000000',
+    supplyCapCeiling: '300000000000000000000000000000',
+    market: 'main',
+    token: {
+      coinType: USDC_COIN_TYPE,
+      decimals: 6,
+      logoUri: '',
+      symbol: 'USDC',
+      price: 1.5
+    },
+    oracle: {
+      decimal: 6,
+      value: '1500000',
+      price: '1.5',
+      oracleId: 1,
+      valid: true
+    },
+    contract: {
+      reserveId: testObjectId(40 + stablePoolId),
+      pool: testObjectId(50 + stablePoolId)
+    }
+  })
+
+  return {
+    data: [suiPool, stablePool] satisfies Pool[],
+    meta: {
+      emodes: [
+        TEST_EMODE,
+        {
+          ...TEST_EMODE,
+          uniqueId: 'main-2',
+          isActive: false
+        }
+      ]
+    }
+  }
+}
+
+describe('pool read APIs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', fetchMock)
+    getConfigMock.mockReset()
+    getConfigMock.mockResolvedValue(TEST_CONFIG)
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes('/api/navi/pools')) {
+        return mockJsonResponse(createPoolsResponse(url.includes('env=dev') ? 'dev' : 'prod'))
+      }
+
+      if (url.includes('/api/navi/stats')) {
+        return mockJsonResponse({ data: TEST_STATS })
+      }
+
+      if (url.includes('/api/navi/fee')) {
+        return mockJsonResponse(TEST_FEES)
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+  })
+
+  it('transforms pool API data into derived lending metrics', async () => {
+    const pools = await getPools({
+      disableCache: true
+    })
+
+    expect(pools).toHaveLength(2)
+    expect(String(fetchMock.mock.calls[0][0])).toContain('market=main')
+
+    const suiPool = pools.find((pool) => pool.coinType === '0x2::sui::SUI')
+    const stablePool = pools.find((pool) => pool.coinType === USDC_COIN_TYPE)
+
+    expect(suiPool?.emodes).toHaveLength(1)
+    expect(suiPool?.poolSupplyAmount).toBe('2.5')
+    expect(suiPool?.poolBorrowAmount).toBe('0.5')
+    expect(suiPool?.poolSupplyValue).toBe('5')
+    expect(suiPool?.poolSupplyCapAmount).toBe('5')
+    expect(suiPool?.poolBorrowCapAmount).toBe('1')
+
+    expect(stablePool?.poolSupplyAmount).toBe('123.45')
+    expect(stablePool?.poolBorrowAmount).toBe('1.25')
+    expect(stablePool?.poolBorrowCapAmount).toBe('2.5')
+    expect(stablePool?.poolSupplyCapValue).toBe('450')
+  })
+
+  it('returns protocol stats from the API response payload', async () => {
+    const stats = await getStats({
+      disableCache: true
+    })
+
+    expect(stats).toEqual(TEST_STATS)
+  })
+
+  it('returns fee breakdowns from the API response payload', async () => {
+    const fees = await getFees({
+      disableCache: true
+    })
+
+    expect(fees).toEqual(TEST_FEES)
+  })
 })
 
-describe('getPools', () => {
-  it('prod pools', async () => {
-    const pools = await getPools()
-    expect(pools).toBeDefined()
-    expect(pools.length).toBeGreaterThan(0)
-    const naviPool = pools.find(
-      (pool) =>
-        pool.coinType ===
-        'a99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(naviPool).toBeDefined()
-    expect(naviPool?.id).toBe(7)
+describe('pool PTB builders', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', fetchMock)
+    getConfigMock.mockReset()
+    getConfigMock.mockResolvedValue(TEST_CONFIG)
+    fetchMock.mockResolvedValue(mockJsonResponse(createPoolsResponse('dev')))
   })
-  it('dev pools', async () => {
-    const pools = await getPools({ env: 'dev' })
-    expect(pools).toBeDefined()
-    expect(pools.length).toBeGreaterThan(0)
-    const naviPool = pools.find(
-      (pool) =>
-        pool.coinType ===
-        'a99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(naviPool).toBeDefined()
-    expect(naviPool?.id).toBe(8)
-  })
-})
 
-describe('getStats', () => {
-  it('check response', async () => {
-    const stats = await getStats()
-    expect(stats).toBeDefined()
-    expect(stats.tvl).toBeGreaterThan(0)
-    expect(stats.totalBorrowUsd).toBeGreaterThan(0)
-    expect(stats.averageUtilization).toBeGreaterThan(0)
-    expect(stats.maxApy).toBeGreaterThan(0)
-    expect(stats.userAmount).toBeGreaterThan(0)
-    expect(stats.interactionUserAmount).toBeGreaterThan(0)
-    expect(stats.borrowFee).toBeGreaterThan(0)
-    expect(stats.borrowFeeAddress).toBeDefined()
-  })
-})
-
-describe('getFees', () => {
-  it('check response', async () => {
-    const fees = await getFees()
-    expect(fees).toBeDefined()
-    expect(fees.totalValue).toBeGreaterThan(0)
-    expect(fees.v3BorrowFee.totalValue).toBeGreaterThan(0)
-    expect(fees.borrowInterestFee.totalValue).toBeGreaterThan(0)
-    expect(fees.flashloanAndLiquidationFee.totalValue).toBeGreaterThan(0)
-  })
-})
-
-describe('depositCoinPTB', () => {
-  it('should success deposit 1 Sui', async () => {
-    const coinType = '0x2::sui::SUI'
+  it('builds a gas-coin deposit PTB without live dry-run dependencies', async () => {
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
-    const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 0.2])
-    await depositCoinPTB(tx, coinType, toDeposit)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res.executionErrorSource).eql(null)
-    expect(res.events.length).toBeGreaterThan(0)
-  })
 
-  it('should failed insufficient SUI balance for deposit', async () => {
-    const coinType = '0x2::sui::SUI'
-    const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
-    const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 1000])
-    await depositCoinPTB(tx, coinType, toDeposit, {
-      amount: 1e9 * 1000
-    })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res.executionErrorSource).toBeTypeOf('string')
-    expect(res.events.length).eql(0)
-  })
-})
-
-describe('withdrawCoinPTB', () => {
-  it('should success withdraw 0.2 vSUI', async () => {
-    const coinType =
-      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
-    const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
-    const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9 * 0.2)
-    tx.transferObjects([withdrawCoins], testAddress)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
+    const result = await depositCoinPTB(tx, '0x2::sui::SUI', tx.gas, {
+      env: 'dev',
+      amount: 200_000_000
     })
 
-    expect(res.executionErrorSource).eql(null)
-    expect(res.events.length).toBeGreaterThan(0)
-  })
-})
-
-describe('borrowCoinPTB', () => {
-  it('should success borrow 0.1 vSUI', async () => {
-    const testAddress = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
-    const coinType =
-      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
-    const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
-    const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9 * 0.1)
-    tx.transferObjects([borrowCoin], testAddress)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
-    })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-
-    expect(res.executionErrorSource).eql(null)
-  })
-})
-
-describe('repayCoinPTB', () => {
-  it('should build repay 0.1 SUI PTB', async () => {
-    const coinType = '0x2::sui::SUI'
-    const tx = new Transaction()
-    const result = await repayCoinPTB(tx, coinType, tx.gas, {
-      amount: 1e9 * 0.1
-    })
     expect(result).toBe(tx)
     expect(tx.getData().commands).toHaveLength(2)
     expect(tx.getData().commands[0].$kind).toBe('SplitCoins')
-    expect(getMoveCall(tx, 1).module).toBe('incentive_v3')
-    expect(getMoveCall(tx, 1).function).toBe('entry_repay')
+    expectMoveCall(tx, 1, {
+      package: TEST_CONFIG.package,
+      module: 'incentive_v3',
+      function: 'entry_deposit'
+    })
+  })
+
+  it('builds a v2 withdraw PTB and wraps the balance into a coin', async () => {
+    const tx = new Transaction()
+
+    const coin = await withdrawCoinPTB(tx, '0x2::sui::SUI', 150_000_000, {
+      env: 'dev'
+    })
+
+    expect(coin).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('withdraw_v2')
+    expectMoveCall(tx, 1, {
+      module: 'coin',
+      function: 'from_balance'
+    })
+  })
+
+  it('builds a v2 borrow PTB and wraps the balance into a coin', async () => {
+    const tx = new Transaction()
+
+    const coin = await borrowCoinPTB(tx, '0x2::sui::SUI', 125_000_000, {
+      env: 'dev'
+    })
+
+    expect(coin).toBeDefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('borrow_v2')
+    expectMoveCall(tx, 1, {
+      module: 'coin',
+      function: 'from_balance'
+    })
+  })
+
+  it('builds a repay PTB by splitting the gas coin and calling entry_repay', async () => {
+    const tx = new Transaction()
+
+    const result = await repayCoinPTB(tx, '0x2::sui::SUI', tx.gas, {
+      env: 'dev',
+      amount: 100_000_000
+    })
+
+    expect(result).toBe(tx)
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(tx.getData().commands[0].$kind).toBe('SplitCoins')
+    expectMoveCall(tx, 1, {
+      package: TEST_CONFIG.package,
+      module: 'incentive_v3',
+      function: 'entry_repay'
+    })
   })
 })
 
 describe('getBorrowFee', () => {
-  it('check response', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', fetchMock)
+    getConfigMock.mockReset()
+    getConfigMock.mockResolvedValue(TEST_CONFIG)
+    fetchMock.mockResolvedValue(mockJsonResponse(createPoolsResponse('dev')))
+  })
+
+  it('parses the devInspect borrow fee response deterministically', async () => {
+    const client = {
+      devInspectTransactionBlock: vi.fn(async ({ transactionBlock, sender }) => {
+        expect(sender).toBe(TEST_ADDRESS)
+        expect(transactionBlock.getData().commands).toHaveLength(1)
+        expectMoveCall(transactionBlock, 0, {
+          package: TEST_CONFIG.package,
+          module: 'incentive_v3',
+          function: 'get_borrow_fee_v2'
+        })
+
+        return {
+          results: [
+            {
+              returnValues: [[Array.from(encodeU64(250)), 'u64']]
+            }
+          ]
+        }
+      })
+    }
+
     const fee = await getBorrowFee({
       env: 'dev',
-      address: '0xf89bf436d166578e84fcd4e726ae206ff24851f1647b0a264114180cc2591914',
-      asset: 0
+      address: TEST_ADDRESS,
+      asset: '0x2::sui::SUI',
+      client: client as any,
+      disableCache: true
     })
-    expect(fee).toBeDefined()
-    expect(fee).toBeGreaterThan(0)
+
+    expect(fee).toBe(2.5)
   })
 })
