@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getAdminConfig } from '../src/config'
+import { DEFAULT_CACHE_TIME, getAdminConfig } from '../src/config'
 import {
   getReserveByAssetId,
   getReserveByCoinType,
@@ -14,58 +14,69 @@ const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
 afterEach(() => {
+  vi.useRealTimers()
   fetchMock.mockReset()
 })
 
+function buildAdminConfigPayload() {
+  return {
+    package: '0xlegacy',
+    storage: '0xstorage',
+    incentiveV3: '0xincentive',
+    flashloanConfig: '0xflash',
+    lendingAdmin: {
+      package: '0xcurrent',
+      storage: '0xstorage',
+      incentiveV3: '0xincentive',
+      flashloanConfig: '0xflash',
+      poolAdminCap: '0xpool-cap',
+      storageAdminCap: '0xstorage-cap',
+      ownerCap: '0xowner-cap',
+      incentiveOwnerCap: '0xincentive-owner'
+    },
+    oracle: {
+      packageId: '0xoracle-pkg',
+      priceOracle: '0xprice',
+      oracleAdminCap: '0xoracle-admin',
+      oracleFeederCap: '0xoracle-feeder',
+      oracleConfig: '0xoracle-config',
+      pythStateId: '0xpyth',
+      wormholeStateId: '0xwormhole',
+      supraOracleHolder: '0xsupra',
+      sender: '0xsender',
+      gasObject: '0xgas',
+      switchboardAggregator: '0xswitchboard',
+      feeds: []
+    },
+    reserveMetadata: [
+      {
+        assetId: 0,
+        coinType: '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
+        decimals: 9,
+        symbol: 'SUI',
+        poolId: 7,
+        pool: '0xpool',
+        market: 'main'
+      }
+    ],
+    version: 2
+  }
+}
+
+function mockConfigResponse(data = buildAdminConfigPayload()) {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    json: async () => ({ data })
+  }
+}
+
 describe('getAdminConfig', () => {
   it('maps the additive admin payload returned by open-api', async () => {
-    fetchMock.mockResolvedValue({
-      json: async () => ({
-        data: {
-          package: '0xlegacy',
-          storage: '0xstorage',
-          incentiveV3: '0xincentive',
-          flashloanConfig: '0xflash',
-          lendingAdmin: {
-            package: '0xcurrent',
-            storage: '0xstorage',
-            incentiveV3: '0xincentive',
-            flashloanConfig: '0xflash',
-            poolAdminCap: '0xpool-cap',
-            storageAdminCap: '0xstorage-cap',
-            ownerCap: '0xowner-cap',
-            incentiveOwnerCap: '0xincentive-owner'
-          },
-          oracle: {
-            packageId: '0xoracle-pkg',
-            priceOracle: '0xprice',
-            oracleAdminCap: '0xoracle-admin',
-            oracleFeederCap: '0xoracle-feeder',
-            oracleConfig: '0xoracle-config',
-            pythStateId: '0xpyth',
-            wormholeStateId: '0xwormhole',
-            supraOracleHolder: '0xsupra',
-            sender: '0xsender',
-            gasObject: '0xgas',
-            switchboardAggregator: '0xswitchboard',
-            feeds: []
-          },
-          reserveMetadata: [
-            {
-              assetId: 0,
-              coinType:
-                '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
-              decimals: 9,
-              symbol: 'SUI',
-              poolId: 7,
-              pool: '0xpool',
-              market: 'ember'
-            }
-          ],
-          version: 2
-        }
-      })
-    })
+    const payload = buildAdminConfigPayload()
+    payload.reserveMetadata[0].market = 'ember'
+    fetchMock.mockResolvedValue(mockConfigResponse(payload))
 
     const config = await getAdminConfig({
       env: 'dev',
@@ -82,31 +93,9 @@ describe('getAdminConfig', () => {
   })
 
   it('rejects payloads that do not expose admin fields', async () => {
-    fetchMock.mockResolvedValue({
-      json: async () => ({
-        data: {
-          package: '0xlegacy',
-          storage: '0xstorage',
-          incentiveV3: '0xincentive',
-          flashloanConfig: '0xflash',
-          oracle: {
-            packageId: '0xoracle-pkg',
-            priceOracle: '0xprice',
-            oracleAdminCap: '0xoracle-admin',
-            oracleFeederCap: '0xoracle-feeder',
-            oracleConfig: '0xoracle-config',
-            pythStateId: '0xpyth',
-            wormholeStateId: '0xwormhole',
-            supraOracleHolder: '0xsupra',
-            sender: '0xsender',
-            gasObject: '0xgas',
-            switchboardAggregator: '0xswitchboard',
-            feeds: []
-          },
-          version: 2
-        }
-      })
-    })
+    const payload = buildAdminConfigPayload() as any
+    delete payload.lendingAdmin
+    fetchMock.mockResolvedValue(mockConfigResponse(payload))
 
     await expect(
       getAdminConfig({
@@ -118,42 +107,10 @@ describe('getAdminConfig', () => {
   })
 
   it('rejects payloads that expose blank admin object ids', async () => {
-    fetchMock.mockResolvedValue({
-      json: async () => ({
-        data: {
-          package: '0xlegacy',
-          storage: '0xstorage',
-          incentiveV3: '0xincentive',
-          flashloanConfig: '0xflash',
-          lendingAdmin: {
-            package: '0xcurrent',
-            storage: '0xstorage',
-            incentiveV3: '0xincentive',
-            flashloanConfig: '0xflash',
-            poolAdminCap: '0xpool-cap',
-            storageAdminCap: '0xstorage-cap',
-            ownerCap: '0xowner-cap',
-            incentiveOwnerCap: '0xincentive-owner'
-          },
-          oracle: {
-            packageId: '0xoracle-pkg',
-            priceOracle: '0xprice',
-            oracleAdminCap: '0xoracle-admin',
-            oracleFeederCap: '',
-            oracleConfig: '0xoracle-config',
-            pythStateId: '0xpyth',
-            wormholeStateId: '0xwormhole',
-            supraOracleHolder: '0xsupra',
-            sender: '0xsender',
-            gasObject: '0xgas',
-            switchboardAggregator: '0xswitchboard',
-            feeds: []
-          },
-          reserveMetadata: [],
-          version: 2
-        }
-      })
-    })
+    const payload = buildAdminConfigPayload()
+    payload.oracle.oracleFeederCap = ''
+    payload.reserveMetadata = []
+    fetchMock.mockResolvedValue(mockConfigResponse(payload))
 
     await expect(
       getAdminConfig({
@@ -162,6 +119,49 @@ describe('getAdminConfig', () => {
         disableCache: true
       })
     ).rejects.toThrow(/oracle\.oracleFeederCap/)
+  })
+
+  it('uses DEFAULT_CACHE_TIME when cacheTime is omitted', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-25T00:00:00Z'))
+
+    const firstPayload = buildAdminConfigPayload()
+    const secondPayload = buildAdminConfigPayload()
+    secondPayload.version = 3
+
+    fetchMock.mockResolvedValueOnce(mockConfigResponse(firstPayload))
+    fetchMock.mockResolvedValueOnce(mockConfigResponse(secondPayload))
+
+    const first = await getAdminConfig({ env: 'test', market: 'ember' })
+    const second = await getAdminConfig({ env: 'test', market: 'ember' })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(first.version).toBe(2)
+    expect(second.version).toBe(2)
+
+    vi.setSystemTime(new Date('2026-03-25T00:05:00.001Z'))
+    const third = await getAdminConfig({ env: 'test', market: 'ember' })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(DEFAULT_CACHE_TIME).toBe(1000 * 60 * 5)
+    expect(third.version).toBe(3)
+  })
+
+  it('throws a descriptive error for non-2xx HTTP responses', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: 'boom' })
+    })
+
+    await expect(
+      getAdminConfig({
+        env: 'prod',
+        market: 'main',
+        disableCache: true
+      })
+    ).rejects.toThrow(/HTTP 500 Internal Server Error/)
   })
 })
 

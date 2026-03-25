@@ -10,6 +10,8 @@ import { withCache, withSingleton, requestHeaders } from './utils'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 
+export const DEFAULT_CACHE_TIME = 1000 * 60 * 5
+
 function assertNonEmptyString(value: string | undefined, fieldName: string) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`Open API response is missing ${fieldName}`)
@@ -49,17 +51,26 @@ function assertAdminConfigPayload(
   assertNonEmptyString(data.oracle.oracleConfig, 'oracle.oracleConfig')
 }
 
-/**
- * Fetches the lending admin config required by admin PTB builders.
- */
-export const getAdminConfig = withCache(
+async function fetchAdminConfigResponse(url: string): Promise<AdminConfigApiResponse> {
+  const response = await fetch(url, { headers: requestHeaders })
+
+  if (!response.ok) {
+    const statusText = response.statusText ? ` ${response.statusText}` : ''
+    throw new Error(
+      `Open API request failed for getAdminConfig(): HTTP ${response.status}${statusText}`
+    )
+  }
+
+  return (await response.json()) as AdminConfigApiResponse
+}
+
+const getAdminConfigCached = withCache(
   withSingleton(
     async (options?: Partial<EnvOption & CacheOption & MarketOption>): Promise<AdminConfig> => {
       const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
       const url = `https://open-api.naviprotocol.io/api/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${market.key}`
 
-      const res = await fetch(url, { headers: requestHeaders }).then((response) => response.json())
-      const data = (res as AdminConfigApiResponse).data
+      const data = (await fetchAdminConfigResponse(url)).data
       assertAdminConfigPayload(data)
 
       return {
@@ -73,4 +84,13 @@ export const getAdminConfig = withCache(
   )
 )
 
-export const DEFAULT_CACHE_TIME = 1000 * 60 * 5
+/**
+ * Fetches the lending admin config required by admin PTB builders.
+ */
+export const getAdminConfig = (
+  options?: Partial<EnvOption & CacheOption & MarketOption>
+): Promise<AdminConfig> =>
+  getAdminConfigCached({
+    ...(options ?? {}),
+    cacheTime: options?.cacheTime ?? DEFAULT_CACHE_TIME
+  })
