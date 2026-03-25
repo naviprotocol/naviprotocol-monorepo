@@ -71,8 +71,10 @@ function encodeEmodeAsset(asset: EmodeAssetConfig): EmodeAssetRawConfig {
 }
 
 function makeEmodeSetter(functionName: string) {
+  const setEmodeRaw = makeEmodeSetterRaw(functionName)
+
   return async (options: EmodeSetterOptions) => {
-    return makeEmodeSetterRaw(functionName)({
+    return setEmodeRaw({
       ...options,
       value: encodeRayRate(options.value, {
         bounded: true,

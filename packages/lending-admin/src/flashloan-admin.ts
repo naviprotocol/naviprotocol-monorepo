@@ -35,11 +35,13 @@ type FlashLoanAmountOptions = AdminPTBOptions &
   }
 
 function makeFlashLoanAmountSetter(functionName: string) {
+  const setFlashLoanAmountRaw = makeFlashLoanAmountSetterRaw(functionName)
+
   return async (options: FlashLoanAmountOptions) => {
     const config = await resolveAdminConfig(options)
     const reserve = resolveReserveSelection(config, options)
 
-    return makeFlashLoanAmountSetterRaw(functionName)({
+    return setFlashLoanAmountRaw({
       ...options,
       config,
       value: encodeAmountInput(options.value, reserve.decimals)

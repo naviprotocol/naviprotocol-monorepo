@@ -82,13 +82,15 @@ type InitReserveOptions = AdminPTBOptions & {
 }
 
 function makeReserveRaySetter(functionName: string, bounded = false) {
+  const setReserveRayRaw = makeReserveRaySetterRaw(functionName)
+
   return async (options: ReserveRaySetterOptions) => {
     const encoded = encodeRayRate(options.value, {
       bounded,
       fieldName: functionName
     })
 
-    return makeReserveRaySetterRaw(functionName)({
+    return setReserveRayRaw({
       ...options,
       value: encoded
     })
@@ -114,11 +116,13 @@ function makeReserveRaySetterRaw(functionName: string) {
 }
 
 function makeReserveAmountSetter(functionName: string) {
+  const setReserveAmountRaw = makeReserveAmountSetterRaw(functionName)
+
   return async (options: ReserveAmountSetterOptions) => {
     const config = await resolveAdminConfig(options)
     const reserve = resolveReserveSelection(config, options)
 
-    return makeReserveAmountSetterRaw(functionName)({
+    return setReserveAmountRaw({
       ...options,
       config,
       assetId: reserve.assetId,
