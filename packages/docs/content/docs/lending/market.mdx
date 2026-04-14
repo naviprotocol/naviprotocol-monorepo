@@ -17,8 +17,8 @@ The Market module provides management functionality for different markets in the
 
 Markets can be identified by:
 
-- Numeric ID (e.g., `0`)
-- String key (e.g., `'main'`)
+- Numeric ID (e.g., `0` for Main Market, `1` for Ember Market)
+- String key (e.g., `'main'`, `'ember'`)
 - MarketConfig object
 
 ## API Reference
@@ -33,10 +33,12 @@ Get market configuration information. See [documentation](/typedoc/functions/_na
 import { getMarketConfig } from '@naviprotocol/lending'
 
 // Get by string key
-const configByKey = getMarketConfig('main')
+const mainConfig = getMarketConfig('main')
+const emberConfig = getMarketConfig('ember')
 
 // Get by numeric ID
-const configById = getMarketConfig(0)
+const configById = getMarketConfig(0) // Main Market
+const emberConfigById = getMarketConfig(1) // Ember Market
 
 // Get by MarketConfig object
 const configByObject = getMarketConfig({ id: 0, key: 'main', name: 'Main Market' })
@@ -73,16 +75,20 @@ Get complete information for a single market, including all pools and EMode conf
 ```typescript
 import { getMarket } from '@naviprotocol/lending'
 
-// Get market by string key
+// Get Main Market
 const market = await getMarket('main', {
   env: 'prod', // Optional: environment configuration
   cacheTime: 30000 // Optional: cache time
 })
 
-// Get market by numeric ID
-const marketById = await getMarket(0, {
+// Get Ember Market
+const emberMarket = await getMarket('ember', {
   env: 'prod'
 })
+
+// Get market by numeric ID
+const marketById = await getMarket(0, { env: 'prod' }) // Main Market
+const emberMarketById = await getMarket(1, { env: 'prod' }) // Ember Market
 ```
 
 **Return Example**
@@ -130,13 +136,13 @@ Get complete information for multiple markets. See [documentation](/typedoc/vari
 import { getMarkets } from '@naviprotocol/lending'
 
 // Get multiple markets
-const markets = await getMarkets(['main'], {
+const markets = await getMarkets(['main', 'ember'], {
   env: 'prod', // Optional: environment configuration
   cacheTime: 30000 // Optional: cache time
 })
 
 // Use different identifiers
-const marketsMixed = await getMarkets([0, 'main'], {
+const marketsMixed = await getMarkets([0, 1, 'main', 'ember'], {
   env: 'prod'
 })
 ```
@@ -241,11 +247,11 @@ import { MARKETS } from '@naviprotocol/lending'
 
 // Access main market
 const mainMarket = MARKETS.main
-// {
-//   id: 0,
-//   key: 'main',
-//   name: 'Main Market'
-// }
+// { id: 0, key: 'main', name: 'Main Market' }
+
+// Access ember market
+const emberMarket = MARKETS.ember
+// { id: 1, key: 'ember', name: 'Ember Market' }
 ```
 
 ### DEFAULT_MARKET_IDENTITY
@@ -316,7 +322,7 @@ emodePools.forEach((pool) => {
 ```typescript
 import { getMarkets } from '@naviprotocol/lending'
 
-const markets = await getMarkets(['main'])
+const markets = await getMarkets(['main', 'ember'])
 markets.forEach((market) => {
   console.log(`Market ${market.config.name}:`)
   console.log(`  Pool count: ${market.pools.length}`)

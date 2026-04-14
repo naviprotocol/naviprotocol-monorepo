@@ -325,6 +325,7 @@ export type Pool = {
     stakingYieldApy: string
     /** Treasury APY */
     treasuryApy: string
+    underlyingApy: string
   }
   /** Borrow incentive APY information */
   borrowIncentiveApyInfo: {
@@ -342,6 +343,7 @@ export type Pool = {
     stakingYieldApy: string
     /** Treasury APY */
     treasuryApy: string
+    underlyingApy: string
   }
   /** Token information */
   token: {
@@ -451,8 +453,6 @@ export type OraclePriceFeed = {
   oracleId: number
   /** Feed identifier */
   feedId: string
-  /** Asset identifier */
-  assetId: number
   /** Pyth price feed ID */
   pythPriceFeedId: string
   /** Pyth price info object */

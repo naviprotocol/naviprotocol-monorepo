@@ -18,6 +18,11 @@ export const MARKETS = {
     id: 0,
     key: 'main',
     name: 'Main Market'
+  },
+  ember: {
+    id: 1,
+    key: 'ember',
+    name: 'Ember Market'
   }
 }
 

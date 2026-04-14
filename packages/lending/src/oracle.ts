@@ -19,7 +19,6 @@ import type {
 import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from './utils'
-import { getPools } from './pool'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -320,7 +319,7 @@ export function filterPriceFeeds(
     // Filter by lending state (user's current positions)
     if (filters?.lendingState) {
       const inState = filters.lendingState.find((state) => {
-        return state.assetId === feed.assetId
+        return feed.oracleId === state.pool.oracleId
       })
       if (inState) {
         return true
@@ -339,7 +338,7 @@ export function filterPriceFeeds(
           return false
         }
         const pool = position[position.type]?.pool
-        return pool?.id === feed.assetId
+        return feed.oracleId === pool?.oracleId
       })
       if (inPosition) {
         return true
@@ -349,7 +348,7 @@ export function filterPriceFeeds(
     // Filter by available pools
     if (filters?.pools) {
       const inPool = filters.pools.find((pool) => {
-        return pool.id === feed.assetId
+        return feed.oracleId === pool.oracleId
       })
       if (inPool) {
         return true
