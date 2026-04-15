@@ -409,9 +409,7 @@ export async function claimLendingRewardsPTB(
       market
     })
     const coinType = rewardCoinType.split('___')[0]
-    const pool = pools.find(
-      (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType) && p.market === market
-    )
+    const pool = pools.find((p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType))
     if (!pool || !pool.contract.rewardFundId) {
       throw new Error(`No matching rewardFund found for reward coin: ${coinType} ${market}`)
     }
