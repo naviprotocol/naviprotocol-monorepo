@@ -87,7 +87,7 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(fn: T): T 
   let cache: Record<
     string,
     {
-      data: undefined
+      data: any
       cacheAt: number
     }
   > = {}
@@ -103,7 +103,9 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(fn: T): T 
         typeof options?.cacheTime === 'undefined' ||
         options.cacheTime > Date.now() - cacheData.cacheAt
       ) {
-        return cacheData.data
+        // Wrap in Promise.resolve to honor the declared `Promise<any>` return type.
+        // Returning the cached value synchronously breaks `.then()` chaining at call sites.
+        return Promise.resolve(cacheData.data)
       }
     }
 
