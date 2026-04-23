@@ -1,7 +1,14 @@
 import './fetch'
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
 import { getFullnodeUrl } from '@mysten/sui/client'
+import {
+  createMockWalletClient,
+  fakeCoin,
+  getMoveTargets,
+  mockDryRunSuccess,
+  setMockPortfolio
+} from './test-utils'
 
 import dotenv from 'dotenv'
 
@@ -17,60 +24,83 @@ const walletClient = new WalletClient({
     url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
   }
 })
+const mockedWalletClient = createMockWalletClient()
+const mockedLendingModule = mockedWalletClient.module('lending')
+const suiCoinType = '0x2::sui::SUI'
+const vsuiCoinType =
+  '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
 
 describe('lending module', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('deposit SUI', async () => {
-    const result = await walletClient.lending.deposit('0x2::sui::SUI', 1e9 * 0.1, {
+    const result = await walletClient.lending.deposit(suiCoinType, 1e9 * 0.1, {
       dryRun: true
     })
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
   })
+
   it('deposit vSUI', async () => {
-    const result = await walletClient
-      .module('lending')
-      .deposit(
-        '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT',
-        1e9 * 0.4,
-        {
-          dryRun: true
-        }
-      )
+    let transaction
+    setMockPortfolio(mockedWalletClient, [fakeCoin('0x51', vsuiCoinType, '500000000')])
+    mockDryRunSuccess(mockedWalletClient, (tx) => {
+      transaction = tx
+    })
+
+    const result = await mockedLendingModule.deposit(vsuiCoinType, 1e9 * 0.4, {
+      dryRun: true
+    })
+
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
+    expect(getMoveTargets(transaction!)).toContainEqual(expect.stringContaining('entry_deposit'))
   })
+
   it('withdraw SUI', async () => {
-    const result = await walletClient
-      .module('lending')
-      .withdraw(
-        '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT',
-        1e9 * 0.1,
-        {
-          dryRun: true
-        }
-      )
+    const result = await walletClient.module('lending').withdraw(vsuiCoinType, 1e9 * 0.1, {
+      dryRun: true
+    })
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
   })
+
   it('borrow SUI', async () => {
-    const result = await walletClient.module('lending').borrow('0x2::sui::SUI', 1e9 * 0.1, {
+    const result = await walletClient.module('lending').borrow(suiCoinType, 1e9 * 0.1, {
       dryRun: true
     })
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
   })
+
   it('repay SUI', async () => {
-    const result = await walletClient.module('lending').repay('0x2::sui::SUI', 1e9 * 0.1, {
+    let transaction
+    setMockPortfolio(mockedWalletClient, [fakeCoin('0x61', suiCoinType, '1000000000')])
+    mockDryRunSuccess(mockedWalletClient, (tx) => {
+      transaction = tx
+    })
+
+    const result = await mockedLendingModule.repay(suiCoinType, 1e9 * 0.1, {
       dryRun: true
     })
+
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
+    expect(transaction!.getData().commands[0].$kind).toBe('SplitCoins')
+    expect(getMoveTargets(transaction!)).toContainEqual(expect.stringContaining('entry_repay'))
   })
+
   it('get health factor', async () => {
     const healthFactor = await walletClient.module('lending').getHealthFactor()
-    console.log(healthFactor)
     expect(healthFactor).toBeDefined()
   })
+
   it('claim all rewards', async () => {
     const result = await walletClient.module('lending').claimAllRewards({
       dryRun: true
@@ -78,6 +108,7 @@ describe('lending module', () => {
     expect(result).toBeDefined()
     expect(result.events.length).toBeGreaterThan(0)
   })
+
   it('update oracle', async () => {
     const result = await walletClient.module('lending').updateOracle({
       dryRun: true

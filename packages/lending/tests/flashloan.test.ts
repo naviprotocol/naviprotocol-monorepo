@@ -1,101 +1,100 @@
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { Transaction } from '@mysten/sui/transactions'
+
 import {
+  flashloanPTB,
   getAllFlashLoanAssets,
   getFlashLoanAsset,
-  flashloanPTB,
   repayFlashLoanPTB
 } from '../src/flashloan'
-import { getPools } from '../src/pool'
-import { Transaction } from '@mysten/sui/transactions'
-import { parseDevInspectResult, suiClient } from '../src/utils'
+import { TEST_CONFIG, TEST_FLASHLOAN_ASSET, createPoolFixture, testObjectId } from './fixtures'
 
-const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const { fetchMock, getConfigMock, getPoolMock } = vi.hoisted(() => ({
+  fetchMock: vi.fn(),
+  getConfigMock: vi.fn(),
+  getPoolMock: vi.fn()
+}))
 
-describe('getAllFlashLoanAssets', () => {
-  it('prod', async () => {
-    const assets = await getAllFlashLoanAssets()
-    expect(assets).toBeDefined()
-    expect(assets.length).toBeGreaterThan(0)
-    const navx = assets.find(
-      (asset) =>
-        asset.coinType ===
-        '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('dev', async () => {
-    const assets = await getAllFlashLoanAssets({ env: 'dev' })
-    expect(assets).toBeDefined()
-    expect(assets.length).toBeGreaterThan(0)
-    const navx = assets.find(
-      (asset) =>
-        asset.coinType ===
-        '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(8)
-  })
+vi.mock('../src/config', () => ({
+  DEFAULT_CACHE_TIME: 1000 * 60 * 5,
+  getConfig: getConfigMock
+}))
+
+vi.mock('../src/pool', () => ({
+  getPool: getPoolMock
+}))
+
+const mockPool = createPoolFixture({
+  id: TEST_FLASHLOAN_ASSET.assetId,
+  contract: {
+    reserveId: testObjectId(26),
+    pool: TEST_FLASHLOAN_ASSET.poolId
+  }
 })
 
-describe('getFlashLoanAsset', () => {
-  it('find by coinType', async () => {
-    const navx = await getFlashLoanAsset(
-      '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('find by assetId', async () => {
-    const navx = await getFlashLoanAsset(7)
-    expect(navx).toBeDefined()
-    expect(navx?.assetId).toBe(7)
-  })
-  it('find by poolId', async () => {
-    const pools = await getPools()
-    const navx = pools.find(
-      (pool) =>
-        pool.coinType ===
-        'a99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
-    )
-    const navxAsset = await getFlashLoanAsset(navx!)
-    expect(navxAsset).toBeDefined()
-    expect(navxAsset?.assetId).toBe(7)
-  })
-})
+function getMoveCall(tx: Transaction, index: number) {
+  const command = tx.getData().commands[index]
+  expect(command?.$kind).toBe('MoveCall')
+  return (command as any).MoveCall
+}
 
-describe('flashloanPTB', () => {
-  it('success flow', async () => {
-    const coinType = '0x2::sui::SUI'
-    const fee = await getFlashLoanAsset(coinType)
+describe('flashloan', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', fetchMock)
+
+    getConfigMock.mockResolvedValue(TEST_CONFIG)
+    getPoolMock.mockResolvedValue(mockPool)
+    fetchMock.mockResolvedValue({
+      json: async () => ({
+        data: {
+          [TEST_FLASHLOAN_ASSET.coinType]: {
+            assetId: TEST_FLASHLOAN_ASSET.assetId,
+            poolId: TEST_FLASHLOAN_ASSET.poolId,
+            supplierFee: TEST_FLASHLOAN_ASSET.supplierFee,
+            flashloanFee: TEST_FLASHLOAN_ASSET.flashloanFee,
+            max: TEST_FLASHLOAN_ASSET.max,
+            min: TEST_FLASHLOAN_ASSET.min
+          }
+        }
+      })
+    } as Response)
+  })
+
+  it('fetches flashloan assets for prod', async () => {
+    const assets = await getAllFlashLoanAssets({
+      disableCache: true
+    })
+
+    expect(assets).toEqual([TEST_FLASHLOAN_ASSET])
+    expect(String(fetchMock.mock.calls[0][0])).toContain('env=prod')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('market=main')
+  })
+
+  it('fetches flashloan assets for dev', async () => {
+    const assets = await getAllFlashLoanAssets({
+      env: 'dev',
+      disableCache: true
+    })
+
+    expect(assets).toEqual([TEST_FLASHLOAN_ASSET])
+    expect(String(fetchMock.mock.calls[0][0])).toContain('env=dev')
+  })
+
+  it('finds flashloan assets by different identifiers', async () => {
+    expect(await getFlashLoanAsset(TEST_FLASHLOAN_ASSET.coinType)).toEqual(TEST_FLASHLOAN_ASSET)
+    expect(await getFlashLoanAsset(TEST_FLASHLOAN_ASSET.assetId)).toEqual(TEST_FLASHLOAN_ASSET)
+    expect(await getFlashLoanAsset(mockPool)).toEqual(TEST_FLASHLOAN_ASSET)
+  })
+
+  it('builds flashloan and repay PTBs against the configured pool', async () => {
     const tx = new Transaction()
-    const [toLoanBalance, receipt] = await flashloanPTB(tx, coinType, 1e9 * 1)
-    const [toLoan] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      arguments: [toLoanBalance],
-      typeArguments: [coinType]
-    })
-    tx.mergeCoins(tx.gas, [toLoan])
-    const repayAmount = Math.floor(2e9 + 2e9 * fee!.flashloanFee)
-    const [toRepay] = tx.splitCoins(tx.gas, [repayAmount])
-    const [toRepayBalance] = tx.moveCall({
-      target: '0x2::coin::into_balance',
-      arguments: [toRepay],
-      typeArguments: [coinType]
-    })
-    const [remainingBalance] = await repayFlashLoanPTB(tx, coinType, receipt, toRepayBalance)
+    const [, receipt] = await flashloanPTB(tx, mockPool.suiCoinType, 1_000_000_000)
 
-    const [toReturn] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      arguments: [remainingBalance],
-      typeArguments: [coinType]
-    })
+    await repayFlashLoanPTB(tx, mockPool.suiCoinType, receipt, tx.object(`0x${'3'.repeat(64)}`))
 
-    tx.transferObjects([toReturn], testAddress)
-    const result = await suiClient.devInspectTransactionBlock({
-      transactionBlock: tx,
-      sender: testAddress
-    })
-    expect(result.error).toBeUndefined()
+    expect(tx.getData().commands).toHaveLength(2)
+    expect(getMoveCall(tx, 0).function).toBe('flash_loan_with_ctx_v2')
+    expect(getMoveCall(tx, 1).function).toBe('flash_repay_with_ctx')
   })
 })

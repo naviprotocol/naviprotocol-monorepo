@@ -1,23 +1,61 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import {
-  getMarketConfig,
+  DEFAULT_MARKET_IDENTITY,
   getMarket,
+  getMarketConfig,
   getMarkets,
   MARKETS,
-  DEFAULT_MARKET_IDENTITY,
   Market
 } from '../src/market'
-import { getPools } from '../src/pool'
-import type { Pool, EnvOption } from '../src/types'
+import type { EnvOption, Pool } from '../src/types'
+import { createPoolFixture, TEST_EMODE, testObjectId } from './fixtures'
+
+const { getPoolsMock } = vi.hoisted(() => ({
+  getPoolsMock: vi.fn()
+}))
+
+vi.mock('../src/pool', () => ({
+  getPools: getPoolsMock
+}))
 
 const options = {
   env: 'test'
 } as EnvOption
 
+const testPools: Pool[] = [
+  createPoolFixture({
+    id: 0,
+    uniqueId: 'main-0',
+    poolSupplyValue: '125',
+    poolBorrowValue: '25',
+    emodes: [TEST_EMODE]
+  }),
+  createPoolFixture({
+    id: 1,
+    uniqueId: 'main-1',
+    contract: {
+      reserveId: testObjectId(27),
+      pool: testObjectId(28)
+    },
+    token: {
+      coinType: '0x3::usdc::USDC',
+      decimals: 6,
+      logoUri: '',
+      symbol: 'USDC',
+      price: 1
+    },
+    coinType: '0x3::usdc::USDC',
+    suiCoinType: '0x3::usdc::USDC',
+    emodes: [],
+    poolSupplyValue: '200',
+    poolBorrowValue: '50'
+  })
+]
+
 describe('getMarketConfig', () => {
   it('should get market config by string key', () => {
     const config = getMarketConfig('main')
-    expect(config).toBeDefined()
     expect(config.id).toBe(0)
     expect(config.key).toBe('main')
     expect(config.name).toBe('Main Market')
@@ -25,7 +63,6 @@ describe('getMarketConfig', () => {
 
   it('should get market config by number id', () => {
     const config = getMarketConfig(0)
-    expect(config).toBeDefined()
     expect(config.id).toBe(0)
     expect(config.key).toBe('main')
     expect(config.name).toBe('Main Market')
@@ -34,7 +71,6 @@ describe('getMarketConfig', () => {
   it('should get market config by MarketConfig object', () => {
     const marketConfig = { id: 0, key: 'main', name: 'Main Market' }
     const config = getMarketConfig(marketConfig)
-    expect(config).toBeDefined()
     expect(config.id).toBe(0)
     expect(config.key).toBe('main')
     expect(config.name).toBe('Main Market')
@@ -51,10 +87,11 @@ describe('getMarketConfig', () => {
 
 describe('MARKETS constant', () => {
   it('should have main market defined', () => {
-    expect(MARKETS.main).toBeDefined()
-    expect(MARKETS.main.id).toBe(0)
-    expect(MARKETS.main.key).toBe('main')
-    expect(MARKETS.main.name).toBe('Main Market')
+    expect(MARKETS.main).toEqual({
+      id: 0,
+      key: 'main',
+      name: 'Main Market'
+    })
   })
 })
 
@@ -65,72 +102,87 @@ describe('DEFAULT_MARKET_IDENTITY', () => {
 })
 
 describe('getMarket', () => {
+  beforeEach(() => {
+    getPoolsMock.mockReset()
+    getPoolsMock.mockResolvedValue(testPools)
+  })
+
   it('should get market with string identity', async () => {
-    const market = await getMarket('main', options)
-    expect(market).toBeDefined()
-    expect(market.config).toBeDefined()
+    const market = await getMarket('main', {
+      ...options,
+      disableCache: true
+    })
+
     expect(market.config.id).toBe(0)
     expect(market.config.key).toBe('main')
-    expect(market.pools).toBeDefined()
-    expect(Array.isArray(market.pools)).toBe(true)
-    expect(market.emodes).toBeDefined()
-    expect(Array.isArray(market.emodes)).toBe(true)
+    expect(market.pools).toHaveLength(2)
+    expect(market.emodes).toHaveLength(1)
   })
 
   it('should get market with number identity', async () => {
-    const market = await getMarket(0, options)
-    expect(market).toBeDefined()
-    expect(market.config).toBeDefined()
+    const market = await getMarket(0, {
+      ...options,
+      disableCache: true
+    })
+
     expect(market.config.id).toBe(0)
     expect(market.pools.length).toBeGreaterThan(0)
   })
 
   it('should get market with MarketConfig object', async () => {
     const marketConfig = { id: 0, key: 'main', name: 'Main Market' }
-    const market = await getMarket(marketConfig, options)
-    expect(market).toBeDefined()
+    const market = await getMarket(marketConfig, {
+      ...options,
+      disableCache: true
+    })
+
     expect(market.config.id).toBe(0)
   })
 })
 
 describe('getMarkets', () => {
+  beforeEach(() => {
+    getPoolsMock.mockReset()
+    getPoolsMock.mockResolvedValue(testPools)
+  })
+
   it('should get multiple markets', async () => {
-    const markets = await getMarkets(['main'], options)
-    expect(markets).toBeDefined()
-    expect(Array.isArray(markets)).toBe(true)
-    expect(markets.length).toBe(1)
+    const markets = await getMarkets(['main'], {
+      ...options,
+      disableCache: true
+    })
+
+    expect(markets).toHaveLength(1)
     expect(markets[0].config.id).toBe(0)
   })
 
   it('should get markets with different identities', async () => {
-    const markets = await getMarkets([0, 'main'], options)
-    expect(markets).toBeDefined()
-    expect(markets.length).toBe(2)
+    const markets = await getMarkets([0, 'main'], {
+      ...options,
+      disableCache: true
+    })
+
+    expect(markets).toHaveLength(2)
     expect(markets[0].config.id).toBe(0)
     expect(markets[1].config.id).toBe(0)
   })
 })
 
 describe('Market class', () => {
-  let testPools: Pool[] = []
-
-  beforeAll(async () => {
-    testPools = await getPools(options)
-  })
-
   describe('constructor', () => {
     it('should create market instance with pools', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
-      expect(market).toBeDefined()
+      const market = new Market('main', testPools)
+
       expect(market.config.id).toBe(0)
-      expect(market.pools.length).toBe(pools.length)
+      expect(market.pools.length).toBe(testPools.length)
       expect(market.emodes.length).toBeGreaterThanOrEqual(0)
+      expect(market.overview.marketTotalSupplyValue).toBe('325')
+      expect(market.overview.marketTotalBorrowValue).toBe('75')
     })
 
     it('should filter pools by market', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
+      const market = new Market('main', testPools)
+
       market.pools.forEach((pool) => {
         expect(pool.market).toBe(market.config.key)
       })
@@ -139,49 +191,38 @@ describe('Market class', () => {
 
   describe('getEMode', () => {
     it('should get emode by emodeId', () => {
-      const pools = testPools.slice(0, 5)
-      const market = new Market('main', pools)
+      const market = new Market('main', testPools)
+      const result = market.getEMode(TEST_EMODE.emodeId)
 
-      if (market.emodes.length > 0) {
-        const emode = market.emodes[0]
-        const result = market.getEMode(emode.emodeId)
-        expect(result).toBeDefined()
-        expect(result?.emodeId).toBe(emode.emodeId)
-      }
+      expect(result).toBeDefined()
+      expect(result?.emodeId).toBe(TEST_EMODE.emodeId)
     })
 
     it('should return null for non-existent emode', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
+      const market = new Market('main', testPools)
 
-      const result = market.getEMode(99999)
-      expect(result).toBeNull()
+      expect(market.getEMode(99999)).toBeNull()
     })
   })
 
   describe('getEModePools', () => {
     it('should get emode pools', () => {
-      const pools = testPools.slice(0, 5)
-      const market = new Market('main', pools)
+      const market = new Market('main', testPools)
+      const emodePools = market.getEModePools(TEST_EMODE.emodeId)
 
-      if (market.emodes.length > 0) {
-        const emode = market.emodes[0]
-        const emodePools = market.getEModePools(emode.emodeId)
-        expect(Array.isArray(emodePools)).toBe(true)
-        emodePools.forEach((pool) => {
-          expect(pool.isEMode).toBe(true)
-          expect(pool.emode).toBeDefined()
-          expect(pool.emode.emodeId).toBe(emode.emodeId)
-        })
-      }
+      expect(Array.isArray(emodePools)).toBe(true)
+      expect(emodePools).toHaveLength(2)
+      emodePools.forEach((pool) => {
+        expect(pool.isEMode).toBe(true)
+        expect(pool.emode).toBeDefined()
+        expect(pool.emode.emodeId).toBe(TEST_EMODE.emodeId)
+      })
     })
 
     it('should return empty array for non-existent emode', () => {
-      const pools = testPools.slice(0, 2)
-      const market = new Market('main', pools)
+      const market = new Market('main', testPools)
 
-      const emodePools = market.getEModePools(99999)
-      expect(emodePools).toEqual([])
+      expect(market.getEModePools(99999)).toEqual([])
     })
   })
 })

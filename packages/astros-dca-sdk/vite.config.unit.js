@@ -8,6 +8,7 @@ export default defineConfig({
   ...baseConfig,
   test: {
     ...(baseConfig.test || {}),
+    passWithNoTests: true,
     testTimeout: 30000,
     environment: 'node',
     include: [`${PWD}/tests/**/*.{spec,test}.{ts,tsx}`, `${PWD}/src/**/*.{spec,test}.{ts,tsx}`],

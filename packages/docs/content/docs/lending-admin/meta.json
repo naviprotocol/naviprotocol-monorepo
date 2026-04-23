@@ -1,0 +1,10 @@
+{
+	"root": true,
+	"title": "Lending Admin",
+	"description": "NAVI Lending Admin SDK",
+	"pages": [
+		"index",
+		"precision",
+		"[Api Reference](/typedoc/modules/_naviprotocol_lending_admin.html)"
+	]
+}

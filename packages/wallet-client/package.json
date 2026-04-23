@@ -42,9 +42,9 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
-    "test": "vitest --config ./vite.config.unit.js",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "NODE_OPTIONS='--require ./tests/register-sentry-stub.cjs' vitest --config ./vite.config.unit.js",
+    "test:watch": "NODE_OPTIONS='--require ./tests/register-sentry-stub.cjs' vitest",
+    "test:coverage": "NODE_OPTIONS='--require ./tests/register-sentry-stub.cjs' vitest run --coverage",
     "typedoc": "typedoc"
   },
   "dependencies": {

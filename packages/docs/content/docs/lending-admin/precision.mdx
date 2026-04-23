@@ -1,0 +1,71 @@
+---
+title: Precision Guide
+---
+
+Admin setters in `@naviprotocol/lending-admin` do not guess units. Bare numbers are rejected whenever a field can be misread as percent, ratio, or raw integer.
+
+## Equivalent Ray Inputs
+
+These three calls all serialize the same on-chain value:
+
+```ts
+import { Transaction } from '@mysten/sui/transactions'
+import {
+  setBaseRatePTB,
+  setBaseRateRawPTB
+} from '@naviprotocol/lending-admin'
+
+const tx = new Transaction()
+
+await setBaseRatePTB({
+  tx,
+  assetId: 1,
+  value: { value: '4', unit: 'percent' }
+})
+
+await setBaseRatePTB({
+  tx,
+  assetId: 1,
+  value: { value: '0.04', unit: 'ratio' }
+})
+
+await setBaseRateRawPTB({
+  tx,
+  assetId: 1,
+  value: '40000000000000000000000000'
+})
+```
+
+## Precision Matrix
+
+| Category | Safe type | Raw type | Representative APIs |
+| --- | --- | --- | --- |
+| Ray-backed rate/ratio fields | `RayRateInput` | `string` | `setBaseRatePTB`, `setReserveFactorPTB`, `setLtvPTB`, `setEmodeAssetLtvPTB` |
+| Coin-native atomic amount fields | `AmountInput` | `string` | `setFlashLoanAssetMinPTB`, `withdrawTreasuryPTB`, `setTargetSuiAmountPTB` |
+| Oracle price fields | `PriceInput` | `string` | `registerTokenPricePTB`, `updateTokenPricePTB`, `createPriceFeedPTB` |
+| Explicit basis-point fields | `string` in a `*Bps*` API | `string` | `setBorrowFeeRateBpsPTB`, `setFlashLoanAssetRateToSupplierBpsPTB`, `setBorrowWeightBpsPTB` |
+
+## Helper Converters
+
+```ts
+import {
+  percentToRay,
+  ratioToRay,
+  rayToRatio,
+  tokenAmountToAtomic,
+  atomicToTokenAmount
+} from '@naviprotocol/lending-admin'
+
+percentToRay('4')
+ratioToRay('0.04')
+rayToRatio('40000000000000000000000000')
+tokenAmountToAtomic('1.5', 6)
+atomicToTokenAmount('1500000', 6)
+```
+
+## Validation Rules
+
+- Bounded ray fields reject percent or ratio values outside `[0, 1]`.
+- Raw builders preserve exact integers and do not re-scale them.
+- Amount builders always convert before `tx.pure(...)`.
+- Price builders require explicit decimals unless the SDK can resolve them from an existing feed.
