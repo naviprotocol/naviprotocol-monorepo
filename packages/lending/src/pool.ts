@@ -282,6 +282,7 @@ export async function depositCoinPTB(
   })
   const pool = await getPool(identifier, options)
   const market = options?.market || DEFAULT_MARKET_IDENTITY
+  const env = options?.env || 'prod'
 
   if (pool?.deprecatedAt && Date.now() > pool.deprecatedAt) {
     throw new Error(`The lending pool for coinType ${pool.suiCoinType} has been deprecated.`)
@@ -344,7 +345,7 @@ export async function depositCoinPTB(
   }
 
   // refresh stake for sui pool to balance the stake after deposit
-  if (config.version === 2 && pool.token.symbol === 'SUI') {
+  if (config.version === 2 && pool.token.symbol === 'SUI' && env === 'prod') {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
       arguments: [tx.object(pool.contract.pool), tx.object('0x05')]

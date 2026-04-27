@@ -23,6 +23,11 @@ export const MARKETS = {
     id: 1,
     key: 'ember',
     name: 'Ember Market'
+  },
+  'sui-eco': {
+    id: 2,
+    key: 'sui-eco',
+    name: 'Sui Eco Market'
   }
 }
 
