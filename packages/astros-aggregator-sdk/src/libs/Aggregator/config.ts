@@ -34,7 +34,7 @@ export const AggregatorConfig = {
   cetusConfigId: '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f',
 
   // Turbos DEX configuration
-  turbosPackageId: '0xd02012c71c1a6a221e540c36c37c81e0224907fe1ee05bfe250025654ff17103',
+  turbosPackageId: '0xa5a0c25c79e428eba04fb98b3fb2a34db45ab26d4c8faf0d7e39d66a63891e64',
 
   // Kriya DEX configuration (V2 and V3)
   kriyaV3Version: '0xf5145a7ac345ca8736cf8c76047d00d6d378f30e81be6f6eb557184d9de93c78',
