@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.14.1
+
+### Patch Changes
+
+- 895543c: update turbos package
+
 ## 1.14.0
 
 ### Minor Changes
