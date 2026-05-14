@@ -24,11 +24,11 @@ export const MARKETS = {
     key: 'ember',
     name: 'Ember Market'
   },
-  'sui-eco': {
-    id: 2,
-    key: 'sui-eco',
-    name: 'Sui Eco Market'
-  },
+  // 'sui-eco': {
+  //   id: 2,
+  //   key: 'sui-eco',
+  //   name: 'Sui Eco Market'
+  // },
   rwa: {
     id: 3,
     key: 'rwa',
