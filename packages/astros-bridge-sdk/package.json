@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-bridge-sdk",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "keywords": [
@@ -50,7 +50,7 @@
     "typedoc": "typedoc"
   },
   "dependencies": {
-    "@mayanfinance/swap-sdk": "10.9.0",
+    "@mayanfinance/swap-sdk": "13.3.0",
     "@solana/web3.js": "1.98.2",
     "axios": "1.13.2",
     "ethers": "6.13.5"
