@@ -374,7 +374,7 @@ export async function claimLendingRewardsPTB(
   for (const reward of rewards) {
     const { rewardCoinType, ruleIds, market, owner, address, emodeId } = reward
 
-    const key = `${rewardCoinType}___${address}`
+    const key = `${rewardCoinType}___${address}__${market}`
 
     for (const ruleId of ruleIds) {
       if (!rewardMap.has(key)) {
@@ -409,11 +409,17 @@ export async function claimLendingRewardsPTB(
       market
     })
     const coinType = rewardCoinType.split('___')[0]
-    const pool = pools.find((p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType))
-    if (!pool || !pool.contract.rewardFundId) {
+    const filterPools = pools.filter(
+      (p) => normalizeCoinType(p.suiCoinType) === normalizeCoinType(coinType)
+    )
+    filterPools.sort((a, b) => (a.market === market ? -1 : 1))
+    const pool = filterPools[0]
+
+    const matchedRewardFund = config.rewardFunds[normalizeCoinType(coinType)]
+
+    if (!matchedRewardFund) {
       throw new Error(`No matching rewardFund found for reward coin: ${coinType} ${market}`)
     }
-    const matchedRewardFund = pool.contract.rewardFundId
 
     // Validate configuration
     if (options?.accountCap && !options.customCoinReceive) {
@@ -499,7 +505,10 @@ export async function claimLendingRewardsPTB(
             tx.pure.address(options.customCoinReceive.depositNAVI.fallbackReceiveAddress)
           )
         } else {
-          await depositCoinPTB(tx, pool, rewardCoin, options)
+          await depositCoinPTB(tx, pool, rewardCoin, {
+            ...options,
+            market: pool.market
+          })
         }
       } else {
         rewardCoins.push({

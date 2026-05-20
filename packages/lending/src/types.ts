@@ -364,8 +364,6 @@ export type Pool = {
     reserveId: string
     /** Pool address */
     pool: string
-    /** Optional reward fund ID */
-    rewardFundId?: string
   }
   /** Whether this pool is deprecated */
   isDeprecated: boolean
@@ -520,6 +518,7 @@ export type LendingConfig = {
       registryObject: string
     }
   }
+  rewardFunds: Record<string, string>
 }
 
 /**
