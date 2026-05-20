@@ -30,7 +30,7 @@ export const MARKETS = {
   //   name: 'Sui Eco Market'
   // },
   rwa: {
-    id: 3,
+    id: 2,
     key: 'rwa',
     name: 'Matrixdock Market'
   }
