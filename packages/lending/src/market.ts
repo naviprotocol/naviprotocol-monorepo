@@ -32,7 +32,7 @@ export const MARKETS = {
   rwa: {
     id: 3,
     key: 'rwa',
-    name: 'RWA Market'
+    name: 'Matrixdock Market'
   }
 }
 
