@@ -25,7 +25,7 @@ import type {
   EModeCap
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
-import { UserStateInfo } from './bcs'
+import { UserStateInfo, ReserveDataInfo } from './bcs'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
   suiClient,
@@ -209,6 +209,28 @@ async function getLendingStateBatch(
   })
   const poolsMap = getPoolsMap(pools)
 
+  // Read the on-chain reserve indices for every market referenced by the
+  // tasks in the SAME PTB as get_user_state. This guarantees that
+  // supply_balance / borrow_balance and supply_index / borrow_index are
+  // captured from the exact same chain snapshot. Without this, indices come
+  // from the cached open-api /api/navi/pools response (typically lagging the
+  // chain by seconds to minutes), so right after a deposit/withdraw the
+  // displayed amount can drift by the interest accrued in between.
+  const uniqueMarketKeys = Array.from(new Set(tasks.map((task) => task.market)))
+  const uniqueMarkets = uniqueMarketKeys.map((key) => getMarketConfig(key))
+
+  for (const market of uniqueMarkets) {
+    const config = await getConfig({
+      ...options,
+      cacheTime: DEFAULT_CACHE_TIME,
+      market: market.key
+    })
+    tx.moveCall({
+      target: `${config.uiGetter}::getter::get_reserve_data`,
+      arguments: [tx.object(config.storage)]
+    })
+  }
+
   for (let task of tasks) {
     const config = await getConfig({
       ...options,
@@ -226,7 +248,32 @@ async function getLendingStateBatch(
     sender: address
   })
 
-  const stateList = (resp.results || []).map((result) => {
+  const results = resp.results || []
+
+  const reserveIndicesByMarket: Record<
+    string,
+    Record<number, { supplyIndex: string; borrowIndex: string }>
+  > = {}
+  uniqueMarkets.forEach((market, idx) => {
+    const reserves =
+      results[idx]?.returnValues?.map((item) => {
+        return bcs.vector(ReserveDataInfo as any).parse(Uint8Array.from(item[0]))
+      })[0] || []
+    const perAsset: Record<number, { supplyIndex: string; borrowIndex: string }> = {}
+    for (const reserve of reserves as Array<{
+      id: number
+      supply_index: string
+      borrow_index: string
+    }>) {
+      perAsset[reserve.id] = {
+        supplyIndex: reserve.supply_index,
+        borrowIndex: reserve.borrow_index
+      }
+    }
+    reserveIndicesByMarket[market.key] = perAsset
+  })
+
+  const stateList = results.slice(uniqueMarkets.length).map((result) => {
     return (
       result.returnValues?.map((item) => {
         return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
@@ -243,6 +290,7 @@ async function getLendingStateBatch(
   stateList.forEach((states, index) => {
     const task = tasks[index]
     const market = getMarketConfig(task.market)
+    const marketReserves = reserveIndicesByMarket[market.key] || {}
     states.forEach((state) => {
       if (state.supply_balance === '0' && state.borrow_balance === '0') {
         if (task.emodeId === undefined) {
@@ -256,14 +304,15 @@ async function getLendingStateBatch(
       if (!pool) {
         return
       }
-      const supplyBalance = rayMathMulIndex(
-        state.supply_balance,
-        pool!.currentSupplyIndex
-      ).toString()
-      const borrowBalance = rayMathMulIndex(
-        state.borrow_balance,
-        pool!.currentBorrowIndex
-      ).toString()
+      // Prefer on-chain indices captured in the same PTB; fall back to the
+      // open-api pool indices only when reserve data could not be decoded
+      // for this asset (keeps behaviour backward compatible if the chain
+      // ever stops exposing getter::get_reserve_data).
+      const reserveIndices = marketReserves[state.asset_id]
+      const supplyIndex = reserveIndices?.supplyIndex ?? pool!.currentSupplyIndex
+      const borrowIndex = reserveIndices?.borrowIndex ?? pool!.currentBorrowIndex
+      const supplyBalance = rayMathMulIndex(state.supply_balance, supplyIndex).toString()
+      const borrowBalance = rayMathMulIndex(state.borrow_balance, borrowIndex).toString()
       result.push({
         supplyBalance,
         borrowBalance,
