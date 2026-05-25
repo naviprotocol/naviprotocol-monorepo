@@ -11,6 +11,11 @@
   `supplyBalance` / `borrowBalance` no longer lags behind the chain by the
   open-api indexer delay. Falls back to the pool indices from the open-api
   response if reserve data cannot be decoded.
+- Guard the per-market `ReserveDataInfo` BCS decode with a `try/catch` so that
+  an unexpected on-chain layout (e.g. struct fields added in a future
+  contract upgrade) only causes that single market to fall back to the
+  open-api indices, instead of rejecting `getLendingStateBatch` and wiping
+  out every lending position for the user.
 
 ## 1.4.0
 

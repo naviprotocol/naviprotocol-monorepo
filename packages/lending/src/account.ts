@@ -29,7 +29,6 @@ import { UserStateInfo, ReserveDataInfo } from './bcs'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
   suiClient,
-  camelize,
   parseDevInspectResult,
   withSingleton,
   processContractHealthFactor,
@@ -49,7 +48,7 @@ import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'
 import BigNumber from 'bignumber.js'
-import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
+import { getMarketConfig, MARKETS } from './market'
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -255,22 +254,35 @@ async function getLendingStateBatch(
     Record<number, { supplyIndex: string; borrowIndex: string }>
   > = {}
   uniqueMarkets.forEach((market, idx) => {
-    const reserves =
-      results[idx]?.returnValues?.map((item) => {
-        return bcs.vector(ReserveDataInfo as any).parse(Uint8Array.from(item[0]))
-      })[0] || []
-    const perAsset: Record<number, { supplyIndex: string; borrowIndex: string }> = {}
-    for (const reserve of reserves as Array<{
-      id: number
-      supply_index: string
-      borrow_index: string
-    }>) {
-      perAsset[reserve.id] = {
-        supplyIndex: reserve.supply_index,
-        borrowIndex: reserve.borrow_index
+    try {
+      const reserves =
+        results[idx]?.returnValues?.map((item) => {
+          return bcs.vector(ReserveDataInfo as any).parse(Uint8Array.from(item[0]))
+        })[0] || []
+      const perAsset: Record<number, { supplyIndex: string; borrowIndex: string }> = {}
+      for (const reserve of reserves as Array<{
+        id: number
+        supply_index: string
+        borrow_index: string
+      }>) {
+        perAsset[reserve.id] = {
+          supplyIndex: reserve.supply_index,
+          borrowIndex: reserve.borrow_index
+        }
       }
+      reserveIndicesByMarket[market.key] = perAsset
+    } catch (e) {
+      // BCS decode failed (e.g. on-chain ReserveDataInfo layout changed and
+      // our schema is out of date). Leave the entry empty so the per-asset
+      // `?? pool.currentSupplyIndex` fallback below kicks in for this
+      // market only, preserving the original 1.4.4 behaviour for the
+      // affected market instead of turning a recoverable mismatch into a
+      // hard failure that wipes out every position for the user.
+      console.warn(
+        `[@naviprotocol/lending] Failed to decode reserve data for market "${market.key}", falling back to open-api pool indices`,
+        e
+      )
     }
-    reserveIndicesByMarket[market.key] = perAsset
   })
 
   const stateList = results.slice(uniqueMarkets.length).map((result) => {
