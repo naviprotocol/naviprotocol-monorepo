@@ -71,9 +71,13 @@ export const AggregatorConfig = {
   haSuiConfigId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
 
   // Magma DEX configuration
+  // Synced with @magmaprotocol/magma-ts-sdk@1.1.1 (released 2025-12-09).
+  // The legacy integrate package 0x7c369062... routes into a deprecated
+  // pool::split_fees that aborts in the b2a direction; magma published a
+  // new integrate package on 2025-12-04 to bypass that path.
   magmaPackageId: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
   magmaConfigId: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
-  magmaPublishedAt: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
+  magmaPublishedAt: '0x183af2adf115f331105825ae63e1d7d3c848d67beb4d60bc36208a90a5e92f4b',
 
   // Momentum DEX configuration
   momentumPackageId: '0xcf60a40f45d46fc1e828871a647c1e25a0915dec860d2662eb10fdb382c3c1d1',
@@ -87,10 +91,11 @@ export const AggregatorConfig = {
   flowxVersioned: '0x67624a1533b5aff5d0dfcf5e598684350efd38134d2d245f475524c03a64e656',
 
   // Magma ALMM DEX configuration
-  magmaAlmmPackageId: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
-  magmaAlmmPublishedAt: '0xa8b3dbe60b27160e2267c237759dd26f1dfe04e3f2d7cb0fc235a1497bdbfc09',
-  magmaIntegratePublishedAt: '0x7c369062640451c79e4e8ef7540df7540d88a002d04c91ee37c771997739963f',
-  magmaAlmmFactory: '0x29999aadee09eb031cc98a73b605805306d6ae0fe9d5099fb9e6628d99527234'
+  // Synced with @magmaprotocol/magma-ts-sdk@1.1.1 almm_pool / almmConfig values.
+  magmaAlmmPackageId: '0x532bf64e6f0bf702353387d53a28a3239249f47c39d58954f2c0a1f9f4436c20',
+  magmaAlmmPublishedAt: '0x8800c3f7496a09dd62b0850b178b73ada2aeaf34d076dcd1c1bbd0da0015550d',
+  magmaIntegratePublishedAt: '0x4a9d6fb6f34ca8918756c2dfddf8f0a7fd5ef590bcffa6c03db24a6f10f42c5e',
+  magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf'
 }
 
 /**
