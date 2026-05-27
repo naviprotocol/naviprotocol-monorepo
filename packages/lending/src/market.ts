@@ -24,15 +24,15 @@ export const MARKETS = {
     key: 'ember',
     name: 'Ember Market'
   },
-  // 'sui-eco': {
-  //   id: 2,
-  //   key: 'sui-eco',
-  //   name: 'Sui Eco Market'
-  // },
   rwa: {
     id: 2,
     key: 'rwa',
     name: 'Matrixdock Market'
+  },
+  'sui-eco': {
+    id: 3,
+    key: 'sui-eco',
+    name: 'Sui Eco Market'
   }
 }
 
