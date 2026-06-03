@@ -28,6 +28,7 @@
 		"release": "pnpm run prerelease && changeset publish",
 		"snapshot": "pnpm prerelease && changeset version --snapshot preview && pnpm install && changeset publish --tag preview",
 		"test": "turbo run test",
+		"test:sdk-v2-boundaries": "node config/check-sdk-v2-boundaries.mjs",
 		"changeset": "changeset",
 		"changeset-version": "pnpm changeset version",
 		"audit-ci": "pnpx audit-ci --config ./audit-ci.jsonc",
