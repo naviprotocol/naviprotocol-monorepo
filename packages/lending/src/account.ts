@@ -43,7 +43,7 @@ import {
   uuid
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
-import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
+import type { CoinStruct, PaginatedCoins } from '@mysten/sui/jsonRpc'
 import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'

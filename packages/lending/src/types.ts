@@ -7,7 +7,7 @@
  * @module LendingTypes
  */
 
-import type { SuiClient } from '@mysten/sui/client'
+import type { NaviSuiClient } from './sui'
 import type { TransactionResult as TransactionResultType } from '@mysten/sui/transactions'
 
 export type MarketConfig = {
@@ -100,7 +100,7 @@ export type AccountCapOption = {
  */
 export type SuiClientOption = {
   /** Sui client instance */
-  client: SuiClient
+  client: NaviSuiClient
 }
 
 /**

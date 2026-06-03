@@ -9,22 +9,20 @@
  */
 
 import type { CacheOption, EMode, EModeIdentity, EModePool, Pool, TransactionResult } from './types'
-import type { DevInspectResults } from '@mysten/sui/client'
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
+import type { DevInspectResults } from '@mysten/sui/jsonRpc'
 import camelCase from 'lodash.camelcase'
 import { Transaction } from '@mysten/sui/transactions'
 import { BcsType } from '@mysten/sui/bcs'
 import { normalizeStructTag } from '@mysten/sui/utils'
-import { SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js'
 import BigNumber from 'bignumber.js'
 import { userAgent } from './ua'
+import { createNaviSuiClient } from './sui'
+import { SuiPriceServiceConnection } from './pyth'
 
 /**
  * Default Sui client instance configured for mainnet
  */
-export const suiClient = new SuiClient({
-  url: getFullnodeUrl('mainnet')
-})
+export const suiClient = createNaviSuiClient()
 
 /**
  * Generates a cache key from function arguments

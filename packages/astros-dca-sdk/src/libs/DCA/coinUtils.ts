@@ -4,14 +4,14 @@
  */
 
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { SuiClient, PaginatedCoins } from '@mysten/sui/client'
+import type { SuiJsonRpcClient, PaginatedCoins } from '@mysten/sui/jsonRpc'
 
 /**
  * Get coins for a specific address and coin type
  * Handles pagination automatically to fetch all coins
  */
 export async function getCoins(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   address: string,
   coinType: string = '0x2::sui::SUI'
 ): Promise<PaginatedCoins> {
@@ -85,7 +85,7 @@ export function returnMergedCoins(tx: Transaction, coinInfo: any) {
  * @returns Transaction result containing the split coin
  */
 export async function getCoinForDca(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   tx: Transaction,
   address: string,
   coinType: string,

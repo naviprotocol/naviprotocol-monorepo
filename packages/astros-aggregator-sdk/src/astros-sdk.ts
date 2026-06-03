@@ -2,7 +2,7 @@ import { SwapOptions, Quote } from './types'
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
-import { SuiClient } from '@mysten/sui/client'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { executeAuction } from 'shio-sdk'
 
 /**
@@ -41,13 +41,14 @@ export async function executeTransaction(
   txb: Transaction,
   signer: Signer,
   options?: {
-    client?: SuiClient
+    client?: SuiJsonRpcClient
   }
 ) {
   const client =
     options?.client ||
-    new SuiClient({
-      url: 'https://fullnode.mainnet.sui.io'
+    new SuiJsonRpcClient({
+      network: 'mainnet',
+      url: getJsonRpcFullnodeUrl('mainnet')
     })
   const txBytes = await txb.build({
     client

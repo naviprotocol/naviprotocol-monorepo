@@ -10,8 +10,7 @@
 
 import { Signer } from '@mysten/sui/cryptography'
 import { Transaction } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
-import { Experimental_SuiClientTypes } from '@mysten/sui/experimental'
+import type { ClientWithCoreApi, SuiClientTypes } from '@mysten/sui/client'
 import { SignatureWithBytes } from '@mysten/sui/cryptography'
 
 /**
@@ -21,7 +20,7 @@ interface SignAndExecuteOptions {
   /** Transaction to sign and execute */
   transaction: Transaction
   /** Sui client instance */
-  client: SuiClient
+  client: ClientWithCoreApi
 }
 
 /**
@@ -177,5 +176,7 @@ export abstract class WebSigner extends Signer {
   abstract signAndExecuteTransaction({
     transaction,
     client
-  }: SignAndExecuteOptions): Promise<Experimental_SuiClientTypes.TransactionResponse>
+  }: SignAndExecuteOptions): Promise<
+    SuiClientTypes.TransactionResult<{ transaction: true; effects: true }>
+  >
 }

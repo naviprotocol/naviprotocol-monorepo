@@ -9,7 +9,7 @@
  * @module UserPortfolio
  */
 
-import { CoinStruct } from '@mysten/sui/client'
+import type { CoinStruct } from '@mysten/sui/jsonRpc'
 import { BigNumber } from 'bignumber.js'
 import { normalizeStructTag } from '@mysten/sui/utils'
 

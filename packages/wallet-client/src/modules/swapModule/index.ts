@@ -18,7 +18,10 @@ import {
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
+import type {
+  SuiTransactionBlockResponse,
+  DryRunTransactionBlockResponse
+} from '@mysten/sui/jsonRpc'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'

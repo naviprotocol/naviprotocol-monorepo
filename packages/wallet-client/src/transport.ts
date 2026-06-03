@@ -9,7 +9,7 @@
  */
 
 import axios from 'axios'
-import { type SuiTransport, type SuiTransportRequestOptions } from '@mysten/sui/client'
+import { type JsonRpcTransport, type JsonRpcTransportRequestOptions } from '@mysten/sui/jsonRpc'
 
 /**
  * Axios instance with custom configuration
@@ -51,7 +51,7 @@ instance.interceptors.response.use(
  * a custom HTTP transport layer for making RPC calls to Sui nodes.
  * It includes request ID management and proper JSON-RPC 2.0 formatting.
  */
-export class CustomTransport implements SuiTransport {
+export class CustomTransport implements JsonRpcTransport {
   /** Counter for generating unique request IDs */
   requestId = 0
 
@@ -76,7 +76,7 @@ export class CustomTransport implements SuiTransport {
    * @param input - The transport request options containing method and parameters
    * @returns Promise<T> - The response data from the RPC call
    */
-  async request<T>(input: SuiTransportRequestOptions): Promise<T> {
+  async request<T>(input: JsonRpcTransportRequestOptions): Promise<T> {
     // Increment request ID for unique identification
     this.requestId += 1
 

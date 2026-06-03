@@ -16,7 +16,10 @@ import {
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
+import type {
+  SuiTransactionBlockResponse,
+  DryRunTransactionBlockResponse
+} from '@mysten/sui/jsonRpc'
 
 /**
  * Configuration for the Haedal module

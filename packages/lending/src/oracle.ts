@@ -16,7 +16,7 @@ import type {
   MarketOption,
   LendingPosition
 } from './types'
-import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
+import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from './utils'
 import { getLendingPositions } from './account'

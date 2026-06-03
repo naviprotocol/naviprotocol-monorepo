@@ -10,7 +10,7 @@
 
 import { Module } from '../module'
 import { getCoins, mergeCoinsPTB, withSingleton } from '@naviprotocol/lending'
-import { CoinStruct } from '@mysten/sui/client'
+import type { CoinStruct } from '@mysten/sui/jsonRpc'
 import type { WalletClient } from '../../client'
 import { UserPortfolio } from './portfolio'
 import BigNumber from 'bignumber.js'
@@ -18,7 +18,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import type {
   DryRunTransactionBlockResponse,
   SuiTransactionBlockResponse
-} from '@mysten/sui/client'
+} from '@mysten/sui/jsonRpc'
 import { normalizeStructTag } from '@mysten/sui/utils'
 
 /**

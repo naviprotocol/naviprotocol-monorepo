@@ -9,7 +9,7 @@ import {
   addresses
 } from '@mayanfinance/swap-sdk'
 import { BridgeSwapQuote } from '../types'
-import { SuiClient } from '@mysten/sui/client'
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { Transaction } from '@mysten/sui/transactions'
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
@@ -21,7 +21,7 @@ const ERC20_ABI = [
 ]
 
 type SuiWalletConnection = {
-  provider: SuiClient
+  provider: SuiJsonRpcClient
   signTransaction: (data: { transaction: Transaction }) => Promise<{
     bytes: string
     signature: string
@@ -90,13 +90,13 @@ export async function swap(
       toAddress,
       referrerAddresses,
       null,
-      client
+      client as any
     )
     const connection = walletConnection.sui
     const signed: {
       bytes: string
       signature: string
-    } = await connection.signTransaction({ transaction: swapTrx })
+    } = await connection.signTransaction({ transaction: swapTrx as unknown as Transaction })
     const resp = await client.executeTransactionBlock({
       transactionBlock: signed.bytes,
       signature: [signed.signature],
@@ -163,9 +163,9 @@ export async function swap(
       fromAddress,
       toAddress,
       referrerAddresses,
-      connection.signer,
-      connection.permit,
-      connection.overrides,
+      connection.signer as any,
+      connection.permit as any,
+      connection.overrides as any,
       null
     )
     hash = typeof swapTrx === 'string' ? swapTrx : swapTrx.hash

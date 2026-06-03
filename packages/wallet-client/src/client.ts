@@ -8,7 +8,12 @@
  * @module WalletClient
  */
 
-import { SuiClient, SuiClientOptions, type ExecuteTransactionBlockParams } from '@mysten/sui/client'
+import {
+  SuiJsonRpcClient,
+  getJsonRpcFullnodeUrl,
+  type ExecuteTransactionBlockParams,
+  type SuiJsonRpcClientOptions
+} from '@mysten/sui/jsonRpc'
 import { Signer } from '@mysten/sui/cryptography'
 import mitt, { Emitter } from 'mitt'
 import { CustomTransport } from './transport'
@@ -16,7 +21,6 @@ import { Module, ModuleConfig } from './modules/module'
 import { modules, ModuleName, ModuleEvents } from './modules'
 import { Transaction } from '@mysten/sui/transactions'
 import { DryRunOptions } from './types'
-import { getFullnodeUrl } from '@mysten/sui/client'
 
 /**
  * Extracts the configuration type from a module
@@ -39,15 +43,18 @@ export type WalletClientOptions = {
   /** Optional module-specific configurations */
   configs?: Partial<UserConfigs>
   /** Optional Sui client configuration */
-  client?: SuiClientOptions
+  client?: Partial<SuiJsonRpcClientOptions> & {
+    url?: string
+  }
 }
 
 /**
  * Default client options pointing to mainnet
  */
-const defaultClientOptions: SuiClientOptions = {
-  url: getFullnodeUrl('mainnet')
-}
+const defaultClientOptions = {
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+} as const
 
 /**
  * Main wallet client class that provides unified access to blockchain operations
@@ -70,7 +77,7 @@ export class WalletClient {
   public readonly events: Emitter<ModuleEvents> = mitt()
 
   /** The Sui client instance */
-  public readonly client: SuiClient
+  public readonly client: SuiJsonRpcClient
 
   public get lending() {
     return this.modules.lending
@@ -98,13 +105,15 @@ export class WalletClient {
    */
   constructor(options: WalletClientOptions) {
     // Merge default and user-provided client options
-    const clientOptions = {
+    const clientOptions: any = {
       ...defaultClientOptions,
       ...options.client
     }
-    clientOptions.transport = clientOptions.transport || new CustomTransport(clientOptions.url)
+    if (!clientOptions.transport && clientOptions.url) {
+      clientOptions.transport = new CustomTransport(clientOptions.url)
+    }
     // Initialize the Sui client
-    this.client = new SuiClient(clientOptions as any)
+    this.client = new SuiJsonRpcClient(clientOptions as any)
     this.signer = options.signer
     this.userConfigs = options.configs || {}
 
