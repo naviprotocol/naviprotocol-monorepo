@@ -43,3 +43,7 @@ export * from './account-cap'
 export * from './emode'
 
 export * from './market'
+
+export * from './sui'
+
+export * from './pyth'
