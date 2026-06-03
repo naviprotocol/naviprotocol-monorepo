@@ -51,8 +51,6 @@
   "dependencies": {
     "@naviprotocol/astros-aggregator-sdk": "workspace:*",
     "@naviprotocol/lending": "workspace:*",
-    "@suilend/sdk": "1.1.75",
-    "@suilend/sui-fe": "0.3.20",
     "axios": "1.13.2",
     "bignumber.js": "9.1.2",
     "date-fns": "4.1.0",
@@ -61,6 +59,8 @@
   },
   "devDependencies": {
     "@mysten/sui": "2.17.0",
+    "@suilend/sdk": "1.1.75",
+    "@suilend/sui-fe": "0.3.20",
     "@types/node": "20.19.1",
     "dotenv": "16.4.7",
     "tsconfig-paths": "4.2.0",
@@ -69,6 +69,16 @@
     "vitest": "3.2.2"
   },
   "peerDependencies": {
-    "@mysten/sui": ">=2.0.0"
+    "@mysten/sui": ">=2.0.0",
+    "@suilend/sdk": "1.1.75",
+    "@suilend/sui-fe": "0.3.20"
+  },
+  "peerDependenciesMeta": {
+    "@suilend/sdk": {
+      "optional": true
+    },
+    "@suilend/sui-fe": {
+      "optional": true
+    }
   }
 }

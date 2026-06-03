@@ -52,6 +52,8 @@ export interface LendingModuleConfig {
   env: 'dev' | 'prod'
   /** Lending protocols */
   protocols: LendingProtocol[]
+  /** Enable the legacy optional Suilend adapter. Disabled by default for SDK v2 root safety. */
+  enableSuilend: boolean
 }
 
 /**
@@ -123,7 +125,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   /** Default configuration values */
   readonly defaultConfig: LendingModuleConfig = {
     env: 'prod',
-    protocols: []
+    protocols: [],
+    enableSuilend: false
   }
 
   /** Internal protocols storage */
@@ -695,11 +698,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const protocols = []
     protocols.push(new NaviProtocol(this.walletClient))
-    try {
-      const { default: SuilendProtocol } = await import('./protocols/suilend')
-      protocols.push(await SuilendProtocol.create(this.walletClient))
-    } catch (error) {
-      console.warn('Failed to initialize SuilendProtocol:', error)
+
+    if (this.config.enableSuilend) {
+      try {
+        const { default: SuilendProtocol } = await import('./protocols/suilend')
+        protocols.push(await SuilendProtocol.create(this.walletClient))
+      } catch (error) {
+        console.warn('Failed to initialize SuilendProtocol:', error)
+      }
     }
 
     this._protocols = protocols as LendingProtocol[]

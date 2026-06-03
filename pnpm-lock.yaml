@@ -355,12 +355,6 @@ importers:
       '@naviprotocol/lending':
         specifier: workspace:*
         version: link:../lending
-      '@suilend/sdk':
-        specifier: 1.1.75
-        version: 1.1.75(@jest/transform@29.7.0)(@jest/types@29.6.3)(@mysten/bcs@2.0.5)(@mysten/sui@2.17.0(typescript@5.8.3))(@suilend/sui-fe@0.3.20(@babel/core@7.26.10)(@mysten/sui@2.17.0(typescript@5.8.3))(babel-plugin-macros@3.1.0)(date-fns@4.1.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.8.3))(babel-plugin-macros@3.1.0)(bufferutil@4.0.9)(graphql@16.8.1)(jest-util@29.7.0)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      '@suilend/sui-fe':
-        specifier: 0.3.20
-        version: 0.3.20(@babel/core@7.26.10)(@mysten/sui@2.17.0(typescript@5.8.3))(babel-plugin-macros@3.1.0)(date-fns@4.1.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.8.3)
       axios:
         specifier: 1.13.2
         version: 1.13.2
@@ -380,6 +374,12 @@ importers:
       '@mysten/sui':
         specifier: 2.17.0
         version: 2.17.0(typescript@5.8.3)
+      '@suilend/sdk':
+        specifier: 1.1.75
+        version: 1.1.75(@jest/transform@29.7.0)(@jest/types@29.6.3)(@mysten/bcs@2.0.5)(@mysten/sui@2.17.0(typescript@5.8.3))(@suilend/sui-fe@0.3.20(@babel/core@7.26.10)(@mysten/sui@2.17.0(typescript@5.8.3))(babel-plugin-macros@3.1.0)(date-fns@4.1.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.8.3))(babel-plugin-macros@3.1.0)(bufferutil@4.0.9)(graphql@16.8.1)(jest-util@29.7.0)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@suilend/sui-fe':
+        specifier: 0.3.20
+        version: 0.3.20(@babel/core@7.26.10)(@mysten/sui@2.17.0(typescript@5.8.3))(babel-plugin-macros@3.1.0)(date-fns@4.1.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.8.3)
       '@types/node':
         specifier: 20.19.1
         version: 20.19.1
