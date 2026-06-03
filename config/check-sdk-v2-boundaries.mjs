@@ -30,6 +30,10 @@ const forbiddenPublicDeclarationPatterns = [
   }
 ]
 
+const forbiddenProductionDependencies = new Map([
+  ['wallet-client', ['@suilend/sdk', '@suilend/sui-fe']]
+])
+
 const issues = []
 
 function readJson(filePath) {
@@ -63,6 +67,12 @@ for (const packageName of sdkPackages) {
 
   if (String(packageJson.main ?? '').includes('cjs')) {
     issues.push(`${packageName}: package.json main must not point at CJS output`)
+  }
+
+  for (const forbiddenDependency of forbiddenProductionDependencies.get(packageName) ?? []) {
+    if (packageJson.dependencies?.[forbiddenDependency]) {
+      issues.push(`${packageName}: ${forbiddenDependency} must not be a production dependency`)
+    }
   }
 
   const distDir = path.join(packageDir, 'dist')
