@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Transaction } from '@mysten/sui/transactions'
-import { createDcaOrder, getCoinForDca, TimeUnit } from '../src'
+import { cancelDcaOrder, createDcaOrder, getCoinForDca, TimeUnit } from '../src'
+import { getCoins } from '../src/libs/DCA/coinUtils'
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
 const userAddress = `0x${'1'.repeat(64)}`
@@ -69,5 +70,91 @@ describe('DCA PTB builders', () => {
     })
     expect(JSON.stringify(data)).toContain('MergeCoins')
     expect(JSON.stringify(data)).toContain('SplitCoins')
+  })
+
+  it('fetches paginated coins before returning DCA funding coins', async () => {
+    const client = {
+      getCoins: vi
+        .fn()
+        .mockResolvedValueOnce({
+          data: [
+            {
+              coinObjectId: objectId,
+              balance: '1000'
+            }
+          ],
+          nextCursor: 'cursor-1',
+          hasNextPage: true
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              coinObjectId: `0x${'6'.repeat(64)}`,
+              balance: '500'
+            }
+          ],
+          nextCursor: null,
+          hasNextPage: false
+        })
+    } as unknown as SuiJsonRpcClient
+
+    const coins = await getCoins(client, userAddress, '0x2::test::COIN')
+
+    expect(coins.data).toHaveLength(2)
+    expect(client.getCoins).toHaveBeenNthCalledWith(1, {
+      owner: userAddress,
+      coinType: '0x2::test::COIN',
+      cursor: null,
+      limit: 100
+    })
+    expect(client.getCoins).toHaveBeenNthCalledWith(2, {
+      owner: userAddress,
+      coinType: '0x2::test::COIN',
+      cursor: 'cursor-1',
+      limit: 100
+    })
+  })
+
+  it('rejects non-SUI DCA funding when balance is insufficient', async () => {
+    const client = createMockClient() as any
+    const tx = new Transaction()
+
+    await expect(getCoinForDca(client, tx, userAddress, '0x2::test::COIN', 10_000)).rejects.toThrow(
+      'Insufficient balance: need 10000, have 1500'
+    )
+  })
+
+  it('creates a cancel DCA order PTB and transfers returned input coin', async () => {
+    const receiptId = `0x${'7'.repeat(64)}`
+    const tx = await cancelDcaOrder(
+      {
+        fromCoinType: '0x2::test::COIN',
+        toCoinType: '0x2::sui::SUI'
+      },
+      receiptId,
+      userAddress,
+      dcaOptions
+    )
+    const data = tx.getData() as any
+
+    expect(JSON.stringify(data)).toContain('"function":"cancel_order"')
+    expect(JSON.stringify(data)).toContain('"function":"from_balance"')
+    expect(JSON.stringify(data)).toContain('TransferObjects')
+    expect(JSON.stringify(data)).toContain(dcaOptions.dcaContract)
+    expect(JSON.stringify(data)).toContain(receiptId)
+  })
+
+  it('rejects cancel DCA order without receipt id', async () => {
+    await expect(
+      cancelDcaOrder(
+        {
+          fromCoinType: '0x2::test::COIN',
+          toCoinType: '0x2::sui::SUI'
+        },
+        '',
+        userAddress,
+        dcaOptions
+      )
+    ).rejects.toThrow('receiptId is required')
   })
 })

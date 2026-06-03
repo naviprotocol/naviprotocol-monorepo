@@ -1,5 +1,5 @@
 import './fetch'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 import { buildSwapPTBFromQuote, swapPTB } from '../src/libs/Aggregator/swapPTB'
@@ -9,6 +9,16 @@ import { Dex } from '../src/types'
 import { createTransaction, handleTransactionResult } from './helper'
 import { keypair } from './keypair'
 import dotenv from 'dotenv'
+
+const { executeAuction } = vi.hoisted(() => ({
+  executeAuction: vi.fn(async () => {
+    throw new Error('shio unavailable in unit test')
+  })
+}))
+
+vi.mock('shio-sdk', () => ({
+  executeAuction
+}))
 
 dotenv.config()
 
@@ -118,6 +128,90 @@ describe('swap test', () => {
     await expect(
       buildSwapPTBFromQuote(coins.sui.holder, txb, 0, coinIn, quote, 0, false)
     ).rejects.toThrow('Outer amount_in does not match the sum of route amount_in values')
+  })
+
+  it('normalizes executeTransaction into a NAVI DTO even when shio auction fails', async () => {
+    const { executeTransaction } = await import('../src/astros-sdk')
+    const txb = createTransaction(coins.sui.holder)
+    vi.spyOn(txb, 'build').mockResolvedValue(Uint8Array.from([1, 2, 3]))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const signer = {
+      signTransaction: vi.fn(async () => ({
+        bytes: 'signed-bytes',
+        signature: 'signed-signature'
+      }))
+    }
+    const client = {
+      executeTransactionBlock: vi.fn(async () => ({
+        digest: '0xabc',
+        effects: {
+          status: {
+            status: 'success'
+          }
+        },
+        events: [
+          {
+            type: 'test::event'
+          }
+        ],
+        balanceChanges: [
+          {
+            owner: { AddressOwner: coins.sui.holder },
+            amount: '-1',
+            coinType: coins.sui.address
+          }
+        ],
+        objectChanges: [
+          {
+            type: 'mutated',
+            objectId: `0x${'8'.repeat(64)}`
+          }
+        ]
+      }))
+    }
+
+    const result = await executeTransaction(txb, signer as any, {
+      client: client as any
+    })
+
+    expect(consoleError).toHaveBeenCalled()
+    expect(executeAuction).toHaveBeenCalledWith('signed-bytes', ['signed-signature'])
+    expect(client.executeTransactionBlock).toHaveBeenCalledWith({
+      transactionBlock: 'signed-bytes',
+      signature: ['signed-signature'],
+      options: {
+        showEffects: true,
+        showEvents: true,
+        showBalanceChanges: true
+      }
+    })
+    expect(result).toEqual({
+      digest: '0xabc',
+      effects: {
+        status: {
+          status: 'success'
+        }
+      },
+      events: [
+        {
+          type: 'test::event'
+        }
+      ],
+      balanceChanges: [
+        {
+          owner: { AddressOwner: coins.sui.holder },
+          amount: '-1',
+          coinType: coins.sui.address
+        }
+      ],
+      objectChanges: [
+        {
+          type: 'mutated',
+          objectId: `0x${'8'.repeat(64)}`
+        }
+      ]
+    })
+    consoleError.mockRestore()
   })
 
   // it('should successfully swap SUI through bluefin using single route', async () => {
