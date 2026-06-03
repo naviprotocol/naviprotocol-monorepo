@@ -734,3 +734,36 @@ Updated blocker status:
 | Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final frontend acceptance cannot be claimed even though SDK v2 tarballs install. | `pnpm install --offline --ignore-scripts` completed but reported Sui v1/v2 peer conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy `apps/interface-console` paths. | Frontend owner to remove or isolate legacy protocol SDKs from main v2 app paths. |
 | Full Bridge multi-route browser smoke not completed | Bridge final checklist requires route-level runtime evidence, not only SDK root lazy unit and build-manifest evidence. | SDK root lazy test, SDK boundary scan, and frontend bundle chunk scan passed; no browser multi-route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, and bridge pair routes after final frontend target build is unblocked. |
 | Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK gates and targeted frontend type/build evidence exist; real sign/execute was not attempted while `apps/lending` build is blocked and live smoke fixtures are unstable. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
+
+## 2026-06-03 Pyth and Bridge Adapter Regression Coverage
+
+Additional commit:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `f9682e6` | `test` | Added deterministic unit coverage for Pyth v2 PTB builder and Bridge Mayan Sui adapter sign/execute path. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- tests/pyth.test.ts --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- tests/mayan-provider.test.ts --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Lending `tests/pyth.test.ts` passed. New `SuiPythClient` fixture covers dynamic Pyth/Wormhole package id resolution, base update fee lookup, price table dynamic field lookup, VAA parse command, authenticated price info command, `update_single_price_feed`, and hot-potato destroy command. This is deterministic PTB builder coverage; it does not replace the funded Pyth execute checklist item.
+- Lending default tests passed: `40 passed / 51 skipped`.
+- Bridge Mayan provider test passed. The Sui adapter path now has deterministic coverage for Mayan build call, v2 wallet `signTransaction`, v2 `executeTransactionBlock`, and `waitForTransaction`.
+- Bridge default tests passed: `3 passed`.
+- Lending and Bridge typechecks/builds passed.
+- SDK v2 boundary scan still passed after the new adapter tests.
+
+Remaining gap: Pyth real funded execute and Bridge real multi-route sign/execute/status are still not complete. They remain blocked by unstable live fixtures/RPC and by the frontend target build/dependency blockers recorded above.
