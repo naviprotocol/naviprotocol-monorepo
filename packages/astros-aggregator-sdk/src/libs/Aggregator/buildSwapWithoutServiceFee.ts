@@ -1,5 +1,5 @@
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { Quote } from '../../types'
+import { Quote, SingleCoinTransactionResult } from '../../types'
 import { AggregatorConfig } from './config'
 import { Dex } from '../../types'
 import { makeCETUSPTB } from './Dex/cetus'
@@ -37,7 +37,7 @@ export async function buildSwapWithoutServiceFee(
   minAmountOut: number,
   referral: number = 0,
   ifPrint: boolean = true
-): Promise<TransactionResult> {
+): Promise<SingleCoinTransactionResult> {
   const tokenA = quote.from
   const tokenB = quote.target
   const allPaths = JSON.parse(JSON.stringify(quote.routes))
@@ -398,5 +398,5 @@ export async function buildSwapWithoutServiceFee(
     typeArguments: [tokenA, tokenB]
   })
 
-  return finalCoinB
+  return finalCoinB as SingleCoinTransactionResult
 }

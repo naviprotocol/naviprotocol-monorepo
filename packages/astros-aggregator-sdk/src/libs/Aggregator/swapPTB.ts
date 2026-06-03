@@ -9,7 +9,7 @@
  */
 
 import { AggregatorConfig } from './config'
-import { Quote, SwapOptions } from '../../types'
+import { Quote, SingleCoinTransactionResult, SwapOptions } from '../../types'
 import { returnMergedCoins } from '../PTB/commonFunctions'
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
@@ -60,7 +60,7 @@ export async function getCoinPTB(
   amountIn: number | string | bigint,
   txb: Transaction,
   client: SuiJsonRpcClient
-) {
+): Promise<SingleCoinTransactionResult> {
   let coinA: TransactionResult
 
   if (coin === '0x2::sui::SUI') {
@@ -79,7 +79,7 @@ export async function getCoinPTB(
     const mergedCoin = returnMergedCoins(txb, coinInfo)
     coinA = txb.splitCoins(mergedCoin, [txb.pure.u64(amountIn)])
   }
-  return coinA
+  return coinA as SingleCoinTransactionResult
 }
 
 /**
@@ -110,7 +110,7 @@ export async function buildSwapPTBFromQuote(
   ifPrint: boolean = true,
   apiKey?: string,
   swapOptions?: SwapOptions
-): Promise<TransactionResult> {
+): Promise<SingleCoinTransactionResult> {
   // Validate quote structure
   if (!quote.routes || quote.routes.length === 0) {
     throw new Error('No routes found in data')
@@ -208,7 +208,7 @@ export async function buildSwapPTBFromQuote(
       txb.transferObjects([feeCoinOut as any], serviceFee.receiverAddress)
     }
 
-    return coinOut
+    return coinOut as SingleCoinTransactionResult
   }
 
   // Build swap without service fees
@@ -259,7 +259,7 @@ export async function swapPTB(
     depth: 3,
     ifPrint: true
   }
-): Promise<TransactionResult> {
+): Promise<SingleCoinTransactionResult> {
   // Set default swap options
   const options: SwapOptions = {
     baseUrl: undefined,

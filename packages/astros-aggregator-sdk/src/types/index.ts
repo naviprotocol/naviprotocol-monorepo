@@ -7,6 +7,14 @@
  * @module AstrosAggregatorTypes
  */
 
+import type {
+  TransactionObjectArgument as TransactionObjectArgumentType,
+  TransactionResult as TransactionResultType
+} from '@mysten/sui/transactions'
+
+export type SingleCoinTransactionResult = TransactionResultType &
+  readonly [TransactionObjectArgumentType]
+
 /**
  * Enumeration of supported decentralized exchanges (DEXes)
  *
