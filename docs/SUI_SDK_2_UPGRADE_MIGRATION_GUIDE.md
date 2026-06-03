@@ -78,27 +78,26 @@ pnpm add @naviprotocol/lending@2.0.0-beta.0 @mysten/sui@^2
 ```ts
 import { createNaviSuiClient } from '@naviprotocol/lending'
 
-const client = createNaviSuiClient('mainnet')
+const client = createNaviSuiClient()
 ```
 
 如果业务已有自定义 RPC endpoint：
 
 ```ts
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import { createNaviSuiClient } from '@naviprotocol/lending'
 
-const client = new SuiJsonRpcClient({
-  network: 'mainnet',
-  url: 'https://fullnode.mainnet.sui.io:443',
-})
+const client = createNaviSuiClient('https://fullnode.mainnet.sui.io:443', 'mainnet')
 ```
 
 Pyth update 不再依赖 `@pythnetwork/pyth-sui-js` 作为 lending 主依赖。SDK v2 beta 使用 NAVI 自维护 Hermes / Pyth v2 helper：
 
 ```ts
+import { Transaction } from '@mysten/sui/transactions'
 import { SuiPriceServiceConnection, SuiPythClient } from '@naviprotocol/lending'
 
 const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
-const pyth = new SuiPythClient(client, 'mainnet')
+const pyth = new SuiPythClient(client, pythStateId, wormholeStateId)
+const tx = new Transaction()
 
 const updateData = await connection.getPriceFeedsUpdateData([
   '0xe62df6c8b4a85fe1a67a56e9a2a15...'
@@ -107,7 +106,7 @@ const updateData = await connection.getPriceFeedsUpdateData([
 await pyth.updatePriceFeeds(tx, updateData, ['0xe62df6c8b4a85fe1a67a56e9a2a15...'])
 ```
 
-当前 beta 限制：Pyth helper 已有单元测试覆盖 Hermes id normalization 和 VAA decode，但 dry-run、真实小额 execute、链上查询仍需作为交付 smoke 补齐。
+当前 beta 限制：Pyth helper 已有单元测试和 type-compat 覆盖 Hermes id normalization、VAA decode 和 public helper 导出；dry-run、真实小额 execute、链上查询仍需作为交付 smoke 补齐。
 
 ## Wallet Client
 
@@ -129,7 +128,7 @@ const walletClient = new WalletClient({
 const balances = await walletClient.balance.getAllBalances()
 ```
 
-当前 beta 限制：Suilend protocol 已从 root import 改为 lazy 初始化，避免普通 wallet root import 因第三方依赖副作用失败；但 Suilend 依赖链仍带 Sui v1 / `@mysten/sui.js` 路径，不能视为 SDK v2 ready。需要后续选择移除、隔离为 legacy lazy optional adapter，或升级到已验证的 v2-safe Suilend stack。
+当前 beta 限制：Suilend protocol 已从默认生产路径隔离为 legacy optional adapter，普通 wallet root import 和默认 lending module 不再加载 Suilend；如业务显式启用 `configs.lending.enableSuilend=true`，仍需自行安装 optional peers，并承担该 legacy 依赖链的 Sui v1 / `@mysten/sui.js` 风险，直到有已验证的 v2-safe Suilend stack。
 
 ## Astros Aggregator SDK
 
@@ -139,7 +138,20 @@ const balances = await walletClient.balance.getAllBalances()
 pnpm add @naviprotocol/astros-aggregator-sdk@2.0.0-beta.0 @mysten/sui@^2
 ```
 
-消费方应使用 v2 `Transaction` 和 v2 client，不再传入旧 `SuiClient`。最小 smoke 应覆盖 route -> PTB build -> simulate parser。当前 live route test 依赖 open-aggregator 生产路由，仍需拆成稳定 fixture / mock test 和独立 live smoke。
+消费方应使用 v2 `Transaction` 和 v2 client，不再传入旧 `SuiClient`。最小 smoke 应覆盖 route -> PTB build -> dry-run / simulate parser。
+
+```ts
+import { Transaction } from '@mysten/sui/transactions'
+import { dryRunSwapTransaction, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+
+const quote = await getQuote('0x2::sui::SUI', navxCoinType, '1000000000')
+const tx = new Transaction()
+
+// Use swap PTB helpers to append route calls, then dry-run through a v2 client.
+const dryRun = await dryRunSwapTransaction(tx, { client })
+```
+
+当前 beta 状态：Aggregator 已有确定性 PTB build、execute DTO 和 dry-run DTO 单元测试；真实前端 swap execute 仍需在前端依赖/build blockers 清理后用授权测试钱包补齐。
 
 ## Astros Bridge SDK
 
@@ -153,21 +165,29 @@ Bridge v2 beta 采用 internal lazy Mayan adapter：
 
 - root entry 不应加载 Mayan / Sui v1。
 - 只有调用 Sui source bridge build/swap 路径时才 dynamic import Mayan provider。
-- adapter 输出标准 transaction bytes，消费方使用 Sui v2 wallet / `Transaction.from(bytes)` 解析、签名和执行。
+- adapter 内部使用 Mayan v1 构建 Sui source transaction，并通过 Sui v2 wallet connection 签名、执行。
+- root `swap()` 返回 NAVI `BridgeSwapTransaction` DTO；状态查询使用 `getTransaction(hash)` 或 `getWalletTransactions(address)`。
 
 示例：
 
 ```ts
-import { Transaction } from '@mysten/sui/transactions'
-import { getQuote, swap } from '@naviprotocol/astros-bridge-sdk'
+import { getQuote, getTransaction, swap } from '@naviprotocol/astros-bridge-sdk'
 
-const quote = await getQuote(params)
-const result = await swap({ ...params, quote })
+const { routes } = await getQuote(fromToken, toToken, '1000000000', {
+  slippageBps: 50
+})
 
-const tx = Transaction.from(result.txBytes)
+const transaction = await swap(routes[0], fromAddress, toAddress, {
+  sui: {
+    provider: client,
+    signTransaction
+  }
+})
+
+const latestStatus = await getTransaction(transaction.bridgeSourceTxHash)
 ```
 
-当前 beta 限制：SDK root lazy 单元测试已通过；v2 parse、dry-run、sign、execute、status、多 route smoke 和前端 chunk 检查仍是交付门槛。
+当前 beta 状态：SDK root lazy、Mayan Sui v2 sign/execute/wait contract、quote/status DTO、前端 lazy chunk scan 和 Astros 多 route HTTP smoke 已有证据；真实 Bridge 小额 execute/status 仍需授权测试钱包补齐。
 
 ## Astros DCA SDK
 
@@ -180,13 +200,34 @@ pnpm add @naviprotocol/astros-dca-sdk@2.0.0-beta.0 @mysten/sui@^2
 DCA create-order PTB 需要覆盖 SUI 和非 SUI 输入资产：
 
 ```ts
-import { Transaction } from '@mysten/sui/transactions'
+import { createDcaOrder, dryRunDcaTransaction, TimeUnit } from '@naviprotocol/astros-dca-sdk'
 
-const tx = new Transaction()
-// SDK create order builder appends Move calls to the v2 transaction.
+const tx = await createDcaOrder(client, userAddress, {
+  fromCoinType: '0x2::sui::SUI',
+  toCoinType: navxCoinType,
+  depositedAmount: '1000000000',
+  totalExecutions: 10,
+  frequency: { value: 1, unit: TimeUnit.HOUR },
+  priceRange: {
+    minBuyPrice: 40000000,
+    maxBuyPrice: 50000000
+  }
+})
+
+const dryRun = await dryRunDcaTransaction(tx, { client })
 ```
 
-当前 beta 已补充 SUI-funded create order 和非 SUI merge/split coin path 单元测试。真实 simulate / execute smoke 仍需用授权测试钱包小额金额补齐。
+当前 beta 已补充 SUI-funded create order、非 SUI merge/split coin path、cancel PTB、create/cancel dry-run DTO 单元测试。真实 execute smoke 仍需用授权测试钱包小额金额补齐。
+
+## 可 Typecheck 示例
+
+仓库内提供一个关键 public API 示例，覆盖 lending、wallet-client、aggregator、bridge、DCA 的 v2 import 和 DTO helper：
+
+```bash
+pnpm exec tsc --noEmit -p docs/examples/tsconfig.json
+```
+
+示例文件：`docs/examples/sdk-v2-smoke.ts`。
 
 ## 前端消费验收
 
@@ -209,9 +250,8 @@ pnpm why @mysten/sui @mysten/sui.js @pythnetwork/pyth-sui-js @mayanfinance/swap-
 
 ## 已知 Beta 限制
 
-- package build/typecheck 已在 Node 22 通过，但 package tests 尚未全部通过。
-- 当前 package 仍输出 CJS + ESM，尚未满足严格 ESM-only checklist。
-- `wallet-client` Suilend 依赖链仍是 v2 beta 交付 blocker。
-- lending 动态链上测试和部分 v2 PTB resolver 行为仍需收敛。
-- aggregator live route test 需要稳定 fixture 或 mock。
-- Bridge 和 Pyth 的真实小额 execute smoke 尚未在本实现 pass 固化。
+- package build/typecheck 和默认 package tests 已在 Node 22 通过；live smoke 仍不作为默认确定性 gate。
+- `wallet-client` 默认生产路径已隔离 Suilend；显式启用 legacy Suilend optional adapter 仍不是 v2-safe 交付路径。
+- frontend `apps/lending` build 仍被 Copilot 第三方协议 SDK 的 Sui v1-era imports 阻塞，不属于 SDK package 默认路径。
+- 前端依赖树仍有 Copilot/store/legacy app 拥有的 Sui v1/v2 冲突，不能作为最终 clean v2 acceptance。
+- Bridge、Pyth、lending、swap、DCA、wallet wrappers 的授权测试钱包真实小额 execute smoke 尚未全部完成。

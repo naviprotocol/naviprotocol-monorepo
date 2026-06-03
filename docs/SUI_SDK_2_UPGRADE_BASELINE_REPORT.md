@@ -1070,3 +1070,37 @@ Updated SDK-side conclusion:
 | Bridge root `swap()` DTO | Passed for deterministic SDK gate | Root `swap()` lazy-loads the Mayan provider mock and returns a processing `BridgeSwapTransaction` DTO with provider/hash/token/amount/status fields. |
 | Bridge Mayan Sui sign/execute path | Passed for deterministic SDK gate | Existing Mayan provider test covers v2 `signTransaction`, `executeTransactionBlock`, and `waitForTransaction`; still not a real funded execute. |
 | Bridge live wallet execute/status | Blocked | Authorized wallet bridge execute/status remains unverified until frontend dependency/build blockers are cleared and a small-amount test route can be run safely. |
+
+## 2026-06-03 Docs and Examples Typecheck
+
+Additional commits in this slice are split by change type:
+
+| Commit type | Summary |
+| --- | --- |
+| `feat` | Exported lending v2 public helper APIs from root entry: `createNaviSuiClient`, `NaviSuiClient`, `SuiPriceServiceConnection`, and `SuiPythClient`. Added lending type-compat coverage so migration-guide imports stay valid. |
+| `docs` | Updated the migration guide for current SDK v2 API shape and added `docs/examples/sdk-v2-smoke.ts` plus a dedicated example tsconfig. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p docs/examples/tsconfig.json
+```
+
+Results:
+
+- Lending type-compat, typecheck, and build passed after the new root exports.
+- SDK v2 boundary scan passed after exposing the helper APIs.
+- Docs example typecheck passed and covers v2 imports for lending/Pyth helper, wallet-client default path, aggregator dry-run DTO, Bridge quote/swap/status DTOs, and DCA create/cancel dry-run helpers.
+- Code commit: `cbc4054 feat: export lending v2 helper APIs`.
+
+Updated SDK-side conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| docs / examples / migration guide | Passed for SDK-controlled docs gate | Migration guide now matches current public API and `docs/examples/sdk-v2-smoke.ts` typechecks. |
+| Lending v2 helper public API | Passed | Root package now exports v2 client/Pyth helper APIs used by the migration guide; type-compat test locks the imports. |
+| Final frontend / wallet acceptance | Still blocked | Docs are current, but full Copilot build/dependency acceptance and authorized wallet business smokes remain incomplete as recorded above. |
