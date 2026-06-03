@@ -13,6 +13,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const apiKey = process.env.API_KEY
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 const coins = {
   sui: {
@@ -34,6 +35,91 @@ const coins = {
 }
 
 describe('swap test', () => {
+  it('builds a deterministic v2 PTB from a fixture quote', async () => {
+    const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const txb = createTransaction(userAddress)
+    const coinIn = txb.splitCoins(txb.gas, [1000n])
+    const quote = {
+      routes: [
+        {
+          amount_in: 1000,
+          amount_out: 995,
+          path: []
+        }
+      ],
+      amount_in: '1000',
+      amount_out: '995',
+      from: coins.sui.address,
+      target: coins.sui.address,
+      dexList: [],
+      high_price_impact: false
+    }
+
+    const coinOut = await buildSwapPTBFromQuote(
+      userAddress,
+      txb,
+      undefined,
+      coinIn,
+      quote,
+      0,
+      false,
+      undefined,
+      { slippage: 0.01 }
+    )
+
+    const data = txb.getData()
+
+    expect(coinOut).toBeDefined()
+    expect(data.commands).toHaveLength(6)
+    expect(data.commands[1]).toMatchObject({
+      MoveCall: {
+        module: 'coin',
+        function: 'zero',
+        typeArguments: [coins.sui.address]
+      }
+    })
+    expect(data.commands[2]).toHaveProperty('SplitCoins')
+    expect(data.commands[3]).toHaveProperty('MergeCoins')
+    expect(data.commands[4]).toMatchObject({
+      MoveCall: {
+        module: 'coin_utils',
+        function: 'transfer_nonzero',
+        typeArguments: [coins.sui.address]
+      }
+    })
+    expect(data.commands[5]).toMatchObject({
+      MoveCall: {
+        module: 'slippage',
+        function: 'check_slippage_v3',
+        typeArguments: [coins.sui.address, coins.sui.address]
+      }
+    })
+  })
+
+  it('rejects inconsistent route amount fixtures before building PTB', async () => {
+    const txb = createTransaction(coins.sui.holder)
+    const coinIn = txb.splitCoins(txb.gas, [1000n])
+    const quote = {
+      routes: [
+        {
+          amount_in: 999,
+          amount_out: 995,
+          path: []
+        }
+      ],
+      amount_in: '1000',
+      amount_out: '995',
+      from: coins.sui.address,
+      target: coins.sui.address,
+      dexList: [],
+      high_price_impact: false
+    }
+
+    await expect(
+      buildSwapPTBFromQuote(coins.sui.holder, txb, 0, coinIn, quote, 0, false)
+    ).rejects.toThrow('Outer amount_in does not match the sum of route amount_in values')
+  })
+
   // it('should successfully swap SUI through bluefin using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
@@ -127,40 +213,44 @@ describe('swap test', () => {
   //   const tsRes = await handleTransactionResult(txb, suiClient, keypair, testCaseName, true)
   //   expect(tsRes).toEqual('success')
   // }, 500000)
-  it('should successfully swap DEEP through deepbook using single route', async () => {
-    const testCaseName = expect.getState().currentTestName || 'test_case'
-    const txb = createTransaction(coins.deep.holder)
-    const suiClient = new SuiJsonRpcClient({
-      network: 'mainnet',
-      url: getJsonRpcFullnodeUrl('mainnet')
-    })
-    // Get DEEP coins owned by the holder
-    const coinInStruct = await suiClient.getCoins({
-      owner: coins.deep.holder,
-      coinType: coins.deep.address
-    })
-    const coinInStructObjectId = coinInStruct.data[0].coinObjectId
-    const amountIn = '1000000000'
-    const quote = await getQuote(coins.deep.address, coins.sui.address, amountIn, apiKey, {
-      dexList: [Dex.DEEPBOOK],
-      byAmountIn: true,
-      depth: 3
-    })
-    const coinIn = txb.splitCoins(txb.object(coinInStructObjectId), [1e9])
-    const minAmountOut = 0
-    const coinOut = await buildSwapPTBFromQuote(
-      coins.deep.holder,
-      txb,
-      minAmountOut,
-      coinIn,
-      quote,
-      0, // referral
-      true // ifPrint
-    )
-    txb.transferObjects([coinOut], coins.deep.holder)
-    const tsRes = await handleTransactionResult(txb, suiClient, keypair, testCaseName, true)
-    expect(tsRes).toEqual('success')
-  }, 500000)
+  it.skipIf(!runLiveTests)(
+    'should successfully swap DEEP through deepbook using single route',
+    async () => {
+      const testCaseName = expect.getState().currentTestName || 'test_case'
+      const txb = createTransaction(coins.deep.holder)
+      const suiClient = new SuiJsonRpcClient({
+        network: 'mainnet',
+        url: getJsonRpcFullnodeUrl('mainnet')
+      })
+      // Get DEEP coins owned by the holder
+      const coinInStruct = await suiClient.getCoins({
+        owner: coins.deep.holder,
+        coinType: coins.deep.address
+      })
+      const coinInStructObjectId = coinInStruct.data[0].coinObjectId
+      const amountIn = '1000000000'
+      const quote = await getQuote(coins.deep.address, coins.sui.address, amountIn, apiKey, {
+        dexList: [Dex.DEEPBOOK],
+        byAmountIn: true,
+        depth: 3
+      })
+      const coinIn = txb.splitCoins(txb.object(coinInStructObjectId), [1e9])
+      const minAmountOut = 0
+      const coinOut = await buildSwapPTBFromQuote(
+        coins.deep.holder,
+        txb,
+        minAmountOut,
+        coinIn,
+        quote,
+        0, // referral
+        true // ifPrint
+      )
+      txb.transferObjects([coinOut], coins.deep.holder)
+      const tsRes = await handleTransactionResult(txb, suiClient, keypair, testCaseName, true)
+      expect(tsRes).toEqual('success')
+    },
+    500000
+  )
   // it('should successfully swap SUI through haSui stake using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
