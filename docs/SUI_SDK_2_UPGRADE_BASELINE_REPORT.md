@@ -1036,3 +1036,37 @@ Updated SDK-side conclusion:
 | --- | --- | --- |
 | Aggregator minimal PTB / simulate smoke | Passed for deterministic SDK gate | Swap PTB, execute DTO, and dry-run DTO helper are covered by unit and type-compat tests. Live frontend swap execute remains blocked by frontend dependency/build gates. |
 | DCA minimal PTB / simulate smoke | Passed for deterministic SDK gate | Create/cancel PTBs and dry-run DTO helper are covered by unit tests. Live DCA execute remains blocked until frontend target routes are clean and authorized wallet smoke is run. |
+
+## 2026-06-03 Bridge API DTO Boundary Coverage
+
+Additional commit in this slice is split by change type:
+
+| Commit type | Summary |
+| --- | --- |
+| `test` | Added deterministic Bridge root `swap()` DTO coverage and replaced the placeholder quote test with axios-adapter tests for quote request params, string chain-id normalization, transaction status lookup, and wallet history status mapping. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Bridge tests passed: `4 files passed / 5 tests passed`.
+- Bridge typecheck passed.
+- Bridge build passed and kept separate lazy artifacts: `dist/index.esm.js` plus `dist/mayan-CKpVZNpu.js`.
+- SDK v2 boundary scan passed after the new tests.
+- Commit: `5870f65 test: cover bridge api dto boundaries`.
+
+Updated SDK-side conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Bridge quote/status DTO API | Passed for deterministic SDK gate | Quote params, chain-id normalization, transaction lookup, and wallet history mapping are now unit-tested without live network. |
+| Bridge root `swap()` DTO | Passed for deterministic SDK gate | Root `swap()` lazy-loads the Mayan provider mock and returns a processing `BridgeSwapTransaction` DTO with provider/hash/token/amount/status fields. |
+| Bridge Mayan Sui sign/execute path | Passed for deterministic SDK gate | Existing Mayan provider test covers v2 `signTransaction`, `executeTransactionBlock`, and `waitForTransaction`; still not a real funded execute. |
+| Bridge live wallet execute/status | Blocked | Authorized wallet bridge execute/status remains unverified until frontend dependency/build blockers are cleared and a small-amount test route can be run safely. |
