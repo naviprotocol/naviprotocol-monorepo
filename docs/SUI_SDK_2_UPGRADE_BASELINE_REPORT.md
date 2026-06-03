@@ -767,3 +767,35 @@ Results:
 - SDK v2 boundary scan still passed after the new adapter tests.
 
 Remaining gap: Pyth real funded execute and Bridge real multi-route sign/execute/status are still not complete. They remain blocked by unstable live fixtures/RPC and by the frontend target build/dependency blockers recorded above.
+
+## 2026-06-03 Aggregator and DCA PTB/DTO Regression Coverage
+
+Additional commit:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `1df55f9` | `test` | Added deterministic aggregator execute DTO coverage and DCA cancel / coin utility PTB coverage. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Aggregator tests passed: `3 passed / 1 skipped`. New coverage proves `executeTransaction` returns the NAVI DTO shape with `digest`, `effects`, `events`, `balanceChanges`, and `objectChanges`, and still executes the v2 transaction path even if Shio auction submission fails.
+- DCA tests passed: `6 passed`. New coverage adds paginated coin fetching, insufficient-balance failure, cancel PTB creation, returned input coin transfer, and missing receipt validation.
+- Aggregator and DCA typechecks/builds passed.
+- Aggregator type-compat gate and wallet-client migration guide type gate passed after rebuilding dependent SDK packages.
+- SDK v2 boundary scan still passed.
+
+Remaining gap: aggregator/DCA deterministic PTB and DTO coverage is now materially stronger, but real frontend swap/DCA wallet smoke remains blocked by frontend build/dependency issues and requires authorized wallet execution after those blockers are resolved.
