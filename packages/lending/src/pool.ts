@@ -18,6 +18,7 @@ import type {
   FeeDetail,
   CoinObject,
   TransactionResult,
+  SingleCoinTransactionResult,
   AccountCapOption,
   BorrowFeeOption,
   SuiClientOption,
@@ -288,10 +289,12 @@ export async function depositCoinPTB(
     throw new Error(`The lending pool for coinType ${pool.suiCoinType} has been deprecated.`)
   }
 
-  const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
-
   // Handle SUI gas coin deposits
-  if (normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') && isGasCoin) {
+  if (
+    normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') &&
+    typeof coinObject === 'object' &&
+    coinObject?.$kind === 'GasCoin'
+  ) {
     if (!options?.amount) {
       throw new Error('Amount is required for sui coin')
     }
@@ -372,7 +375,7 @@ export async function withdrawCoinPTB(
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
   options?: Partial<EnvOption & AccountCapOption & MarketOption>
-) {
+): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -465,7 +468,7 @@ export async function withdrawCoinPTB(
     typeArguments: [pool.suiCoinType]
   })
 
-  return withdrawCoin
+  return withdrawCoin as SingleCoinTransactionResult
 }
 
 export async function borrowCoinPTB(
@@ -473,7 +476,7 @@ export async function borrowCoinPTB(
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
   options?: Partial<EnvOption & AccountCapOption & MarketOption>
-) {
+): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -568,7 +571,7 @@ export async function borrowCoinPTB(
     typeArguments: [pool.suiCoinType]
   })
 
-  return coin
+  return coin as SingleCoinTransactionResult
 }
 
 /**
@@ -610,9 +613,11 @@ export async function repayCoinPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
   const pool = await getPool(identifier, options)
-  const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
-
-  if (normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') && isGasCoin) {
+  if (
+    normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') &&
+    typeof coinObject === 'object' &&
+    coinObject?.$kind === 'GasCoin'
+  ) {
     if (!options?.amount) {
       throw new Error('Amount is required for sui coin')
     }

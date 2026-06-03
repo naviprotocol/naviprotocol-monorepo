@@ -8,7 +8,11 @@
  */
 
 import type { NaviSuiClient } from './sui'
-import type { TransactionResult as TransactionResultType } from '@mysten/sui/transactions'
+import type {
+  TransactionObjectArgument as TransactionObjectArgumentType,
+  TransactionObjectInput as TransactionObjectInputType,
+  TransactionResult as TransactionResultType
+} from '@mysten/sui/transactions'
 
 export type MarketConfig = {
   id: number
@@ -76,6 +80,11 @@ export type TransactionResult =
       NestedResult: [number, number]
     }
   | TransactionResultType
+
+export type TransactionObjectArgument = TransactionObjectArgumentType
+export type TransactionObjectInput = TransactionObjectInputType
+export type SingleCoinTransactionResult = TransactionResultType &
+  readonly [TransactionObjectArgumentType]
 
 export type AccountCap = string
 
@@ -548,17 +557,12 @@ export type FeeDetail = {
  * including transaction results, gas coins, input references, and direct strings.
  */
 export type CoinObject =
-  | TransactionResult
+  | TransactionObjectInput
   | {
       $kind: 'GasCoin'
       GasCoin: true
     }
-  | {
-      $kind: 'Input'
-      Input: number
-      type?: 'object'
-    }
-  | string
+  | undefined
 
 export type BorrowFeeOption = {
   asset: AssetIdentifier
