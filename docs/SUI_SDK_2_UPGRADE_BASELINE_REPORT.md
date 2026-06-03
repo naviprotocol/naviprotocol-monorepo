@@ -641,3 +641,47 @@ Updated blocker status:
 | Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final frontend acceptance cannot be claimed even though SDK v2 tarballs install. | `pnpm install --offline --ignore-scripts` completed but reported Sui v1/v2 peer conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy `apps/interface-console` paths. | Frontend owner to remove or isolate legacy protocol SDKs from main v2 app paths. SDK owner can only keep SDK root packages v2-only/lazy. |
 | Full Bridge multi-route browser smoke not completed | Bridge final checklist requires route-level runtime evidence, not only SDK root lazy unit and build-manifest evidence. | SDK root lazy test passed; `astros` and `astros-aggregator` builds passed; Mayan symbols are isolated to a non-page-manifest static chunk. No browser route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, and bridge pair routes after final frontend target build is unblocked. |
 | Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK gates and targeted frontend type/build evidence exist; real sign/execute was not attempted while `apps/lending` build is blocked. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
+
+## 2026-06-03 Docs and Migration Guide Type Coverage
+
+Additional commits:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `6cfda4d` | `test` | Added type-checked SDK v2 migration guide examples covering lending read/PTB, wallet dry-run DTOs, aggregator PTB, and DCA order builder. |
+| `513e5c4` | `docs` | Added the Sui SDK v2 beta migration guide and updated related README/MDX examples for v2 clients, dry-run transaction examples, and DCA package imports. |
+
+SDK migration guide type coverage:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test:types
+```
+
+Result: passed. The script now rebuilds `@naviprotocol/lending`, `@naviprotocol/astros-aggregator-sdk`, `@naviprotocol/astros-dca-sdk`, and `@naviprotocol/wallet-client` before `tsc --noEmit -p packages/wallet-client/tsconfig.type-tests.json`. The new `sdk-v2-migration-guide.ts` fixture proves the guide examples compile against built SDK v2 declarations.
+
+Docs build coverage:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/docs build
+```
+
+Result: passed. TypeDoc emitted existing documentation warnings for omitted referenced types and README relative links; Next.js build compiled, typechecked, and generated 35 static pages. No new Sui SDK v2 compile error was introduced by the migration guide.
+
+Docs formatting baseline:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/docs prettier
+```
+
+Result: failed on existing docs formatting debt across 32 files, including many files outside this SDK v2 change. The SDK v2 docs commit intentionally avoided broad formatting churn and kept edits scoped to relevant README/MDX content.
+
+Current stop-condition status:
+
+| Checklist area | Status | Evidence / blocker |
+| --- | --- | --- |
+| SDK package code, typecheck, build, and unit/type tests | Passed | All five SDK package gates are green in the earlier sections; migration guide examples now have an additional type gate. |
+| Docs/examples/migration guide | Passed for SDK scope | `513e5c4` adds the v2 guide; docs build passes; docs prettier remains a pre-existing repo-wide formatting issue. |
+| Frontend tarball consumer type/build acceptance | Partially passed | Tarball install and targeted typechecks passed; `astros`, `astros-aggregator`, and `swap` builds passed; `lending-next` build remains blocked by frontend third-party protocol SDKs importing Sui v1-era exports under Sui v2. |
+| No unacceptable Sui v1/v2 dependency conflict in frontend | Blocked | Frontend install still reports Sui v1/v2 conflicts in app/store/protocol paths outside SDK ownership. |
+| Authorized wallet business smoke | Blocked | Not run because the target frontend route build remains blocked. Requires frontend protocol dependency resolution before safe route-level wallet smoke. |
+| Bridge multi-route browser smoke | Blocked | SDK root lazy test and bundle chunk evidence passed, but route-level browser smoke remains blocked until frontend target build is clean. |
