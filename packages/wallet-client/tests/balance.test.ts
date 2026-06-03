@@ -1,7 +1,7 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 import dotenv from 'dotenv'
 
@@ -14,7 +14,7 @@ const signer = new WatchSigner(
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
+    url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
   }
 })
 

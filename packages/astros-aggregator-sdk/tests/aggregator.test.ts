@@ -1,6 +1,6 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 import { buildSwapPTBFromQuote, swapPTB } from '../src/libs/Aggregator/swapPTB'
 import { getQuote } from '../src/astros-sdk'
@@ -37,7 +37,7 @@ describe('swap test', () => {
   // it('should successfully swap SUI through bluefin using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get SUI coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.sui.holder,
@@ -68,7 +68,7 @@ describe('swap test', () => {
   // it('should successfully swap SUI through magma using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get SUI coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.sui.holder,
@@ -99,7 +99,7 @@ describe('swap test', () => {
   // it('should successfully swap SUI through turbos using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get SUI coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.sui.holder,
@@ -130,7 +130,10 @@ describe('swap test', () => {
   it('should successfully swap DEEP through deepbook using single route', async () => {
     const testCaseName = expect.getState().currentTestName || 'test_case'
     const txb = createTransaction(coins.deep.holder)
-    const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+    const suiClient = new SuiJsonRpcClient({
+      network: 'mainnet',
+      url: getJsonRpcFullnodeUrl('mainnet')
+    })
     // Get DEEP coins owned by the holder
     const coinInStruct = await suiClient.getCoins({
       owner: coins.deep.holder,
@@ -161,7 +164,7 @@ describe('swap test', () => {
   // it('should successfully swap SUI through haSui stake using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get SUI coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.sui.holder,
@@ -192,7 +195,7 @@ describe('swap test', () => {
   // it('should successfully swap haSui through haSui unstake using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.haSui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get haSui coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.haSui.holder,
@@ -230,7 +233,7 @@ describe('swap test', () => {
   // it('should successfully swap SUI through vSui stake anyway', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)
-  //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+  //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
   //   // Get SUI coins owned by the holder
   //   const coinInStruct = await suiClient.getCoins({
   //     owner: coins.sui.holder,
@@ -266,7 +269,7 @@ describe('swap test', () => {
 //   // it('should successfully swap SUI through turbos using single route with fee', async () => {
 //   //   const testCaseName = expect.getState().currentTestName || 'test_case'
 //   //   const txb = createTransaction(coins.sui.holder)
-//   //   const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+//   //   const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
 
 //   //   // Get SUI coins owned by the holder
 //   //   const coinInStruct = await suiClient.getCoins({
@@ -310,7 +313,7 @@ describe('swap test', () => {
 //   it('should successfully swap vSUI through bluefin using single route with fee', async () => {
 //     const testCaseName = expect.getState().currentTestName || 'test_case'
 //     const txb = createTransaction(coins.vSui.holder)
-//     const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+//     const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
 
 //     // Get vSUI coins owned by the holder
 //     const coinInStruct = await suiClient.getCoins({
@@ -360,7 +363,7 @@ describe('swap test', () => {
 //   it('should swap PTB with fee options successfully', async () => {
 //     const testCaseName = expect.getState().currentTestName || 'test_case'
 //     const txb = createTransaction(coins.sui.holder)
-//     const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+//     const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
 
 //     // Get SUI coins owned by the holder
 //     const coinInStruct = await suiClient.getCoins({
@@ -417,7 +420,7 @@ describe('swap test', () => {
 //   it('should swap PTB with service fee options successfully', async () => {
 //     const testCaseName = expect.getState().currentTestName || 'test_case'
 //     const txb = createTransaction(coins.sui.holder)
-//     const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
+//     const suiClient = new SuiJsonRpcClient({ network: 'mainnet', url: getJsonRpcFullnodeUrl('mainnet') })
 
 //     // Get SUI coins owned by the holder
 //     const coinInStruct = await suiClient.getCoins({
