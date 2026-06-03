@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { withCache } from '../src/utils'
+import { parseTxValue, withCache } from '../src/utils'
 import type { CacheOption } from '../src/types'
 
 describe('withCache', () => {
@@ -56,5 +56,11 @@ describe('withCache', () => {
     await cached({ cacheTime: 60_000 })
     await cached({ cacheTime: 60_000 })
     expect(fn).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('parseTxValue', () => {
+  it('throws a clear error for undefined transaction arguments', () => {
+    expect(() => parseTxValue(undefined, vi.fn())).toThrow('Transaction value is required')
   })
 })
