@@ -7,6 +7,9 @@
  * @module AstrosBridgeTypes
  */
 
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import type { Transaction } from '@mysten/sui/transactions'
+
 /**
  * Blockchain network information
  *
@@ -212,4 +215,33 @@ export type BridgeSwapTransaction = {
   explorerLink?: string
   /** Mayan-specific data (optional) */
   mayan?: any
+}
+
+export type SuiWalletConnection = {
+  provider: SuiJsonRpcClient
+  signTransaction: (data: { transaction: Transaction }) => Promise<{
+    bytes: string
+    signature: string
+  }>
+}
+
+export type SolanaWalletConnection = {
+  signTransaction: (transaction: unknown) => Promise<unknown>
+  connection: unknown
+  extraRpcs?: string[]
+  sendOptions?: unknown
+  jitoOptions?: unknown
+}
+
+export type EVMWalletConnection = {
+  overrides?: unknown
+  signer: unknown
+  permit?: unknown
+  waitForTransaction: (data: { hash: string; confirmations: number }) => Promise<void>
+}
+
+export type WalletConnection = {
+  sui?: SuiWalletConnection
+  solana?: SolanaWalletConnection
+  evm?: EVMWalletConnection
 }

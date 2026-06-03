@@ -8,8 +8,7 @@ import {
   Erc20Permit,
   addresses
 } from '@mayanfinance/swap-sdk'
-import { BridgeSwapQuote } from '../types'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import { BridgeSwapQuote, WalletConnection } from '../types'
 import { Transaction } from '@mysten/sui/transactions'
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
@@ -19,35 +18,6 @@ const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
   'function balanceOf(address account) view returns (uint256)'
 ]
-
-type SuiWalletConnection = {
-  provider: SuiJsonRpcClient
-  signTransaction: (data: { transaction: Transaction }) => Promise<{
-    bytes: string
-    signature: string
-  }>
-}
-
-type SolanaWalletConnection = {
-  signTransaction: SolanaTransactionSigner
-  connection: Connection
-  extraRpcs?: string[]
-  sendOptions?: SendOptions
-  jitoOptions?: JitoBundleOptions
-}
-
-type EVMWalletConnection = {
-  overrides: Overrides | null | undefined
-  signer: Signer
-  permit: Erc20Permit | null | undefined
-  waitForTransaction: (data: { hash: string; confirmations: number }) => Promise<void>
-}
-
-export type WalletConnection = {
-  sui?: SuiWalletConnection
-  solana?: SolanaWalletConnection
-  evm?: EVMWalletConnection
-}
 
 enum BridgeChain {
   SUI = 1999,
@@ -120,11 +90,11 @@ export async function swap(
       fromAddress,
       toAddress,
       referrerAddresses,
-      connection.signTransaction,
-      connection.connection,
+      connection.signTransaction as SolanaTransactionSigner,
+      connection.connection as Connection,
       connection.extraRpcs,
-      connection.sendOptions,
-      connection.jitoOptions
+      connection.sendOptions as SendOptions | undefined,
+      connection.jitoOptions as JitoBundleOptions | undefined
     )
     hash = swapTrx.signature
   } else {
@@ -137,7 +107,7 @@ export async function swap(
       const erc20Contract = new Contract(
         fromToken.realOriginContractAddress || fromToken.contract,
         ERC20_ABI,
-        connection.signer
+        connection.signer as Signer
       )
       const currentAllowance = await erc20Contract.allowance(
         fromAddress,
@@ -164,8 +134,8 @@ export async function swap(
       toAddress,
       referrerAddresses,
       connection.signer as any,
-      connection.permit as any,
-      connection.overrides as any,
+      connection.permit as Erc20Permit | null | undefined,
+      connection.overrides as Overrides | null | undefined,
       null
     )
     hash = typeof swapTrx === 'string' ? swapTrx : swapTrx.hash

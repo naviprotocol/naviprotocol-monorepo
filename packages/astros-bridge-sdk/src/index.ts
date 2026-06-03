@@ -8,8 +8,14 @@
  * @module AstrosBridgeSDK
  */
 
-import { Chain, Token, BridgeSwapOptions, BridgeSwapQuote, BridgeSwapTransaction } from './types'
-import type { WalletConnection } from './providers/mayan'
+import {
+  Chain,
+  Token,
+  BridgeSwapOptions,
+  BridgeSwapQuote,
+  BridgeSwapTransaction,
+  WalletConnection
+} from './types'
 import { apiInstance, config } from './config'
 
 // Export configuration for the bridge SDK
