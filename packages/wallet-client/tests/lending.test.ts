@@ -17,8 +17,9 @@ const walletClient = new WalletClient({
     url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
   }
 })
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('lending module', () => {
+describe.skipIf(!runLiveTests)('lending module', () => {
   it('deposit SUI', async () => {
     const result = await walletClient.lending.deposit('0x2::sui::SUI', 1e9 * 0.1, {
       dryRun: true

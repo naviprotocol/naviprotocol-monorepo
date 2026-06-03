@@ -17,8 +17,9 @@ import type { CoinStruct } from '@mysten/sui/jsonRpc'
 
 const keypair = Ed25519Keypair.generate()
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('getLendingState', () => {
+describe.skipIf(!runLiveTests)('getLendingState', () => {
   it('check no state', async () => {
     const state = await getLendingState(keypair.toSuiAddress())
     expect(state).toEqual([])
@@ -34,7 +35,7 @@ describe('getLendingState', () => {
   })
 })
 
-describe('getHealthFactor', () => {
+describe.skipIf(!runLiveTests)('getHealthFactor', () => {
   it('check with health factor', async () => {
     const healthFactor = await getHealthFactor(testAddress)
     expect(healthFactor).toBeGreaterThan(0)
@@ -46,7 +47,7 @@ describe('getHealthFactor', () => {
   })
 })
 
-describe('getSimulatedHealthFactor', () => {
+describe.skipIf(!runLiveTests)('getSimulatedHealthFactor', () => {
   let lastHf = 0
   it('no operations', async () => {
     const pools = await getPools()
@@ -91,7 +92,7 @@ describe('getSimulatedHealthFactor', () => {
     const diff = Math.abs(currentHf - lastHf)
     expect(diff).toBeGreaterThan(0.03)
   })
-  it('repay', async () => {
+  it.skipIf(!runLiveTests)('repay', async () => {
     const pools = await getPools()
     const pool = pools.find((p) => p.id === 0)
     const currentHf = await getSimulatedHealthFactor(testAddress, pool!, [
@@ -104,7 +105,7 @@ describe('getSimulatedHealthFactor', () => {
   })
 })
 
-describe('getTransactions', () => {
+describe.skipIf(!runLiveTests)('getTransactions', () => {
   let transactions: NAVITransaction[] = []
   let cursor: string | undefined
   const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
@@ -130,7 +131,7 @@ describe('getTransactions', () => {
   })
 })
 
-describe('getCoins', () => {
+describe.skipIf(!runLiveTests)('getCoins', () => {
   let allCoins = [] as CoinStruct[]
   it('should return all coins', async () => {
     allCoins = await getCoins(testAddress)
@@ -197,7 +198,7 @@ describe('mergeCoinsPTB', () => {
     )
   })
 
-  it('merge vsui coins', async () => {
+  it.skipIf(!runLiveTests)('merge vsui coins', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const userCoins = await getCoins(testAddress, {
@@ -224,7 +225,7 @@ describe('mergeCoinsPTB', () => {
     expect(vSuiBalance?.amount).toBe('-1000000000')
   })
 
-  it('merge sui coins', async () => {
+  it.skipIf(!runLiveTests)('merge sui coins', async () => {
     const coinType = '0x2::sui::SUI'
     const userCoins = await getCoins(testAddress, {
       coinType

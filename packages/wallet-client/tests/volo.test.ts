@@ -17,8 +17,9 @@ const walletClient = new WalletClient({
 })
 
 const voloModule = walletClient.module('volo')
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('volo module', () => {
+describe.skipIf(!runLiveTests)('volo module', () => {
   it('stake', async () => {
     const result = await voloModule.stake(1e9 * 1, {
       dryRun: true

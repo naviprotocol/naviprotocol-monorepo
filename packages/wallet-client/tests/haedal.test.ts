@@ -19,8 +19,9 @@ const walletClient = new WalletClient({
 })
 
 const haedalModule = walletClient.module('haedal')
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('haedal module', () => {
+describe.skipIf(!runLiveTests)('haedal module', () => {
   it('stake', async () => {
     const result = await haedalModule.stake(1e9 * 1, {
       dryRun: true

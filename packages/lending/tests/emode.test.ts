@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import {
   enterEModePTB,
   exitEModePTB,
@@ -6,17 +6,35 @@ import {
   getUserEModeCaps,
   emodeIdentityId
 } from '../src/emode'
-import { depositCoinPTB, getAccountCapOwnerPTB } from '../src'
+import { depositCoinPTB } from '../src'
 import { getPools, createAccountCapPTB } from '../src'
 import { Transaction } from '@mysten/sui/transactions'
 import { suiClient } from '../src/utils'
 import type { EModeIdentity, EnvOption } from '../src/types'
+
+vi.mock('../src/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/config')>()
+  return {
+    ...actual,
+    getConfig: vi.fn(async () => ({
+      package: '0x1e4a13a0494d5facdbe8473e74127b838c2d446ecec0ce262e2eddafa77259cb',
+      storage: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      emode: {
+        contract: {
+          registryPackage: '0xe1537493622defd5770d00de5b7794a03c20e989bc5a2d70b42e72cc9eb6d9bb',
+          registryObject: '0x0000000000000000000000000000000000000000000000000000000000000006'
+        }
+      }
+    }))
+  }
+})
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 
 const options = {
   env: 'test'
 } as EnvOption
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 describe('emodeIdentityId', () => {
   it('should generate emode identity id correctly', () => {
@@ -42,6 +60,10 @@ describe('enterEModePTB', () => {
   let testEmodeId: number
 
   beforeAll(async () => {
+    if (!runLiveTests) {
+      testEmodeId = 1
+      return
+    }
     const pools = await getPools(options)
     const poolWithEmode = pools.find((pool) => pool.emodes && pool.emodes.length > 0)
     if (poolWithEmode && poolWithEmode.emodes.length > 0) {
@@ -51,81 +73,85 @@ describe('enterEModePTB', () => {
     }
   })
 
-  it('should create enter emode transaction without accountCap', async () => {
+  it('should append enter emode command without accountCap', async () => {
     const tx = new Transaction()
     await enterEModePTB(tx, testEmodeId, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
+    const data = tx.getData()
+
+    expect(data.commands).toHaveLength(1)
+    expect(data.commands[0]).toMatchObject({
+      MoveCall: {
+        module: 'lending',
+        function: 'enter_emode'
+      }
     })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    // Should not have execution error (or have expected error if account doesn't exist)
-    expect(res).toBeDefined()
   })
 
-  it('should create enter emode transaction with accountCap', async () => {
+  it('should append enter emode command with accountCap', async () => {
     const tx = new Transaction()
     const accountCap = await createAccountCapPTB(tx, options)
     await enterEModePTB(tx, testEmodeId, {
       ...options,
       accountCap: accountCap
     })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
+    const data = tx.getData()
+
+    expect(data.commands).toHaveLength(2)
+    expect(data.commands[1]).toMatchObject({
+      MoveCall: {
+        module: 'lending',
+        function: 'enter_emode_with_account_cap'
+      }
     })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
   })
 
   it('should handle TransactionResult as emodeId', async () => {
     const tx = new Transaction()
     const emodeIdResult = tx.pure.u64(testEmodeId)
     await enterEModePTB(tx, emodeIdResult, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
+    const data = tx.getData()
+
+    expect(data.commands).toHaveLength(1)
+    expect(data.commands[0]).toMatchObject({
+      MoveCall: {
+        module: 'lending',
+        function: 'enter_emode'
+      }
     })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
   })
 })
 
 describe('exitEModePTB', () => {
-  it('should create exit emode transaction without accountCap', async () => {
+  it('should append exit emode command without accountCap', async () => {
     const tx = new Transaction()
     await exitEModePTB(tx, options)
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
+    const data = tx.getData()
+
+    expect(data.commands).toHaveLength(1)
+    expect(data.commands[0]).toMatchObject({
+      MoveCall: {
+        module: 'lending',
+        function: 'exit_emode'
+      }
     })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
   })
 
-  it('should create exit emode transaction with accountCap', async () => {
+  it('should append exit emode command with accountCap', async () => {
     const tx = new Transaction()
     const accountCap = await createAccountCapPTB(tx, options)
     await exitEModePTB(tx, {
       ...options,
       accountCap: accountCap
     })
-    tx.setSender(testAddress)
-    const dryRunTxBytes: Uint8Array = await tx.build({
-      client: suiClient
+    const data = tx.getData()
+
+    expect(data.commands).toHaveLength(2)
+    expect(data.commands[1]).toMatchObject({
+      MoveCall: {
+        module: 'lending',
+        function: 'exit_emode_with_account_cap'
+      }
     })
-    const res = await suiClient.dryRunTransactionBlock({
-      transactionBlock: dryRunTxBytes
-    })
-    expect(res).toBeDefined()
   })
 })
 
@@ -133,6 +159,10 @@ describe('createEModeCapPTB', () => {
   let testEmodeId: number
 
   beforeAll(async () => {
+    if (!runLiveTests) {
+      testEmodeId = 1
+      return
+    }
     const pools = await getPools(options)
     const poolWithEmode = pools.find((pool) => pool.emodes && pool.emodes.length > 0)
     if (poolWithEmode && poolWithEmode.emodes.length > 0) {
@@ -142,7 +172,7 @@ describe('createEModeCapPTB', () => {
     }
   })
 
-  it('should create emode cap transaction', async () => {
+  it.skipIf(!runLiveTests)('should create emode cap transaction', async () => {
     const tx = new Transaction()
     const accountCap = await createEModeCapPTB(tx, testEmodeId, options)
 
@@ -173,7 +203,7 @@ describe('createEModeCapPTB', () => {
     expect(object).toBeDefined()
   })
 
-  it('should create emode cap with custom market', async () => {
+  it.skipIf(!runLiveTests)('should create emode cap with custom market', async () => {
     const tx = new Transaction()
     const accountCap = await createEModeCapPTB(tx, testEmodeId, {
       ...options,
@@ -191,7 +221,7 @@ describe('createEModeCapPTB', () => {
   })
 })
 
-describe('getUserEModeCaps', () => {
+describe.skipIf(!runLiveTests)('getUserEModeCaps', () => {
   it('should get user emode caps for test address', async () => {
     const caps = await getUserEModeCaps(testAddress, options)
     expect(Array.isArray(caps)).toBe(true)

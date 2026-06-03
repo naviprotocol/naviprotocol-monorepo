@@ -19,8 +19,9 @@ const walletClient = new WalletClient({
 })
 
 const swapModule = walletClient.module('swap')
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('swap module', () => {
+describe.skipIf(!runLiveTests)('swap module', () => {
   it('swap 1 sui to navx', async () => {
     const res = await swapModule.swap(
       '0x2::sui::SUI',

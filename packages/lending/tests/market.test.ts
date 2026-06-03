@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   getMarketConfig,
   getMarket,
@@ -13,6 +13,7 @@ import type { Pool, EnvOption } from '../src/types'
 const options = {
   env: 'test'
 } as EnvOption
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 describe('getMarketConfig', () => {
   it('should get market config by string key', () => {
@@ -64,7 +65,7 @@ describe('DEFAULT_MARKET_IDENTITY', () => {
   })
 })
 
-describe('getMarket', () => {
+describe.skipIf(!runLiveTests)('getMarket', () => {
   it('should get market with string identity', async () => {
     const market = await getMarket('main', options)
     expect(market).toBeDefined()
@@ -93,7 +94,7 @@ describe('getMarket', () => {
   })
 })
 
-describe('getMarkets', () => {
+describe.skipIf(!runLiveTests)('getMarkets', () => {
   it('should get multiple markets', async () => {
     const markets = await getMarkets(['main'], options)
     expect(markets).toBeDefined()
@@ -115,7 +116,24 @@ describe('Market class', () => {
   let testPools: Pool[] = []
 
   beforeAll(async () => {
-    testPools = await getPools(options)
+    if (runLiveTests) {
+      testPools = await getPools(options)
+      return
+    }
+
+    testPools = [
+      {
+        id: 0,
+        market: 'main',
+        isEMode: true,
+        emode: { emodeId: 1 }
+      },
+      {
+        id: 1,
+        market: 'main',
+        isEMode: false
+      }
+    ] as Pool[]
   })
 
   describe('constructor', () => {

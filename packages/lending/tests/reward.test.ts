@@ -13,10 +13,34 @@ import { suiClient } from '../src/utils'
 
 const keypair = Ed25519Keypair.generate()
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-let rewards: LendingReward[] = []
+let rewards: LendingReward[] = [
+  {
+    userClaimableReward: 1.25,
+    option: 1,
+    ruleIds: ['0x1'],
+    assetCoinType: '0x2::sui::SUI',
+    rewardCoinType: '0x2::sui::SUI',
+    assetId: 0,
+    market: 'main',
+    owner: testAddress,
+    address: testAddress
+  },
+  {
+    userClaimableReward: 0.75,
+    option: 1,
+    ruleIds: ['0x2'],
+    assetCoinType: '0x2::sui::SUI',
+    rewardCoinType: '0x2::sui::SUI',
+    assetId: 0,
+    market: 'main',
+    owner: testAddress,
+    address: testAddress
+  }
+]
 
-describe('getUserAvailableLendingRewards', () => {
+describe.skipIf(!runLiveTests)('getUserAvailableLendingRewards', () => {
   it('check with rewards', async () => {
     rewards = await getUserAvailableLendingRewards(testAddress)
     expect(rewards).toBeDefined()
@@ -33,7 +57,7 @@ describe('summaryLendingRewards', () => {
   })
 })
 
-describe('claimLendingRewardsPTB', () => {
+describe.skipIf(!runLiveTests)('claimLendingRewardsPTB', () => {
   it('check with rewards', async () => {
     const tx = new Transaction()
     await claimLendingRewardsPTB(tx, rewards)
@@ -51,20 +75,20 @@ describe('claimLendingRewardsPTB', () => {
 })
 
 describe('getUserTotalClaimedReward', () => {
-  it('check with rewards', async () => {
+  it.skipIf(!runLiveTests)('check with rewards', async () => {
     const rewards = await getUserTotalClaimedReward(testAddress)
     expect(rewards).toBeDefined()
     expect(rewards.USDValue).toBeGreaterThan(0)
   })
 
-  it('check with no rewards', async () => {
+  it.skipIf(!runLiveTests)('check with no rewards', async () => {
     const rewards = await getUserTotalClaimedReward(keypair.toSuiAddress())
     expect(rewards).toBeDefined()
     expect(rewards.USDValue).toBe(0)
   })
 })
 
-describe('getUserClaimedRewardHistory', () => {
+describe.skipIf(!runLiveTests)('getUserClaimedRewardHistory', () => {
   const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
   it('check with rewards', async () => {
     const rewards = await getUserClaimedRewardHistory(address)

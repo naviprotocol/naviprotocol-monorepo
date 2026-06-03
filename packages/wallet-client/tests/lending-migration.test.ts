@@ -27,8 +27,9 @@ const suilendWalletClient = new WalletClient({
     url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
   }
 })
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('lending supply migration', () => {
+describe.skipIf(!runLiveTests)('lending supply migration', () => {
   it('usdy -> usdt', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBetweenSupplyPTB(
@@ -58,7 +59,7 @@ describe('lending supply migration', () => {
   })
 })
 
-describe('lending borrow migration', () => {
+describe.skipIf(!runLiveTests)('lending borrow migration', () => {
   it('vSUI -> hasui', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBetweenBorrowPTB(
@@ -88,7 +89,7 @@ describe('lending borrow migration', () => {
   })
 })
 
-describe('lending balance migration', () => {
+describe.skipIf(!runLiveTests)('lending balance migration', () => {
   it('vSUI -> usdt', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBalanceToSupplyPTB(
@@ -118,7 +119,7 @@ describe('lending balance migration', () => {
   })
 })
 
-describe('cross-protocol supply migration', () => {
+describe.skipIf(!runLiveTests)('cross-protocol supply migration', () => {
   it('suilend usdc -> navi usdt', async () => {
     const tx = new Transaction()
     await suilendWalletClient.lending.migrateBetweenSupplyPTB(
@@ -142,7 +143,7 @@ describe('cross-protocol supply migration', () => {
   })
 })
 
-describe('cross-protocol borrow migration', () => {
+describe.skipIf(!runLiveTests)('cross-protocol borrow migration', () => {
   it('suilend sui -> navi hasui', async () => {
     const tx = new Transaction()
     await suilendWalletClient.lending.migrateBetweenBorrowPTB(

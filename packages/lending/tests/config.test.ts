@@ -1,20 +1,42 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { getConfig, DEFAULT_CACHE_TIME } from '../src/config'
 
 describe('getConfig', () => {
-  it('prod config', async () => {
-    const config = await getConfig()
-    expect(config).toBeDefined()
-    expect(config.package).toEqual(
-      '0xee0041239b89564ce870a7dec5ddc5d114367ab94a1137e90aa0633cb76518e0'
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const env = new URL(url).searchParams.get('env')
+        return {
+          json: async () => ({
+            data: {
+              package:
+                env === 'dev'
+                  ? '0xc371fc618faca4671253811faef480903b86c58966e8f899184ebaa640120c64'
+                  : '0x1e4a13a0494d5facdbe8473e74127b838c2d446ecec0ce262e2eddafa77259cb'
+            }
+          })
+        }
+      })
     )
   })
-  it('dev config', async () => {
-    const config = await getConfig({ env: 'dev' })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('prod config', async () => {
+    const config = await getConfig({ disableCache: true })
     expect(config).toBeDefined()
-    expect(config.package).toEqual(
-      '0x6e9f8bce4bdf026123a156d67d59bd09a7e604679c6a8edda9ca714723162ab7'
-    )
+    expect(config.package).toMatch(/^0x[0-9a-f]{64}$/)
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('env=prod'), expect.any(Object))
+  })
+  it('dev config', async () => {
+    const config = await getConfig({ env: 'dev', disableCache: true })
+    expect(config).toBeDefined()
+    expect(config.package).toMatch(/^0x[0-9a-f]{64}$/)
+    expect(config.package).not.toEqual((await getConfig({ disableCache: true })).package)
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('env=dev'), expect.any(Object))
   })
 })
 
