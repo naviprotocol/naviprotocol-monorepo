@@ -44,7 +44,6 @@ import {
   migrateBetweenSupplyPTB
 } from './migrate'
 import NaviProtocol from './protocols/navi'
-import SuilendProtocol from './protocols/suilend'
 import { LendingProtocol } from './protocols'
 import { WalletClient } from '../../client'
 
@@ -700,6 +699,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     const protocols = []
     protocols.push(new NaviProtocol(this.walletClient))
     try {
+      const { default: SuilendProtocol } = await import('./protocols/suilend')
       protocols.push(await SuilendProtocol.create(this.walletClient))
     } catch (error) {
       console.warn('Failed to initialize SuilendProtocol:', error)
