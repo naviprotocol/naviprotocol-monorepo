@@ -5,6 +5,7 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@naviprotocol/astros-aggregator-sdk": ["../astros-aggregator-sdk/dist/index.d.ts"],
+      "@naviprotocol/astros-dca-sdk": ["../astros-dca-sdk/dist/index.d.ts"],
       "@naviprotocol/lending": ["../lending/dist/index.d.ts"]
     }
   },

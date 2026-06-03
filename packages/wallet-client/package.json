@@ -43,7 +43,7 @@
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
     "test": "vitest --config ./vite.config.unit.js",
-    "test:types": "pnpm build:lib && tsc --noEmit -p tsconfig.type-tests.json",
+    "test:types": "pnpm --filter @naviprotocol/lending build:lib && pnpm --filter @naviprotocol/astros-aggregator-sdk build:lib && pnpm --filter @naviprotocol/astros-dca-sdk build:lib && pnpm build:lib && tsc --noEmit -p tsconfig.type-tests.json",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typedoc": "typedoc"
