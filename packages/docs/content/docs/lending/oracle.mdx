@@ -178,9 +178,12 @@ await updateOraclePricesPTB(tx, allPriceFeeds, {
 })
 
 // With custom Sui client
-import { SuiClient } from '@mysten/sui/client'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
-const client = new SuiClient({ url: 'https://fullnode.mainnet.sui.io' })
+const client = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
 await updateOraclePricesPTB(tx, allPriceFeeds, {
   updatePythPriceFeeds: true,
   client, // Optional: custom Sui client for on-chain price staleness detection

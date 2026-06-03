@@ -1,0 +1,129 @@
+---
+title: Sui SDK v2 Beta
+---
+
+This guide covers the NAVI SDK v2 beta packages for Sui SDK 2.x consumers.
+
+## Runtime
+
+- Use Node.js 22.x or newer.
+- Use ESM imports. The v2 beta packages do not expose CommonJS `require` exports.
+- Install the v2 beta packages independently from the legacy v1 line.
+
+```bash
+npm install @mysten/sui@^2 @naviprotocol/lending@next @naviprotocol/wallet-client@next
+npm install @naviprotocol/astros-aggregator-sdk@next @naviprotocol/astros-bridge-sdk@next @naviprotocol/astros-dca-sdk@next
+```
+
+## Client Setup
+
+```ts
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+
+const client = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
+```
+
+Read methods accept a Sui SDK v2 client contract. JSON-RPC is a compatibility transport; do not pass old `@mysten/sui.js` clients or v1 `TransactionBlock` values.
+
+## Lending Read Path
+
+```ts
+import { getCoins, getLendingState } from '@naviprotocol/lending'
+
+const address = '0x0000000000000000000000000000000000000000000000000000000000000001'
+
+const coins = await getCoins(address, { client })
+const lendingState = await getLendingState(address, { client })
+```
+
+## Lending PTB Path
+
+```ts
+import { depositCoinPTB } from '@naviprotocol/lending'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+const [coin] = tx.splitCoins(tx.gas, [1_000_000n])
+
+await depositCoinPTB(tx, '0x2::sui::SUI', coin, {
+  amount: 1_000_000
+})
+```
+
+## Wallet Client
+
+```ts
+import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+
+const signer = new WatchSigner(address)
+const walletClient = new WalletClient({
+  signer,
+  client: {
+    url: getJsonRpcFullnodeUrl('mainnet')
+  }
+})
+
+const dryRun = await walletClient.balance.sendCoin('0x2::sui::SUI', address, 1_000_000, {
+  dryRun: true
+})
+
+dryRun.kind
+dryRun.effects?.status?.status
+```
+
+For real execution, pass an authorized Sui SDK v2 signer from the connected wallet. Wallet methods return NAVI result DTOs such as `NaviWalletTransactionResult`; raw JSON-RPC response types are not part of the stable v2 contract.
+
+## Aggregator PTB
+
+```ts
+import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+const coinIn = tx.splitCoins(tx.gas, [1_000_000n])
+const quote = await getQuote(
+  '0x2::sui::SUI',
+  '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+  1_000_000
+)
+
+const coinOut = await buildSwapPTBFromQuote(address, tx, 990_000, coinIn, quote, 0, false)
+
+tx.transferObjects([coinOut], address)
+```
+
+## Bridge
+
+`@naviprotocol/astros-bridge-sdk@2` keeps the Mayan adapter internal and lazy-loaded. Root imports do not load Mayan. Sui bridge execution returns standard transaction bytes for a Sui SDK v2 wallet to parse, dry-run, sign, and execute.
+
+## DCA
+
+```ts
+import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-dca-sdk'
+
+const tx = await createDcaOrder(client, address, {
+  fromCoinType: '0x2::sui::SUI',
+  toCoinType: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+  depositedAmount: '1500000000',
+  totalExecutions: 10,
+  frequency: {
+    value: 1,
+    unit: TimeUnit.HOUR
+  },
+  priceRange: {
+    minBuyPrice: 18000000,
+    maxBuyPrice: 25000000
+  }
+})
+```
+
+## Migration Rules
+
+- Do not import `@mysten/sui.js`.
+- Do not expose v1 `SuiClient`, `TransactionBlock`, or raw v1 response types in application-level contracts.
+- Keep third-party Sui v1 SDKs out of root app and SDK entry points. If a v1 adapter is unavoidable, load it lazily and keep it internal.
+- Build, typecheck, and test v2 packages with Node.js 22.x.

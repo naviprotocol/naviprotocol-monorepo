@@ -2,5 +2,5 @@
 	"root": true,
 	"title": "NAVI SDK Migration",
 	"description": "migration from navi-sdk package",
-	"pages": ["lending", "account-manager", "swap", "bridge"]
+	"pages": ["sui-sdk-v2-beta", "lending", "account-manager", "swap", "bridge"]
 }

@@ -76,10 +76,16 @@ npm install @naviprotocol/wallet-client
 ## Quick Start
 
 ```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 
-// Create wallet client
-const walletClient = new WalletClient()
+const address = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const walletClient = new WalletClient({
+  signer: new WatchSigner(address),
+  client: {
+    url: getJsonRpcFullnodeUrl('mainnet')
+  }
+})
 
 // Use balance module
 const portfolio = walletClient.balance.portfolio
@@ -90,7 +96,8 @@ const result = await walletClient.swap.swap(
   '0x2::sui::SUI',
   '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN',
   1000000000,
-  0.01
+  0.01,
+  { dryRun: true }
 )
 
 // Use lending module
@@ -99,11 +106,11 @@ const pools = await walletClient.lending.getPools()
 
 // Use Haedal module
 const apy = await walletClient.haedal.getApy()
-const stakeResult = await walletClient.haedal.stake(1000000000)
+const stakeResult = await walletClient.haedal.stake(1000000000, { dryRun: true })
 
 // Use Volo module
 const stats = await walletClient.volo.getStats()
-const voloStakeResult = await walletClient.volo.stake(1000000000)
+const voloStakeResult = await walletClient.volo.stake(1000000000, { dryRun: true })
 ```
 
 ## Event Listening
@@ -137,4 +144,3 @@ walletClient.events.on('volo:stake-success', (data) => {
 ## Support
 
 - Issue reporting: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-
