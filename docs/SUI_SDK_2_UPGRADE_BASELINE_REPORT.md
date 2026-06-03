@@ -968,3 +968,34 @@ Updated SDK-side conclusion:
 | `@mysten/sui.js` absent from SDK v2 main path | Passed for wallet-client production path | Suilend is no longer a production dependency; `pnpm why --prod` has no `@mysten/sui.js` path for wallet-client. |
 | Suilend wrapper smoke | Blocked / legacy optional | Suilend auto-init is disabled by default because the available stack still has Sui v1 peer/import risk. Users must explicitly install optional peers and set `configs.lending.enableSuilend=true`. |
 | Frontend dependency conflict check | Still blocked outside SDK package | Copilot still has separate third-party Sui v1/v2 conflicts under `packages/copilot-store` and legacy app paths, independent of wallet-client's default production dependency graph. |
+
+### Latest frontend install after wallet-client Suilend isolation
+
+Latest packed SDK v2 tarballs:
+
+```text
+/tmp/navi-sdk-v2-packs-20260603195445/naviprotocol-lending-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603195445/naviprotocol-wallet-client-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603195445/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603195445/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603195445/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz
+```
+
+Frontend install recheck in `/tmp/copilot-sdk-v2-acceptance`:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --ignore-scripts
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @suilend/sdk --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @suilend/sdk --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/wallet-client --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/wallet-client --filter @naviprotocol/lending-next
+```
+
+Results:
+
+- Install passed against `/tmp/navi-sdk-v2-packs-20260603195445`.
+- `@naviprotocol/copilot-migrate` and `@naviprotocol/lending-next` still consume `@naviprotocol/wallet-client@2.0.0-beta.0`.
+- `@suilend/sdk` no longer comes from `@naviprotocol/wallet-client`; remaining paths are `packages/copilot-store -> @suilend/sdk@1.1.99` and `apps/lending -> @msafe/sui-app-store -> @suilend/sdk@1.1.98`.
+- `@mysten/sui.js@0.54.1` for `@naviprotocol/copilot-migrate` now traces through `packages/copilot-store` dependencies: AlphaFi/7K/FlowX, Suilend/FlowX, and Haedal farm SDK.
+- Conclusion: wallet-client no longer contributes the Suilend / `@mysten/sui.js` production conflict to frontend consumers. Remaining frontend dependency conflicts are owned by Copilot protocol/store and legacy app dependencies.
