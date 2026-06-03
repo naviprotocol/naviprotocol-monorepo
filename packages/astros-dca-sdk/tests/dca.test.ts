@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Transaction } from '@mysten/sui/transactions'
-import { cancelDcaOrder, createDcaOrder, getCoinForDca, TimeUnit } from '../src'
+import {
+  cancelDcaOrder,
+  createDcaOrder,
+  dryRunDcaTransaction,
+  getCoinForDca,
+  TimeUnit
+} from '../src'
 import { getCoins } from '../src/libs/DCA/coinUtils'
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
@@ -156,5 +162,91 @@ describe('DCA PTB builders', () => {
         dcaOptions
       )
     ).rejects.toThrow('receiptId is required')
+  })
+
+  it('dry-runs a DCA create transaction and normalizes the RPC response', async () => {
+    const client = createMockClient() as any
+    const tx = await createDcaOrder(
+      client,
+      userAddress,
+      {
+        fromCoinType: '0x2::sui::SUI',
+        toCoinType: '0x2::sui::SUI',
+        depositedAmount: '100',
+        frequency: { value: 1, unit: TimeUnit.HOUR },
+        totalExecutions: 2
+      },
+      dcaOptions
+    )
+    const txBytes = Uint8Array.from([1, 3, 5])
+    vi.spyOn(tx, 'build').mockResolvedValue(txBytes)
+    const dryRunClient = {
+      dryRunTransactionBlock: vi.fn(async () => ({
+        effects: {
+          status: {
+            status: 'success'
+          }
+        },
+        events: [
+          {
+            type: 'test::created'
+          }
+        ]
+      }))
+    }
+
+    const result = await dryRunDcaTransaction(tx, {
+      client: dryRunClient as any
+    })
+
+    expect(tx.build).toHaveBeenCalledWith({
+      client: dryRunClient
+    })
+    expect(dryRunClient.dryRunTransactionBlock).toHaveBeenCalledWith({
+      transactionBlock: txBytes
+    })
+    expect(result.effects?.status?.status).toBe('success')
+    expect(result.events).toEqual([
+      {
+        type: 'test::created'
+      }
+    ])
+    expect(result.balanceChanges).toEqual([])
+    expect(result.objectChanges).toEqual([])
+  })
+
+  it('dry-runs a DCA cancel transaction and normalizes empty RPC arrays', async () => {
+    const tx = await cancelDcaOrder(
+      {
+        fromCoinType: '0x2::test::COIN',
+        toCoinType: '0x2::sui::SUI'
+      },
+      `0x${'7'.repeat(64)}`,
+      userAddress,
+      dcaOptions
+    )
+    const txBytes = Uint8Array.from([2, 4, 6])
+    vi.spyOn(tx, 'build').mockResolvedValue(txBytes)
+    const dryRunClient = {
+      dryRunTransactionBlock: vi.fn(async () => ({
+        effects: {
+          status: {
+            status: 'success'
+          }
+        }
+      }))
+    }
+
+    const result = await dryRunDcaTransaction(tx, {
+      client: dryRunClient as any
+    })
+
+    expect(dryRunClient.dryRunTransactionBlock).toHaveBeenCalledWith({
+      transactionBlock: txBytes
+    })
+    expect(result.effects?.status?.status).toBe('success')
+    expect(result.events).toEqual([])
+    expect(result.balanceChanges).toEqual([])
+    expect(result.objectChanges).toEqual([])
   })
 })

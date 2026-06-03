@@ -214,6 +214,44 @@ describe('swap test', () => {
     consoleError.mockRestore()
   })
 
+  it('dry-runs a v2 swap PTB and normalizes the RPC response into a NAVI DTO', async () => {
+    const { dryRunSwapTransaction } = await import('../src/astros-sdk')
+    const txb = createTransaction(coins.sui.holder)
+    const txBytes = Uint8Array.from([7, 8, 9])
+    vi.spyOn(txb, 'build').mockResolvedValue(txBytes)
+    const client = {
+      dryRunTransactionBlock: vi.fn(async () => ({
+        effects: {
+          status: {
+            status: 'success'
+          }
+        }
+      }))
+    }
+
+    const result = await dryRunSwapTransaction(txb, {
+      client: client as any
+    })
+
+    expect(txb.build).toHaveBeenCalledWith({
+      client
+    })
+    expect(client.dryRunTransactionBlock).toHaveBeenCalledWith({
+      transactionBlock: txBytes
+    })
+    expect(result.effects?.status?.status).toBe('success')
+    expect(result.events).toEqual([])
+    expect(result.balanceChanges).toEqual([])
+    expect(result.objectChanges).toEqual([])
+    expect(result.raw).toEqual({
+      effects: {
+        status: {
+          status: 'success'
+        }
+      }
+    })
+  })
+
   // it('should successfully swap SUI through bluefin using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)

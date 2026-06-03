@@ -1,12 +1,16 @@
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions'
+import type { DryRunTransactionBlockResponse } from '@mysten/sui/jsonRpc'
 
 import {
   buildSwapPTBFromQuote,
+  dryRunSwapTransaction,
+  type NaviAggregatorDryRunResult,
   type Quote,
   type SingleCoinTransactionResult
 } from '@naviprotocol/astros-aggregator-sdk'
 
 declare const tx: Transaction
+declare const client: Parameters<typeof dryRunSwapTransaction>[1]['client']
 declare const address: string
 
 const suiCoinType = '0x2::sui::SUI'
@@ -38,3 +42,18 @@ async function acceptsSwapOutputAsSingleCoinResult() {
 }
 
 void acceptsSwapOutputAsSingleCoinResult
+
+async function acceptsDryRunDto() {
+  const dryRunResult = await dryRunSwapTransaction(tx, { client })
+  const dto: NaviAggregatorDryRunResult = dryRunResult
+
+  dto.events[0]?.type satisfies string | undefined
+  dto.effects?.status?.status satisfies string | undefined
+
+  // @ts-expect-error NAVI v2 aggregator dry-run does not expose raw JSON-RPC responses.
+  const rawDryRun: DryRunTransactionBlockResponse = dryRunResult
+
+  void rawDryRun
+}
+
+void acceptsDryRunDto
