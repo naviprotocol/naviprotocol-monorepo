@@ -1,4 +1,4 @@
-import { SwapOptions, Quote } from './types'
+import { NaviAggregatorTransactionResult, SwapOptions, Quote } from './types'
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
@@ -43,7 +43,7 @@ export async function executeTransaction(
   options?: {
     client?: SuiJsonRpcClient
   }
-) {
+): Promise<NaviAggregatorTransactionResult> {
   const client =
     options?.client ||
     new SuiJsonRpcClient({
@@ -72,5 +72,12 @@ export async function executeTransaction(
     }
   })
 
-  return result
+  return {
+    digest: result.digest,
+    effects: (result.effects ?? undefined) as NaviAggregatorTransactionResult['effects'],
+    events: (result.events ?? []) as NaviAggregatorTransactionResult['events'],
+    balanceChanges: (result.balanceChanges ??
+      []) as NaviAggregatorTransactionResult['balanceChanges'],
+    objectChanges: (result.objectChanges ?? []) as NaviAggregatorTransactionResult['objectChanges']
+  }
 }

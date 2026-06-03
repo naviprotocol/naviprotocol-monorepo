@@ -15,10 +15,7 @@ import {
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import type {
-  SuiTransactionBlockResponse,
-  DryRunTransactionBlockResponse
-} from '@mysten/sui/jsonRpc'
+import type { NaviWalletTransactionResult } from '../../types'
 
 /**
  * Configuration interface for the Volo staking module
@@ -184,7 +181,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   async stake<T extends boolean = false>(
     suiAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -235,7 +232,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   async unstake<T extends boolean = false>(
     vSuiAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

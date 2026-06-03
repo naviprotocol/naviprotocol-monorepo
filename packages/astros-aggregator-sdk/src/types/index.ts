@@ -15,6 +15,36 @@ import type {
 export type SingleCoinTransactionResult = TransactionResultType &
   readonly [TransactionObjectArgumentType]
 
+export type NaviAggregatorTransactionStatus = {
+  status: 'success' | 'failure' | (string & {})
+  error?: string
+}
+
+export type NaviAggregatorTransactionResult = {
+  digest?: string
+  effects?: {
+    status?: NaviAggregatorTransactionStatus
+    [key: string]: unknown
+  }
+  events: Array<{
+    type: string
+    parsedJson?: unknown
+    [key: string]: unknown
+  }>
+  balanceChanges: Array<{
+    owner?: unknown
+    amount: string
+    coinType?: string
+    [key: string]: unknown
+  }>
+  objectChanges: Array<{
+    type?: string
+    objectId?: string
+    owner?: unknown
+    [key: string]: unknown
+  }>
+}
+
 /**
  * Enumeration of supported decentralized exchanges (DEXes)
  *

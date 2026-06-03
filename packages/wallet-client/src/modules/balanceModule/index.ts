@@ -15,10 +15,7 @@ import type { WalletClient } from '../../client'
 import { UserPortfolio } from './portfolio'
 import BigNumber from 'bignumber.js'
 import { Transaction } from '@mysten/sui/transactions'
-import type {
-  DryRunTransactionBlockResponse,
-  SuiTransactionBlockResponse
-} from '@mysten/sui/jsonRpc'
+import type { NaviWalletTransactionResult } from '../../types'
 import { normalizeStructTag } from '@mysten/sui/utils'
 
 /**
@@ -104,7 +101,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     recipient: string,
     amount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     return this.sendCoinBatch(coinType, [recipient], [amount], options)
   }
 
@@ -122,7 +119,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     recipients: string[],
     amounts: number[],
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -179,7 +176,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     object: string,
     recipient: string,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     return this.transferObjectBatch([object], [recipient], options)
   }
 
@@ -198,7 +195,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     objects: string[],
     recipients: string[],
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

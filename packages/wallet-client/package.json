@@ -3,6 +3,7 @@
   "version": "2.0.0-beta.0",
   "description": "NAVI Wallet Client",
   "license": "MIT",
+  "type": "module",
   "keywords": [
     "navi",
     "sui"
@@ -14,7 +15,7 @@
     "type": "git",
     "url": "https://github.com/naviprotocol/naviprotocol-monorepo.git"
   },
-  "main": "dist/index.cjs.js",
+  "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
@@ -26,8 +27,7 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.cjs.js"
+      "import": "./dist/index.esm.js"
     }
   },
   "publishConfig": {

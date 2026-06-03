@@ -18,10 +18,7 @@ import {
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import type {
-  SuiTransactionBlockResponse,
-  DryRunTransactionBlockResponse
-} from '@mysten/sui/jsonRpc'
+import type { NaviWalletTransactionResult } from '../../types'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'
@@ -168,7 +165,7 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     fromAmount: number,
     slippage: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

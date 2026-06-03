@@ -8,10 +8,7 @@
  * @module LendingModule
  */
 
-import type {
-  DryRunTransactionBlockResponse,
-  SuiTransactionBlockResponse
-} from '@mysten/sui/jsonRpc'
+import type { NaviWalletTransactionResult } from '../../types'
 import { Module } from '../module'
 import {
   depositCoinPTB,
@@ -183,7 +180,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -246,7 +243,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -302,7 +299,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -358,7 +355,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -445,7 +442,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     collateralIdentifier: AssetIdentifier,
     liquidationAddress: string,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -557,7 +554,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async claimAllRewards<T extends boolean = false>(
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -618,7 +615,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async updateOracle<T extends boolean = false>(options?: {
     dryRun: T
     pools?: Pool[]
-  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  }): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -660,7 +657,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async createAccountCap<T extends boolean = false>(options?: {
     dryRun: T
-  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  }): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

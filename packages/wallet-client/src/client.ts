@@ -11,7 +11,6 @@
 import {
   SuiJsonRpcClient,
   getJsonRpcFullnodeUrl,
-  type ExecuteTransactionBlockParams,
   type SuiJsonRpcClientOptions
 } from '@mysten/sui/jsonRpc'
 import { Signer } from '@mysten/sui/cryptography'
@@ -20,7 +19,13 @@ import { CustomTransport } from './transport'
 import { Module, ModuleConfig } from './modules/module'
 import { modules, ModuleName, ModuleEvents } from './modules'
 import { Transaction } from '@mysten/sui/transactions'
-import { DryRunOptions } from './types'
+import {
+  DryRunOptions,
+  NaviDryRunTransactionResult,
+  NaviExecuteTransactionResult,
+  NaviTransactionExecutionOptions,
+  NaviWalletTransactionResult
+} from './types'
 
 /**
  * Extracts the configuration type from a module
@@ -55,6 +60,19 @@ const defaultClientOptions = {
   network: 'mainnet',
   url: getJsonRpcFullnodeUrl('mainnet')
 } as const
+
+function normalizeTransactionResult(kind: 'dryRun', result: unknown): NaviDryRunTransactionResult
+function normalizeTransactionResult(kind: 'execute', result: unknown): NaviExecuteTransactionResult
+function normalizeTransactionResult(kind: 'dryRun' | 'execute', result: unknown) {
+  const raw = (result ?? {}) as Record<string, unknown>
+  return {
+    ...raw,
+    kind,
+    events: Array.isArray(raw.events) ? raw.events : [],
+    balanceChanges: Array.isArray(raw.balanceChanges) ? raw.balanceChanges : [],
+    objectChanges: Array.isArray(raw.objectChanges) ? raw.objectChanges : []
+  }
+}
 
 /**
  * Main wallet client class that provides unified access to blockchain operations
@@ -134,9 +152,9 @@ export class WalletClient {
   async signExecuteTransaction(
     options: {
       transaction: Uint8Array | Transaction
-    } & Omit<ExecuteTransactionBlockParams, 'transactionBlock' | 'signature'> &
+    } & NaviTransactionExecutionOptions &
       Partial<DryRunOptions>
-  ) {
+  ): Promise<NaviWalletTransactionResult<boolean>> {
     const { dryRun = false, ...rest } = options
 
     if (dryRun) {
@@ -150,16 +168,18 @@ export class WalletClient {
       } else {
         txBytes = options.transaction
       }
-      return this.client.dryRunTransactionBlock({
+      const result = await this.client.dryRunTransactionBlock({
         transactionBlock: txBytes
       })
+      return normalizeTransactionResult('dryRun', result)
     }
 
     // Execute the actual transaction
-    return this.client.signAndExecuteTransaction({
+    const result = await this.client.signAndExecuteTransaction({
       ...rest,
       signer: this.signer
-    })
+    } as any)
+    return normalizeTransactionResult('execute', result)
   }
 
   /**
