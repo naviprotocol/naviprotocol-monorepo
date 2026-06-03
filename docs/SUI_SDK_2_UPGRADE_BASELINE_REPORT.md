@@ -999,3 +999,40 @@ Results:
 - `@suilend/sdk` no longer comes from `@naviprotocol/wallet-client`; remaining paths are `packages/copilot-store -> @suilend/sdk@1.1.99` and `apps/lending -> @msafe/sui-app-store -> @suilend/sdk@1.1.98`.
 - `@mysten/sui.js@0.54.1` for `@naviprotocol/copilot-migrate` now traces through `packages/copilot-store` dependencies: AlphaFi/7K/FlowX, Suilend/FlowX, and Haedal farm SDK.
 - Conclusion: wallet-client no longer contributes the Suilend / `@mysten/sui.js` production conflict to frontend consumers. Remaining frontend dependency conflicts are owned by Copilot protocol/store and legacy app dependencies.
+
+## 2026-06-03 Aggregator and DCA Dry-Run DTO Coverage
+
+Additional commits in this slice are split by change type:
+
+| Commit type | Summary |
+| --- | --- |
+| `feat` | Added `dryRunSwapTransaction` for `@naviprotocol/astros-aggregator-sdk@2` and `dryRunDcaTransaction` for `@naviprotocol/astros-dca-sdk@2`. Both helpers build v2 `Transaction` bytes, call `dryRunTransactionBlock`, and return NAVI DTOs instead of raw JSON-RPC response contracts. |
+| `test` | Added deterministic dry-run normalization tests for aggregator swap PTB, DCA create PTB, and DCA cancel PTB. Added aggregator type-compat coverage proving the dry-run helper does not expose raw `DryRunTransactionBlockResponse`. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Aggregator tests passed: `4 passed / 1 skipped`. Coverage now includes deterministic swap PTB build, inconsistent route rejection, execute DTO normalization, and dry-run DTO normalization.
+- DCA tests passed: `8 passed`. Coverage now includes SUI and non-SUI create PTB, paginated coin fetching, insufficient-balance failure, cancel PTB, missing receipt validation, create dry-run DTO normalization, and cancel dry-run DTO normalization.
+- Aggregator and DCA typechecks and builds passed.
+- Aggregator type-compat test passed; `dryRunSwapTransaction` returns `NaviAggregatorDryRunResult` and is intentionally not assignable to raw `DryRunTransactionBlockResponse`.
+- SDK v2 boundary scan passed after the new helpers.
+
+Updated SDK-side conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Aggregator minimal PTB / simulate smoke | Passed for deterministic SDK gate | Swap PTB, execute DTO, and dry-run DTO helper are covered by unit and type-compat tests. Live frontend swap execute remains blocked by frontend dependency/build gates. |
+| DCA minimal PTB / simulate smoke | Passed for deterministic SDK gate | Create/cancel PTBs and dry-run DTO helper are covered by unit tests. Live DCA execute remains blocked until frontend target routes are clean and authorized wallet smoke is run. |
