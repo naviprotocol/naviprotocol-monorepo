@@ -1,4 +1,9 @@
-import { NaviAggregatorTransactionResult, SwapOptions, Quote } from './types'
+import {
+  NaviAggregatorDryRunResult,
+  NaviAggregatorTransactionResult,
+  SwapOptions,
+  Quote
+} from './types'
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
@@ -79,5 +84,34 @@ export async function executeTransaction(
     balanceChanges: (result.balanceChanges ??
       []) as NaviAggregatorTransactionResult['balanceChanges'],
     objectChanges: (result.objectChanges ?? []) as NaviAggregatorTransactionResult['objectChanges']
+  }
+}
+
+/**
+ * Dry-runs a built aggregator transaction through the Sui v2 JSON-RPC adapter
+ * and returns a stable NAVI DTO instead of exposing raw RPC response types.
+ *
+ * @param txb - The transaction to build and dry-run.
+ * @param options - The Sui client used for building and dry-run.
+ */
+export async function dryRunSwapTransaction(
+  txb: Transaction,
+  options: {
+    client: SuiJsonRpcClient
+  }
+): Promise<NaviAggregatorDryRunResult> {
+  const txBytes = await txb.build({
+    client: options.client
+  })
+  const result = await options.client.dryRunTransactionBlock({
+    transactionBlock: txBytes
+  })
+
+  return {
+    effects: (result.effects ?? undefined) as NaviAggregatorDryRunResult['effects'],
+    events: (result.events ?? []) as NaviAggregatorDryRunResult['events'],
+    balanceChanges: (result.balanceChanges ?? []) as NaviAggregatorDryRunResult['balanceChanges'],
+    objectChanges: (result.objectChanges ?? []) as NaviAggregatorDryRunResult['objectChanges'],
+    raw: result
   }
 }

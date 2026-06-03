@@ -8,6 +8,8 @@
 export { createDcaOrder } from './createDcaOrder'
 export { getCoinForDca } from './coinUtils'
 export { cancelDcaOrder } from './cancelDcaOrder'
+export { dryRunDcaTransaction } from './simulate'
+export type { NaviDcaDryRunResult } from './simulate'
 export { getDcaPackageId } from './getDcaPackageId'
 export { getDcaConfig } from './getDcaConfig'
 export type { DcaConfig } from './getDcaConfig'

@@ -45,6 +45,31 @@ export type NaviAggregatorTransactionResult = {
   }>
 }
 
+export type NaviAggregatorDryRunResult = {
+  effects?: {
+    status?: NaviAggregatorTransactionStatus
+    [key: string]: unknown
+  }
+  events: Array<{
+    type: string
+    parsedJson?: unknown
+    [key: string]: unknown
+  }>
+  balanceChanges: Array<{
+    owner?: unknown
+    amount: string
+    coinType?: string
+    [key: string]: unknown
+  }>
+  objectChanges: Array<{
+    type?: string
+    objectId?: string
+    owner?: unknown
+    [key: string]: unknown
+  }>
+  raw?: unknown
+}
+
 /**
  * Enumeration of supported decentralized exchanges (DEXes)
  *
