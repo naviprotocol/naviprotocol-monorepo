@@ -1104,3 +1104,68 @@ Updated SDK-side conclusion:
 | docs / examples / migration guide | Passed for SDK-controlled docs gate | Migration guide now matches current public API and `docs/examples/sdk-v2-smoke.ts` typechecks. |
 | Lending v2 helper public API | Passed | Root package now exports v2 client/Pyth helper APIs used by the migration guide; type-compat test locks the imports. |
 | Final frontend / wallet acceptance | Still blocked | Docs are current, but full Copilot build/dependency acceptance and authorized wallet business smokes remain incomplete as recorded above. |
+
+## 2026-06-03 Latest SDK Gate and Tarball Recheck
+
+Additional commit in this slice is split by change type:
+
+| Commit type | Summary |
+| --- | --- |
+| `test` | Mocked aggregator positive-slippage remote config in the deterministic PTB fixture test so the default package test gate no longer depends on `open-api.naviprotocol.io`. |
+
+Latest deterministic SDK verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending --filter @naviprotocol/wallet-client --filter @naviprotocol/astros-aggregator-sdk --filter @naviprotocol/astros-bridge-sdk --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p docs/examples/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+```
+
+Results:
+
+- All five SDK package builds passed on Node `v22.22.2`.
+- All five SDK package typechecks passed.
+- SDK v2 boundary scan passed.
+- Docs example typecheck passed.
+- Default package tests passed:
+  - lending: `10 files passed / 2 skipped`; `40 passed / 51 skipped`.
+  - wallet-client: `2 files passed / 5 skipped`; `2 passed / 25 skipped`.
+  - astros-aggregator-sdk: `1 file passed`; `4 passed / 1 skipped`.
+  - astros-bridge-sdk: `4 files passed`; `5 passed`.
+  - astros-dca-sdk: `1 file passed`; `8 passed`.
+- Code commit: `242d970 test: keep aggregator ptb fixture offline`.
+
+Latest SDK v2 tarballs:
+
+```text
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-lending-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-wallet-client-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz
+```
+
+Frontend tarball recheck attempt in `/tmp/copilot-sdk-v2-acceptance`:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm add -w @naviprotocol/lending@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-lending-2.0.0-beta.0.tgz @naviprotocol/wallet-client@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-wallet-client-2.0.0-beta.0.tgz @naviprotocol/astros-aggregator-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz @naviprotocol/astros-bridge-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz @naviprotocol/astros-dca-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz --ignore-scripts
+```
+
+Result: blocked by registry/network failures before install completed. Two attempts failed with `ERR_SOCKET_TIMEOUT` / `ECONNRESET` while fetching Solana/Reown dependency metadata from npm registry, including `@solana/rpc-types`, `@solana/rpc-transformers`, `@solana/buffer-layout`, `bs58`, `js-sha3`, and `superstruct`. The reported dependency chain starts at Copilot `packages/uikit` through `@mysten/walletconnect-wallet@1.0.4 -> @reown/appkit -> @base-org/account -> @coinbase/cdp-sdk -> @solana/kit`.
+
+Updated blocker status:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| Latest Copilot tarball install could not complete due registry network failures | Prevents producing a fresh frontend install/typecheck/build result for `/tmp/navi-sdk-v2-packs-20260603202116` in this pass. | Two `pnpm add -w ... --ignore-scripts` attempts failed on npm registry `ECONNRESET` / `ERR_SOCKET_TIMEOUT` for Solana/Reown dependency metadata under Copilot `packages/uikit`. | Retry when registry/network is stable or use a warmed pnpm store/internal registry mirror. |
+| Full frontend acceptance remains blocked by previously recorded app/dependency issues | Final checklist still cannot be marked complete. | Earlier latest successful tarball install (`/tmp/navi-sdk-v2-packs-20260603195445`) showed SDK consumer install/typecheck progress but `apps/lending` build and dependency tree remained blocked by frontend third-party Sui v1/v2 conflicts. | Frontend/protocol owner to isolate or upgrade Copilot third-party protocol paths, then rerun tarball install/typecheck/build and authorized wallet smokes. |
