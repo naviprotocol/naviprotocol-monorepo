@@ -20,6 +20,10 @@ vi.mock('shio-sdk', () => ({
   executeAuction
 }))
 
+vi.mock('../src/libs/Aggregator/getPositiveSlippageSetting', () => ({
+  getRemotePositiveSlippageSetting: vi.fn(async () => false)
+}))
+
 dotenv.config()
 
 const apiKey = process.env.API_KEY
