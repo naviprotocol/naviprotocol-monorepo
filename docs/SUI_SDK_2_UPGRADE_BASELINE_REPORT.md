@@ -412,3 +412,111 @@ Findings:
 | Strict ESM-only output is not implemented | Design doc strict acceptance still fails. | Package exports still expose `require` and builds emit `*.cjs.js`; Vite CJS warning appears. | Release owner to decide if beta can ship dual output for backward compatibility or require an ESM-only package export change. |
 | Current frontend tarball acceptance not run | Cannot prove SDK is consumable by `copilot feat/mysten-sui-2.0`. | Pending. | Continue after SDK blockers are either fixed or explicitly accepted as blockers. |
 | Real funded smoke not run in this pass | Pyth, Bridge, lending/swap/DCA/wallet wrappers checklist items remain incomplete. | Pending; secrets not printed. | Run with authorized test wallet and small amounts only after deterministic package gates are ready enough to avoid wasting transactions. |
+
+## 2026-06-03 Tarball Consumer Acceptance Update
+
+Additional commits:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `8ce3b79` | `fix` | Aligned lending PTB coin argument and single-coin return types with Sui v2 transaction result behavior. |
+| `a1764b2` | `test` | Added lending public API type-compat coverage for Sui v2 PTB consumer code and runtime `undefined` guard coverage. |
+| `a869f87` | `fix` | Typed aggregator swap outputs as single-coin transaction results. |
+| `be62685` | `test` | Added aggregator public API type-compat coverage for swap output reuse. |
+
+SDK verification rerun on Node 22:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test:types
+```
+
+Results:
+
+- Five SDK package typechecks passed.
+- Five SDK package builds passed.
+- Five SDK default package tests passed: lending `38 passed / 51 skipped`, wallet-client `1 passed / 25 skipped`, aggregator `2 passed / 1 skipped`, bridge `2 passed`, DCA `2 passed`.
+- New public API type-compat gates passed for lending and aggregator. These compile against `dist/index.d.ts` with `noUncheckedIndexedAccess=true`.
+
+Frontend tarball acceptance used a temporary detached copilot worktree at `/tmp/copilot-sdk-v2-acceptance` based on `feat/mysten-sui-2.0`. The real copilot worktree was not modified. The target SDK v2 tarballs were in `/tmp/navi-sdk-v2-packs`.
+
+Install notes:
+
+- Initial tarball install passed before the final lending/aggregator type fixes.
+- After replacing same-name beta tarballs, `pnpm install --force` detected the expected tarball checksum change and began full monorepo resolution. It was terminated because registry retries for optional platform packages made it unsuitable for this acceptance loop.
+- For final type/build verification, the temporary pnpm store package directories were overwritten from the refreshed tarball contents. This validates the actual packed SDK contents but is not a clean install proof. A clean install remains a final release gate.
+
+Frontend targeted typecheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending-next typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-migrate typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-store typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/utils build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/storybook build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap typecheck
+```
+
+Result: targeted typecheck passed. The `packages/swap` typecheck requires building workspace config packages `@naviprotocol/utils` and `@naviprotocol/storybook` first because their exports point to `dist/*`.
+
+Frontend targeted builds:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/lending-next build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap build
+```
+
+Results:
+
+- `@naviprotocol/astros` build passed.
+- `@naviprotocol/astros-aggregator` build passed.
+- `@naviprotocol/swap` build passed.
+- `@naviprotocol/lending-next` build failed during Turbopack production build. TypeScript passed first, then browser build failed on frontend third-party protocol SDKs that still import v1-era Sui exports from `@mysten/sui@2.17.0`: `SuiClient`, `getFullnodeUrl`, `fromB64`, `fromHEX`, plus `@mysten/sui/graphql/schemas/latest`. Import traces go through `packages/copilot-store/src/protocols/*` into Cetus, Magma, Scallop, and Haedal paths. Google Fonts network fetch also failed, but the Sui export errors are the material SDK-2 dependency blocker.
+
+Bridge frontend bundle evidence:
+
+```bash
+rg -l "@mayanfinance|mayanfinance/swap-sdk|createSwapFromSuiMoveCalls|fetchQuote" apps/astros/.next apps/astros-aggregator/.next -g "*.js" -g "*.mjs"
+node - <<'NODE'
+const fs=require('fs');
+for (const app of ['apps/astros','apps/astros-aggregator']) {
+  const manifest=JSON.parse(fs.readFileSync(`${app}/.next/build-manifest.json`, 'utf8'));
+  const target='static/chunks/0wsyr15w2751s.js';
+  const routes=[];
+  for (const [route, files] of Object.entries(manifest.pages||{})) {
+    if (files.includes(target)) routes.push(route);
+  }
+  console.log(app, routes.join(', ') || '(no direct page manifest route)');
+}
+NODE
+```
+
+Result: Mayan SDK symbols appear in `static/chunks/0wsyr15w2751s.js` for both built apps. That chunk is not directly listed under any page entry in `build-manifest.json`, which supports the SDK lazy chunk direction. This is not yet a full browser multi-route smoke; `apps/lending` build remains blocked before the full target app chunk inspection can be completed.
+
+Updated blocker status:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| Clean frontend install after refreshed same-name beta tarballs not completed | Final release cannot claim `pnpm install` green from a clean state. | `pnpm install --force` detected checksum change and began full resolution, then was terminated due optional package registry retries. Store overwrite from tarball was used only for type/build verification. | Release/FE owner to run clean install with a stable registry/cache or publish unique beta versions instead of overwriting same-name tarballs. |
+| `apps/lending` build blocked by frontend third-party protocol SDKs under Sui v2 | Prevents full frontend build acceptance and authorized wallet smoke for lending/copilot routes. | Turbopack import traces show Cetus/Magma/Scallop/Haedal packages importing old `@mysten/sui/client` exports and old BCS helpers under `@mysten/sui@2.17.0`. | Frontend/open-api/protocol owner to isolate these protocols behind lazy/legacy boundaries, pin compatible versions, or disable affected copilot protocol imports for the SDK v2 frontend build gate. |
+| Full Bridge multi-route browser smoke not completed | Bridge final checklist requires more than SDK root lazy unit test. | SDK root lazy test passed; astros builds passed; Mayan symbols were found only in an isolated static chunk not directly mapped to page entries. No browser route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, bridge pair routes after target app build blocker is resolved. |
+| Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK and targeted frontend type/build evidence exists; real sign/execute was intentionally not attempted while `apps/lending` build is blocked. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
