@@ -520,3 +520,124 @@ Updated blocker status:
 | `apps/lending` build blocked by frontend third-party protocol SDKs under Sui v2 | Prevents full frontend build acceptance and authorized wallet smoke for lending/copilot routes. | Turbopack import traces show Cetus/Magma/Scallop/Haedal packages importing old `@mysten/sui/client` exports and old BCS helpers under `@mysten/sui@2.17.0`. | Frontend/open-api/protocol owner to isolate these protocols behind lazy/legacy boundaries, pin compatible versions, or disable affected copilot protocol imports for the SDK v2 frontend build gate. |
 | Full Bridge multi-route browser smoke not completed | Bridge final checklist requires more than SDK root lazy unit test. | SDK root lazy test passed; astros builds passed; Mayan symbols were found only in an isolated static chunk not directly mapped to page entries. No browser route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, bridge pair routes after target app build blocker is resolved. |
 | Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK and targeted frontend type/build evidence exists; real sign/execute was intentionally not attempted while `apps/lending` build is blocked. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
+
+## 2026-06-03 ESM-only and Frontend Tarball Recheck
+
+Additional commits:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `f9fd38c` | `fix` | Switched SDK v2 packages to ESM-only package exports/build output and replaced wallet/aggregator public transaction returns with NAVI DTOs. |
+| `d71d5ff` | `test` | Added wallet-client public transaction result type-compat coverage against built declarations. |
+
+SDK verification rerun on Node 22:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test:types
+```
+
+Results:
+
+- Five SDK package typechecks passed.
+- Five SDK package builds passed and produced ESM artifacts only: `dist/index.esm.js` plus package-specific lazy chunks. No `*.cjs.js` artifacts were present after build.
+- Five SDK default package tests passed: lending `38 passed / 51 skipped`, wallet-client `1 passed / 25 skipped`, aggregator `2 passed / 1 skipped`, bridge `2 passed`, DCA `2 passed`.
+- Type-compat gates passed for lending, aggregator, and wallet-client. The wallet-client gate proves public module methods return `NaviWalletTransactionResult` DTOs and are not assignable to raw JSON-RPC response types.
+- Public declaration scan found no `SuiTransactionBlockResponse`, `DryRunTransactionBlockResponse`, `TransactionBlock`, `@mysten/sui.js`, `index.cjs`, or package `require` export.
+
+ESM-only package changes:
+
+- Five SDK v2 packages now set `type: "module"`.
+- Package `exports["."]` exposes `types` and `import` only; `require` was removed.
+- Shared Vite library config now builds only `formats: ["es"]`.
+- Package-local ESLint configs were renamed from `.eslintrc.js` to `.eslintrc.cjs` so `type: "module"` does not break lint hooks.
+
+Packed ESM tarballs:
+
+```bash
+for pkg in packages/lending packages/wallet-client packages/astros-aggregator-sdk packages/astros-bridge-sdk packages/astros-dca-sdk; do
+  (cd "$pkg" && PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm pack --pack-destination /tmp/navi-sdk-v2-packs-esm)
+done
+```
+
+Generated:
+
+- `/tmp/navi-sdk-v2-packs-esm/naviprotocol-lending-2.0.0-beta.0.tgz`
+- `/tmp/navi-sdk-v2-packs-esm/naviprotocol-wallet-client-2.0.0-beta.0.tgz`
+- `/tmp/navi-sdk-v2-packs-esm/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz`
+- `/tmp/navi-sdk-v2-packs-esm/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz`
+- `/tmp/navi-sdk-v2-packs-esm/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz`
+
+Frontend tarball install and targeted verification used the temporary detached copilot worktree at `/tmp/copilot-sdk-v2-acceptance`; the real copilot worktree was not modified.
+
+Frontend install:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --offline --ignore-scripts
+```
+
+Result: install passed against `/tmp/navi-sdk-v2-packs-esm` tarballs. The install still reports existing frontend peer/dependency conflicts, including Sui v1/v2 conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy interface-console paths.
+
+Frontend targeted typecheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending-next typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-migrate typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-store typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/utils build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/storybook build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap typecheck
+```
+
+Result: targeted typecheck passed.
+
+Frontend targeted builds:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/lending-next build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap build
+```
+
+Results:
+
+- `@naviprotocol/astros` build passed after one retry. The first run reached static page generation and failed on `https://vault-api.volosui.com/api/v1/vaults?protocol=astros` with `ECONNRESET`; retry passed.
+- `@naviprotocol/astros-aggregator` build passed.
+- `@naviprotocol/swap` build passed.
+- `@naviprotocol/lending-next` build failed during Turbopack production build after TypeScript passed. The blocking errors are still frontend third-party protocol SDKs importing exports removed from Sui SDK v2: `SuiClient`, `getFullnodeUrl`, `fromB64`, `fromHEX`, and `@mysten/sui/graphql/schemas/latest`. Import traces go through `packages/copilot-store/src/protocols/*` into Cetus, Magma, Scallop, and Haedal paths. Google Fonts network fetch also failed, but the Sui export errors are the material blocker.
+
+Bridge frontend bundle evidence after ESM tarballs:
+
+```bash
+rg -l "@mayanfinance|mayanfinance/swap-sdk|createSwapFromSuiMoveCalls|fetchQuote" apps/astros/.next apps/astros-aggregator/.next -g "*.js" -g "*.mjs"
+```
+
+Result: Mayan SDK symbols appear only in `static/chunks/0wsyr15w2751s.js` for both `apps/astros` and `apps/astros-aggregator`. A `build-manifest.json` scan found no direct page manifest entries for that chunk.
+
+Updated blocker status:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| `apps/lending` build blocked by frontend third-party protocol SDKs under Sui v2 | Prevents full frontend build acceptance and authorized wallet smoke for lending/copilot routes. | ESM tarball install and typecheck passed, then Turbopack failed on Cetus/Magma/Scallop/Haedal packages importing old `@mysten/sui/client` exports and old BCS helpers under `@mysten/sui@2.17.0`. | Frontend/open-api/protocol owner to isolate these protocols behind lazy/legacy boundaries, pin compatible versions, or disable affected copilot protocol imports for the SDK v2 frontend build gate. |
+| Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final frontend acceptance cannot be claimed even though SDK v2 tarballs install. | `pnpm install --offline --ignore-scripts` completed but reported Sui v1/v2 peer conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy `apps/interface-console` paths. | Frontend owner to remove or isolate legacy protocol SDKs from main v2 app paths. SDK owner can only keep SDK root packages v2-only/lazy. |
+| Full Bridge multi-route browser smoke not completed | Bridge final checklist requires route-level runtime evidence, not only SDK root lazy unit and build-manifest evidence. | SDK root lazy test passed; `astros` and `astros-aggregator` builds passed; Mayan symbols are isolated to a non-page-manifest static chunk. No browser route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, and bridge pair routes after final frontend target build is unblocked. |
+| Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK gates and targeted frontend type/build evidence exist; real sign/execute was not attempted while `apps/lending` build is blocked. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
