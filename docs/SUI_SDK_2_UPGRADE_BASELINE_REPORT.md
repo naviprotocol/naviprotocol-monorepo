@@ -928,3 +928,43 @@ Updated blocker status:
 | Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final acceptance cannot claim a clean v2 dependency graph. | Latest `pnpm install --ignore-scripts` passed but reported conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy `apps/interface-console` paths. | Frontend owner to remove or isolate legacy Sui v1 protocol/wallet paths from v2 acceptance targets. |
 | Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, and wallet-wrapper business acceptance remains incomplete. | Deterministic SDK tests, frontend targeted typecheck/build, chunk scan, and HTTP smoke evidence exist; real sign/execute was not attempted while frontend build and dependency graph are blocked. | Run with authorized test wallet and small amounts after frontend target routes can build and load without v1/v2 dependency conflicts. |
 | Live SDK smoke is not deterministic with current public fixtures/RPC | Prevents using existing `NAVI_LIVE_TESTS=1` suite as a stable green release gate. | Earlier live smoke attempts hit RPC resets, DNS failure, chain-state fixture failures, EMode registry lookup failure, and reward timeout. | Provide controlled RPC and funded/owned golden-wallet fixtures or accept these as external live-smoke blockers for beta. |
+
+## 2026-06-03 Wallet Suilend Main-Path Isolation
+
+Additional commits in this slice are split by change type:
+
+| Type | Summary |
+| --- | --- |
+| `fix` | Move `@suilend/sdk` and `@suilend/sui-fe` out of `wallet-client` production dependencies, keep them as dev-only build inputs and optional peers, and gate the legacy Suilend adapter behind `configs.lending.enableSuilend`. |
+| `test` | Add a wallet-client protocol registry test proving default initialization only registers NAVI and does not auto-load the legacy Suilend adapter. Extend `test:sdk-v2-boundaries` to fail if wallet-client reintroduces Suilend as a production dependency. |
+| `docs` | Document the optional legacy Suilend adapter and its v2 dependency risk in the wallet-client README. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --ignore-scripts
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/wallet-client --prod
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @suilend/sdk --filter @naviprotocol/wallet-client --prod
+```
+
+Results:
+
+- Wallet-client tests passed: `2 passed / 25 skipped`. The new default protocol registry test passed and proves Suilend is not auto-loaded unless explicitly enabled.
+- Wallet-client typecheck, build, and type-compat tests passed.
+- SDK v2 boundary scan passed and now enforces that `wallet-client` cannot reintroduce `@suilend/sdk` / `@suilend/sui-fe` as production dependencies.
+- `pnpm why @mysten/sui.js --filter @naviprotocol/wallet-client --prod` produced no dependency path.
+- `pnpm why @suilend/sdk --filter @naviprotocol/wallet-client --prod` produced no dependency path.
+- `pnpm pack` for `packages/wallet-client` produced `/tmp/navi-wallet-client-suilend-check/naviprotocol-wallet-client-2.0.0-beta.0.tgz`; the packed `package.json` production `dependencies` contain NAVI lending/aggregator, axios, bignumber.js, date-fns, mitt, and shio-sdk only. Suilend packages appear only as optional peers.
+
+Updated SDK-side conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| `@mysten/sui.js` absent from SDK v2 main path | Passed for wallet-client production path | Suilend is no longer a production dependency; `pnpm why --prod` has no `@mysten/sui.js` path for wallet-client. |
+| Suilend wrapper smoke | Blocked / legacy optional | Suilend auto-init is disabled by default because the available stack still has Sui v1 peer/import risk. Users must explicitly install optional peers and set `configs.lending.enableSuilend=true`. |
+| Frontend dependency conflict check | Still blocked outside SDK package | Copilot still has separate third-party Sui v1/v2 conflicts under `packages/copilot-store` and legacy app paths, independent of wallet-client's default production dependency graph. |

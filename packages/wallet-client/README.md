@@ -73,6 +73,33 @@ Provides Volo staking protocol functionality, allowing users to stake SUI tokens
 npm install @naviprotocol/wallet-client
 ```
 
+## Sui SDK v2 Notes
+
+`@naviprotocol/wallet-client@2` defaults to the Sui SDK v2 main path. The legacy
+Suilend adapter is not installed or initialized by default because its current
+runtime stack still pulls Sui v1-era dependencies. If you need the legacy
+cross-protocol Suilend migration path, install the optional peers explicitly and
+enable it in the lending module config:
+
+```bash
+npm install @suilend/sdk@1.1.75 @suilend/sui-fe@0.3.20
+```
+
+```ts
+const walletClient = new WalletClient({
+  signer,
+  client: { url: getJsonRpcFullnodeUrl('mainnet') },
+  configs: {
+    lending: {
+      enableSuilend: true
+    }
+  }
+})
+```
+
+This optional path remains a legacy compatibility adapter until a verified
+Suilend v2-safe stack is available.
+
 ## Quick Start
 
 ```ts
