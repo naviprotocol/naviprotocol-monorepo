@@ -685,3 +685,52 @@ Current stop-condition status:
 | No unacceptable Sui v1/v2 dependency conflict in frontend | Blocked | Frontend install still reports Sui v1/v2 conflicts in app/store/protocol paths outside SDK ownership. |
 | Authorized wallet business smoke | Blocked | Not run because the target frontend route build remains blocked. Requires frontend protocol dependency resolution before safe route-level wallet smoke. |
 | Bridge multi-route browser smoke | Blocked | SDK root lazy test and bundle chunk evidence passed, but route-level browser smoke remains blocked until frontend target build is clean. |
+
+## 2026-06-03 SDK Boundary Regression Scan
+
+Additional commits:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `a09fc26` | `fix` | Removed CommonJS `require("os")` from lending root ESM bundle and moved Bridge `WalletConnection` public type out of the internal Mayan provider. |
+| `bf51564` | `test` | Added `pnpm test:sdk-v2-boundaries` to scan SDK v2 public declarations, package exports, root bundles, and Bridge Mayan lazy artifact placement. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Lending tests passed: `39 passed / 51 skipped`; the new UA test verifies the user-agent helper no longer depends on CommonJS `require`.
+- Lending build passed and `dist/index.esm.js` no longer contains `require()`.
+- Bridge build and tests passed: `2 passed`; root `dist/index.d.ts` now imports `WalletConnection` from `./types`, not `./providers/mayan`.
+- SDK v2 boundary scan passed. The scan checks all five SDK v2 package exports are ESM-only, public declarations do not contain `@mysten/sui.js`, old `TransactionBlock`, or raw v1 response types, root ESM bundles do not contain `require()`, and Mayan appears only in Bridge lazy provider/chunk artifacts.
+
+Live smoke attempt:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 pnpm --filter @naviprotocol/lending test -- tests/oracle.test.ts tests/pool.test.ts tests/account.test.ts --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 pnpm exec vitest --config ./vite.config.unit.js tests/oracle.test.ts --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 pnpm exec vitest --config ./vite.config.unit.js tests/pool.test.ts --run -t "getPools|getStats|getFees|depositCoinPTB|withdrawCoinPTB|borrowCoinPTB|getBorrowFee"
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 pnpm exec vitest --config ./vite.config.unit.js tests/account.test.ts --run -t "getLendingState|getHealthFactor|getTransactions|getCoins"
+```
+
+Result: not accepted as green evidence. The broad run produced `79 passed / 10 failed`; failures were a mix of network instability (`ECONNRESET`, `ENOTFOUND fullnode.mainnet.sui.io`), chain-state-sensitive wallet fixtures (`repay`, insufficient balance), EMode registry lookup failures, and one claimed reward timeout. Narrow reruns still hit Sui RPC / NAVI API network errors. These attempts are useful blocker evidence but do not satisfy the funded wallet / live business smoke checklist.
+
+Updated blocker status:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| Live SDK smoke is not deterministic with current public fixtures/RPC | Prevents claiming live lending/Pyth dry-run coverage as a stable gate. | `NAVI_LIVE_TESTS=1` lending smoke produced RPC resets, DNS failure, fixture balance failures, EMode registry lookup failures, and claimed reward timeout. | Add stable live-smoke fixtures with retryable RPC, funded/owned golden wallet state, and explicit skip/blocker semantics; or run against a controlled RPC and authorized wallet. |
+| `apps/lending` build blocked by frontend third-party protocol SDKs under Sui v2 | Prevents full frontend build acceptance and authorized wallet smoke for lending/copilot routes. | ESM tarball install and typecheck passed, then Turbopack failed on Cetus/Magma/Scallop/Haedal packages importing old `@mysten/sui/client` exports and old BCS helpers under `@mysten/sui@2.17.0`. | Frontend/open-api/protocol owner to isolate these protocols behind lazy/legacy boundaries, pin compatible versions, or disable affected copilot protocol imports for the SDK v2 frontend build gate. |
+| Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final frontend acceptance cannot be claimed even though SDK v2 tarballs install. | `pnpm install --offline --ignore-scripts` completed but reported Sui v1/v2 peer conflicts in `apps/lending`, `packages/copilot-migrate`, `packages/copilot-store`, and legacy `apps/interface-console` paths. | Frontend owner to remove or isolate legacy protocol SDKs from main v2 app paths. |
+| Full Bridge multi-route browser smoke not completed | Bridge final checklist requires route-level runtime evidence, not only SDK root lazy unit and build-manifest evidence. | SDK root lazy test, SDK boundary scan, and frontend bundle chunk scan passed; no browser multi-route smoke or wallet execute was run. | Run browser smoke across root, swap, bridge list, and bridge pair routes after final frontend target build is unblocked. |
+| Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, wallet wrapper business acceptance remains incomplete. | Deterministic SDK gates and targeted frontend type/build evidence exist; real sign/execute was not attempted while `apps/lending` build is blocked and live smoke fixtures are unstable. | Run with authorized test wallet and small amounts once frontend build can load target routes without third-party Sui v1/v2 conflicts. |
