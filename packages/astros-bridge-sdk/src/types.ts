@@ -219,6 +219,8 @@ export type BridgeSwapTransaction = {
 
 export type SuiWalletConnection = {
   provider: SuiJsonRpcClient
+  rpcUrl?: string
+  gasBudget?: number
   signTransaction: (data: { transaction: Transaction }) => Promise<{
     bytes: string
     signature: string

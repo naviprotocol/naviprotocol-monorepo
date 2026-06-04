@@ -8,6 +8,10 @@ import {
   Erc20Permit,
   addresses
 } from '@mayanfinance/swap-sdk'
+import {
+  SuiClient as LegacySuiClient,
+  getFullnodeUrl as getLegacyFullnodeUrl
+} from '@mysten/sui-v1/client'
 import { BridgeSwapQuote, WalletConnection } from '../types'
 import { Transaction } from '@mysten/sui/transactions'
 import { Connection, SendOptions } from '@solana/web3.js'
@@ -22,6 +26,26 @@ const ERC20_ABI = [
 enum BridgeChain {
   SUI = 1999,
   SOLANA = 0
+}
+
+const DEFAULT_SUI_BRIDGE_GAS_BUDGET = 100_000_000
+
+function getLegacySuiRpcUrl(walletConnection: NonNullable<WalletConnection['sui']>) {
+  if (walletConnection.rpcUrl) {
+    return walletConnection.rpcUrl
+  }
+
+  const network = walletConnection.provider.network
+  switch (network) {
+    case 'mainnet':
+      return getLegacyFullnodeUrl('mainnet')
+    case 'testnet':
+      return getLegacyFullnodeUrl('testnet')
+    case 'devnet':
+      return getLegacyFullnodeUrl('devnet')
+    default:
+      return getLegacyFullnodeUrl('mainnet')
+  }
 }
 
 /**
@@ -53,20 +77,27 @@ export async function swap(
     if (!walletConnection.sui) {
       throw new Error('Sui wallet connection not found')
     }
-    const client = walletConnection.sui.provider
-    const swapTrx = await createSwapFromSuiMoveCalls(
+    const connection = walletConnection.sui
+    const client = connection.provider
+    const legacyClient = new LegacySuiClient({
+      url: getLegacySuiRpcUrl(connection)
+    })
+    const legacySwapTrx = await createSwapFromSuiMoveCalls(
       mayanQuote,
       fromAddress,
       toAddress,
       referrerAddresses,
       null,
-      client as any
+      legacyClient as any
     )
-    const connection = walletConnection.sui
+    legacySwapTrx.setSenderIfNotSet(fromAddress)
+    legacySwapTrx.setGasBudget(connection.gasBudget ?? DEFAULT_SUI_BRIDGE_GAS_BUDGET)
+    const legacyBytes = await legacySwapTrx.build({ client: legacyClient as any })
+    const swapTrx = Transaction.from(legacyBytes)
     const signed: {
       bytes: string
       signature: string
-    } = await connection.signTransaction({ transaction: swapTrx as unknown as Transaction })
+    } = await connection.signTransaction({ transaction: swapTrx })
     const resp = await client.executeTransactionBlock({
       transactionBlock: signed.bytes,
       signature: [signed.signature],
