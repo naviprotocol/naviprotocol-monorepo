@@ -1169,3 +1169,126 @@ Updated blocker status:
 | --- | --- | --- | --- |
 | Latest Copilot tarball install could not complete due registry network failures | Prevents producing a fresh frontend install/typecheck/build result for `/tmp/navi-sdk-v2-packs-20260603202116` in this pass. | Two `pnpm add -w ... --ignore-scripts` attempts failed on npm registry `ECONNRESET` / `ERR_SOCKET_TIMEOUT` for Solana/Reown dependency metadata under Copilot `packages/uikit`. | Retry when registry/network is stable or use a warmed pnpm store/internal registry mirror. |
 | Full frontend acceptance remains blocked by previously recorded app/dependency issues | Final checklist still cannot be marked complete. | Earlier latest successful tarball install (`/tmp/navi-sdk-v2-packs-20260603195445`) showed SDK consumer install/typecheck progress but `apps/lending` build and dependency tree remained blocked by frontend third-party Sui v1/v2 conflicts. | Frontend/protocol owner to isolate or upgrade Copilot third-party protocol paths, then rerun tarball install/typecheck/build and authorized wallet smokes. |
+
+## 2026-06-04 Latest Tarball Frontend Acceptance Recheck
+
+This pass reran Copilot consumer acceptance against the latest tarballs:
+
+```text
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-lending-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-wallet-client-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz
+/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz
+```
+
+Frontend acceptance still used the temporary detached Copilot worktree at `/tmp/copilot-sdk-v2-acceptance`; the real `copilot` worktree was not modified.
+
+Install verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm add -w @naviprotocol/lending@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-lending-2.0.0-beta.0.tgz @naviprotocol/wallet-client@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-wallet-client-2.0.0-beta.0.tgz @naviprotocol/astros-aggregator-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz @naviprotocol/astros-bridge-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz @naviprotocol/astros-dca-sdk@file:/tmp/navi-sdk-v2-packs-20260603202116/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz --ignore-scripts
+```
+
+Result: install passed after the earlier registry failures. The install still prints frontend-owned Sui v1/v2 peer warnings, but the installed NAVI SDK tarballs are the latest `2.0.0-beta.0` package set.
+
+Targeted frontend typecheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending-next typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-migrate typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-store typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap typecheck
+```
+
+Result: all targeted typechecks passed.
+
+Targeted frontend builds:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/lending-next build
+```
+
+Results:
+
+- `@naviprotocol/swap` build passed.
+- `@naviprotocol/astros` build passed after rerunning outside the sandbox because Turbopack needed local port binding during production build.
+- `@naviprotocol/astros-aggregator` build passed after rerunning outside the sandbox.
+- `@naviprotocol/lending-next` build failed during Turbopack production build after TypeScript passed. The material failures are still frontend third-party protocol SDKs importing Sui v1-era exports under `@mysten/sui@2.17.0`: `SuiClient`, `getFullnodeUrl`, `fromB64`, `fromHEX`, and `@mysten/sui/graphql/schemas/latest`. Import traces go through `packages/copilot-store/src/protocols/*` into Cetus, Magma, Scallop, Firefly, and Haedal paths.
+
+Dependency tree recheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/lending --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/wallet-client --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-bridge-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-aggregator-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-dca-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @suilend/sdk --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/astros
+```
+
+Results:
+
+- `@naviprotocol/lending-next` consumes `@naviprotocol/lending@2.0.0-beta.0` directly and through Copilot/store/wallet-client paths.
+- `@naviprotocol/copilot-migrate` consumes `@naviprotocol/wallet-client@2.0.0-beta.0`.
+- `@naviprotocol/astros` consumes `@naviprotocol/astros-bridge-sdk@2.0.0-beta.0`, `@naviprotocol/astros-aggregator-sdk@2.0.0-beta.0`, and `@naviprotocol/astros-dca-sdk@2.0.0-beta.0`.
+- Remaining `@mysten/sui.js@0.54.1` paths in `@naviprotocol/lending-next` are from `@msafe/*`, `packages/copilot-store`, AlphaFi/7K/FlowX, Suilend/FlowX, and Haedal farm SDK.
+- Remaining `@suilend/sdk` paths in `@naviprotocol/lending-next` are from `@msafe/sui-app-store` and `packages/copilot-store`; they no longer come from `@naviprotocol/wallet-client`.
+- Remaining `@mysten/sui.js@0.54.1` paths in `@naviprotocol/astros` are through workspace `packages/swap-core -> @msafe/sui-wallet`, not the SDK v2 tarballs.
+
+Bridge frontend lazy evidence used stronger adapter signatures to avoid treating UI text as SDK-load evidence:
+
+```bash
+rg -n "createSwapFromSuiMoveCalls|MAYAN_FORWARDER_CONTRACT|swapFromSolana|swapFromEvm|@mayanfinance/swap-sdk|fromSuiMoveCalls" apps/astros/.next/static
+rg -n "createSwapFromSuiMoveCalls|MAYAN_FORWARDER_CONTRACT|swapFromSolana|swapFromEvm|@mayanfinance/swap-sdk|fromSuiMoveCalls" apps/astros-aggregator/.next/static
+node -e 'const fs=require("fs"); const path=require("path"); const apps=["apps/astros","apps/astros-aggregator"]; const sigs=["createSwapFromSuiMoveCalls","MAYAN_FORWARDER_CONTRACT","swapFromSolana","swapFromEvm","@mayanfinance/swap-sdk","fromSuiMoveCalls"]; for (const app of apps){ const manifest=JSON.parse(fs.readFileSync(path.join(app,".next/build-manifest.json"),"utf8")); const pages=manifest.pages||{}; const interesting=Object.keys(pages).filter(p=>p==="/"||p.includes("swap")||p.includes("bridge")||p.includes("dca")||p.includes("[[...")||p.includes("[...")); console.log(`APP ${app}`); for (const page of interesting.sort()){ const files=pages[page]||[]; const hits=[]; for (const f of files){ const full=path.join(app,".next",f); if (!fs.existsSync(full)) continue; const text=fs.readFileSync(full,"utf8"); for (const sig of sigs) if (text.includes(sig)) hits.push(`${sig} in ${f}`); } console.log(`${page}: files=${files.length} strongHits=${hits.length}${hits.length?" "+hits.join("; "):""}`); } }'
+```
+
+Results:
+
+- Strong adapter signature scan produced no hits in `apps/astros/.next/static` or `apps/astros-aggregator/.next/static`.
+- `build-manifest.json` page-entry scan found `strongHits=0` for `/`, `/swap/[pair]`, `/widget/swap`, `/bridge/[chains]`, `/bridge/[chains]/[pair]`, and `/dca/[pair]` in both apps.
+- This is stronger than the previous broad Mayan text scan: it supports that root and route page entries do not load the Mayan Sui v1 adapter signatures after the latest tarball build.
+
+Bridge / route HTTP smoke:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros exec next start -p 4010
+node -e 'const routes=["/","/swap/SUI-USDC","/bridge/sui-solana","/bridge/sui-solana/SUI-SOL","/dca/SUI-USDC"]; (async()=>{for(const r of routes){const res=await fetch("http://localhost:4010"+r,{redirect:"manual"}); const text=await res.text(); console.log(`${r} status=${res.status} location=${res.headers.get("location")||""} bytes=${text.length}`);}})()'
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator exec next start -p 4011
+node -e 'const routes=["/","/swap/SUI-USDC","/bridge/sui-solana","/bridge/sui-solana/SUI-SOL","/dca/SUI-USDC"]; (async()=>{for(const r of routes){const res=await fetch("http://localhost:4011"+r,{redirect:"manual"}); const text=await res.text(); console.log(`${r} status=${res.status} location=${res.headers.get("location")||""} bytes=${text.length}`);}})()'
+```
+
+Results:
+
+- `apps/astros`: `/` returned `307` to `/perp/SUI-USD`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+- `apps/astros-aggregator`: `/` returned `307` to `/swap/SUI-NAVX`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+- The local `next start` sessions were stopped after the smoke requests.
+- This satisfies built-app HTTP route smoke for Astros and Aggregator consumers. It does not satisfy authorized wallet sign/execute/status smoke.
+
+Current acceptance conclusion after this recheck:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Latest SDK v2 tarballs can be installed by Copilot | Passed with warnings | Latest `pnpm add -w ... --ignore-scripts` passed in `/tmp/copilot-sdk-v2-acceptance`; peer warnings still expose frontend-owned Sui v1/v2 conflicts. |
+| Targeted frontend typecheck | Passed | lending-next, astros, astros-aggregator, copilot-migrate, copilot-store, and swap typechecks passed. |
+| Targeted frontend build | Partially passed | swap, astros, and astros-aggregator passed; lending-next remains blocked by frontend third-party Sui v1/v2 protocol SDK imports. |
+| Bridge root/lazy/frontend route smoke | Passed for deterministic and HTTP route gates | SDK boundary/lazy tests already pass; latest strong-signature chunk scan and multi-route HTTP smoke passed for astros and astros-aggregator. |
+| No unacceptable frontend Sui v1/v2 dependency conflict | Blocked outside SDK package ownership | Remaining paths are MSafe, Copilot protocol store, swap-core, and third-party protocol SDKs, not latest NAVI SDK tarballs. |
+| Authorized wallet business smoke | Blocked | Not run because full frontend acceptance remains blocked by `apps/lending` build/dependency conflicts and live SDK smoke fixtures/RPC remain unstable. |
+
+Updated blocker status:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| `apps/lending` production build is blocked by frontend third-party protocol SDKs under Sui v2 | Prevents full frontend build acceptance and route-level lending/copilot wallet smoke. | Latest tarball install and typecheck passed, then Turbopack failed on Cetus/Magma/Scallop/Firefly/Haedal packages importing old Sui v1-era exports under `@mysten/sui@2.17.0`. | Frontend/open-api/protocol owner to isolate or upgrade affected protocol SDKs, pin compatible versions, or disable affected Copilot protocol imports for the SDK v2 frontend gate. |
+| Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final acceptance cannot claim a clean v2 dependency graph. | Latest dependency tree still has `@mysten/sui.js@0.54.1` through MSafe, Copilot store protocol SDKs, swap-core, and related third-party packages. | Frontend owner to remove or isolate legacy Sui v1 protocol/wallet paths from v2 acceptance targets. |
+| Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, and wallet-wrapper business acceptance remains incomplete. | Deterministic SDK tests, latest frontend typechecks/builds, strong-signature chunk scan, and HTTP smoke evidence exist; real sign/execute was not attempted while frontend build and dependency graph are blocked. | Run with authorized test wallet and small amounts after frontend target routes can build and load without v1/v2 dependency conflicts. |
+| Live SDK smoke is not deterministic with current public fixtures/RPC | Prevents using existing `NAVI_LIVE_TESTS=1` suite as a stable green release gate. | Earlier live smoke attempts hit RPC resets, DNS failure, chain-state fixture failures, EMode registry lookup failure, and reward timeout. | Provide controlled RPC and funded/owned golden-wallet fixtures or accept these as external live-smoke blockers for beta. |
