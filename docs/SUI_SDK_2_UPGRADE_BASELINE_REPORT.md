@@ -1438,3 +1438,73 @@ Updated acceptance status:
 | DCA minimal PTB / simulate smoke | Passed for live SDK dry-run | SUI -> USDC create order PTB dry-run succeeded against live Sui RPC. |
 | Bridge live execute/status | Still blocked / not rerun in this pass | SDK deterministic Mayan adapter sign/execute unit coverage and frontend lazy/route smoke exist, but current live Bridge execute/status was not rerun. |
 | Frontend full acceptance | Still blocked outside SDK ownership | `apps/lending` production build and frontend dependency tree remain blocked by Copilot/MSafe/third-party Sui v1 paths recorded above. |
+
+## 2026-06-04 Bridge Mayan v2 Packaging And Live Dry-Run Recheck
+
+Bridge package update:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk why @mysten/sui
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm view @mayanfinance/swap-sdk@14.2.0 dependencies peerDependencies --json
+```
+
+Findings:
+
+- `@mayanfinance/swap-sdk@13.3.0` depends on `@mysten/sui@1.38.0`; latest published `@mayanfinance/swap-sdk@14.2.0` still declares `@mysten/sui: ^1.34.0`.
+- Because the shared NAVI Vite library config externalizes package dependencies, publishing Bridge SDK with Mayan external would still let consumers install Mayan's Sui v1 copy.
+- `packages/astros-bridge-sdk/vite.config.js` now bundles `@mayanfinance/swap-sdk` into the Bridge lazy chunk while keeping `@mysten/sui/*` as peer external.
+- `packages/astros-bridge-sdk/tests/build-config.test.ts` locks this build boundary so Mayan is bundled and Sui remains external.
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk exec tsc --noEmit
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+rg "@mayanfinance/swap-sdk|@mysten/sui" packages/astros-bridge-sdk/dist/index.esm.js packages/astros-bridge-sdk/dist/mayan-*.js
+```
+
+Results:
+
+- Bridge tests passed: `5 files passed / 6 tests passed`.
+- Bridge build passed and emitted `dist/index.esm.js` plus `dist/mayan-BVHuziOT.js`.
+- Bridge typecheck passed.
+- SDK v2 boundary scan passed.
+- Dist scan found no `@mayanfinance/swap-sdk` import in root or lazy output; the lazy Mayan chunk imports only `@mysten/sui/transactions` and `@mysten/sui/utils` as peer externals.
+
+Bridge live dry-run attempts:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=|^FE_E2E_BNB_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk exec node --input-type=module - <<'NODE'
+// SUI -> Arbitrum native USDC, 1.3 SUI, SDK getQuote -> SDK swap() -> v2 wallet signTransaction hook -> transaction.build({ client })
+NODE
+
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=|^FE_E2E_SOL_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk exec node --input-type=module - <<'NODE'
+// SUI -> Solana native USDC, 1.3 SUI, SDK getQuote -> SDK swap() -> v2 wallet signTransaction hook -> transaction.build({ client })
+NODE
+```
+
+Results:
+
+- SUI -> Arbitrum USDC quote returned one Mayan MCTP route. After the packaging change, the wallet hook received a v2 `Transaction`, proving the previous Mayan Sui v1 BCS crash is removed. The v2 transaction build then failed with `Transaction resolution failed: CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 9`.
+- SUI -> Solana native USDC quote returned one Mayan MCTP route and failed with the same class of v2 resolver error: `CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 11`.
+- Transaction JSON inspection showed Mayan's Sui-source route constructs `MakeMoveVec` elements from earlier swap command `Result` values where the referenced Move calls do not provide values under the v2 resolver. This is upstream Mayan Sui route-builder behavior, not an SDK root/lazy packaging issue.
+- No Bridge transaction was signed or executed in these attempts.
+
+Updated Bridge conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Bridge root does not load Mayan/Sui v1 | Passed | Root lazy unit test, SDK boundary scan, frontend strong-signature scans, and HTTP route smoke already pass. |
+| Bridge published SDK avoids Mayan transitive Sui v1 at runtime | Improved / passed for NAVI bundle output | Bridge now bundles Mayan into the lazy chunk and leaves `@mysten/sui/*` as peer external; dist scan confirms no external Mayan import remains. |
+| Bridge v2 wallet adapter contract | Passed deterministically | Unit coverage confirms SDK `swap()` path calls Mayan, receives a v2 transaction in the wallet `signTransaction` contract, executes through v2 `executeTransactionBlock`, and waits for the digest. |
+| Bridge live v2 build/dry-run/execute/status | Blocked by Mayan upstream route builder | Live SUI-source MCTP routes to both Arbitrum and Solana fail during v2 `transaction.build({ client })` with `ArgumentWithoutValue`, before signing or execution. |
+
+Updated blocker:
+
+| Blocker | Impact | Evidence | Needed decision / owner |
+| --- | --- | --- | --- |
+| Mayan Sui-source MCTP route builder is not v2-resolver compatible | Prevents Bridge live dry-run, execute, and status acceptance for SUI-source Bridge routes in SDK v2 beta. | Latest Mayan package still depends on Sui v1; after bundling Mayan against the SDK v2 peer, both SUI -> Arbitrum USDC and SUI -> Solana USDC live routes produce invalid `Result` references and fail with `CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue }`. | Bridge/Mayan owner must provide a Sui SDK 2 compatible route builder or NAVI must replace/rewrite the Mayan Sui adapter. Until then, SDK can only ship deterministic/lazy/root packaging coverage and record live Bridge as blocked. |
