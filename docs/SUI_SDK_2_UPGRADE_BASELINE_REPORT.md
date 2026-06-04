@@ -1508,3 +1508,83 @@ Updated blocker:
 | Blocker | Impact | Evidence | Needed decision / owner |
 | --- | --- | --- | --- |
 | Mayan Sui-source MCTP route builder is not v2-resolver compatible | Prevents Bridge live dry-run, execute, and status acceptance for SUI-source Bridge routes in SDK v2 beta. | Latest Mayan package still depends on Sui v1; after bundling Mayan against the SDK v2 peer, both SUI -> Arbitrum USDC and SUI -> Solana USDC live routes produce invalid `Result` references and fail with `CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue }`. | Bridge/Mayan owner must provide a Sui SDK 2 compatible route builder or NAVI must replace/rewrite the Mayan Sui adapter. Until then, SDK can only ship deterministic/lazy/root packaging coverage and record live Bridge as blocked. |
+
+## 2026-06-04 Bridge Runtime Dependency Cleanup And Frontend Recheck
+
+Bridge packaging follow-up:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --lockfile-only
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk why @mayanfinance/swap-sdk --dev
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk why @mysten/sui --prod
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk exec tsc --noEmit
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- `@mayanfinance/swap-sdk` moved from Bridge runtime dependencies to devDependencies. Published consumers no longer install Mayan's own Sui v1 dependency tree just by installing `@naviprotocol/astros-bridge-sdk`.
+- `pnpm why @mayanfinance/swap-sdk --dev --filter @naviprotocol/astros-bridge-sdk` shows Mayan only under devDependencies.
+- `pnpm why @mysten/sui --prod --filter @naviprotocol/astros-bridge-sdk` produced no output; Bridge's Sui dependency is peer-only for runtime consumers.
+- Bridge build, typecheck, tests, and SDK v2 boundary scan passed after the dependency move.
+
+Clean Bridge tarball:
+
+```bash
+PACK_DIR=/tmp/navi-sdk-v2-packs-202606041052-clean
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm pack --pack-destination "$PACK_DIR"
+tar -xOf "$PACK_DIR/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz" package/package.json
+```
+
+Result:
+
+- Tarball path: `/tmp/navi-sdk-v2-packs-202606041052-clean/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz`.
+- Tarball runtime dependencies are only `@solana/web3.js`, `axios`, and `ethers`.
+- Tarball peer dependencies keep `@mysten/sui: >=2.0.0`.
+- Tarball still includes `dist/mayan-BVHuziOT.js`, so Mayan runtime code is available from the Bridge lazy chunk without exposing the Mayan package as a consumer dependency.
+
+Temporary Copilot consumer recheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm add -w /tmp/navi-sdk-v2-packs-202606041052-clean/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz --ignore-scripts
+# Updated the temporary /tmp/copilot-sdk-v2-acceptance pnpm.overrides entry for @naviprotocol/astros-bridge-sdk to the same clean tarball.
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --ignore-scripts
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros-aggregator
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+```
+
+Results:
+
+- After updating the temporary Copilot override, `pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros` produced no output.
+- `pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros-aggregator` also produced no output.
+- `@naviprotocol/astros` typecheck and production build passed with the clean Bridge tarball.
+- `@naviprotocol/astros-aggregator` typecheck and production build passed with the clean Bridge tarball.
+
+Frontend Bridge bundle scan after the clean tarball:
+
+```bash
+node - <<'NODE'
+// Scanned apps/astros and apps/astros-aggregator .next/static plus build-manifest page entries for:
+// createSwapFromSuiMoveCalls, MAYAN_FORWARDER_CONTRACT, swapFromSolana, swapFromEvm, @mayanfinance/swap-sdk, fromSuiMoveCalls
+NODE
+```
+
+Results:
+
+- `apps/astros`: `staticStrongHits=0`; `/`, `/bridge/[chains]`, `/bridge/[chains]/[pair]`, `/dca/[pair]`, `/perp/[[...slug]]`, `/swap/[pair]`, and `/widget/swap` all had `strongHits=0`.
+- `apps/astros-aggregator`: `staticStrongHits=0`; `/`, `/bridge/[chains]`, `/bridge/[chains]/[pair]`, `/dca/[pair]`, `/swap/[pair]`, and `/widget/swap` all had `strongHits=0`.
+
+Updated Bridge dependency conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Bridge SDK runtime dependency tree avoids Mayan's Sui v1 dependency | Passed for clean Bridge tarball and Astros consumers | Bridge package moved Mayan to devDependency, bundles Mayan in the lazy chunk, and keeps Sui as peer-only. Clean tarball install into temporary Copilot shows no Mayan dependency path for `astros` or `astros-aggregator`. |
+| Bridge frontend type/build with clean tarball | Passed for Astros apps | `@naviprotocol/astros` and `@naviprotocol/astros-aggregator` typecheck/build passed after installing the clean Bridge tarball. |
+| Bridge root/page bundle signatures | Passed | Strong signature scan found zero hits across built static assets and key page manifest entries in both frontend apps. |
+| Bridge live execute/status | Still blocked | Mayan Sui-source route builder remains v2-resolver incompatible as recorded above; no real Bridge signature or execution was attempted. |
