@@ -1714,3 +1714,131 @@ Updated Bridge conclusion:
 | Bridge v1 builder -> v2 parse/sign/execute/status | Passed | Mayan now builds with `@mysten/sui-v1`; SDK converts bytes through v2 `Transaction.from`; Arbitrum dry-run succeeded; authorized Arbitrum execute/status completed. |
 | Bridge multi route / multi chain smoke | Passed for current SDK gate | Arbitrum dry-run/execute/status passed; Solana dry-run passed with the same consumer tarball and v2 JSON-RPC path. |
 | Remaining Bridge watch item | Not a blocker for SDK v2 beta | Solana smaller-amount quote API currently returns `500`; default 100M gas budget exceeded the current test wallet balance for 1.3 SUI. The SDK now exposes `gasBudget` so consumers can tune the legacy build path. |
+
+## 2026-06-04 Latest Full SDK Tarball Acceptance Recheck
+
+This pass refreshed all five SDK v2 packages into one tarball set after the Bridge legacy capsule fix:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending --filter @naviprotocol/wallet-client --filter @naviprotocol/astros-bridge-sdk --filter @naviprotocol/astros-aggregator-sdk --filter @naviprotocol/astros-dca-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/lending/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-bridge-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-aggregator-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/astros-dca-sdk/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- All five SDK package builds passed under Node `22.22.2`.
+- All five explicit package typechecks passed.
+- Package tests passed with known skipped live/baseline cases:
+  - lending: `10 files passed / 2 skipped`; `40 passed / 51 skipped`.
+  - wallet-client: `2 files passed / 5 skipped`; `2 passed / 25 skipped`.
+  - bridge: `5 files passed`; `6 passed`.
+  - aggregator: `1 file passed`; `4 passed / 1 skipped`.
+  - dca: `1 file passed`; `8 passed`.
+- SDK v2 boundary scan passed.
+
+Latest full tarball set:
+
+```bash
+PACK_DIR=/tmp/navi-sdk-v2-packs-202606041215-full-latest
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --dir packages/lending pack --pack-destination "$PACK_DIR"
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --dir packages/wallet-client pack --pack-destination "$PACK_DIR"
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --dir packages/astros-aggregator-sdk pack --pack-destination "$PACK_DIR"
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --dir packages/astros-bridge-sdk pack --pack-destination "$PACK_DIR"
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --dir packages/astros-dca-sdk pack --pack-destination "$PACK_DIR"
+```
+
+Tarballs:
+
+- `/tmp/navi-sdk-v2-packs-202606041215-full-latest/naviprotocol-lending-2.0.0-beta.0.tgz` (`85K`)
+- `/tmp/navi-sdk-v2-packs-202606041215-full-latest/naviprotocol-wallet-client-2.0.0-beta.0.tgz` (`56K`)
+- `/tmp/navi-sdk-v2-packs-202606041215-full-latest/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz` (`46K`)
+- `/tmp/navi-sdk-v2-packs-202606041215-full-latest/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz` (`412K`)
+- `/tmp/navi-sdk-v2-packs-202606041215-full-latest/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz` (`26K`)
+
+Temporary Copilot consumer install:
+
+```bash
+# Updated /tmp/copilot-sdk-v2-acceptance package.json dependencies and pnpm.overrides to the full-latest tarball set.
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --ignore-scripts
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/lending --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/wallet-client --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-bridge-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-aggregator-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @naviprotocol/astros-dca-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui-v1 --filter @naviprotocol/astros
+```
+
+Results:
+
+- Install passed with existing frontend peer warnings.
+- `@naviprotocol/lending-next`, `@naviprotocol/copilot-migrate`, and `@naviprotocol/astros` all resolve the NAVI SDK packages to `2.0.0-beta.0` from the latest tarball set.
+- `pnpm why @mayanfinance/swap-sdk` and `pnpm why @mysten/sui-v1` produced no output for `@naviprotocol/astros` and `@naviprotocol/astros-aggregator`.
+- Remaining `@mysten/sui.js@0.54.1` paths are still frontend-owned third-party paths: MSafe, Copilot store protocol SDKs, and swap-core. They are not introduced by the latest NAVI SDK v2 tarballs.
+
+Latest frontend targeted checks:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending-next typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-migrate typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/copilot-store typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/swap build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+```
+
+Results:
+
+- Typecheck passed for `lending-next`, `astros`, `astros-aggregator`, `copilot-migrate`, `copilot-store`, and `swap`.
+- Build passed for `swap`, `astros`, and `astros-aggregator`.
+- `apps/lending` production build was not rerun in this pass; the user explicitly took ownership of that build gate.
+
+Latest Bridge frontend chunk / route / live checks:
+
+```bash
+# Scanned apps/astros and apps/astros-aggregator .next/static plus build-manifest page entries for:
+# createSwapFromSuiMoveCalls, MAYAN_FORWARDER_CONTRACT, swapFromSolana, swapFromEvm,
+# fromSuiMoveCalls, @mayanfinance/swap-sdk, @mysten/sui-v1.
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH node <<'NODE'
+// inline .next static/build-manifest signature scan
+NODE
+
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec next start -p 4010
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec next start -p 4011
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH node <<'NODE'
+// inline route HTTP smoke
+NODE
+```
+
+Results:
+
+- `apps/astros`: `staticStrongHits=[]`, `pageManifestStrongHits=[]`.
+- `apps/astros-aggregator`: `staticStrongHits=[]`, `pageManifestStrongHits=[]`.
+- `apps/astros`: `/` returned `307` to `/perp/SUI-USD`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+- `apps/astros-aggregator`: `/` returned `307` to `/swap/SUI-NAVX`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+- Latest full tarball Bridge dry-run passed for SUI -> Arbitrum USDC: `txBytes=3747`, `status=success`, `events=12`.
+- Latest full tarball Bridge dry-run passed for SUI -> Solana USDC with `gasBudget=50000000`: `txBytes=5680`, `status=success`, `events=49`.
+- The previously executed Bridge digest `m3Q3SFNQxqDzJ5aN24CAiCGPsogAS9buyUuntkq6tbo` still returns `status=completed`, `bridgeStatus=completed`, `sourceTx=true`, `destTx=true`, `refundTx=false`.
+
+Current final acceptance delta:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Latest SDK package build/typecheck/test | Passed | All five SDK package build/typecheck/test gates and SDK boundary scan passed before packing. |
+| Latest full tarball frontend install/typecheck/build | Passed for SDK-owned and targeted Astros/swap gates | Full-latest tarball install passed; targeted typechecks passed; `swap`, `astros`, and `astros-aggregator` builds passed. |
+| Bridge internal adapter and frontend lazy gates | Passed | Dependency tree excludes Mayan/Sui-v1, chunk scan has zero strong hits, route smoke passed, Arbitrum/Solana dry-runs passed, Arbitrum execute/status completed. |
+| Frontend dependency tree completely clean of Sui v1/v2 conflicts | Still not fully clean outside SDK ownership | Remaining `@mysten/sui.js` / Sui v1-era paths are MSafe, Copilot store protocol SDKs, and swap-core paths, not latest SDK v2 tarballs. |
+| `apps/lending` production build | User-owned remaining gate | Not rerun here per user direction that they will handle `apps/lending` production build. |
