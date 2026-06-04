@@ -1588,3 +1588,129 @@ Updated Bridge dependency conclusion:
 | Bridge frontend type/build with clean tarball | Passed for Astros apps | `@naviprotocol/astros` and `@naviprotocol/astros-aggregator` typecheck/build passed after installing the clean Bridge tarball. |
 | Bridge root/page bundle signatures | Passed | Strong signature scan found zero hits across built static assets and key page manifest entries in both frontend apps. |
 | Bridge live execute/status | Still blocked | Mayan Sui-source route builder remains v2-resolver incompatible as recorded above; no real Bridge signature or execution was attempted. |
+
+## 2026-06-04 Bridge Legacy Capsule Fix And Acceptance Recheck
+
+This section supersedes the earlier `ArgumentWithoutValue` Bridge blocker recorded above.
+
+Root cause:
+
+- The technical design expected the Bridge SDK to keep Mayan on its own Sui v1 builder path, build standard transaction bytes, then parse those bytes with the consumer's Sui v2 SDK before wallet signing.
+- The previous packaging attempt bundled Mayan but still let Mayan's internal `@mysten/sui/*` imports resolve to the SDK's public Sui v2 peer. That accidentally turned Mayan into a v2 route builder.
+- Live Mayan Sui-source MCTP routes then failed during v2 transaction resolution with `ArgumentWithoutValue`, because Mayan's route builder was not written against the v2 resolver.
+- The fix restores the original design: Mayan and its legacy Sui SDK are bundled inside the Bridge lazy chunk only. Mayan internal imports are rewritten to the `@mysten/sui-v1` alias, while the Bridge SDK public/root imports keep `@mysten/sui` as the v2 peer.
+
+Implementation:
+
+- `packages/astros-bridge-sdk/package.json` adds dev-only alias `@mysten/sui-v1: npm:@mysten/sui@1.38.0`.
+- `packages/astros-bridge-sdk/vite.config.js` bundles `@mayanfinance/swap-sdk` plus `@mysten/sui-v1/*`, and rewrites only Mayan importers from `@mysten/sui/*` to `@mysten/sui-v1/*`.
+- `packages/astros-bridge-sdk/src/providers/mayan.ts` uses a legacy v1 `SuiClient` to build Mayan source bytes, then uses v2 `Transaction.from(legacyBytes)` for the wallet `signTransaction({ transaction })` contract.
+- `SuiWalletConnection` now accepts optional `rpcUrl` and `gasBudget`, so the legacy builder can use the same RPC target and route-specific gas budget without exposing v1 types.
+- Unit coverage now checks the legacy-client build path, v2 transaction handoff, execute/wait contract, and the bundler rewrite boundary.
+
+SDK verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk exec tsc --noEmit
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Bridge tests passed: `5 files passed / 6 tests passed`.
+- Bridge typecheck passed.
+- Bridge build passed with `dist/index.esm.js 3.01 kB / gzip 1.10 kB` and lazy `dist/mayan-CTwxDgZx.js 578.64 kB / gzip 110.69 kB`.
+- SDK v2 boundary scan passed.
+
+Clean Bridge tarball:
+
+```bash
+PACK_DIR=/tmp/navi-sdk-v2-packs-202606041124-bridge-legacy
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm pack --pack-destination "$PACK_DIR"
+tar -xOf "$PACK_DIR/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz" package/package.json
+```
+
+Results:
+
+- Tarball path: `/tmp/navi-sdk-v2-packs-202606041124-bridge-legacy/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz`.
+- Tarball file size: `421991` bytes.
+- Runtime dependencies are only `@solana/web3.js`, `axios`, and `ethers`.
+- `@mayanfinance/swap-sdk` and `@mysten/sui-v1` remain dev-only/build inputs; consumers do not install them as package dependencies.
+- Public peer dependency remains `@mysten/sui: >=2.0.0`.
+
+Temporary Copilot consumer recheck:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm add -w /tmp/navi-sdk-v2-packs-202606041124-bridge-legacy/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz --ignore-scripts
+# Updated /tmp/copilot-sdk-v2-acceptance pnpm.overrides for @naviprotocol/astros-bridge-sdk to the same tarball.
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm install --ignore-scripts
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros-aggregator
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui-v1 --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui-v1 --filter @naviprotocol/astros-aggregator
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator typecheck
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH SKIP_ENV_VALIDATION=true pnpm --filter @naviprotocol/astros-aggregator build
+```
+
+Results:
+
+- Temporary Copilot install passed with existing peer warnings only.
+- `pnpm why @mayanfinance/swap-sdk` and `pnpm why @mysten/sui-v1` produced no output for both `@naviprotocol/astros` and `@naviprotocol/astros-aggregator`.
+- `@naviprotocol/astros` typecheck and production build passed.
+- `@naviprotocol/astros-aggregator` typecheck and production build passed.
+- `@mysten/sui@2.17.0` runtime uses the v2 `jsonRpc` compatibility client for smoke scripts; the `client` subpath exports `CoreClient/BaseClient` rather than the old `SuiClient` constructor, but this did not block app typecheck/build.
+
+Frontend bundle and route smoke:
+
+```bash
+# Scanned apps/astros and apps/astros-aggregator .next/static plus build-manifest page entries for:
+# createSwapFromSuiMoveCalls, MAYAN_FORWARDER_CONTRACT, swapFromSolana, swapFromEvm,
+# fromSuiMoveCalls, @mayanfinance/swap-sdk, @mysten/sui-v1
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH node <<'NODE'
+// inline .next static/build-manifest signature scan
+NODE
+
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec next start -p 4010
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec next start -p 4011
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH node <<'NODE'
+// inline route HTTP smoke
+NODE
+```
+
+Results:
+
+- `apps/astros`: `staticStrongHits=[]`, `pageManifestStrongHits=[]`.
+- `apps/astros-aggregator`: `staticStrongHits=[]`, `pageManifestStrongHits=[]`.
+- `apps/astros`: `/` returned `307` to `/perp/SUI-USD`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+- `apps/astros-aggregator`: `/` returned `307` to `/swap/SUI-NAVX`; `/swap/SUI-USDC`, `/bridge/sui-solana`, `/bridge/sui-solana/SUI-SOL`, and `/dca/SUI-USDC` returned `200`.
+
+Bridge live smoke:
+
+```bash
+# SUI -> Arbitrum native USDC, 1.0 SUI, consumer tarball -> v1 bytes -> v2 Transaction.from -> v2 JSON-RPC dry-run
+# SUI -> Solana native USDC, 1.3 SUI, consumer tarball -> v1 bytes -> v2 Transaction.from -> v2 JSON-RPC dry-run
+# SUI -> Arbitrum native USDC, 1.0 SUI, authorized test wallet execute/status
+```
+
+Results:
+
+- SUI -> Arbitrum USDC consumer-tarball dry-run passed: `txBytes=3516`, `status=success`, `events=12`.
+- SUI -> Solana USDC consumer-tarball dry-run passed with `gasBudget=50000000`: `txBytes=5365`, `status=success`, `events=15`.
+- An earlier Solana 1.3 dry-run with the default `gasBudget=100000000` failed with `InsufficientCoinBalance in command 0`; lowering the gas budget proved the route-builder compatibility issue is resolved. Smaller Solana amounts `0.6`, `0.8`, `1.0`, and `1.1` currently return quote API `500`, so 1.3 remains the available smoke amount for this wallet/API state.
+- Real authorized test-wallet Bridge execute passed for SUI -> Arbitrum USDC, amount `1.0`: digest `m3Q3SFNQxqDzJ5aN24CAiCGPsogAS9buyUuntkq6tbo`.
+- SDK/open-aggregator status polling reached `completed` on attempt 3, with `sourceTx=true`, `destTx=true`, `refundTx=false`.
+- A later `getTransaction("m3Q3SFNQxqDzJ5aN24CAiCGPsogAS9buyUuntkq6tbo")` consumer-tarball check returned `status=completed`, `bridgeStatus=completed`, `sourceTx=true`, `destTx=true`, `refundTx=false`.
+
+Updated Bridge conclusion:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Bridge root does not load Mayan/Sui v1 | Passed | Root lazy unit test, SDK boundary scan, final package build, frontend strong-signature scans, and HTTP route smoke pass. |
+| Bridge published SDK avoids Mayan transitive Sui v1 at runtime | Passed | Clean tarball runtime dependencies exclude Mayan and `@mysten/sui-v1`; temporary Copilot `pnpm why` shows no Mayan or `@mysten/sui-v1` path for both frontend consumers. |
+| Bridge v1 builder -> v2 parse/sign/execute/status | Passed | Mayan now builds with `@mysten/sui-v1`; SDK converts bytes through v2 `Transaction.from`; Arbitrum dry-run succeeded; authorized Arbitrum execute/status completed. |
+| Bridge multi route / multi chain smoke | Passed for current SDK gate | Arbitrum dry-run/execute/status passed; Solana dry-run passed with the same consumer tarball and v2 JSON-RPC path. |
+| Remaining Bridge watch item | Not a blocker for SDK v2 beta | Solana smaller-amount quote API currently returns `500`; default 100M gas budget exceeded the current test wallet balance for 1.3 SUI. The SDK now exposes `gasBudget` so consumers can tune the legacy build path. |
