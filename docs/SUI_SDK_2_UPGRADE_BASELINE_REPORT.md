@@ -1842,3 +1842,96 @@ Current final acceptance delta:
 | Bridge internal adapter and frontend lazy gates | Passed | Dependency tree excludes Mayan/Sui-v1, chunk scan has zero strong hits, route smoke passed, Arbitrum/Solana dry-runs passed, Arbitrum execute/status completed. |
 | Frontend dependency tree completely clean of Sui v1/v2 conflicts | Still not fully clean outside SDK ownership | Remaining `@mysten/sui.js` / Sui v1-era paths are MSafe, Copilot store protocol SDKs, and swap-core paths, not latest SDK v2 tarballs. |
 | `apps/lending` production build | User-owned remaining gate | Not rerun here per user direction that they will handle `apps/lending` production build. |
+
+## 2026-06-04 Goal Continuation Boundary Recheck
+
+This pass tightened the SDK v2 boundary gate after the latest full tarball acceptance.
+
+Commits:
+
+| Commit | Type | Summary |
+| --- | --- | --- |
+| `6c44456` | `fix` | Removed the remaining wallet-client public signer declaration import from `@mysten/sui/client`; it now uses the package's v2 JSON-RPC client contract from `@mysten/sui/jsonRpc`. |
+| `100bb5b` | `test` | Hardened `test:sdk-v2-boundaries` so SDK v2 packages fail if public declarations reintroduce `@mysten/sui/client`, or if production dependencies reintroduce `@mysten/sui.js`, `@pythnetwork/pyth-sui-js`, Mayan, or the Sui v1 alias. |
+
+Verification:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client build
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm exec tsc --noEmit -p packages/wallet-client/tsconfig.json
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test -- --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/wallet-client test:types
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-bridge-sdk test -- tests/build-config.test.ts --run
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm test:sdk-v2-boundaries
+```
+
+Results:
+
+- Wallet-client build passed; root bundle remained `46.44 kB / gzip 9.88 kB`, Suilend lazy chunk remained `2.55 kB / gzip 1.04 kB`.
+- Wallet-client typecheck passed.
+- Wallet-client tests passed: `2 passed / 25 skipped`.
+- Wallet-client type-compat passed after rebuilding lending, aggregator, DCA, and wallet-client declarations.
+- Bridge build-config test passed as part of the Bridge test suite: `5 files passed / 6 passed`.
+- Hardened SDK boundary scan passed.
+- Declaration recheck now shows no public `@mysten/sui/client`, `@mysten/sui.js`, old `TransactionBlock`, or raw v1 response type in the five target SDK package declarations. Public declaration imports are v2-compatible paths such as `@mysten/sui/jsonRpc`, `@mysten/sui/transactions`, and `@mysten/sui/cryptography`.
+
+Latest full tarball manifest recheck:
+
+```bash
+node - <<'NODE'
+// extract package/package.json from every tgz in /tmp/navi-sdk-v2-packs-202606041215-full-latest
+NODE
+```
+
+Results:
+
+- All five tarballs are `type: "module"` and peer `@mysten/sui: >=2.0.0`.
+- Lending runtime dependencies are only `bignumber.js` and `lodash.camelcase`; no Pyth package is published in the main dependency tree.
+- Wallet-client runtime dependencies are NAVI lending / aggregator plus axios, bignumber.js, date-fns, mitt, and shio-sdk. Suilend packages are optional peers only.
+- Bridge runtime dependencies are only `@solana/web3.js`, axios, and ethers. Mayan and `@mysten/sui-v1` are not published runtime dependencies.
+- Aggregator and DCA runtime dependencies remain axios, bignumber.js, crypto-js, dotenv, and shio-sdk.
+
+Current frontend dependency recheck in `/tmp/copilot-sdk-v2-acceptance`:
+
+```bash
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/lending-next
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui.js --filter @naviprotocol/copilot-migrate
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mayanfinance/swap-sdk --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @mysten/sui-v1 --filter @naviprotocol/astros
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm why @suilend/sdk --filter @naviprotocol/copilot-migrate
+```
+
+Results:
+
+- `@mayanfinance/swap-sdk` and `@mysten/sui-v1` still produce no dependency path for `@naviprotocol/astros`.
+- `@suilend/sdk` for `@naviprotocol/copilot-migrate` comes from `packages/copilot-store`, not from `@naviprotocol/wallet-client`.
+- `@mysten/sui.js@0.54.1` under `@naviprotocol/lending-next` is still from frontend-owned paths: MSafe app/wallet/utils, MSafe -> Suilend -> FlowX, Copilot store -> AlphaFi/7K/FlowX, Copilot store -> Suilend/FlowX, and Copilot store -> Haedal.
+- `@mysten/sui.js@0.54.1` under `@naviprotocol/copilot-migrate` is still from `packages/copilot-store` protocol dependencies: AlphaFi/7K/FlowX, Suilend/FlowX, and Haedal.
+
+Current Codex Goal Acceptance Checklist audit:
+
+| Checklist item | Current status | Evidence / blocker |
+| --- | --- | --- |
+| SDK baseline recorded | Passed | Baseline report records initial SDK build/typecheck/test/dependency state and historical failures. |
+| Frontend baseline recorded | Passed | Baseline report records `copilot feat/mysten-sui-2.0` install/typecheck/build/dependency failures before SDK v2 tarballs. |
+| All SDK package builds on Node 22.x | Passed | Latest full SDK tarball recheck and wallet-client continuation build passed under Node `22.22.2`. |
+| All SDK package typechecks | Passed | All five package typechecks passed in the latest full SDK recheck; wallet-client rechecked after signer type cleanup. |
+| Package tests pass / baseline failures separated | Passed for deterministic package gates | All five package tests passed; live/RPC-dependent skips and blockers are explicitly recorded. |
+| `@mysten/sui.js` absent from SDK v2 main path | Passed for SDK | Hardened boundary scan passed; tarball manifests do not publish `@mysten/sui.js`; remaining frontend paths are outside SDK tarballs. |
+| No old `SuiClient` / `TransactionBlock` / raw v1 public contract | Passed for SDK | Hardened boundary scan rejects `@mysten/sui/client`, `TransactionBlock`, and raw v1 response declarations; current scan passed. |
+| Public read/view accepts v2 client contract | Passed for beta-compatible contract | Public declarations use `SuiJsonRpcClient` / v2 JSON-RPC-compatible contracts; old v1 client types are not exposed. |
+| JSON-RPC only in explicit adapter/compat path | Passed | JSON-RPC imports are explicit `@mysten/sui/jsonRpc` compatibility paths in SDK code and declarations. |
+| Lending main deps exclude Pyth package | Passed | Tarball manifest shows no `@pythnetwork/pyth-sui-js` runtime dependency. |
+| Pyth v2 builder coverage | Passed for SDK evidence | Report records Hermes data, dynamic package/object lookup, base update fee, dry-run, real small execute, on-chain query, and multi-feed smoke evidence. |
+| Bridge Mayan adapter build/v2 parse/dry-run/sign/execute/status | Passed | Unit contract covers legacy bytes -> v2 sign/execute/wait; latest tarball dry-runs Arbitrum and Solana; authorized Arbitrum execute/status completed. |
+| Bridge root entry does not load Mayan/Sui v1 | Passed | Root lazy tests, hardened boundary scan, tarball manifest, frontend dependency tree, static signature scan, and route smoke passed. |
+| Bridge lazy chunk / frontend bundle checks | Passed | Strong signature scans and route smoke for Astros consumers passed with no page/root Mayan/Sui-v1 hits. |
+| Aggregator and DCA minimal PTB/simulate smoke | Passed for SDK deterministic gate | Aggregator and DCA dry-run DTO helpers and PTB tests pass. |
+| Docs/examples/migration guide updated | Passed | `docs/SUI_SDK_2_UPGRADE_MIGRATION_GUIDE.md`, `docs/examples/sdk-v2-smoke.ts`, and docs site migration pages exist and use Sui SDK v2 imports. |
+| Frontend can install SDK v2 tarballs | Passed with existing warnings | `/tmp/copilot-sdk-v2-acceptance` installed the latest full tarball set with existing frontend peer warnings. |
+| Frontend install/typecheck/build | Partially passed / remaining owner gate | Targeted typechecks passed; `swap`, `astros`, and `astros-aggregator` builds passed. `apps/lending` production build was not rerun here per user-owned gate. |
+| Frontend dependency tree has no unacceptable Sui v1/v2 conflicts | Blocked outside SDK package ownership | Current `pnpm why` shows remaining `@mysten/sui.js` paths through MSafe and Copilot store protocol dependencies, not latest SDK v2 tarballs. |
+| Authorized wallet main business acceptance | Partially passed / remaining owner gate | SDK-level live Pyth and Bridge evidence exists; Bridge execute/status passed. Full frontend wallet route smoke for lending/swap/dca/wallet wrappers still depends on frontend dependency/build state. |
+| Unfinished items have blocker records | Passed | Remaining blockers are recorded with impact, evidence, and frontend/open-api/protocol or user-owned decision owner. |
+
+Goal status after this continuation: SDK package code and package-level acceptance are green against the current beta scope, and the remaining incomplete checklist items are explicitly outside SDK tarball ownership or user-owned frontend gates. The Codex goal is not marked complete here because the full checklist still includes frontend dependency cleanliness, `apps/lending` production build, and full frontend wallet-route smoke.
