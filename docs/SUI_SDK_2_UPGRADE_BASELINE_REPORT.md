@@ -1292,3 +1292,149 @@ Updated blocker status:
 | Frontend dependency tree still has unacceptable Sui v1/v2 conflicts | Final acceptance cannot claim a clean v2 dependency graph. | Latest dependency tree still has `@mysten/sui.js@0.54.1` through MSafe, Copilot store protocol SDKs, swap-core, and related third-party packages. | Frontend owner to remove or isolate legacy Sui v1 protocol/wallet paths from v2 acceptance targets. |
 | Authorized wallet live business smoke not run | Lending, swap, bridge, DCA, and wallet-wrapper business acceptance remains incomplete. | Deterministic SDK tests, latest frontend typechecks/builds, strong-signature chunk scan, and HTTP smoke evidence exist; real sign/execute was not attempted while frontend build and dependency graph are blocked. | Run with authorized test wallet and small amounts after frontend target routes can build and load without v1/v2 dependency conflicts. |
 | Live SDK smoke is not deterministic with current public fixtures/RPC | Prevents using existing `NAVI_LIVE_TESTS=1` suite as a stable green release gate. | Earlier live smoke attempts hit RPC resets, DNS failure, chain-state fixture failures, EMode registry lookup failure, and reward timeout. | Provide controlled RPC and funded/owned golden-wallet fixtures or accept these as external live-smoke blockers for beta. |
+
+## 2026-06-04 SDK Live Smoke Update
+
+This pass used the authorized Sui test wallet from the local secret catalog. Secret values were not printed, copied into repo files, or committed. The public test address had enough SUI for gas before the smoke run:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending exec node --input-type=module -e '...getBalance...'
+```
+
+Result before execute: `totalBalance=2384387285`, `coinObjectCount=1`.
+
+Wallet-client balance wrapper live read / dry-run smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 address="$FE_E2E_SUI_ADDRESS" pnpm --filter @naviprotocol/wallet-client exec vitest --config ./vite.config.unit.js tests/balance.test.ts --run -t "update portfolio|portfolio|send coins to many"
+```
+
+Result: passed, `3 passed / 2 skipped`. Coverage: balance portfolio read/update and SUI batch-send dry-run.
+
+Wallet-client lending wrapper live read / dry-run smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH NAVI_LIVE_TESTS=1 address="$FE_E2E_SUI_ADDRESS" pnpm --filter @naviprotocol/wallet-client exec vitest --config ./vite.config.unit.js tests/lending.test.ts --run -t "deposit SUI|deposit vSUI|withdraw SUI|borrow SUI|get health factor|claim all rewards|update oracle|getLendingState"
+```
+
+Result: passed, `8 passed / 1 skipped`. Coverage: deposit/withdraw/borrow/claim/update-oracle dry-runs plus health factor and lending state reads. The `repay SUI` case remains skipped for this wallet because the current account state aborts in `execute_repay` dry-run.
+
+Aggregator SDK live quote -> PTB -> dry-run smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-aggregator-sdk exec node --input-type=module - <<'NODE'
+// SUI -> USDC, 0.01 SUI, getQuote -> buildSwapPTBFromQuote -> dryRunSwapTransaction
+NODE
+```
+
+Result:
+
+```json
+{
+  "pair": "SUI->USDC",
+  "routeCount": 1,
+  "status": "success",
+  "events": 4,
+  "balanceChanges": 3,
+  "objectChanges": 13
+}
+```
+
+DCA SDK live create-order dry-run smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/astros-dca-sdk exec node --input-type=module - <<'NODE'
+// SUI -> USDC, 0.01 SUI depositedAmount, createDcaOrder -> dryRunDcaTransaction
+NODE
+```
+
+Result:
+
+```json
+{
+  "flow": "DCA create SUI->USDC",
+  "status": "success",
+  "error": null,
+  "events": 1,
+  "balanceChanges": 1,
+  "objectChanges": 6
+}
+```
+
+Pyth v2 builder multi-feed dry-run smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending exec node --input-type=module - <<'NODE'
+// getConfig -> SUI/USDC pythPriceFeedId -> updatePythPriceFeeds -> dryRunTransactionBlock
+NODE
+```
+
+Result:
+
+```json
+{
+  "flow": "Pyth update multi-feed",
+  "feedCount": 2,
+  "updatedObjects": 2,
+  "txBytes": 3483,
+  "status": "success",
+  "error": null,
+  "events": 2,
+  "balanceChanges": 3,
+  "objectChanges": 5
+}
+```
+
+Pyth v2 builder real execute smoke:
+
+```bash
+set -a; eval "$(rg "^FE_E2E_SUI_PRIVATE_KEY=|^FE_E2E_SUI_ADDRESS=" /Users/Tmac/.cursor/rules/local-secrets.mdc)"; set +a
+PATH=/Users/Tmac/.nvm/versions/node/v22.22.2/bin:$PATH pnpm --filter @naviprotocol/lending exec node --input-type=module - <<'NODE'
+// decode authorized test key -> SUI/USDC updatePythPriceFeeds -> signAndExecuteTransaction -> waitForTransaction
+NODE
+```
+
+Result:
+
+```json
+{
+  "flow": "Pyth update multi-feed execute",
+  "feedCount": 2,
+  "digest": "ET7AMPCEihC3h9nadXFRD3YXPobNtg6GQLEQbCsMpbV5",
+  "status": "success",
+  "finalityStatus": "success",
+  "events": 0,
+  "balanceChanges": 3,
+  "objectChanges": 5
+}
+```
+
+Balance check after execute:
+
+```json
+{
+  "totalBalance": "2383719195",
+  "coinObjectCount": 1
+}
+```
+
+This execute consumed gas only. It did not transfer user assets, swap, bridge, or open a lending/DCA position.
+
+Additional observation: an earlier `pnpm --filter @naviprotocol/wallet-client test -- tests/balance.test.ts --run -t ...` invocation passed the arguments through the package script incorrectly and ran the broad wallet-client live suite. It produced `18 passed / 9 failed`. The failures remain fixture/API blockers rather than SDK v2 deterministic regressions: hard-coded object owned by a different address, Haedal unstake amount greater than wallet balance, open-aggregator 404 for legacy migration/swap pairs, disabled optional Suilend protocol, and current wallet state aborting the repay dry-run.
+
+Updated acceptance status:
+
+| Checklist area | Current status | Evidence / blocker |
+| --- | --- | --- |
+| Pyth Hermes update data / dynamic package id / base update fee / dry-run / real execute / chain query | Passed for SDK live smoke | Multi-feed SUI/USDC dry-run succeeded; real authorized test-wallet execute succeeded with digest `ET7AMPCEihC3h9nadXFRD3YXPobNtg6GQLEQbCsMpbV5`; post-execute balance confirms gas-only impact. |
+| Wallet-client wrapper smoke | Partially passed | Balance and lending wrapper read/dry-run smoke passed for the authorized test address. Swap wrapper remains blocked by open-aggregator legacy pair 404; Suilend is intentionally optional legacy and disabled by default. |
+| Aggregator minimal PTB / simulate smoke | Passed for live SDK dry-run | SUI -> USDC quote/PTB/dry-run succeeded against live open aggregator and Sui RPC. |
+| DCA minimal PTB / simulate smoke | Passed for live SDK dry-run | SUI -> USDC create order PTB dry-run succeeded against live Sui RPC. |
+| Bridge live execute/status | Still blocked / not rerun in this pass | SDK deterministic Mayan adapter sign/execute unit coverage and frontend lazy/route smoke exist, but current live Bridge execute/status was not rerun. |
+| Frontend full acceptance | Still blocked outside SDK ownership | `apps/lending` production build and frontend dependency tree remain blocked by Copilot/MSafe/third-party Sui v1 paths recorded above. |
