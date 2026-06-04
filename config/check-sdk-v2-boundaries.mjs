@@ -14,6 +14,7 @@ const sdkPackages = [
 
 const forbiddenPublicDeclarationPatterns = [
   { label: '@mysten/sui.js', test: (content) => content.includes('@mysten/sui.js') },
+  { label: '@mysten/sui/client', test: (content) => content.includes('@mysten/sui/client') },
   {
     label: 'TransactionBlock',
     test: (content) => /(^|[^A-Za-z0-9_])TransactionBlock([^A-Za-z0-9_]|$)/.test(content)
@@ -31,6 +32,15 @@ const forbiddenPublicDeclarationPatterns = [
 ]
 
 const forbiddenProductionDependencies = new Map([
+  [
+    '*',
+    [
+      '@mysten/sui.js',
+      '@pythnetwork/pyth-sui-js',
+      '@mayanfinance/swap-sdk',
+      '@mysten/sui-v1'
+    ]
+  ],
   ['wallet-client', ['@suilend/sdk', '@suilend/sui-fe']]
 ])
 
@@ -69,7 +79,10 @@ for (const packageName of sdkPackages) {
     issues.push(`${packageName}: package.json main must not point at CJS output`)
   }
 
-  for (const forbiddenDependency of forbiddenProductionDependencies.get(packageName) ?? []) {
+  for (const forbiddenDependency of [
+    ...(forbiddenProductionDependencies.get('*') ?? []),
+    ...(forbiddenProductionDependencies.get(packageName) ?? [])
+  ]) {
     if (packageJson.dependencies?.[forbiddenDependency]) {
       issues.push(`${packageName}: ${forbiddenDependency} must not be a production dependency`)
     }
