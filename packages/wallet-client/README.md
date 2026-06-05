@@ -76,10 +76,11 @@ npm install @naviprotocol/wallet-client
 ## Sui SDK v2 Notes
 
 `@naviprotocol/wallet-client@2` defaults to the Sui SDK v2 main path. The legacy
-Suilend adapter is not installed or initialized by default because its current
-runtime stack still pulls Sui v1-era dependencies. If you need the legacy
-cross-protocol Suilend migration path, install the optional peers explicitly and
-enable it in the lending module config:
+Suilend adapter remains an optional peer dependency and is loaded lazily when
+the lending protocol registry is initialized. This preserves the v1
+cross-protocol migration behavior without adding the Suilend stack to the root
+SDK import path. Install the optional peers when you use the Suilend migration
+path:
 
 ```bash
 npm install @suilend/sdk@1.1.75 @suilend/sui-fe@0.3.20
@@ -88,17 +89,26 @@ npm install @suilend/sdk@1.1.75 @suilend/sui-fe@0.3.20
 ```ts
 const walletClient = new WalletClient({
   signer,
+  client: { url: getJsonRpcFullnodeUrl('mainnet') }
+})
+```
+
+If an app does not use Suilend, it can explicitly opt out:
+
+```ts
+const walletClient = new WalletClient({
+  signer,
   client: { url: getJsonRpcFullnodeUrl('mainnet') },
   configs: {
     lending: {
-      enableSuilend: true
+      enableSuilend: false
     }
   }
 })
 ```
 
-This optional path remains a legacy compatibility adapter until a verified
-Suilend v2-safe stack is available.
+This optional path remains a compatibility adapter until a verified Suilend
+v2-safe stack is available.
 
 ## Quick Start
 
