@@ -3,16 +3,16 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { DcaOrderParams, DcaOptions } from './types'
 import { getDcaConfig } from './getDcaConfig'
 import { convertToRawParams, CoinDecimals } from './utils'
 import { getCoinForDca } from './coinUtils'
+import type { NaviDcaCoinClient } from './client'
 
 /**
  * Fetch coin decimals from chain
  */
-async function fetchCoinDecimals(client: SuiJsonRpcClient, coinType: string): Promise<number> {
+async function fetchCoinDecimals(client: NaviDcaCoinClient, coinType: string): Promise<number> {
   const metadata = await client.getCoinMetadata({ coinType })
   if (metadata?.decimals === undefined) {
     throw new Error(`Failed to fetch decimals for coin type: ${coinType}`)
@@ -53,7 +53,7 @@ async function fetchCoinDecimals(client: SuiJsonRpcClient, coinType: string): Pr
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
-  client: SuiJsonRpcClient,
+  client: NaviDcaCoinClient,
   userAddress: string,
   params: DcaOrderParams,
   dcaOptions?: DcaOptions

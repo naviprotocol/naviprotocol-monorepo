@@ -15,6 +15,26 @@ import type {
 export type SingleCoinTransactionResult = TransactionResultType &
   readonly [TransactionObjectArgumentType]
 
+export type NaviAggregatorCoreClient = {
+  core: unknown
+}
+
+export type NaviAggregatorCoinClient = NaviAggregatorCoreClient & {
+  getCoins(options: any): Promise<any>
+}
+
+export type NaviAggregatorTransactionQueryClient = NaviAggregatorCoreClient & {
+  getTransactionBlock(options: any): Promise<any>
+}
+
+export type NaviAggregatorDryRunClient = NaviAggregatorCoreClient & {
+  dryRunTransactionBlock(options: any): Promise<any>
+}
+
+export type NaviAggregatorExecutionClient = NaviAggregatorCoreClient & {
+  executeTransactionBlock(options: any): Promise<any>
+}
+
 export type NaviAggregatorTransactionStatus = {
   status: 'success' | 'failure' | (string & {})
   error?: string

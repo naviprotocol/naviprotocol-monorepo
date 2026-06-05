@@ -84,7 +84,7 @@ async function getLendingRewardsBatch(
 
   const data = [] as [string[], string[], number[], string[], number[]][]
 
-  result?.results?.forEach((item) => {
+  result?.results?.forEach((item: any) => {
     data.push(
       parseDevInspectResult<[string[], string[], number[], string[], number[]]>(
         {

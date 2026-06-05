@@ -33,6 +33,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "run-p build:lib",
     "build:lib": "vite build",
@@ -61,7 +64,7 @@
     "@mysten/sui": "2.17.0",
     "@suilend/sdk": "1.1.75",
     "@suilend/sui-fe": "0.3.20",
-    "@types/node": "20.19.1",
+    "@types/node": "22.7.5",
     "dotenv": "16.4.7",
     "tsconfig-paths": "4.2.0",
     "tslint": "6.1.3",

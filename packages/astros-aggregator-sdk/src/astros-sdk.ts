@@ -1,5 +1,7 @@
 import {
+  NaviAggregatorDryRunClient,
   NaviAggregatorDryRunResult,
+  NaviAggregatorExecutionClient,
   NaviAggregatorTransactionResult,
   SwapOptions,
   Quote
@@ -9,6 +11,10 @@ import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { executeAuction } from 'shio-sdk'
+import {
+  normalizeAggregatorDryRunResult,
+  normalizeAggregatorTransactionResult
+} from './transaction-result'
 
 /**
  * Retrieves a quote for swapping one coin to another.
@@ -46,7 +52,7 @@ export async function executeTransaction(
   txb: Transaction,
   signer: Signer,
   options?: {
-    client?: SuiJsonRpcClient
+    client?: NaviAggregatorExecutionClient
   }
 ): Promise<NaviAggregatorTransactionResult> {
   const client =
@@ -56,7 +62,7 @@ export async function executeTransaction(
       url: getJsonRpcFullnodeUrl('mainnet')
     })
   const txBytes = await txb.build({
-    client
+    client: client as any
   })
   const signResult = await signer.signTransaction(txBytes)
   const signatures = [signResult.signature]
@@ -78,14 +84,7 @@ export async function executeTransaction(
     }
   })
 
-  return {
-    digest: result.digest,
-    effects: (result.effects ?? undefined) as NaviAggregatorTransactionResult['effects'],
-    events: (result.events ?? []) as NaviAggregatorTransactionResult['events'],
-    balanceChanges: (result.balanceChanges ??
-      []) as NaviAggregatorTransactionResult['balanceChanges'],
-    objectChanges: (result.objectChanges ?? []) as NaviAggregatorTransactionResult['objectChanges']
-  }
+  return normalizeAggregatorTransactionResult(result)
 }
 
 /**
@@ -98,21 +97,15 @@ export async function executeTransaction(
 export async function dryRunSwapTransaction(
   txb: Transaction,
   options: {
-    client: SuiJsonRpcClient
+    client: NaviAggregatorDryRunClient
   }
 ): Promise<NaviAggregatorDryRunResult> {
   const txBytes = await txb.build({
-    client: options.client
+    client: options.client as any
   })
   const result = await options.client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
 
-  return {
-    effects: (result.effects ?? undefined) as NaviAggregatorDryRunResult['effects'],
-    events: (result.events ?? []) as NaviAggregatorDryRunResult['events'],
-    balanceChanges: (result.balanceChanges ?? []) as NaviAggregatorDryRunResult['balanceChanges'],
-    objectChanges: (result.objectChanges ?? []) as NaviAggregatorDryRunResult['objectChanges'],
-    raw: result
-  }
+  return normalizeAggregatorDryRunResult(result)
 }

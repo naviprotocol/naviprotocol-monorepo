@@ -32,6 +32,10 @@ export type NaviTransactionExecutionOptions = {
   options?: NaviTransactionResponseOptions
 }
 
+export type NaviWalletExecutionClient = {
+  core: unknown
+}
+
 export type NaviTransactionStatus = {
   status: 'success' | 'failure' | (string & {})
   error?: string

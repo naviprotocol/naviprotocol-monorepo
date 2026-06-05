@@ -7,7 +7,6 @@
  * @module AstrosBridgeTypes
  */
 
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import type { Transaction } from '@mysten/sui/transactions'
 
 /**
@@ -217,8 +216,14 @@ export type BridgeSwapTransaction = {
   mayan?: any
 }
 
+export type NaviBridgeSuiProvider = {
+  network?: string
+  executeTransactionBlock(options: any): Promise<any>
+  waitForTransaction(options: any): Promise<any>
+}
+
 export type SuiWalletConnection = {
-  provider: SuiJsonRpcClient
+  provider: NaviBridgeSuiProvider
   rpcUrl?: string
   gasBudget?: number
   signTransaction: (data: { transaction: Transaction }) => Promise<{

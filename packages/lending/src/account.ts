@@ -256,7 +256,7 @@ async function getLendingStateBatch(
   uniqueMarkets.forEach((market, idx) => {
     try {
       const reserves =
-        results[idx]?.returnValues?.map((item) => {
+        results[idx]?.returnValues?.map((item: any) => {
           return bcs.vector(ReserveDataInfo as any).parse(Uint8Array.from(item[0]))
         })[0] || []
       const perAsset: Record<number, { supplyIndex: string; borrowIndex: string }> = {}
@@ -285,9 +285,9 @@ async function getLendingStateBatch(
     }
   })
 
-  const stateList = results.slice(uniqueMarkets.length).map((result) => {
+  const stateList = results.slice(uniqueMarkets.length).map((result: any) => {
     return (
-      result.returnValues?.map((item) => {
+      result.returnValues?.map((item: any) => {
         return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
       })[0] || []
     )

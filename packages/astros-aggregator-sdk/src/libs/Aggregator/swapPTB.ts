@@ -9,10 +9,15 @@
  */
 
 import { AggregatorConfig } from './config'
-import { Quote, SingleCoinTransactionResult, SwapOptions } from '../../types'
+import {
+  NaviAggregatorCoinClient,
+  NaviAggregatorTransactionQueryClient,
+  Quote,
+  SingleCoinTransactionResult,
+  SwapOptions
+} from '../../types'
 import { returnMergedCoins } from '../PTB/commonFunctions'
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { getQuoteInternal as getQuote } from './getQuote'
 import { generateRefId } from './utils'
 import { handleServiceFee, emitServiceFeeEvent } from './serviceFee'
@@ -27,7 +32,7 @@ import { buildSwapWithoutServiceFee } from './buildSwapWithoutServiceFee'
  * @returns Coin details from the blockchain
  */
 export async function getCoins(
-  client: SuiJsonRpcClient,
+  client: NaviAggregatorCoinClient,
   address: string,
   coinType: any = '0x2::sui::SUI'
 ) {
@@ -59,7 +64,7 @@ export async function getCoinPTB(
   coin: string,
   amountIn: number | string | bigint,
   txb: Transaction,
-  client: SuiJsonRpcClient
+  client: NaviAggregatorCoinClient
 ): Promise<SingleCoinTransactionResult> {
   let coinA: TransactionResult
 
@@ -319,14 +324,14 @@ export async function swapPTB(
  */
 export async function checkIfNAVIIntegrated(
   digest: string,
-  client: SuiJsonRpcClient
+  client: NaviAggregatorTransactionQueryClient
 ): Promise<boolean> {
   const results = await client.getTransactionBlock({
     digest,
     options: { showEvents: true }
   })
   return (
-    results.events?.some((event) =>
+    results.events?.some((event: any) =>
       event.type.includes(`${AggregatorConfig.aggregatorContract}::slippage`)
     ) ?? false
   )

@@ -1,8 +1,10 @@
 import { Transaction } from '@mysten/sui/transactions'
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import {
   createNaviSuiClient,
   SuiPriceServiceConnection,
   SuiPythClient,
+  type NaviJsonRpcCompatClient,
   type NaviSuiClient
 } from '@naviprotocol/lending'
 
@@ -11,6 +13,10 @@ const customClient: NaviSuiClient = createNaviSuiClient(
   'https://fullnode.mainnet.sui.io:443',
   'mainnet'
 )
+const jsonRpcClient: NaviJsonRpcCompatClient = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
 
 const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
 const pyth = new SuiPythClient(
@@ -28,4 +34,5 @@ async function buildPythUpdate() {
 }
 
 void client
+void jsonRpcClient
 void buildPythUpdate

@@ -1,10 +1,14 @@
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions'
 import type { DryRunTransactionBlockResponse } from '@mysten/sui/jsonRpc'
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
 import {
   buildSwapPTBFromQuote,
   dryRunSwapTransaction,
+  type NaviAggregatorDryRunClient,
   type NaviAggregatorDryRunResult,
+  type NaviAggregatorExecutionClient,
+  type NaviAggregatorTransactionQueryClient,
   type Quote,
   type SingleCoinTransactionResult
 } from '@naviprotocol/astros-aggregator-sdk'
@@ -14,6 +18,13 @@ declare const client: Parameters<typeof dryRunSwapTransaction>[1]['client']
 declare const address: string
 
 const suiCoinType = '0x2::sui::SUI'
+const jsonRpcClient = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
+const dryRunClient: NaviAggregatorDryRunClient = jsonRpcClient
+const executionClient: NaviAggregatorExecutionClient = jsonRpcClient
+const queryClient: NaviAggregatorTransactionQueryClient = jsonRpcClient
 
 function expectObjectArgument(value: TransactionObjectArgument | string) {
   return value
@@ -57,3 +68,6 @@ async function acceptsDryRunDto() {
 }
 
 void acceptsDryRunDto
+void dryRunClient
+void executionClient
+void queryClient

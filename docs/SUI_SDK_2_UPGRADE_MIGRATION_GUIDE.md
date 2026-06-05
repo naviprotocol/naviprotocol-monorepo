@@ -14,6 +14,15 @@
 - `@naviprotocol/astros-bridge-sdk@2.0.0-beta.0`
 - `@naviprotocol/astros-dca-sdk@2.0.0-beta.0`
 
+## 集成方需要改什么
+
+| 类型 | 处理方式 |
+| --- | --- |
+| 必须调整 | 使用 Node 22+、ESM import、安装 `@mysten/sui@^2`、把旧 `TransactionBlock` 改为 v2 `Transaction`。 |
+| 使用方已有 Sui client | 可以继续传 v2 `SuiJsonRpcClient`。NAVI public API 接受的是结构化 compat client，不要求集成方依赖某个具体 client class。 |
+| SDK 内部吸收 | Pyth / Mayan / Sui v1 兼容不要求集成方处理；这些旧依赖不能穿透到 NAVI root public API。 |
+| 返回值 | execute / dry-run 返回 NAVI DTO；`raw` 如存在只用于调试/兼容，不是稳定 Mysten response contract。 |
+
 ## 运行环境
 
 SDK v2 需要 Node 22.x 或更高版本。本仓库 SDK 验证固定使用 Node `v22.22.2`。
@@ -125,7 +134,7 @@ import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 const client = new SuiClient({ url: getFullnodeUrl('mainnet') })
 ```
 
-SDK v2 beta 兼容路径使用 v2 JSON-RPC client：
+SDK v2 beta 默认 factory 使用 v2 JSON-RPC client 作为兼容实现：
 
 ```ts
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
@@ -136,7 +145,7 @@ const client = new SuiJsonRpcClient({
 })
 ```
 
-后续 public read/view API 会继续向 `ClientWithCoreApi` 或等价 v2 client contract 收敛。仍需要 JSON-RPC 能力的路径必须被视为明确兼容 adapter，不应把旧 v1 `SuiClient` 当成稳定 public contract。
+NAVI public API 不把 concrete `SuiJsonRpcClient` class 作为稳定 contract。只需要 Core 能力的路径使用 NAVI core client contract；仍需要 `devInspectTransactionBlock`、`dryRunTransactionBlock`、`executeTransactionBlock`、`getCoins` 等 JSON-RPC 能力的路径使用 NAVI compat client contract。集成方继续传 v2 `SuiJsonRpcClient` 不需要额外 wrapper。
 
 ## Import 迁移
 
@@ -190,7 +199,7 @@ const updateData = await connection.getPriceFeedsUpdateData([
 await pyth.updatePriceFeeds(tx, updateData, ['0xe62df6c8b4a85fe1a67a56e9a2a15...'])
 ```
 
-当前 beta 限制：Pyth helper 已有单元测试和 type-compat 覆盖 Hermes id normalization、VAA decode 和 public helper 导出；dry-run、真实小额 execute、链上查询仍需作为交付 smoke 补齐。
+当前 beta 状态：Pyth helper 已有单元测试和 type-compat 覆盖 Hermes id normalization、Hermes v2 accumulator update data decode 和 public helper 导出；dry-run、真实小额 execute、链上查询仍需作为交付 smoke 补齐。
 
 ## Wallet Client
 
@@ -203,13 +212,17 @@ pnpm add @naviprotocol/wallet-client@2.0.0-beta.0 @mysten/sui@^2
 基础使用：
 
 ```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
+import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
-  network: 'mainnet',
+  signer: new WatchSigner(address),
+  client: {
+    url: 'https://fullnode.mainnet.sui.io:443'
+  }
 })
 
-const balances = await walletClient.balance.getAllBalances()
+await walletClient.balance.updatePortfolio()
+const portfolio = walletClient.balance.portfolio
 ```
 
 当前 beta 限制：Suilend protocol 保持升级前默认可用语义，但实现为 lazy optional adapter；普通 wallet root import 不加载 Suilend，首次初始化 lending protocol registry 时才尝试加载。使用 Suilend migration 路径时需要安装 `@suilend/sdk@1.1.75` 和 `@suilend/sui-fe@0.3.20` optional peers；不使用 Suilend 的前端可以显式设置 `configs.lending.enableSuilend=false`。

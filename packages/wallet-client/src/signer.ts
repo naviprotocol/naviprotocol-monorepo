@@ -10,8 +10,8 @@
 
 import { Signer } from '@mysten/sui/cryptography'
 import { Transaction } from '@mysten/sui/transactions'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { SignatureWithBytes } from '@mysten/sui/cryptography'
+import type { NaviWalletExecutionClient } from './types'
 
 /**
  * Options for signing and executing transactions
@@ -20,7 +20,7 @@ interface SignAndExecuteOptions {
   /** Transaction to sign and execute */
   transaction: Transaction
   /** Sui client instance */
-  client: SuiJsonRpcClient
+  client: NaviWalletExecutionClient
 }
 
 /**

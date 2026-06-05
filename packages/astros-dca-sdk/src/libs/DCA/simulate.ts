@@ -1,5 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import type { NaviDcaDryRunClient } from './client'
+import { normalizeDcaDryRunResult } from './transaction-result'
 
 export type NaviDcaDryRunResult = {
   effects?: {
@@ -36,21 +37,15 @@ export type NaviDcaDryRunResult = {
 export async function dryRunDcaTransaction(
   tx: Transaction,
   options: {
-    client: SuiJsonRpcClient
+    client: NaviDcaDryRunClient
   }
 ): Promise<NaviDcaDryRunResult> {
   const txBytes = await tx.build({
-    client: options.client
+    client: options.client as any
   })
   const result = await options.client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
 
-  return {
-    effects: (result.effects ?? undefined) as NaviDcaDryRunResult['effects'],
-    events: (result.events ?? []) as NaviDcaDryRunResult['events'],
-    balanceChanges: (result.balanceChanges ?? []) as NaviDcaDryRunResult['balanceChanges'],
-    objectChanges: (result.objectChanges ?? []) as NaviDcaDryRunResult['objectChanges'],
-    raw: result
-  }
+  return normalizeDcaDryRunResult(result)
 }
