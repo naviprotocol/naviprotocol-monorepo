@@ -30,6 +30,37 @@ enum BridgeChain {
 
 const DEFAULT_SUI_BRIDGE_GAS_BUDGET = 100_000_000
 
+type SuiExecutionResponse = {
+  digest?: string
+  effects?: null | {
+    status?: {
+      status?: string
+      error?: string
+    }
+  }
+}
+
+function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
+  const amountInBaseUnits = (mayanQuote as MayanQuote & { effectiveAmountIn64?: string | number })
+    .effectiveAmountIn64
+  if (amountInBaseUnits !== undefined && amountInBaseUnits !== null) {
+    return BigInt(amountInBaseUnits)
+  }
+
+  return parseUnits(String(mayanQuote.effectiveAmountIn), decimals)
+}
+
+function assertSuiExecutionSuccess(resp: SuiExecutionResponse) {
+  if (!resp.digest) {
+    throw new Error('Sui bridge source transaction did not return a digest')
+  }
+
+  const status = resp.effects?.status
+  if (status?.status && status.status !== 'success') {
+    throw new Error(`Sui bridge source transaction failed: ${status.error ?? status.status}`)
+  }
+}
+
 function getLegacySuiRpcUrl(walletConnection: NonNullable<WalletConnection['sui']>) {
   if (walletConnection.rpcUrl) {
     return walletConnection.rpcUrl
@@ -107,6 +138,7 @@ export async function swap(
         showBalanceChanges: true
       }
     })
+    assertSuiExecutionSuccess(resp)
     hash = resp.digest
     await client.waitForTransaction({
       digest: hash
@@ -144,10 +176,7 @@ export async function swap(
         fromAddress,
         addresses.MAYAN_FORWARDER_CONTRACT
       )
-      const REQUIRED_ALLOWANCE = parseUnits(
-        String(mayanQuote.effectiveAmountIn),
-        fromToken.decimals
-      )
+      const REQUIRED_ALLOWANCE = getRequiredAllowance(mayanQuote, fromToken.decimals)
       if (currentAllowance < REQUIRED_ALLOWANCE) {
         const approveTrx = await erc20Contract.approve(
           addresses.MAYAN_FORWARDER_CONTRACT,
@@ -170,10 +199,12 @@ export async function swap(
       null
     )
     hash = typeof swapTrx === 'string' ? swapTrx : swapTrx.hash
-    await connection.waitForTransaction({
-      hash,
-      confirmations: 3
-    })
+    if (typeof swapTrx !== 'string' || !mayanQuote.gasless) {
+      await connection.waitForTransaction({
+        hash,
+        confirmations: 3
+      })
+    }
   }
   // wait for 2 seconds to make sure the mayan has processed the transaction
   await new Promise((resolve) => {
