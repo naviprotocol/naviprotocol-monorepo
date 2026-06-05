@@ -333,6 +333,8 @@ SDK v2 最终服务前端，因此 SDK goal 必须包含前端消费验收。验
 1. 开发期可以用 workspace link 或本地 build 产物快速联调。
 2. 最终验收必须使用 tarball / preview package / beta package 方式安装，不能只用源码 link。
 
+前端本地联调的标准命令、tarball 安装方式和稳定后 beta 发布顺序见 `docs/SUI_SDK_2_UPGRADE_MIGRATION_GUIDE.md` 的“前端本地联调安装”章节。联调阶段以前端消费 SDK 分支 tarball 为准；通过前端 install / typecheck / build / smoke 后再发布 beta。
+
 最终验收必须覆盖 package metadata 问题：
 
 1. `exports` 正确。

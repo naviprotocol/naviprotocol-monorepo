@@ -31,6 +31,90 @@ pnpm add @mysten/sui@^2
 
 安装 NAVI beta package 时，优先使用真实 beta 发布包、preview 包或 `pnpm pack` 生成的 tarball，不使用源码 link 作为最终验收依据。
 
+## 前端本地联调安装
+
+在 SDK v2 稳定发布前，前端先消费 SDK 分支本地 tarball。不要用 `pnpm link` / workspace link 作为验收依据，因为 link 不能验证 package `exports`、`files`、types 和 peer dependency metadata。
+
+### 1. SDK 分支生成 tarball
+
+在 SDK 仓库切到本次升级分支，例如 `feat/sui-sdk-v2`：
+
+```bash
+cd naviprotocol-monorepo
+
+git status --short --branch
+pnpm install
+
+pnpm --filter @naviprotocol/lending build
+pnpm --filter @naviprotocol/astros-aggregator-sdk build
+pnpm --filter @naviprotocol/astros-dca-sdk build
+pnpm --filter @naviprotocol/astros-bridge-sdk build
+pnpm --filter @naviprotocol/wallet-client build
+
+SDK_TARBALL_DIR=/tmp/navi-sdk-v2
+rm -rf "$SDK_TARBALL_DIR"
+mkdir -p "$SDK_TARBALL_DIR"
+
+pnpm --dir packages/lending pack --pack-destination "$SDK_TARBALL_DIR"
+pnpm --dir packages/astros-aggregator-sdk pack --pack-destination "$SDK_TARBALL_DIR"
+pnpm --dir packages/astros-dca-sdk pack --pack-destination "$SDK_TARBALL_DIR"
+pnpm --dir packages/astros-bridge-sdk pack --pack-destination "$SDK_TARBALL_DIR"
+pnpm --dir packages/wallet-client pack --pack-destination "$SDK_TARBALL_DIR"
+
+ls -lh "$SDK_TARBALL_DIR"
+```
+
+### 2. 前端分支安装本地 tarball
+
+在前端仓库安装 tarball：
+
+```bash
+
+git status --short --branch
+pnpm add \
+  /tmp/navi-sdk-v2/naviprotocol-lending-2.0.0-beta.0.tgz \
+  /tmp/navi-sdk-v2/naviprotocol-astros-aggregator-sdk-2.0.0-beta.0.tgz \
+  /tmp/navi-sdk-v2/naviprotocol-astros-dca-sdk-2.0.0-beta.0.tgz \
+  /tmp/navi-sdk-v2/naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz \
+  /tmp/navi-sdk-v2/naviprotocol-wallet-client-2.0.0-beta.0.tgz \
+  @mysten/sui@^2
+```
+
+如果前端只接入部分 package，只安装实际使用的 tarball；但最终验收需要覆盖全部首批 beta package。
+
+### 3. 前端验收命令
+
+```bash
+pnpm install
+pnpm typecheck:all
+pnpm build
+pnpm why @mysten/sui @mysten/sui.js @pythnetwork/pyth-sui-js @mayanfinance/swap-sdk --recursive
+```
+
+验收重点：
+
+- 前端可以从 tarball 正常解析 ESM `exports` 和 `.d.ts`。
+- 前端主路径使用 `@mysten/sui@2`。
+- `@mysten/sui.js` / Sui v1 只能出现在明确 legacy 或 lazy adapter 路径。
+- `@naviprotocol/astros-bridge-sdk` root entry 不加载 Mayan / Sui v1；Mayan 只进入 bridge lazy chunk。
+- lending、swap、bridge、dca、wallet wrappers 完成页面 smoke；真实 execute 只用授权测试钱包和小额金额。
+
+### 4. 稳定后发布 beta
+
+前端 tarball 联调通过后，再发布 beta tag。发布顺序保持依赖从底到顶：
+
+```bash
+cd naviprotocol-monorepo
+
+pnpm --dir packages/lending publish --tag beta --access public
+pnpm --dir packages/astros-aggregator-sdk publish --tag beta --access public
+pnpm --dir packages/astros-dca-sdk publish --tag beta --access public
+pnpm --dir packages/astros-bridge-sdk publish --tag beta --access public
+pnpm --dir packages/wallet-client publish --tag beta --access public
+```
+
+发布后前端把 tarball 依赖替换为精确 beta 版本，例如 `@naviprotocol/lending@2.0.0-beta.0`。不要使用 floating range 作为验收锁定版本。
+
 ## Sui v2 Client 初始化
 
 旧代码常见写法：
@@ -128,7 +212,7 @@ const walletClient = new WalletClient({
 const balances = await walletClient.balance.getAllBalances()
 ```
 
-当前 beta 限制：Suilend protocol 已从默认生产路径隔离为 legacy optional adapter，普通 wallet root import 和默认 lending module 不再加载 Suilend；如业务显式启用 `configs.lending.enableSuilend=true`，仍需自行安装 optional peers，并承担该 legacy 依赖链的 Sui v1 / `@mysten/sui.js` 风险，直到有已验证的 v2-safe Suilend stack。
+当前 beta 限制：Suilend protocol 保持升级前默认可用语义，但实现为 lazy optional adapter；普通 wallet root import 不加载 Suilend，首次初始化 lending protocol registry 时才尝试加载。使用 Suilend migration 路径时需要安装 `@suilend/sdk@1.1.75` 和 `@suilend/sui-fe@0.3.20` optional peers；不使用 Suilend 的前端可以显式设置 `configs.lending.enableSuilend=false`。
 
 ## Astros Aggregator SDK
 
@@ -231,7 +315,7 @@ pnpm exec tsc --noEmit -p docs/examples/tsconfig.json
 
 ## 前端消费验收
 
-最终验收必须在 `copilot` 的 `feat/mysten-sui-2.0` 分支安装 SDK v2 tarball、preview package 或 beta package 后执行：
+最终验收必须在前端安装 SDK v2 tarball、preview package 或 beta package 后执行：
 
 ```bash
 pnpm install --frozen-lockfile
@@ -251,7 +335,7 @@ pnpm why @mysten/sui @mysten/sui.js @pythnetwork/pyth-sui-js @mayanfinance/swap-
 ## 已知 Beta 限制
 
 - package build/typecheck 和默认 package tests 已在 Node 22 通过；live smoke 仍不作为默认确定性 gate。
-- `wallet-client` 默认生产路径已隔离 Suilend；显式启用 legacy Suilend optional adapter 仍不是 v2-safe 交付路径。
+- `wallet-client` root import 已隔离 Suilend；Suilend adapter 默认 lazy 尝试加载以保持升级前 migration 语义，也可通过 `configs.lending.enableSuilend=false` 显式关闭。
 - frontend `apps/lending` build 仍被 Copilot 第三方协议 SDK 的 Sui v1-era imports 阻塞，不属于 SDK package 默认路径。
 - 前端依赖树仍有 Copilot/store/legacy app 拥有的 Sui v1/v2 冲突，不能作为最终 clean v2 acceptance。
 - Bridge、Pyth、lending、swap、DCA、wallet wrappers 的授权测试钱包真实小额 execute smoke 尚未全部完成。
