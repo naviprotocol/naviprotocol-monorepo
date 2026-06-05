@@ -11,9 +11,14 @@ This guide covers the NAVI SDK v2 beta packages for Sui SDK 2.x consumers.
 - Install the v2 beta packages independently from the legacy v1 line.
 
 ```bash
-npm install @mysten/sui@^2 @naviprotocol/lending@next @naviprotocol/wallet-client@next
-npm install @naviprotocol/astros-aggregator-sdk@next @naviprotocol/astros-bridge-sdk@next @naviprotocol/astros-dca-sdk@next
+npm install @mysten/sui@^2
+npm install @naviprotocol/lending@<published-beta-tag-or-version> @naviprotocol/wallet-client@<published-beta-tag-or-version>
+npm install @naviprotocol/astros-aggregator-sdk@<published-beta-tag-or-version> @naviprotocol/astros-bridge-sdk@<published-beta-tag-or-version> @naviprotocol/astros-dca-sdk@<published-beta-tag-or-version>
 ```
+
+Before beta packages are published to npm, install NAVI-provided tarballs or
+preview packages generated from the SDK v2 build. Do not use `@next` or `@2`
+unless that npm dist-tag/version has been published.
 
 ## Client Setup
 
@@ -98,7 +103,66 @@ tx.transferObjects([coinOut], address)
 
 ## Bridge
 
-`@naviprotocol/astros-bridge-sdk@2` keeps the Mayan adapter internal and lazy-loaded. Root imports do not load Mayan. Sui bridge execution returns standard transaction bytes for a Sui SDK v2 wallet to parse, dry-run, sign, and execute.
+The v2 beta bridge package keeps the Mayan provider internal and lazy-loaded. Root imports do not load Mayan or Sui v1. For Sui-source bridge execution, the SDK builds provider-specific transaction bytes internally, converts them to a Sui SDK v2 `Transaction`, calls the `signTransaction` function supplied by the app wallet, executes the signed transaction with the supplied v2 `SuiJsonRpcClient`, and returns a `BridgeSwapTransaction`.
+
+The business flow is intentionally the same as the v1 bridge package: quote,
+Mayan route builder, wallet signature, source-chain execution, and status
+polling. The v2 package changes the integration boundary, not the route or
+amount semantics. Apps should not install Mayan or Sui v1, should not parse
+Mayan's internal transaction bytes, and should not pass v1 `TransactionBlock`
+values to wallet code.
+
+## Frontend And External Integration
+
+Use the v2 beta packages as ESM-only packages on Node.js 22 or newer. Do not install or pass `@mysten/sui.js` clients into v2 SDK calls.
+
+For bridge integration:
+
+```ts
+import {
+  getQuote,
+  getTransaction,
+  searchSupportTokens,
+  swap,
+  type WalletConnection
+} from '@naviprotocol/astros-bridge-sdk'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+
+const client = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
+
+const fromToken = (await searchSupportTokens(1999, suiUsdcCoinType))[0]
+const toToken = (await searchSupportTokens(42161, arbitrumUsdcAddress))[0]
+if (!fromToken || !toToken) throw new Error('Required bridge tokens are not available')
+
+const quote = await getQuote(fromToken, toToken, '0.6', { slippageBps: 50 })
+if (!quote.routes.length) throw new Error('No bridge route is available')
+
+const walletConnection: WalletConnection = {
+  sui: {
+    provider: client,
+    signTransaction: async ({ transaction }) => {
+      return connectedWallet.signTransaction({ transaction })
+    }
+  }
+}
+
+const tx = await swap(quote.routes[0], suiAddress, evmRecipientAddress, walletConnection)
+const latest = await getTransaction(tx.id)
+
+if (latest.bridgeStatus === 'completed') {
+  latest.bridgeDestTxHash
+}
+```
+
+The app owns wallet connection, user approval, account selection, and UI state. The SDK owns quote/status requests, lazy Mayan loading, Sui-source transaction conversion, source-chain execution, and the returned bridge DTO. For real transactions, use an explicitly authorized wallet and small test amounts until your integration has passed status polling on the target route.
+
+For EVM-source gasless Mayan routes, the SDK may return a Mayan order hash
+instead of an EVM transaction hash. Treat the returned `BridgeSwapTransaction`
+as the source for status polling instead of assuming every id is waitable through
+the source-chain wallet provider.
 
 ## DCA
 

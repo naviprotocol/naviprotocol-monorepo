@@ -2,86 +2,145 @@
 title: Quick Start
 ---
 
-import { Step, Steps } from 'fumadocs-ui/components/steps';
+## Install SDK
 
-<Steps>
-<Step>
-### Install SDK
-```npm
-npm install @naviprotocol/astros-bridge-sdk
-
+```bash
+npm install @naviprotocol/astros-bridge-sdk@<published-beta-tag-or-version> @mysten/sui@^2
 ```
-</Step>
-<Step>
-### Config Api key
-```typescript
-import {config} from '@naviprotocol/astros-bridge-sdk';
+
+Before the beta package is published to npm, install the NAVI-provided preview
+tarball instead:
+
+```bash
+npm install ./naviprotocol-astros-bridge-sdk-2.0.0-beta.0.tgz @mysten/sui@^2
+```
+
+## Configure API Key
+
+```ts
+import { config } from '@naviprotocol/astros-bridge-sdk'
 
 config({
   apiKey: 'your api key'
-});
-
-```
-</Step>
-<Step>
-### Query all supported chains
-```typescript
-import {getSupportChains} from '@naviprotocol/astros-bridge-sdk';
-
-const supportChains = await getSupportChains();
-
-const SuiChain = supportChains[6]
-const SolanaChain = supportChains[0]
-```
-</Step>
-<Step>
-### Query bridge token
-```typescript
-import {searchSupportTokens} from '@naviprotocol/astros-bridge-sdk';
-
-const navxSearchResult = await searchSupportTokens(SuiChain.id, '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX')
-
-const SUI_NAVX = navxSearchResult[0];
-
-const usdcSearchResult = await searchSupportTokens(SolanaChain.id, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-
-const SolanaUSDC = usdcSearchResult[0];
-```
-</Step>
-<Step>
-### Get Quote
-```typescript
-import {getQuote} from '@naviprotocol/astros-bridge-sdk';
-
-const quotes = await getQuote(SUI_NAVX, SolanaUSDC, 10, {
-    slippageBps: 50
 })
 ```
-</Step>
-<Step>
-### Start Bridge Transaction
-```typescript
-import {swap} from '@naviprotocol/astros-bridge-sdk';
 
-const transaction = await swap(quotes.routes[0], fromAddress, toAddress, walletConnect)
+If your integration is already provisioned through NAVI backend defaults, this
+step can be skipped. Use `config({ apiKey })` when your environment requires an
+explicit bridge API key.
 
-```
-</Step>
-<Step>
-### Query Transaction Status
-```typescript
-import {getTransaction} from '@naviprotocol/astros-bridge-sdk';
+## Query Supported Chains
 
-const lastestTransaction = await Bridge.getTransaction(transaction.id) 
-// check transaction state
-switch(lastestTransaction.status) {
-    case "processing":
-        break;
-    case "completed":
-        break;
-    case "fail":
-        break;
+```ts
+import { getSupportChains } from '@naviprotocol/astros-bridge-sdk'
+
+const SUI_BRIDGE_CHAIN_ID = 1999
+const ARBITRUM_CHAIN_ID = 42161
+
+const supportChains = await getSupportChains()
+
+const suiChain = supportChains.find((chain) => chain.id === SUI_BRIDGE_CHAIN_ID)
+const arbitrumChain = supportChains.find((chain) => chain.id === ARBITRUM_CHAIN_ID)
+
+if (!suiChain || !arbitrumChain) {
+  throw new Error('Required bridge chains are not available')
 }
 ```
-</Step>
-</Steps>
+
+`1999` is the Bridge/Mayan chain id for Sui.
+`0` is the Bridge/Mayan chain id for Solana.
+
+## Query Bridge Tokens
+
+```ts
+import { searchSupportTokens } from '@naviprotocol/astros-bridge-sdk'
+
+const [suiUsdc] = await searchSupportTokens(
+  1999,
+  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+)
+
+const [arbitrumUsdc] = await searchSupportTokens(
+  42161,
+  '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
+)
+
+if (!suiUsdc || !arbitrumUsdc) {
+  throw new Error('Required bridge tokens are not available')
+}
+```
+
+## Get Quote
+
+```ts
+import { getQuote } from '@naviprotocol/astros-bridge-sdk'
+
+const quotes = await getQuote(suiUsdc, arbitrumUsdc, '0.6', {
+  slippageBps: 50
+})
+
+if (!quotes.routes.length) {
+  throw new Error('No bridge route is available')
+}
+```
+
+## Execute A Sui-Source Bridge
+
+For Sui-source routes, the SDK keeps the Mayan provider internal and lazy-loaded.
+The app provides a Sui SDK v2 `SuiJsonRpcClient` and wallet-standard
+`signTransaction` function. The SDK builds the provider transaction internally,
+converts it to a v2 `Transaction`, requests the wallet signature, executes the
+source-chain transaction, and returns a `BridgeSwapTransaction`.
+
+```ts
+import { swap, type WalletConnection } from '@naviprotocol/astros-bridge-sdk'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+
+const client = new SuiJsonRpcClient({
+  network: 'mainnet',
+  url: getJsonRpcFullnodeUrl('mainnet')
+})
+
+const walletConnection: WalletConnection = {
+  sui: {
+    provider: client,
+    signTransaction: async ({ transaction }) => {
+      return connectedWallet.signTransaction({ transaction })
+    }
+  }
+}
+
+const transaction = await swap(quotes.routes[0], suiAddress, evmRecipientAddress, walletConnection)
+```
+
+The v2 SDK keeps the same business path as the v1 bridge package: quote,
+Mayan route builder, wallet signature, source-chain execution, and status
+polling. The migration only changes the public SDK boundary. Apps pass a Sui SDK
+v2 client and v2 wallet signer; the SDK owns the internal Mayan adapter and the
+v1-to-v2 transaction conversion.
+
+Do not pass v1 `TransactionBlock` values to the app wallet, and do not parse
+Mayan's internal Sui bytes in application code. If source-chain execution fails,
+`swap` rejects instead of returning a processing transaction.
+
+## Query Transaction Status
+
+```ts
+import { getTransaction } from '@naviprotocol/astros-bridge-sdk'
+
+const latestTransaction = await getTransaction(transaction.id)
+
+switch (latestTransaction.bridgeStatus) {
+  case 'processing':
+    break
+  case 'completed':
+    latestTransaction.bridgeDestTxHash
+    break
+  case 'fail':
+    latestTransaction.bridgeRefundTxHash
+    break
+}
+```
+
+Do not import Mayan or Sui v1 SDKs in the application. They are implementation
+details of the bridge package's lazy execution path.
