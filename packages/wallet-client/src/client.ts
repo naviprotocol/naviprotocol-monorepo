@@ -21,11 +21,10 @@ import { modules, ModuleName, ModuleEvents } from './modules'
 import { Transaction } from '@mysten/sui/transactions'
 import {
   DryRunOptions,
-  NaviDryRunTransactionResult,
-  NaviExecuteTransactionResult,
   NaviTransactionExecutionOptions,
   NaviWalletTransactionResult
 } from './types'
+import { mergeTransactionResponseOptions, normalizeTransactionResult } from './transaction-result'
 
 /**
  * Extracts the configuration type from a module
@@ -60,19 +59,6 @@ const defaultClientOptions = {
   network: 'mainnet',
   url: getJsonRpcFullnodeUrl('mainnet')
 } as const
-
-function normalizeTransactionResult(kind: 'dryRun', result: unknown): NaviDryRunTransactionResult
-function normalizeTransactionResult(kind: 'execute', result: unknown): NaviExecuteTransactionResult
-function normalizeTransactionResult(kind: 'dryRun' | 'execute', result: unknown) {
-  const raw = (result ?? {}) as Record<string, unknown>
-  return {
-    ...raw,
-    kind,
-    events: Array.isArray(raw.events) ? raw.events : [],
-    balanceChanges: Array.isArray(raw.balanceChanges) ? raw.balanceChanges : [],
-    objectChanges: Array.isArray(raw.objectChanges) ? raw.objectChanges : []
-  }
-}
 
 /**
  * Main wallet client class that provides unified access to blockchain operations
@@ -177,6 +163,7 @@ export class WalletClient {
     // Execute the actual transaction
     const result = await this.client.signAndExecuteTransaction({
       ...rest,
+      options: mergeTransactionResponseOptions(rest.options),
       signer: this.signer
     } as any)
     return normalizeTransactionResult('execute', result)

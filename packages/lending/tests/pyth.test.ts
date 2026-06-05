@@ -35,16 +35,30 @@ describe('SuiPriceServiceConnection', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
-  it('decodes VAA update data from Hermes', async () => {
+  it('decodes accumulator update data from Hermes v2', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify([btoa(String.fromCharCode(1, 2, 3))])))
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input))
+        expect(url.pathname).toBe('/v2/updates/price/latest')
+        expect(url.searchParams.get('encoding')).toBe('base64')
+        expect(url.searchParams.get('parsed')).toBe('false')
+        expect(url.searchParams.getAll('ids[]')).toEqual(['abc123'])
+        return new Response(
+          JSON.stringify({
+            binary: {
+              encoding: 'base64',
+              data: [btoa(String.fromCharCode(1, 2, 3))]
+            }
+          })
+        )
+      })
     )
 
     const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
-    const [vaa] = await connection.getPriceFeedsUpdateData(['abc123'])
+    const [update] = await connection.getPriceFeedsUpdateData(['abc123'])
 
-    expect(Array.from(vaa)).toEqual([1, 2, 3])
+    expect(Array.from(update)).toEqual([1, 2, 3])
   })
 })
 
@@ -64,10 +78,17 @@ describe('SuiPythClient', () => {
     const accumulatorMessage = Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3])
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input))
-      expect(url.pathname).toBe('/api/latest_vaas')
+      expect(url.pathname).toBe('/v2/updates/price/latest')
+      expect(url.searchParams.get('encoding')).toBe('base64')
+      expect(url.searchParams.get('parsed')).toBe('false')
       expect(url.searchParams.getAll('ids[]')).toEqual(['a'.repeat(64)])
       return new Response(
-        JSON.stringify([btoa(String.fromCharCode(...Array.from(accumulatorMessage)))])
+        JSON.stringify({
+          binary: {
+            encoding: 'base64',
+            data: [btoa(String.fromCharCode(...Array.from(accumulatorMessage)))]
+          }
+        })
       )
     })
     vi.stubGlobal('fetch', fetchMock)

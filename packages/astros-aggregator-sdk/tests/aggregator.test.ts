@@ -186,7 +186,8 @@ describe('swap test', () => {
       options: {
         showEffects: true,
         showEvents: true,
-        showBalanceChanges: true
+        showBalanceChanges: true,
+        showObjectChanges: true
       }
     })
     expect(result).toEqual({

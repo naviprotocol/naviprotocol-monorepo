@@ -22,6 +22,10 @@ import type { NaviWalletTransactionResult } from '../../types'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'
+import {
+  defaultTransactionResponseOptions,
+  normalizeTransactionResult
+} from '../../transaction-result'
 
 /**
  * Configuration options for the swap module
@@ -221,11 +225,7 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     const result = await this.walletClient.client.executeTransactionBlock({
       transactionBlock: signed!.bytes,
       signature: signatures,
-      options: {
-        showEffects: true,
-        showEvents: true,
-        showBalanceChanges: true
-      }
+      options: defaultTransactionResponseOptions
     })
 
     if (result.effects?.status?.status === 'success') {
@@ -249,6 +249,6 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
       this.walletClient.module('balance').updatePortfolio()
     }
 
-    return result as any
+    return normalizeTransactionResult('execute', result) as any
   }
 }

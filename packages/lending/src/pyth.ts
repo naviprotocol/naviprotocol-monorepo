@@ -15,6 +15,13 @@ type HermesPriceFeedResponse = {
   price: HermesPrice
 }
 
+type HermesPriceUpdateResponse = {
+  binary?: {
+    encoding?: string
+    data?: string[]
+  }
+}
+
 type PriceFeed = {
   id: string
   getPriceUnchecked(): {
@@ -79,14 +86,41 @@ export class SuiPriceServiceConnection {
   }
 
   async getPriceFeedsUpdateData(priceIds: string[]): Promise<Uint8Array[]> {
-    const vaas = await this.get<string[]>('/api/latest_vaas', priceIds)
-    return vaas.map(base64ToBytes)
+    const response = await this.get<HermesPriceUpdateResponse>(
+      '/v2/updates/price/latest',
+      priceIds,
+      {
+        encoding: 'base64',
+        parsed: 'false'
+      }
+    )
+    const encoding = response.binary?.encoding
+    const data = response.binary?.data ?? []
+
+    if (encoding && encoding !== 'base64') {
+      throw new Error(`Unsupported Hermes price update encoding: ${encoding}`)
+    }
+
+    if (data.length === 0) {
+      throw new Error('Hermes price update response did not include binary update data')
+    }
+
+    return data.map(base64ToBytes)
   }
 
-  private async get<T>(pathname: string, priceIds: string[]): Promise<T> {
+  private async get<T>(
+    pathname: string,
+    priceIds: string[],
+    searchParams?: Record<string, string>
+  ): Promise<T> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.timeout)
     const url = new URL(`${this.endpoint}${pathname}`)
+
+    for (const [key, value] of Object.entries(searchParams ?? {})) {
+      url.searchParams.set(key, value)
+    }
+
     for (const priceId of priceIds) {
       url.searchParams.append('ids[]', normalizePriceId(priceId))
     }
