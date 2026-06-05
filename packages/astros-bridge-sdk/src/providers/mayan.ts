@@ -75,7 +75,9 @@ function getLegacySuiRpcUrl(walletConnection: NonNullable<WalletConnection['sui'
     case 'devnet':
       return getLegacyFullnodeUrl('devnet')
     default:
-      return getLegacyFullnodeUrl('mainnet')
+      throw new Error(
+        `Unsupported Sui network "${String(network)}"; provide walletConnection.sui.rpcUrl for custom networks`
+      )
   }
 }
 

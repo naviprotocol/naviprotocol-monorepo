@@ -52,7 +52,7 @@ export interface LendingModuleConfig {
   env: 'dev' | 'prod'
   /** Lending protocols */
   protocols: LendingProtocol[]
-  /** Enable the legacy optional Suilend adapter. Disabled by default for SDK v2 root safety. */
+  /** Enable the optional Suilend adapter. Defaults to true to preserve v1 business behavior. */
   enableSuilend: boolean
 }
 
@@ -126,7 +126,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   readonly defaultConfig: LendingModuleConfig = {
     env: 'prod',
     protocols: [],
-    enableSuilend: false
+    enableSuilend: true
   }
 
   /** Internal protocols storage */
@@ -135,6 +135,11 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   /** Get protocols (either from internal storage or config) */
   get protocols(): LendingProtocol[] {
     return this._protocols.length > 0 ? this._protocols : this.config.protocols
+  }
+
+  install(walletClient: WalletClient): void {
+    super.install(walletClient)
+    this._protocols = []
   }
 
   async getProtocol(name: string) {
