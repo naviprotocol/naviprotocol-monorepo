@@ -253,6 +253,38 @@ describe('mayan provider', () => {
     expect(legacySui.instances[0].url).toBe('https://testnet.legacy.sui.invalid')
   })
 
+  it('requires an explicit rpcUrl for custom Sui networks', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const signTransaction = vi.fn(async () => ({
+      bytes: 'signed-bytes',
+      signature: 'signed-signature'
+    }))
+
+    await expect(
+      swap(
+        {
+          from_token: { chainId: 1999 },
+          to_token: { chainId: 0 },
+          info_for_bridge: { fromToken: { standard: 'sui' } }
+        } as any,
+        '0xfrom',
+        '0xto',
+        {
+          sui: {
+            provider: {
+              network: 'localnet'
+            } as any,
+            signTransaction
+          }
+        }
+      )
+    ).rejects.toThrow(
+      'Unsupported Sui network "localnet"; provide walletConnection.sui.rpcUrl for custom networks'
+    )
+    expect(legacySui.instances).toHaveLength(0)
+    expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
+  })
+
   it('keeps Solana source routing on bridge API chain id 0', async () => {
     const { swap } = await import('../src/providers/mayan')
     mayanSdk.swapFromSolana.mockResolvedValueOnce({ signature: 'solana-signature' })

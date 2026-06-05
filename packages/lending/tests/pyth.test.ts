@@ -49,7 +49,11 @@ describe('SuiPriceServiceConnection', () => {
 })
 
 describe('SuiPythClient', () => {
-  it('builds v2 price update PTB with dynamic package ids, base fee, and price table lookup', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('builds v2 price update PTB from Hermes update data with dynamic package ids, base fee, and price table lookup', async () => {
     const pythStateId = `0x${'1'.repeat(64)}`
     const wormholeStateId = `0x${'2'.repeat(64)}`
     const pythPackageId = `0x${'3'.repeat(64)}`
@@ -58,6 +62,15 @@ describe('SuiPythClient', () => {
     const priceInfoObjectId = `0x${'6'.repeat(64)}`
     const feedId = `0x${'a'.repeat(64)}`
     const accumulatorMessage = Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3])
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input))
+      expect(url.pathname).toBe('/api/latest_vaas')
+      expect(url.searchParams.getAll('ids[]')).toEqual(['a'.repeat(64)])
+      return new Response(
+        JSON.stringify([btoa(String.fromCharCode(...Array.from(accumulatorMessage)))])
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     const provider = {
       getObject: vi.fn(async ({ id }: { id: string }) => {
@@ -132,8 +145,10 @@ describe('SuiPythClient', () => {
     }
 
     const tx = new Transaction()
+    const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
+    const updates = await connection.getPriceFeedsUpdateData([feedId])
     const client = new SuiPythClient(provider as any, pythStateId, wormholeStateId)
-    const updatedObjects = await client.updatePriceFeeds(tx, [accumulatorMessage], [feedId])
+    const updatedObjects = await client.updatePriceFeeds(tx, updates, [feedId])
     const commands = tx.getData().commands
     const moveCalls = commands.map((command: any) => command.MoveCall).filter(Boolean)
     const splitCoinCommands = commands.map((command: any) => command.SplitCoins).filter(Boolean)
@@ -171,5 +186,6 @@ describe('SuiPythClient', () => {
     expect(JSON.stringify(commands)).toContain(pythPackageId)
     expect(splitCoinCommands).toHaveLength(1)
     expect(splitCoinCommands[0].amounts).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 })
