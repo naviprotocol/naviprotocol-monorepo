@@ -3,8 +3,18 @@
     return
   }
   const _fetch = fetch
+  const shouldUseNaviHeaders = (input: RequestInfo | URL) => {
+    const url =
+      input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url)
+
+    return url.hostname.endsWith('naviprotocol.io')
+  }
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!shouldUseNaviHeaders(input)) {
+      return _fetch(input, init)
+    }
+
     return _fetch(input, {
       ...init,
       headers: {

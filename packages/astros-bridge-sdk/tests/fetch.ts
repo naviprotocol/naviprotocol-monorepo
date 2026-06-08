@@ -10,6 +10,14 @@ axios.interceptors.request.use((config) => {
   config.headers.set('origin', 'app.naviprotocol.io')
   return config
 })
+
+function shouldUseNaviHeaders(input: RequestInfo | URL) {
+  const url =
+    input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url)
+
+  return url.hostname.endsWith('naviprotocol.io')
+}
+
 ;(() => {
   if ((globalThis.fetch as any).isWraped) {
     return
@@ -17,6 +25,10 @@ axios.interceptors.request.use((config) => {
   const _fetch = fetch
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!shouldUseNaviHeaders(input)) {
+      return _fetch(input, init)
+    }
+
     return _fetch(input, {
       ...init,
       headers: {
