@@ -21,8 +21,7 @@ const forbiddenPublicDeclarationPatterns = [
   },
   {
     label: 'SuiTransactionBlockResponse',
-    test: (content) =>
-      /(^|[^A-Za-z0-9_])SuiTransactionBlockResponse([^A-Za-z0-9_]|$)/.test(content)
+    test: (content) => /(^|[^A-Za-z0-9_])SuiTransactionBlockResponse([^A-Za-z0-9_]|$)/.test(content)
   },
   {
     label: 'DryRunTransactionBlockResponse',
@@ -32,15 +31,7 @@ const forbiddenPublicDeclarationPatterns = [
 ]
 
 const forbiddenProductionDependencies = new Map([
-  [
-    '*',
-    [
-      '@mysten/sui.js',
-      '@pythnetwork/pyth-sui-js',
-      '@mayanfinance/swap-sdk',
-      '@mysten/sui-v1'
-    ]
-  ],
+  ['*', ['@mysten/sui.js', '@pythnetwork/pyth-sui-js', '@mayanfinance/swap-sdk', '@mysten/sui-v1']],
   ['wallet-client', ['@suilend/sdk', '@suilend/sui-fe']]
 ])
 
@@ -52,6 +43,10 @@ const requiredLazyPeerRanges = {
 }
 
 const issues = []
+
+function toPosixPath(filePath) {
+  return String(filePath).split(path.sep).join('/')
+}
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
@@ -67,6 +62,15 @@ function listFiles(dir) {
     .readdirSync(dir, { recursive: true })
     .map((file) => String(file))
     .filter((file) => fs.statSync(path.join(dir, file)).isFile())
+}
+
+function assertRequiredDistFiles(packageName, distFiles) {
+  const normalizedFiles = new Set(distFiles.map(toPosixPath))
+  for (const requiredFile of ['index.esm.js', 'index.d.ts']) {
+    if (!normalizedFiles.has(requiredFile)) {
+      issues.push(`${packageName}: dist/${requiredFile} is missing; run build before boundary scan`)
+    }
+  }
 }
 
 function assertPackageRange(packageName, packageJson, dependencyName, matcher) {
@@ -116,19 +120,22 @@ for (const packageName of sdkPackages) {
 
   const distDir = path.join(packageDir, 'dist')
   const distFiles = listFiles(distDir)
+  assertRequiredDistFiles(packageName, distFiles)
 
   for (const file of distFiles) {
+    const normalizedFile = toPosixPath(file)
     const absoluteFile = path.join(distDir, file)
     const relativeFile = path.relative(repoRoot, absoluteFile)
     const content = fs.readFileSync(absoluteFile, 'utf8')
-    const isDeclaration = file.endsWith('.d.ts')
-    const isRootBundle = file === 'index.esm.js'
+    const isDeclaration = normalizedFile.endsWith('.d.ts')
+    const isRootBundle = normalizedFile === 'index.esm.js'
     const isBridgeMayanArtifact =
       packageName === 'astros-bridge-sdk' &&
-      (file.startsWith('mayan-') || file.startsWith('providers/mayan'))
+      (normalizedFile.startsWith('mayan-') || normalizedFile.startsWith('providers/mayan'))
     const isWalletSuilendArtifact =
       packageName === 'wallet-client' &&
-      (file.startsWith('suilend-') || file.startsWith('modules/lendingModule/protocols/suilend'))
+      (normalizedFile.startsWith('suilend-') ||
+        normalizedFile.startsWith('modules/lendingModule/protocols/suilend'))
 
     if (isDeclaration) {
       for (const pattern of forbiddenPublicDeclarationPatterns) {
@@ -151,7 +158,9 @@ for (const packageName of sdkPackages) {
     }
 
     if (!isWalletSuilendArtifact && content.includes('@suilend/')) {
-      issues.push(`${relativeFile}: Suilend dependency is outside wallet-client lazy adapter artifacts`)
+      issues.push(
+        `${relativeFile}: Suilend dependency is outside wallet-client lazy adapter artifacts`
+      )
     }
   }
 }

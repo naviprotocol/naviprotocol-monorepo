@@ -55,7 +55,9 @@ function assertSuiExecutionSuccess(resp: SuiExecutionResponse) {
 
   const status = resp.effects?.status
   if (status?.status && status.status !== 'success') {
-    throw new Error(`Sui bridge source transaction failed: ${status.error ?? status.status}`)
+    throw new Error(
+      `Sui bridge source transaction failed: ${status?.error ?? status?.status ?? 'unknown status'}`
+    )
   }
 }
 
@@ -201,7 +203,7 @@ export async function swap(
       null
     )
     hash = typeof swapTrx === 'string' ? swapTrx : swapTrx.hash
-    if (typeof swapTrx !== 'string' || !mayanQuote.gasless) {
+    if (!mayanQuote.gasless) {
       await connection.waitForTransaction({
         hash,
         confirmations: 3

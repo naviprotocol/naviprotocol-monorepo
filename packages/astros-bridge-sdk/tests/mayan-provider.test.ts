@@ -103,7 +103,14 @@ describe('mayan provider', () => {
     mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
     const client = {
       network: 'mainnet',
-      executeTransactionBlock: vi.fn(async () => ({ digest })),
+      executeTransactionBlock: vi.fn(async () => ({
+        digest,
+        effects: {
+          status: {
+            status: 'success'
+          }
+        }
+      })),
       waitForTransaction: vi.fn(async () => ({ digest }))
     }
     const signTransaction = vi.fn(async ({ transaction }: { transaction: Transaction }) => {
@@ -214,6 +221,47 @@ describe('mayan provider', () => {
     expect(client.waitForTransaction).not.toHaveBeenCalled()
   })
 
+  it('keeps the v1-compatible Sui source path when execution status is omitted', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const digest = `0x${'a'.repeat(64)}`
+    const legacyBytes = await buildFixtureTransactionBytes()
+    const legacyTx = {
+      setSenderIfNotSet: vi.fn(),
+      setGasBudget: vi.fn(),
+      build: vi.fn(async () => legacyBytes)
+    }
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
+    const client = {
+      network: 'mainnet',
+      executeTransactionBlock: vi.fn(async () => ({ digest })),
+      waitForTransaction: vi.fn(async () => ({ digest }))
+    }
+    const signTransaction = vi.fn(async () => ({
+      bytes: 'signed-bytes',
+      signature: 'signed-signature'
+    }))
+
+    const resultPromise = swap(
+      {
+        from_token: { chainId: 1999 },
+        to_token: { chainId: 0 },
+        info_for_bridge: { fromToken: { standard: 'sui' } }
+      } as any,
+      '0xfrom',
+      '0xto',
+      {
+        sui: {
+          provider: client as any,
+          signTransaction
+        }
+      }
+    )
+    const result = await settleSwap(resultPromise)
+
+    expect(result).toBe(digest)
+    expect(client.waitForTransaction).toHaveBeenCalledWith({ digest })
+  })
+
   it('uses the provider network to create the legacy Sui client when rpcUrl is omitted', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'f'.repeat(64)}`
@@ -226,7 +274,14 @@ describe('mayan provider', () => {
     mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
     const client = {
       network: 'testnet',
-      executeTransactionBlock: vi.fn(async () => ({ digest })),
+      executeTransactionBlock: vi.fn(async () => ({
+        digest,
+        effects: {
+          status: {
+            status: 'success'
+          }
+        }
+      })),
       waitForTransaction: vi.fn(async () => ({ digest }))
     }
     const signTransaction = vi.fn(async () => ({
@@ -333,6 +388,44 @@ describe('mayan provider', () => {
     const { swap } = await import('../src/providers/mayan')
     ethersSdk.allowance.mockResolvedValueOnce(1_000_000n)
     mayanSdk.swapFromEvm.mockResolvedValueOnce('mayan-order-hash')
+    const waitForTransaction = vi.fn()
+
+    const resultPromise = swap(
+      {
+        from_token: { chainId: 42161 },
+        to_token: { chainId: 0 },
+        info_for_bridge: {
+          gasless: true,
+          effectiveAmountIn: 0.6,
+          effectiveAmountIn64: '600000',
+          fromToken: {
+            standard: 'erc20',
+            decimals: 6,
+            contract: '0xusdc'
+          }
+        }
+      } as any,
+      '0xfrom',
+      'sol-to',
+      {
+        evm: {
+          signer: {} as any,
+          permit: undefined,
+          overrides: undefined,
+          waitForTransaction
+        }
+      }
+    )
+    const result = await settleSwap(resultPromise)
+
+    expect(result).toBe('mayan-order-hash')
+    expect(waitForTransaction).not.toHaveBeenCalled()
+  })
+
+  it('does not wait for Mayan gasless EVM object hashes as EVM transaction hashes', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    ethersSdk.allowance.mockResolvedValueOnce(1_000_000n)
+    mayanSdk.swapFromEvm.mockResolvedValueOnce({ hash: 'mayan-order-hash' })
     const waitForTransaction = vi.fn()
 
     const resultPromise = swap(
