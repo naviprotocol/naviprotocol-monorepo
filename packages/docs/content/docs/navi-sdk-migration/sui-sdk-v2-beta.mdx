@@ -2,28 +2,34 @@
 title: Sui SDK v2 Beta
 ---
 
-This guide covers the NAVI SDK v2 beta packages for Sui SDK 2.x consumers.
+This guide is for integrators upgrading NAVI SDK usage to the Sui SDK v2 beta
+packages. It focuses on the public integration contract and omits internal
+development workflows.
 
-## Runtime
+## Requirements
 
-- Use Node.js 22.x or newer.
-- Use ESM imports. The v2 beta packages do not expose CommonJS `require` exports.
-- Install the v2 beta packages independently from the legacy v1 line.
+- Use Node.js 22 or newer.
+- Use ESM imports.
+- Install `@mysten/sui@^2`.
+- Replace legacy `TransactionBlock` usage with Sui SDK v2 `Transaction`.
+- Do not pass `@mysten/sui.js` clients or v1 transaction objects into NAVI SDK
+  v2 APIs.
 
 ```bash
 npm install @mysten/sui@^2
-npm install @naviprotocol/lending@<published-beta-tag-or-version> @naviprotocol/wallet-client@<published-beta-tag-or-version>
-npm install @naviprotocol/astros-aggregator-sdk@<published-beta-tag-or-version> @naviprotocol/astros-bridge-sdk@<published-beta-tag-or-version> @naviprotocol/astros-dca-sdk@<published-beta-tag-or-version>
+npm install @naviprotocol/lending@<beta-version>
+npm install @naviprotocol/wallet-client@<beta-version>
+npm install @naviprotocol/astros-aggregator-sdk@<beta-version>
+npm install @naviprotocol/astros-bridge-sdk@<beta-version>
+npm install @naviprotocol/astros-dca-sdk@<beta-version>
 ```
 
-Before beta packages are published to npm, install NAVI-provided tarballs or
-preview packages generated from the SDK v2 build. Do not use `@next` or `@2`
-unless that npm dist-tag/version has been published.
+Install only the NAVI packages your app uses.
 
 ## Client Setup
 
 ```ts
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
 const client = new SuiJsonRpcClient({
   network: 'mainnet',
@@ -31,9 +37,20 @@ const client = new SuiJsonRpcClient({
 })
 ```
 
-Read methods accept a Sui SDK v2 client contract. JSON-RPC is a compatibility transport; do not pass old `@mysten/sui.js` clients or v1 `TransactionBlock` values.
+NAVI SDK v2 accepts Sui SDK v2-compatible clients. JSON-RPC remains a supported
+transport through Sui SDK v2, but old `@mysten/sui.js` clients are not supported.
 
-## Lending Read Path
+## Common Import Changes
+
+| Old                                              | New                                           |
+| ------------------------------------------------ | --------------------------------------------- |
+| `@mysten/sui.js/transactions` `TransactionBlock` | `@mysten/sui/transactions` `Transaction`      |
+| `@mysten/sui/client` `SuiClient`                 | `@mysten/sui/jsonRpc` `SuiJsonRpcClient`      |
+| `@mysten/sui/client` `getFullnodeUrl`            | `@mysten/sui/jsonRpc` `getJsonRpcFullnodeUrl` |
+
+## Lending
+
+Read methods accept a Sui SDK v2 client:
 
 ```ts
 import { getCoins, getLendingState } from '@naviprotocol/lending'
@@ -44,11 +61,11 @@ const coins = await getCoins(address, { client })
 const lendingState = await getLendingState(address, { client })
 ```
 
-## Lending PTB Path
+PTB builders use Sui SDK v2 `Transaction`:
 
 ```ts
-import { depositCoinPTB } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
+import { depositCoinPTB } from '@naviprotocol/lending'
 
 const tx = new Transaction()
 const [coin] = tx.splitCoins(tx.gas, [1_000_000n])
@@ -58,15 +75,17 @@ await depositCoinPTB(tx, '0x2::sui::SUI', coin, {
 })
 ```
 
+Pyth update helpers are handled by NAVI's Sui SDK v2 path. Apps do not need to
+install `@pythnetwork/pyth-sui-js` for the `@naviprotocol/lending` main path.
+
 ## Wallet Client
 
 ```ts
-import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 
-const signer = new WatchSigner(address)
 const walletClient = new WalletClient({
-  signer,
+  signer: new WatchSigner(address),
   client: {
     url: getJsonRpcFullnodeUrl('mainnet')
   }
@@ -80,13 +99,47 @@ dryRun.kind
 dryRun.effects?.status?.status
 ```
 
-For real execution, pass an authorized Sui SDK v2 signer from the connected wallet. Wallet methods return NAVI result DTOs such as `NaviWalletTransactionResult`; raw JSON-RPC response types are not part of the stable v2 contract.
+For real execution, pass an authorized Sui SDK v2 signer from the connected
+wallet. Wallet methods return NAVI result DTOs.
 
-## Aggregator PTB
+### Optional Suilend Adapter
+
+`wallet-client` keeps Suilend enabled by default to preserve the previous
+cross-protocol migration behavior. The adapter is optional and lazy-loaded when
+the lending protocol registry initializes. The wallet root import does not load
+Suilend.
+
+Install the optional peers only if your app uses Suilend migration paths:
+
+```bash
+npm install @suilend/sdk@^3.0.4 @suilend/sui-fe@^3.0.7 @mysten/bcs@2.0.1 @pythnetwork/pyth-sui-js@2.2.0
+```
+
+Apps that do not use Suilend can opt out:
 
 ```ts
-import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
+const walletClient = new WalletClient({
+  signer: new WatchSigner(address),
+  client: {
+    url: getJsonRpcFullnodeUrl('mainnet')
+  },
+  configs: {
+    lending: {
+      enableSuilend: false
+    }
+  }
+})
+```
+
+If your app uses a custom Sui endpoint and Suilend requires a different gRPC
+endpoint, pass `configs.lending.suilendGrpcUrl` or
+`configs.lending.suilendGrpcClient`.
+
+## Aggregator
+
+```ts
 import { Transaction } from '@mysten/sui/transactions'
+import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
 
 const tx = new Transaction()
 const coinIn = tx.splitCoins(tx.gas, [1_000_000n])
@@ -97,26 +150,23 @@ const quote = await getQuote(
 )
 
 const coinOut = await buildSwapPTBFromQuote(address, tx, 990_000, coinIn, quote, 0, false)
-
 tx.transferObjects([coinOut], address)
 ```
 
+Aggregator execute and dry-run helpers return NAVI DTOs. Execute results keep
+normalized fields such as `digest`, `effects`, `events`, `balanceChanges`, and
+`objectChanges`; extra response fields are preserved, and `raw` is available for
+compatibility/debugging.
+
 ## Bridge
 
-The v2 beta bridge package keeps the Mayan provider internal and lazy-loaded. Root imports do not load Mayan or Sui v1. For Sui-source bridge execution, the SDK builds provider-specific transaction bytes internally, converts them to a Sui SDK v2 `Transaction`, calls the `signTransaction` function supplied by the app wallet, executes the signed transaction with the supplied v2 `SuiJsonRpcClient`, and returns a `BridgeSwapTransaction`.
+The Bridge v2 package keeps Mayan and Sui v1 internal to the Sui-source lazy
+provider. Root imports do not load Mayan or Sui v1, and apps should not install
+or parse Mayan internals.
 
-The business flow is intentionally the same as the v1 bridge package: quote,
-Mayan route builder, wallet signature, source-chain execution, and status
-polling. The v2 package changes the integration boundary, not the route or
-amount semantics. Apps should not install Mayan or Sui v1, should not parse
-Mayan's internal transaction bytes, and should not pass v1 `TransactionBlock`
-values to wallet code.
-
-## Frontend And External Integration
-
-Use the v2 beta packages as ESM-only packages on Node.js 22 or newer. Do not install or pass `@mysten/sui.js` clients into v2 SDK calls.
-
-For bridge integration:
+The business flow stays the same as v1: quote, route builder, wallet signature,
+source-chain execution, and status polling. The v2 package changes the SDK
+boundary, not route or amount semantics.
 
 ```ts
 import {
@@ -126,12 +176,18 @@ import {
   swap,
   type WalletConnection
 } from '@naviprotocol/astros-bridge-sdk'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
 const client = new SuiJsonRpcClient({
   network: 'mainnet',
   url: getJsonRpcFullnodeUrl('mainnet')
 })
+
+const suiUsdcCoinType =
+  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+const arbitrumUsdcAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
+const suiSenderAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const evmRecipientAddress = '0x0000000000000000000000000000000000000000'
 
 const fromToken = (await searchSupportTokens(1999, suiUsdcCoinType))[0]
 const toToken = (await searchSupportTokens(42161, arbitrumUsdcAddress))[0]
@@ -143,26 +199,23 @@ if (!quote.routes.length) throw new Error('No bridge route is available')
 const walletConnection: WalletConnection = {
   sui: {
     provider: client,
-    signTransaction: async ({ transaction }) => {
-      return connectedWallet.signTransaction({ transaction })
-    }
+    signTransaction: async ({ transaction }) => connectedWallet.signTransaction({ transaction })
   }
 }
 
-const tx = await swap(quote.routes[0], suiAddress, evmRecipientAddress, walletConnection)
+const tx = await swap(quote.routes[0], suiSenderAddress, evmRecipientAddress, walletConnection)
 const latest = await getTransaction(tx.id)
-
-if (latest.bridgeStatus === 'completed') {
-  latest.bridgeDestTxHash
-}
 ```
 
-The app owns wallet connection, user approval, account selection, and UI state. The SDK owns quote/status requests, lazy Mayan loading, Sui-source transaction conversion, source-chain execution, and the returned bridge DTO. For real transactions, use an explicitly authorized wallet and small test amounts until your integration has passed status polling on the target route.
+For known Sui networks, the SDK can derive the legacy builder RPC from the
+provider network. For custom Sui networks, pass `walletConnection.sui.rpcUrl`.
 
-For EVM-source gasless Mayan routes, the SDK may return a Mayan order hash
-instead of an EVM transaction hash. Treat the returned `BridgeSwapTransaction`
-as the source for status polling instead of assuming every id is waitable through
-the source-chain wallet provider.
+The SDK only overrides Sui bridge `gasBudget` when you explicitly pass
+`walletConnection.sui.gasBudget`.
+
+For EVM-source gasless Mayan routes, the returned id can be a Mayan order hash
+instead of a source-chain transaction hash. Use the returned
+`BridgeSwapTransaction` and `getTransaction` for status polling.
 
 ## DCA
 
@@ -185,9 +238,14 @@ const tx = await createDcaOrder(client, address, {
 })
 ```
 
-## Migration Rules
+## Upgrade Checklist
 
-- Do not import `@mysten/sui.js`.
-- Do not expose v1 `SuiClient`, `TransactionBlock`, or raw v1 response types in application-level contracts.
-- Keep third-party Sui v1 SDKs out of root app and SDK entry points. If a v1 adapter is unavoidable, load it lazily and keep it internal.
-- Build, typecheck, and test v2 packages with Node.js 22.x.
+- Install `@mysten/sui@^2`.
+- Replace legacy `TransactionBlock` with v2 `Transaction`.
+- Remove app-level `@mysten/sui.js` clients from NAVI SDK calls.
+- Keep third-party Sui v1 SDKs out of app root and shared SDK entry points.
+- Install Suilend optional peers only if Suilend migration paths are used.
+- Use `enableSuilend: false` when Suilend is not needed.
+- Use small authorized-wallet transactions for final live validation.
+- Treat live quote/route failures and test-wallet state failures as fixture or
+  upstream blockers until verified against current valid routes/accounts.

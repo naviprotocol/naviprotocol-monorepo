@@ -9,7 +9,6 @@ NAVI Wallet Client is a comprehensive wallet client SDK designed for the Sui blo
 
 For SDK documentation visit http://sdk.naviprotocol.io/wallet-client
 
-
 ## Core Features
 
 - 🔐 **Transaction Signing**: Complete transaction signing and execution functionality
@@ -23,27 +22,33 @@ For SDK documentation visit http://sdk.naviprotocol.io/wallet-client
 ## Supported Modules
 
 ### [Balance Module](./wallet-client/balance)
+
 Provides comprehensive wallet balance management functionality, including token tracking, portfolio management, token transfers, and automatic balance updates.
 
 **Key Features:**
+
 - Real-time balance tracking
 - Token transfers
 - Object transfers
 - Automatic balance updates
 
 ### [Swap Module](./wallet-client/swap)
+
 Provides DEX token swapping functionality, integrated with Astros aggregator to find optimal swap paths and execute trades across multiple decentralized exchanges.
 
 **Key Features:**
+
 - Token swapping
 - Aggregator integration
 - Slippage protection
 - Multi-DEX support
 
 ### [Lending Module](./wallet-client/lending)
+
 Provides comprehensive lending protocol functionality, including deposits, withdrawals, borrowing, repayments, liquidations, reward claiming, and oracle price updates.
 
 **Key Features:**
+
 - Deposits and withdrawals
 - Borrowing and repayments
 - Liquidation functionality
@@ -51,17 +56,21 @@ Provides comprehensive lending protocol functionality, including deposits, withd
 - Oracle updates
 
 ### [Haedal Module](./wallet-client/haedal)
+
 Provides Haedal protocol staking and unstaking functionality, allowing users to stake SUI to receive haSUI and obtain APY statistics.
 
 **Key Features:**
+
 - SUI staking
 - haSUI unstaking
 - APY queries
 
 ### [Volo Module](./wallet-client/volo)
+
 Provides Volo staking protocol functionality, allowing users to stake SUI tokens and receive vSUI (volo SUI) tokens for liquid staking.
 
 **Key Features:**
+
 - SUI staking
 - vSUI unstaking
 - Statistics queries
@@ -75,15 +84,15 @@ npm install @naviprotocol/wallet-client
 
 ## Sui SDK v2 Notes
 
-`@naviprotocol/wallet-client@2` defaults to the Sui SDK v2 main path. The legacy
-Suilend adapter remains an optional peer dependency and is loaded lazily when
-the lending protocol registry is initialized. This preserves the v1
+`@naviprotocol/wallet-client@2` defaults to the Sui SDK v2 main path. The
+Suilend adapter is an optional peer dependency and is loaded lazily when the
+lending protocol registry is initialized. This preserves the previous
 cross-protocol migration behavior without adding the Suilend stack to the root
-SDK import path. Install the optional peers when you use the Suilend migration
-path:
+SDK import path. Install the optional peers only when you use Suilend migration
+paths:
 
 ```bash
-npm install @suilend/sdk@1.1.75 @suilend/sui-fe@0.3.20
+npm install @suilend/sdk@^3.0.4 @suilend/sui-fe@^3.0.7 @mysten/bcs@2.0.1 @pythnetwork/pyth-sui-js@2.2.0
 ```
 
 ```ts
@@ -107,8 +116,9 @@ const walletClient = new WalletClient({
 })
 ```
 
-This optional path remains a compatibility adapter until a verified Suilend
-v2-safe stack is available.
+For custom Sui environments, pass `configs.lending.suilendGrpcUrl` or
+`configs.lending.suilendGrpcClient` when Suilend needs a dedicated gRPC
+endpoint.
 
 ## Quick Start
 
