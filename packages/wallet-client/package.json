@@ -61,9 +61,11 @@
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
+    "@mysten/bcs": "2.0.1",
     "@mysten/sui": "2.17.0",
-    "@suilend/sdk": "1.1.75",
-    "@suilend/sui-fe": "0.3.20",
+    "@pythnetwork/pyth-sui-js": "2.2.0",
+    "@suilend/sdk": "3.0.4",
+    "@suilend/sui-fe": "3.0.7",
     "@types/node": "22.7.5",
     "dotenv": "16.4.7",
     "tsconfig-paths": "4.2.0",
@@ -73,10 +75,18 @@
   },
   "peerDependencies": {
     "@mysten/sui": ">=2.0.0",
-    "@suilend/sdk": "1.1.75",
-    "@suilend/sui-fe": "0.3.20"
+    "@mysten/bcs": "2.0.1",
+    "@pythnetwork/pyth-sui-js": "2.2.0",
+    "@suilend/sdk": "^3.0.4",
+    "@suilend/sui-fe": "^3.0.7"
   },
   "peerDependenciesMeta": {
+    "@mysten/bcs": {
+      "optional": true
+    },
+    "@pythnetwork/pyth-sui-js": {
+      "optional": true
+    },
     "@suilend/sdk": {
       "optional": true
     },

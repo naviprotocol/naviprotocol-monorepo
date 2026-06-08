@@ -83,6 +83,9 @@ export class WalletClient {
   /** The Sui client instance */
   public readonly client: SuiJsonRpcClient
 
+  /** URL used by the default JSON-RPC client, when available. */
+  public readonly clientUrl?: string
+
   public get lending() {
     return this.modules.lending
   }
@@ -118,6 +121,7 @@ export class WalletClient {
     }
     // Initialize the Sui client
     this.client = new SuiJsonRpcClient(clientOptions as any)
+    this.clientUrl = clientOptions.url
     this.signer = options.signer
     this.userConfigs = options.configs || {}
 

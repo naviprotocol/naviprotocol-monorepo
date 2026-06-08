@@ -41,6 +41,7 @@ export type NaviAggregatorTransactionStatus = {
 }
 
 export type NaviAggregatorTransactionResult = {
+  [key: string]: unknown
   digest?: string
   effects?: {
     status?: NaviAggregatorTransactionStatus
@@ -63,6 +64,7 @@ export type NaviAggregatorTransactionResult = {
     owner?: unknown
     [key: string]: unknown
   }>
+  raw?: unknown
 }
 
 export type NaviAggregatorDryRunResult = {

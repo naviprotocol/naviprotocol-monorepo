@@ -44,6 +44,13 @@ const forbiddenProductionDependencies = new Map([
   ['wallet-client', ['@suilend/sdk', '@suilend/sui-fe']]
 ])
 
+const requiredLazyPeerRanges = {
+  'wallet-client': {
+    '@suilend/sdk': /^(\^)?3\./,
+    '@suilend/sui-fe': /^(\^)?3\./
+  }
+}
+
 const issues = []
 
 function readJson(filePath) {
@@ -60,6 +67,19 @@ function listFiles(dir) {
     .readdirSync(dir, { recursive: true })
     .map((file) => String(file))
     .filter((file) => fs.statSync(path.join(dir, file)).isFile())
+}
+
+function assertPackageRange(packageName, packageJson, dependencyName, matcher) {
+  const peerRange = packageJson.peerDependencies?.[dependencyName]
+  const devRange = packageJson.devDependencies?.[dependencyName]
+
+  if (!peerRange || !matcher.test(peerRange)) {
+    issues.push(`${packageName}: ${dependencyName} peer range must be SDK v2-compatible`)
+  }
+
+  if (!devRange || !matcher.test(devRange)) {
+    issues.push(`${packageName}: ${dependencyName} dev range must be SDK v2-compatible`)
+  }
 }
 
 for (const packageName of sdkPackages) {
@@ -88,6 +108,12 @@ for (const packageName of sdkPackages) {
     }
   }
 
+  for (const [dependencyName, matcher] of Object.entries(
+    requiredLazyPeerRanges[packageName] ?? {}
+  )) {
+    assertPackageRange(packageName, packageJson, dependencyName, matcher)
+  }
+
   const distDir = path.join(packageDir, 'dist')
   const distFiles = listFiles(distDir)
 
@@ -100,6 +126,9 @@ for (const packageName of sdkPackages) {
     const isBridgeMayanArtifact =
       packageName === 'astros-bridge-sdk' &&
       (file.startsWith('mayan-') || file.startsWith('providers/mayan'))
+    const isWalletSuilendArtifact =
+      packageName === 'wallet-client' &&
+      (file.startsWith('suilend-') || file.startsWith('modules/lendingModule/protocols/suilend'))
 
     if (isDeclaration) {
       for (const pattern of forbiddenPublicDeclarationPatterns) {
@@ -115,6 +144,24 @@ for (const packageName of sdkPackages) {
 
     if (!isBridgeMayanArtifact && content.includes('@mayanfinance')) {
       issues.push(`${relativeFile}: Mayan dependency is outside bridge lazy adapter artifacts`)
+    }
+
+    if (!isBridgeMayanArtifact && content.includes('@mysten/sui-v1')) {
+      issues.push(`${relativeFile}: Sui v1 alias is outside bridge lazy adapter artifacts`)
+    }
+
+    if (!isWalletSuilendArtifact && content.includes('@suilend/')) {
+      issues.push(`${relativeFile}: Suilend dependency is outside wallet-client lazy adapter artifacts`)
+    }
+  }
+}
+
+const lockfilePath = path.join(repoRoot, 'pnpm-lock.yaml')
+if (fs.existsSync(lockfilePath)) {
+  const lockfile = fs.readFileSync(lockfilePath, 'utf8')
+  for (const forbiddenLockMarker of ['@suilend/sdk@1.', '@suilend/sui-fe@0.']) {
+    if (lockfile.includes(forbiddenLockMarker)) {
+      issues.push(`pnpm-lock.yaml: contains old Suilend marker ${forbiddenLockMarker}`)
     }
   }
 }

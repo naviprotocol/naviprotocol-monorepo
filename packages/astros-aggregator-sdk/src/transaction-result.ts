@@ -10,6 +10,7 @@ export function normalizeAggregatorTransactionResult(
   const raw = (result ?? {}) as Record<string, unknown>
 
   return {
+    ...raw,
     digest: typeof raw.digest === 'string' ? raw.digest : undefined,
     effects: raw.effects as NaviAggregatorTransactionResult['effects'],
     events: toArray<NaviAggregatorTransactionResult['events'][number]>(raw.events),
@@ -18,7 +19,8 @@ export function normalizeAggregatorTransactionResult(
     ),
     objectChanges: toArray<NaviAggregatorTransactionResult['objectChanges'][number]>(
       raw.objectChanges
-    )
+    ),
+    raw: result
   }
 }
 

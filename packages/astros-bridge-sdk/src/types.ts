@@ -216,21 +216,33 @@ export type BridgeSwapTransaction = {
   mayan?: any
 }
 
+export type NaviBridgeSuiNetwork = 'mainnet' | 'testnet' | 'devnet'
+
 export type NaviBridgeSuiProvider = {
   network?: string
   executeTransactionBlock(options: any): Promise<any>
   waitForTransaction(options: any): Promise<any>
 }
 
-export type SuiWalletConnection = {
-  provider: NaviBridgeSuiProvider
-  rpcUrl?: string
+type SuiWalletConnectionBase = {
   gasBudget?: number
   signTransaction: (data: { transaction: Transaction }) => Promise<{
     bytes: string
     signature: string
   }>
 }
+
+export type SuiWalletConnection = SuiWalletConnectionBase &
+  (
+    | {
+        provider: NaviBridgeSuiProvider
+        rpcUrl: string
+      }
+    | {
+        provider: NaviBridgeSuiProvider & { network: NaviBridgeSuiNetwork }
+        rpcUrl?: string
+      }
+  )
 
 export type SolanaWalletConnection = {
   signTransaction: (transaction: unknown) => Promise<unknown>

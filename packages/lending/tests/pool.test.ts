@@ -83,7 +83,7 @@ describe.skipIf(!runLiveTests)('depositCoinPTB', () => {
   it('should success deposit 1 Sui', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 0.2])
     await depositCoinPTB(tx, coinType, toDeposit)
     tx.setSender(testAddress)
@@ -100,7 +100,7 @@ describe.skipIf(!runLiveTests)('depositCoinPTB', () => {
   it('should failed insufficient SUI balance for deposit', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 1000])
     await depositCoinPTB(tx, coinType, toDeposit, {
       amount: 1e9 * 1000
@@ -122,7 +122,7 @@ describe.skipIf(!runLiveTests)('withdrawCoinPTB', () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9 * 0.2)
     tx.transferObjects([withdrawCoins], testAddress)
     tx.setSender(testAddress)
@@ -144,7 +144,7 @@ describe.skipIf(!runLiveTests)('borrowCoinPTB', () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9 * 0.1)
     tx.transferObjects([borrowCoin], testAddress)
     tx.setSender(testAddress)
@@ -163,7 +163,7 @@ describe.skipIf(!runLiveTests)('repayCoinPTB', () => {
   it('should success repay 0.1 SUI', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     await repayCoinPTB(tx, coinType, tx.gas, {
       amount: 1e9 * 0.1
     })

@@ -28,8 +28,6 @@ enum BridgeChain {
   SOLANA = 0
 }
 
-const DEFAULT_SUI_BRIDGE_GAS_BUDGET = 100_000_000
-
 type SuiExecutionResponse = {
   digest?: string
   effects?: null | {
@@ -124,7 +122,9 @@ export async function swap(
       legacyClient as any
     )
     legacySwapTrx.setSenderIfNotSet(fromAddress)
-    legacySwapTrx.setGasBudget(connection.gasBudget ?? DEFAULT_SUI_BRIDGE_GAS_BUDGET)
+    if (connection.gasBudget !== undefined) {
+      legacySwapTrx.setGasBudget(connection.gasBudget)
+    }
     const legacyBytes = await legacySwapTrx.build({ client: legacyClient as any })
     const swapTrx = Transaction.from(legacyBytes)
     const signed: {

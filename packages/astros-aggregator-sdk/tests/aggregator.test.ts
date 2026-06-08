@@ -148,6 +148,8 @@ describe('swap test', () => {
     const client = {
       executeTransactionBlock: vi.fn(async () => ({
         digest: '0xabc',
+        confirmedLocalExecution: true,
+        timestampMs: '123',
         effects: {
           status: {
             status: 'success'
@@ -192,6 +194,8 @@ describe('swap test', () => {
     })
     expect(result).toEqual({
       digest: '0xabc',
+      confirmedLocalExecution: true,
+      timestampMs: '123',
       effects: {
         status: {
           status: 'success'
@@ -214,7 +218,35 @@ describe('swap test', () => {
           type: 'mutated',
           objectId: `0x${'8'.repeat(64)}`
         }
-      ]
+      ],
+      raw: {
+        digest: '0xabc',
+        confirmedLocalExecution: true,
+        timestampMs: '123',
+        effects: {
+          status: {
+            status: 'success'
+          }
+        },
+        events: [
+          {
+            type: 'test::event'
+          }
+        ],
+        balanceChanges: [
+          {
+            owner: { AddressOwner: coins.sui.holder },
+            amount: '-1',
+            coinType: coins.sui.address
+          }
+        ],
+        objectChanges: [
+          {
+            type: 'mutated',
+            objectId: `0x${'8'.repeat(64)}`
+          }
+        ]
+      }
     })
     consoleError.mockRestore()
   })

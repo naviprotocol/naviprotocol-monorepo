@@ -169,11 +169,12 @@ describe('mayan provider', () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'e'.repeat(64)}`
     const legacyBytes = await buildFixtureTransactionBytes()
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce({
+    const legacyTx = {
       setSenderIfNotSet: vi.fn(),
       setGasBudget: vi.fn(),
       build: vi.fn(async () => legacyBytes)
-    })
+    }
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
     const client = {
       network: 'mainnet',
       executeTransactionBlock: vi.fn(async () => ({
@@ -209,6 +210,7 @@ describe('mayan provider', () => {
         }
       )
     ).rejects.toThrow('Sui bridge source transaction failed: MoveAbort(bridge)')
+    expect(legacyTx.setGasBudget).not.toHaveBeenCalled()
     expect(client.waitForTransaction).not.toHaveBeenCalled()
   })
 
@@ -216,11 +218,12 @@ describe('mayan provider', () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'f'.repeat(64)}`
     const legacyBytes = await buildFixtureTransactionBytes()
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce({
+    const legacyTx = {
       setSenderIfNotSet: vi.fn(),
       setGasBudget: vi.fn(),
       build: vi.fn(async () => legacyBytes)
-    })
+    }
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
     const client = {
       network: 'testnet',
       executeTransactionBlock: vi.fn(async () => ({ digest })),
@@ -251,6 +254,7 @@ describe('mayan provider', () => {
     expect(result).toBe(digest)
     expect(legacySui.getFullnodeUrl).toHaveBeenCalledWith('testnet')
     expect(legacySui.instances[0].url).toBe('https://testnet.legacy.sui.invalid')
+    expect(legacyTx.setGasBudget).not.toHaveBeenCalled()
   })
 
   it('requires an explicit rpcUrl for custom Sui networks', async () => {

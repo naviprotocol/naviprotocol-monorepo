@@ -35,6 +35,7 @@ import {
   getUserClaimedRewardHistory
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
+import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import {
   migrateBalanceToSupplyPTB,
   migrateBetweenBorrowPTB,
@@ -54,6 +55,10 @@ export interface LendingModuleConfig {
   protocols: LendingProtocol[]
   /** Enable the optional Suilend adapter. Defaults to true to preserve v1 business behavior. */
   enableSuilend: boolean
+  /** Optional Suilend v3 gRPC client. Defaults to a client derived from the wallet Sui network. */
+  suilendGrpcClient?: SuiGrpcClient
+  /** Optional Suilend v3 gRPC endpoint. Used when suilendGrpcClient is not provided. */
+  suilendGrpcUrl?: string
 }
 
 /**
@@ -707,7 +712,12 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     if (this.config.enableSuilend) {
       try {
         const { default: SuilendProtocol } = await import('./protocols/suilend')
-        protocols.push(await SuilendProtocol.create(this.walletClient))
+        protocols.push(
+          await SuilendProtocol.create(this.walletClient, {
+            grpcClient: this.config.suilendGrpcClient,
+            grpcUrl: this.config.suilendGrpcUrl
+          })
+        )
       } catch (error) {
         console.warn('Failed to initialize SuilendProtocol:', error)
       }
