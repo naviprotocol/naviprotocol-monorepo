@@ -127,6 +127,13 @@ export type UserLendingInfo = {
   pool: Pool
   market: string
   emodeId?: number
+  /**
+   * The E-Mode account cap object id this state belongs to. Set only for
+   * E-Mode tasks. A user can hold multiple account caps under the SAME
+   * emodeId (e.g. both directions of a bidirectional pair), so positions must
+   * be attributed by accountCap rather than emodeId alone.
+   */
+  accountCap?: string
 }
 
 /**

@@ -191,6 +191,7 @@ async function getLendingStateBatch(
     address: string
     market: string
     emodeId?: number
+    accountCap?: string
   }[],
   options?: Partial<
     SuiClientOption &
@@ -331,7 +332,8 @@ async function getLendingStateBatch(
         assetId: state.asset_id,
         market: market.key,
         pool,
-        emodeId: task.emodeId
+        emodeId: task.emodeId,
+        accountCap: task.accountCap
       })
     })
   })
@@ -591,7 +593,8 @@ export const getLendingPositions = withCache(
             return {
               address: emodeCap.accountCap,
               market: getMarketConfig(emodeCap.marketId).key,
-              emodeId: emodeCap.emodeId
+              emodeId: emodeCap.emodeId,
+              accountCap: emodeCap.accountCap
             }
           })
       )
@@ -599,12 +602,19 @@ export const getLendingPositions = withCache(
     const lendingStates = await getLendingStateBatch(address, tasks, options)
 
     lendingStates.forEach((lendingState) => {
+      // Attribute the state to its exact account cap. A user can hold multiple
+      // caps under the same emodeId (e.g. both directions of a bidirectional
+      // pair), so we match by the accountCap carried on the task rather than by
+      // emodeId, which would collapse every same-emodeId cap onto the first one.
       const emodeCap =
         typeof lendingState.emodeId === 'number'
-          ? emodeCaps.find((cap) => {
+          ? ((lendingState.accountCap
+              ? emodeCaps.find((cap) => cap.accountCap === lendingState.accountCap)
+              : undefined) ??
+            emodeCaps.find((cap) => {
               const market = getMarketConfig(lendingState.market)
               return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
-            })
+            }))
           : undefined
       if (emodeCap) {
         const inEmode = lendingState.pool.emodes.find((emode) => emode.emodeId === emodeCap.emodeId)
