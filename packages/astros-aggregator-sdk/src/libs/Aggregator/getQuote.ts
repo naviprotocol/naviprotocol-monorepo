@@ -57,7 +57,10 @@ export async function getQuoteInternal(
     by_amount_in:
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
-    version: '13'
+    // Bumped 13 -> 14 alongside the magma v4 integrate package fix: the router API only
+    // returns magma routes to version >= 14 clients (this SDK), so older clients that still
+    // build the pre-v4 magma PTB don't get magma and avoid the on-chain abort.
+    version: '14'
   }).toString()
 
   // Construct dex provider string if dexList is provided
