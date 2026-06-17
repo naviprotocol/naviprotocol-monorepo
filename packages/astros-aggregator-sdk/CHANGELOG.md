@@ -1,5 +1,24 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 1.14.3
+
+### Patch Changes
+
+- a9a62cb: fix(aggregator-sdk): bump find_routes version 13 -> 14 for magma v4 gating
+
+  Pairs with the magma v4 integrate package fix. The router API gates magma routes behind a
+  minimum client version; bumping the request version to 14 lets the backend return magma only
+  to clients running this (fixed) SDK, while older clients keep getting magma-free routes.
+
+- 336b7cc: fix(aggregator-sdk): update magma integrate package to on-chain v4
+
+  Magma upgraded its on-chain GlobalConfig.package_version to 4 and enforces it via
+  config::checked_package_version. The previous integrate package (0x4a9d6fb6, synced from
+  @magmaprotocol/magma-ts-sdk@1.1.1) is pre-v4, so router::swap aborted with code 10 on real
+  swaps (preswap was unaffected, masking the issue). Point magmaIntegratePublishedAt at the
+  current v4 integrate package 0x668909f9. Verified via devInspect: SUI->USDC and USDC->SUI
+  both succeed.
+
 ## 1.14.2
 
 ### Patch Changes
