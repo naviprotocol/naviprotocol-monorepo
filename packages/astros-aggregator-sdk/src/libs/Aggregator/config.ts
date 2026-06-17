@@ -94,7 +94,12 @@ export const AggregatorConfig = {
   // Synced with @magmaprotocol/magma-ts-sdk@1.1.1 almm_pool / almmConfig values.
   magmaAlmmPackageId: '0x532bf64e6f0bf702353387d53a28a3239249f47c39d58954f2c0a1f9f4436c20',
   magmaAlmmPublishedAt: '0x8800c3f7496a09dd62b0850b178b73ada2aeaf34d076dcd1c1bbd0da0015550d',
-  magmaIntegratePublishedAt: '0x4a9d6fb6f34ca8918756c2dfddf8f0a7fd5ef590bcffa6c03db24a6f10f42c5e',
+  // magmaIntegratePublishedAt is the package whose router::swap we call (see Dex/magma.ts).
+  // It must track magma's on-chain GlobalConfig.package_version (currently 4). The value
+  // from @magmaprotocol/magma-ts-sdk@1.1.1 (0x4a9d6fb6) is pre-v4 and aborts in
+  // config::checked_package_version (code 10); 0x668909f9 is the current v4 integrate
+  // package (verified by devInspect on both SUI->USDC and USDC->SUI).
+  magmaIntegratePublishedAt: '0x668909f9f30380dd1b63834534dc2bd19b274e6312a0dfa9be0ee5b0cef73446',
   magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf'
 }
 
