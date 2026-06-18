@@ -8,6 +8,7 @@
  */
 
 import type { NaviSuiClient } from './sui'
+import type { ServiceEndpointOption } from './services'
 import type {
   TransactionObjectArgument as TransactionObjectArgumentType,
   TransactionObjectInput as TransactionObjectInputType,
@@ -576,6 +577,8 @@ export type MarketOption = {
 export type MarketsOption = {
   markets?: MarketIdentity[]
 }
+
+export type ServiceOption = ServiceEndpointOption
 
 export type LendingPositionType =
   | 'navi-lending-supply'

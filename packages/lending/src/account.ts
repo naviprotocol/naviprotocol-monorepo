@@ -22,7 +22,8 @@ import type {
   LendingPosition,
   MarketsOption,
   EModePool,
-  EModeCap
+  EModeCap,
+  ServiceOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo, ReserveDataInfo } from './bcs'
@@ -49,6 +50,7 @@ import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'
 import BigNumber from 'bignumber.js'
 import { getMarketConfig, MARKETS } from './market'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -474,7 +476,7 @@ export const getTransactions = withSingleton(
     address: string | AccountCap,
     options?: {
       cursor?: string
-    }
+    } & ServiceOption
   ): Promise<{
     data: NAVITransaction[]
     cursor?: string
@@ -487,8 +489,14 @@ export const getTransactions = withSingleton(
     params.set('userAddress', address)
 
     // Fetch transaction history from Navi protocol API
-    const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}&sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/transactions?${params.toString()}&sdk=${packageJson.version}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   }
 )

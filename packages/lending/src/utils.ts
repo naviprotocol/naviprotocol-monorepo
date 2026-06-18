@@ -18,6 +18,7 @@ import BigNumber from 'bignumber.js'
 import { userAgent } from './ua'
 import { createNaviSuiClient } from './sui'
 import { SuiPriceServiceConnection } from './pyth'
+import { getNaviSdkConfigVersion } from './services'
 
 /**
  * Default Sui client instance configured for mainnet
@@ -34,17 +35,28 @@ export const suiClient = createNaviSuiClient()
  * @returns JSON string representing the arguments
  */
 function argsKey(args: any[]) {
-  const serializergs = [] as any[]
+  const serializedArgs = [] as any[]
+  let serviceConfigVersionIncluded = false
+
   args.forEach((option: any, index) => {
     const isLast = index === args.length - 1
     if (typeof option === 'object' && option !== null && isLast) {
       const { client, disableCache, cacheTime, ...rest } = option
-      serializergs.push(rest)
+      rest.__naviSdkServiceConfigVersion = getNaviSdkConfigVersion()
+      serializedArgs.push(rest)
+      serviceConfigVersionIncluded = true
     } else {
-      serializergs.push(option)
+      serializedArgs.push(option)
     }
   })
-  return JSON.stringify(serializergs)
+
+  if (!serviceConfigVersionIncluded) {
+    serializedArgs.push({
+      __naviSdkServiceConfigVersion: getNaviSdkConfigVersion()
+    })
+  }
+
+  return JSON.stringify(serializedArgs)
 }
 
 /**

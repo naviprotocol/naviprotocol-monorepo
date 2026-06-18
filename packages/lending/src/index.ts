@@ -47,3 +47,11 @@ export * from './market'
 export * from './sui'
 
 export * from './pyth'
+
+export { configureNaviSdk } from './services'
+export type {
+  NaviSdkConfig,
+  NaviSdkServiceOptions,
+  NaviServiceEndpoint,
+  ServiceEndpointOption
+} from './services'

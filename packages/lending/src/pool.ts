@@ -24,7 +24,8 @@ import type {
   SuiClientOption,
   MarketOption,
   EMode,
-  MarketsOption
+  MarketsOption,
+  ServiceOption
 } from './types'
 import {
   normalizeCoinType,
@@ -35,6 +36,7 @@ import {
   requestHeaders,
   parsePoolUID
 } from './utils'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 import { Transaction } from '@mysten/sui/transactions'
 import BigNumber from 'bignumber.js'
 import { parseDevInspectResult } from './utils'
@@ -70,21 +72,29 @@ export enum PoolOperator {
  */
 export const getPools = withCache(
   withSingleton(
-    async (options?: Partial<EnvOption & CacheOption & MarketsOption>): Promise<Pool[]> => {
+    async (
+      options?: Partial<EnvOption & CacheOption & MarketsOption & ServiceOption>
+    ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
         return getMarketConfig(identity)
       })
-      const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
-        (market) => {
-          return market.key
-        }
-      )}`
+      const endpoint = resolveNaviOpenApiEndpoint(options)
+      const url = buildNaviOpenApiUrl(
+        `/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
+          (market) => {
+            return market.key
+          }
+        )}`,
+        options
+      )
       const res: {
         data: Pool[]
         meta: {
           emodes: EMode[]
         }
-      } = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      } = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) }).then((res) =>
+        res.json()
+      )
 
       res.data.forEach((pool) => {
         const filterEmodes = res.meta.emodes.filter((emode) => {
@@ -155,7 +165,7 @@ export const getPools = withCache(
  */
 export async function getPool(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption & MarketOption>
+  options?: Partial<EnvOption & MarketOption & ServiceOption>
 ): Promise<Pool> {
   let market = options?.market
   if (typeof identifier === 'string') {
@@ -207,9 +217,12 @@ export async function getPool(
  * @returns Promise<PoolStats> - Protocol statistics
  */
 export const getStats = withCache(
-  withSingleton(async (options?: Partial<CacheOption>): Promise<PoolStats> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/stats?sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+  withSingleton(async (options?: Partial<CacheOption & ServiceOption>): Promise<PoolStats> => {
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(`/navi/stats?sdk=${packageJson.version}`, options)
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   })
 )
@@ -229,7 +242,7 @@ export const getStats = withCache(
 export const getFees = withCache(
   withSingleton(
     async (
-      options?: Partial<CacheOption>
+      options?: Partial<CacheOption & ServiceOption>
     ): Promise<{
       totalValue: number
       v3BorrowFee: {
@@ -245,8 +258,11 @@ export const getFees = withCache(
         details: FeeDetail[]
       }
     }> => {
-      const url = `https://open-api.naviprotocol.io/api/navi/fee?sdk=${packageJson.version}`
-      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      const endpoint = resolveNaviOpenApiEndpoint(options)
+      const url = buildNaviOpenApiUrl(`/navi/fee?sdk=${packageJson.version}`, options)
+      const res = await fetch(url, {
+        headers: mergeServiceHeaders(requestHeaders, endpoint)
+      }).then((res) => res.json())
       return res
     }
   )

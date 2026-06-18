@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { getConfig, DEFAULT_CACHE_TIME } from '../src/config'
+import { configureNaviSdk } from '../src/services'
+
+const DEFAULT_NAVI_OPEN_API_BASE_URL = 'https://open-api.naviprotocol.io/api'
 
 describe('getConfig', () => {
   beforeEach(() => {
@@ -22,6 +25,13 @@ describe('getConfig', () => {
   })
 
   afterEach(() => {
+    configureNaviSdk({
+      services: {
+        naviOpenApi: {
+          baseUrl: DEFAULT_NAVI_OPEN_API_BASE_URL
+        }
+      }
+    })
     vi.unstubAllGlobals()
   })
 
@@ -37,6 +47,38 @@ describe('getConfig', () => {
     expect(config.package).toMatch(/^0x[0-9a-f]{64}$/)
     expect(config.package).not.toEqual((await getConfig({ disableCache: true })).package)
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('env=dev'), expect.any(Object))
+  })
+
+  it('invalidates no-options cache entries when the global service endpoint changes', async () => {
+    await getConfig()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining(`${DEFAULT_NAVI_OPEN_API_BASE_URL}/navi/config`),
+      expect.any(Object)
+    )
+
+    configureNaviSdk({
+      services: {
+        naviOpenApi: {
+          baseUrl: 'https://preview-open-api.example/api',
+          headers: {
+            'x-navi-test-endpoint': 'preview'
+          }
+        }
+      }
+    })
+
+    await getConfig()
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining('https://preview-open-api.example/api/navi/config'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-navi-test-endpoint': 'preview'
+        })
+      })
+    )
   })
 })
 

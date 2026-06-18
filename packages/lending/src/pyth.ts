@@ -32,7 +32,30 @@ type PriceFeed = {
   }
 }
 
-type SuiPythProvider = Pick<NaviSuiClient, 'getObject' | 'getDynamicFieldObject'>
+type CoreDynamicFieldName = {
+  type: string
+  bcs: Uint8Array
+}
+
+type SuiPythProvider = Partial<Pick<NaviSuiClient, 'getObject' | 'getDynamicFieldObject'>> & {
+  core?: unknown
+}
+
+type SuiPythCoreProvider = {
+  getObject(options: {
+    objectId: string
+    include?: { json?: boolean; content?: boolean }
+  }): Promise<{
+    object?: { objectId: string; type?: string; json?: Record<string, unknown> | null }
+  }>
+  getDynamicObjectField(options: {
+    parentId: string
+    name: CoreDynamicFieldName
+    include?: { json?: boolean; content?: boolean }
+  }): Promise<{
+    object?: { objectId: string; type?: string; json?: Record<string, unknown> | null }
+  }>
+}
 
 const MAX_ARGUMENT_SIZE = 16 * 1024
 
@@ -57,6 +80,31 @@ function toPureBytes(bytes: Uint8Array) {
   return bcs.vector(bcs.U8).serialize(Array.from(bytes), {
     maxSize: MAX_ARGUMENT_SIZE
   })
+}
+
+function toDynamicFieldName(type: string, bytes: Uint8Array): CoreDynamicFieldName {
+  return {
+    type,
+    bcs: bytes
+  }
+}
+
+function encodeVectorU8(value: string) {
+  return bcs
+    .vector(bcs.U8)
+    .serialize(Array.from(new TextEncoder().encode(value)))
+    .toBytes()
+}
+
+function encodePriceIdentifier(bytes: Uint8Array) {
+  return bcs
+    .struct('PriceIdentifier', {
+      bytes: bcs.vector(bcs.U8)
+    })
+    .serialize({
+      bytes: Array.from(bytes)
+    })
+    .toBytes()
 }
 
 function base64ToBytes(value: string) {
@@ -155,6 +203,97 @@ export class SuiPythClient {
     private readonly wormholeStateId: string
   ) {}
 
+  private getCoreProvider(): SuiPythCoreProvider | null {
+    const core = this.provider.core as Partial<SuiPythCoreProvider> | undefined
+    if (
+      core &&
+      typeof core.getObject === 'function' &&
+      typeof core.getDynamicObjectField === 'function'
+    ) {
+      return core as SuiPythCoreProvider
+    }
+    return null
+  }
+
+  private async getMoveObjectJson(objectId: string) {
+    const core = this.getCoreProvider()
+    if (core) {
+      const result = await core.getObject({
+        objectId,
+        include: { json: true }
+      })
+      if (!result.object) {
+        return null
+      }
+      return {
+        objectId: result.object.objectId,
+        type: result.object.type,
+        fields: result.object.json
+      }
+    }
+
+    if (!this.provider.getObject) {
+      throw new Error('Sui Pyth provider does not support getObject')
+    }
+    const result = await this.provider.getObject({
+      id: objectId,
+      options: { showContent: true }
+    })
+    if (!result.data || !result.data.content || result.data.content.dataType !== 'moveObject') {
+      return null
+    }
+    return {
+      objectId: result.data.objectId,
+      type: result.data.type,
+      fields: result.data.content.fields as Record<string, unknown>
+    }
+  }
+
+  private async getDynamicMoveObjectJson(parentId: string, name: CoreDynamicFieldName | any) {
+    const core = this.getCoreProvider()
+    if (core) {
+      const result = await core.getDynamicObjectField({
+        parentId,
+        name,
+        include: { json: true }
+      })
+      if (!result.object) {
+        return null
+      }
+      return {
+        objectId: result.object.objectId,
+        type: result.object.type,
+        fields: result.object.json
+      }
+    }
+
+    if (!this.provider.getDynamicFieldObject) {
+      throw new Error('Sui Pyth provider does not support getDynamicFieldObject')
+    }
+    const result = await this.provider.getDynamicFieldObject({
+      parentId,
+      name
+    })
+    if (!result.data) {
+      return null
+    }
+    if (!result.data.content) {
+      return {
+        objectId: result.data.objectId,
+        type: result.data.type,
+        fields: undefined
+      }
+    }
+    if (result.data.content.dataType !== 'moveObject') {
+      return null
+    }
+    return {
+      objectId: result.data.objectId,
+      type: result.data.type,
+      fields: result.data.content.fields as Record<string, unknown>
+    }
+  }
+
   async updatePriceFeeds(tx: Transaction, updates: Uint8Array[], feedIds: string[]) {
     const packageId = await this.getPythPackageId()
     const priceUpdatesHotPotato = await this.verifyVaasAndGetHotPotato(tx, updates, packageId)
@@ -168,25 +307,19 @@ export class SuiPythClient {
 
   private async getBaseUpdateFee() {
     if (this.baseUpdateFee === undefined) {
-      const result = await this.provider.getObject({
-        id: this.pythStateId,
-        options: { showContent: true }
-      })
-      if (!result.data || !result.data.content || result.data.content.dataType !== 'moveObject') {
+      const result = await this.getMoveObjectJson(this.pythStateId)
+      if (!result?.fields) {
         throw new Error('Unable to fetch pyth state object')
       }
-      this.baseUpdateFee = Number((result.data.content.fields as any).base_update_fee)
+      this.baseUpdateFee = Number((result.fields as any).base_update_fee)
     }
     return this.baseUpdateFee
   }
 
   private async getPackageId(objectId: string) {
-    const result = await this.provider.getObject({
-      id: objectId,
-      options: { showContent: true }
-    })
-    if (result.data?.content?.dataType === 'moveObject') {
-      const fields = result.data.content.fields as any
+    const result = await this.getMoveObjectJson(objectId)
+    if (result?.fields) {
+      const fields = result.fields as any
       if ('upgrade_cap' in fields) {
         return fields.upgrade_cap.fields.package as string
       }
@@ -284,21 +417,22 @@ export class SuiPythClient {
     const normalizedFeedId = normalizePriceId(feedId)
     if (!this.priceFeedObjectIdCache.has(normalizedFeedId)) {
       const { id: tableId, fieldType } = await this.getPriceTableInfo()
-      const result = await this.provider.getDynamicFieldObject({
-        parentId: tableId,
-        name: {
-          type: `${fieldType}::price_identifier::PriceIdentifier`,
-          value: {
-            bytes: Array.from(hexToBytes(normalizedFeedId))
+      const fieldName = this.getCoreProvider()
+        ? toDynamicFieldName(
+            `${fieldType}::price_identifier::PriceIdentifier`,
+            encodePriceIdentifier(hexToBytes(normalizedFeedId))
+          )
+        : {
+            type: `${fieldType}::price_identifier::PriceIdentifier`,
+            value: {
+              bytes: Array.from(hexToBytes(normalizedFeedId))
+            }
           }
-        }
-      })
-      if (!result.data || !result.data.content) {
+      const result = await this.getDynamicMoveObjectJson(tableId, fieldName)
+      if (!result?.fields) {
         this.priceFeedObjectIdCache.set(normalizedFeedId, undefined)
-      } else if (result.data.content.dataType !== 'moveObject') {
-        throw new Error('Price feed type mismatch')
       } else {
-        this.priceFeedObjectIdCache.set(normalizedFeedId, (result.data.content.fields as any).value)
+        this.priceFeedObjectIdCache.set(normalizedFeedId, (result.fields as any).value)
       }
     }
     return this.priceFeedObjectIdCache.get(normalizedFeedId)
@@ -306,20 +440,20 @@ export class SuiPythClient {
 
   private async getPriceTableInfo() {
     if (!this.priceTableInfo) {
-      const result = await this.provider.getDynamicFieldObject({
-        parentId: this.pythStateId,
-        name: {
-          type: 'vector<u8>',
-          value: 'price_info'
-        }
-      })
-      if (!result.data || !result.data.type) {
+      const fieldName = this.getCoreProvider()
+        ? toDynamicFieldName('vector<u8>', encodeVectorU8('price_info'))
+        : {
+            type: 'vector<u8>',
+            value: 'price_info'
+          }
+      const result = await this.getDynamicMoveObjectJson(this.pythStateId, fieldName)
+      if (!result?.type) {
         throw new Error('Price Table not found, contract may not be initialized')
       }
-      let type = result.data.type.replace('0x2::table::Table<', '')
+      let type = result.type.replace('0x2::table::Table<', '')
       type = type.replace('::price_identifier::PriceIdentifier, 0x2::object::ID>', '')
       this.priceTableInfo = {
-        id: result.data.objectId,
+        id: result.objectId,
         fieldType: type
       }
     }

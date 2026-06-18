@@ -14,10 +14,12 @@ import type {
   CacheOption,
   FloashloanAsset,
   TransactionResult,
-  MarketOption
+  MarketOption,
+  ServiceOption
 } from './types'
 import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { parseTxValue, normalizeCoinType, withCache, withSingleton, requestHeaders } from './utils'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 import { getPool } from './pool'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY } from './market'
@@ -32,10 +34,16 @@ import { DEFAULT_MARKET_IDENTITY } from './market'
 export const getAllFlashLoanAssets = withCache(
   withSingleton(
     async (
-      options?: Partial<EnvOption & CacheOption & MarketOption>
+      options?: Partial<EnvOption & CacheOption & MarketOption & ServiceOption>
     ): Promise<FloashloanAsset[]> => {
-      const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
-      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      const endpoint = resolveNaviOpenApiEndpoint(options)
+      const url = buildNaviOpenApiUrl(
+        `/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`,
+        options
+      )
+      const res = await fetch(url, {
+        headers: mergeServiceHeaders(requestHeaders, endpoint)
+      }).then((res) => res.json())
       return Object.keys(res.data).map((coinType) => {
         return {
           ...res.data[coinType],

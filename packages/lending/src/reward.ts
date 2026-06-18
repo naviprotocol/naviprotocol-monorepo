@@ -18,7 +18,8 @@ import type {
   AccountCap,
   MarketOption,
   MarketsOption,
-  EModeCap
+  EModeCap,
+  ServiceOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -38,6 +39,7 @@ import BigNumber from 'bignumber.js'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
 import { getUserEModeCaps } from './emode'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 async function getLendingRewardsBatch(
   address: string,
@@ -277,12 +279,18 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
 export const getUserTotalClaimedReward = withSingleton(
   async (
     address: string | AccountCap,
-    options?: Partial<MarketOption>
+    options?: Partial<MarketOption & ServiceOption>
   ): Promise<{
     USDValue: number
   }> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   }
 )
@@ -304,14 +312,20 @@ export const getUserClaimedRewardHistory = withSingleton(
       MarketOption & {
         page: number
         size: number
-      }
+      } & ServiceOption
     >
   ): Promise<{
     data: HistoryClaimedReward[]
     cursor?: string
   }> => {
-    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
-    const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
     })
