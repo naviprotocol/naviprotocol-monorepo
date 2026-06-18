@@ -1,5 +1,5 @@
 import './fetch'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
 import { UserPortfolio } from '../src/modules/balanceModule/portfolio'
 import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
@@ -30,6 +30,34 @@ const walletClient = new WalletClient({
 const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 describe('balance module', () => {
+  it('does not schedule polling when coin polling is disabled', () => {
+    vi.useFakeTimers()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+    try {
+      new WalletClient({
+        signer,
+        configs: {
+          balance: {
+            disableCoinPolling: true,
+            coinPollingInterval: 6000
+          }
+        },
+        client: {
+          network: 'mainnet',
+          grpc: {
+            url: grpcUrl
+          }
+        }
+      })
+
+      expect(setTimeoutSpy).not.toHaveBeenCalled()
+    } finally {
+      setTimeoutSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it('module exists', async () => {
     expect(walletClient.module('balance')).toBeDefined()
   })

@@ -266,10 +266,11 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
    * interval, ensuring regular balance updates.
    */
   private async startPolling() {
+    if (this.config.disableCoinPolling) {
+      return
+    }
+
     try {
-      if (this.config.disableCoinPolling) {
-        return
-      }
       await this.updatePortfolio()
     } catch (error) {
       console.error(error)
