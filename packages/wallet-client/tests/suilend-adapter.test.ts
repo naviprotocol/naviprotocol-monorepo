@@ -56,34 +56,53 @@ describe('Suilend v3 adapter', () => {
     ])
   })
 
-  it('uses a SuiGrpcClient for Suilend v3 while keeping the adapter lazy', async () => {
+  it('uses the wallet gRPC client for Suilend v3 while keeping the adapter lazy', async () => {
+    const { default: SuilendProtocol } = await import(
+      '../src/modules/lendingModule/protocols/suilend'
+    )
+    const grpcClient = { network: 'mainnet', baseUrl: 'https://grpc.sui.invalid' }
+    const walletClient = {
+      address: `0x${'1'.repeat(64)}`,
+      clientBundle: {
+        network: 'mainnet',
+        grpc: grpcClient
+      }
+    }
+
+    await SuilendProtocol.create(walletClient as any)
+
+    expect(suilend.grpcInstances).toHaveLength(0)
+    expect(suilend.initialize).toHaveBeenCalledWith('market-id', 'market-type', grpcClient)
+    expect(suilend.getObligationOwnerCaps).toHaveBeenCalledWith(
+      walletClient.address,
+      ['market-type'],
+      grpcClient
+    )
+  })
+
+  it('creates a SuiGrpcClient only from an explicit grpcUrl', async () => {
     const { default: SuilendProtocol } = await import(
       '../src/modules/lendingModule/protocols/suilend'
     )
     const walletClient = {
       address: `0x${'1'.repeat(64)}`,
-      client: {
-        network: 'mainnet'
-      },
-      clientUrl: 'https://custom.sui.rpc'
+      clientBundle: {
+        network: 'mainnet',
+        grpc: {}
+      }
     }
 
-    await SuilendProtocol.create(walletClient as any)
+    await SuilendProtocol.create(walletClient as any, { grpcUrl: 'https://grpc.sui.invalid' })
 
     expect(suilend.grpcInstances).toEqual([
       {
         network: 'mainnet',
-        baseUrl: 'https://custom.sui.rpc'
+        baseUrl: 'https://grpc.sui.invalid'
       }
     ])
     expect(suilend.initialize).toHaveBeenCalledWith(
       'market-id',
       'market-type',
-      suilend.grpcInstances[0]
-    )
-    expect(suilend.getObligationOwnerCaps).toHaveBeenCalledWith(
-      walletClient.address,
-      ['market-type'],
       suilend.grpcInstances[0]
     )
   })
@@ -95,10 +114,10 @@ describe('Suilend v3 adapter', () => {
     const grpcClient = { network: 'mainnet', baseUrl: 'https://grpc.sui.invalid' }
     const walletClient = {
       address: `0x${'2'.repeat(64)}`,
-      client: {
-        network: 'mainnet'
-      },
-      clientUrl: 'https://json-rpc.sui.invalid'
+      clientBundle: {
+        network: 'mainnet',
+        grpc: {}
+      }
     }
 
     await SuilendProtocol.create(walletClient as any, { grpcClient: grpcClient as any })
@@ -109,6 +128,25 @@ describe('Suilend v3 adapter', () => {
       walletClient.address,
       ['market-type'],
       grpcClient
+    )
+  })
+
+  it('rejects legacy-only wallet clients instead of reusing JSON-RPC URLs', async () => {
+    const { default: SuilendProtocol } = await import(
+      '../src/modules/lendingModule/protocols/suilend'
+    )
+    const legacyJsonRpc = { network: 'mainnet', url: 'https://json-rpc.sui.invalid' }
+    const walletClient = {
+      address: `0x${'3'.repeat(64)}`,
+      clientBundle: {
+        network: 'mainnet',
+        grpc: legacyJsonRpc,
+        legacyJsonRpc
+      }
+    }
+
+    await expect(SuilendProtocol.create(walletClient as any)).rejects.toThrow(
+      'Suilend requires an explicit Sui gRPC client or grpcUrl'
     )
   })
 })

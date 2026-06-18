@@ -38,7 +38,13 @@ function createSwapClient() {
       }
     },
     client: {
-      url: 'https://json-rpc.example'
+      network: 'mainnet',
+      grpc: {
+        url: 'https://grpc.example'
+      },
+      legacyJsonRpc: {
+        url: 'https://json-rpc.example'
+      }
     }
   })
   const balanceModule = walletClient.module('balance') as any
@@ -92,7 +98,10 @@ describe('SwapModule Core execution adapter', () => {
     ;(walletClient.client as any).core = {
       executeTransaction
     }
-    const legacyExecute = vi.spyOn(walletClient.client, 'executeTransactionBlock')
+    const legacyExecute = vi.spyOn(
+      walletClient.clientBundle.legacyJsonRpc!,
+      'executeTransactionBlock'
+    )
 
     const result = await walletClient
       .module('swap')

@@ -15,7 +15,13 @@ function createWalletClient(configs?: ConstructorParameters<typeof WalletClient>
   return new WalletClient({
     signer: new WatchSigner(testAddress),
     client: {
-      url: getJsonRpcFullnodeUrl('mainnet')
+      network: 'mainnet',
+      grpc: {
+        url: 'https://grpc.example'
+      },
+      legacyJsonRpc: {
+        url: getJsonRpcFullnodeUrl('mainnet')
+      }
     },
     configs
   })

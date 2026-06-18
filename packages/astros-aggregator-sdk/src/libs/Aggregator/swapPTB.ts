@@ -55,6 +55,12 @@ export async function getCoins(
     }
   }
 
+  if (typeof client.getCoins !== 'function') {
+    throw new Error(
+      'Aggregator coin selection requires core.listCoins or an explicit legacy getCoins client'
+    )
+  }
+
   const coinDetails = await client.getCoins({
     owner: address,
     coinType: coinAddress
@@ -204,7 +210,8 @@ export async function buildSwapPTBFromQuote(
         router,
         finalMinAmountOut,
         referral,
-        ifPrint
+        ifPrint,
+        swapOptions
       ),
       !!serviceFeeRouter
         ? serviceFeeRouter.from === serviceFeeRouter.target
@@ -216,7 +223,8 @@ export async function buildSwapPTBFromQuote(
               serviceFeeRouter,
               0,
               referral,
-              ifPrint
+              ifPrint,
+              swapOptions
             )
         : new Promise((resolve) => {
             resolve(null)
@@ -241,7 +249,8 @@ export async function buildSwapPTBFromQuote(
     quote,
     finalMinAmountOut,
     referral,
-    ifPrint
+    ifPrint,
+    swapOptions
   )
 }
 
@@ -360,6 +369,12 @@ export async function checkIfNAVIIntegrated(
       transaction.events?.some((event: any) =>
         event.type.includes(`${AggregatorConfig.aggregatorContract}::slippage`)
       ) ?? false
+    )
+  }
+
+  if (typeof client.getTransactionBlock !== 'function') {
+    throw new Error(
+      'Aggregator transaction lookup requires core.getTransaction or an explicit legacy getTransactionBlock client'
     )
   }
 

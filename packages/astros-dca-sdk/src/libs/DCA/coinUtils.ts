@@ -33,12 +33,18 @@ export async function getCoins(
             cursor,
             limit: 100
           })
-        : await client.getCoins({
-            owner: address,
-            coinType,
-            cursor,
-            limit: 100 // Maximum limit per page
-          })
+        : typeof client.getCoins === 'function'
+          ? await client.getCoins({
+              owner: address,
+              coinType,
+              cursor,
+              limit: 100 // Maximum limit per page
+            })
+          : (() => {
+              throw new Error(
+                'DCA coin selection requires core.listCoins or an explicit legacy getCoins client'
+              )
+            })()
     const pageData = response.objects ?? response.data ?? []
 
     // Break if no more data

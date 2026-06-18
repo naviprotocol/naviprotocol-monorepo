@@ -554,6 +554,9 @@ export async function getCoins(
           hasNextPage: response.hasNextPage ?? false
         } as PaginatedCoins
       } else {
+        if (typeof client.getCoins !== 'function') {
+          throw new Error('getCoins requires core.listCoins or an explicit legacy getCoins client')
+        }
         res = await client.getCoins({
           owner: address,
           coinType: options?.coinType,
@@ -594,6 +597,11 @@ export async function getCoins(
       }
       break
     } else {
+      if (typeof client.getAllCoins !== 'function') {
+        throw new Error(
+          'getCoins requires core.listBalances/core.listCoins or an explicit legacy getAllCoins client'
+        )
+      }
       res = await client.getAllCoins({
         owner: address,
         cursor,

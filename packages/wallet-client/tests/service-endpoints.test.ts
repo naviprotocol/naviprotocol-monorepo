@@ -18,7 +18,13 @@ function createWalletClient(
       ...configs
     },
     client: {
-      url: 'https://json-rpc.example'
+      network: 'mainnet',
+      grpc: {
+        url: 'https://grpc.example'
+      },
+      legacyJsonRpc: {
+        url: 'https://json-rpc.example'
+      }
     }
   })
   walletClient.module('balance').uninstall()

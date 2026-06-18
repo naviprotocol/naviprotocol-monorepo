@@ -13,7 +13,18 @@ import type { NaviDcaCoinClient } from './client'
  * Fetch coin decimals from chain
  */
 async function fetchCoinDecimals(client: NaviDcaCoinClient, coinType: string): Promise<number> {
-  const metadata = await client.getCoinMetadata({ coinType })
+  const core = client.core as
+    | {
+        getCoinMetadata?(options: any): Promise<any>
+      }
+    | undefined
+  const response =
+    typeof core?.getCoinMetadata === 'function'
+      ? await core.getCoinMetadata({ coinType })
+      : typeof client.getCoinMetadata === 'function'
+        ? await client.getCoinMetadata({ coinType })
+        : undefined
+  const metadata = response?.coinMetadata ?? response
   if (metadata?.decimals === undefined) {
     throw new Error(`Failed to fetch decimals for coin type: ${coinType}`)
   }

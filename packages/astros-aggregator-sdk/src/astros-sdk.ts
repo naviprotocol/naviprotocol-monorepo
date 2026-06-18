@@ -9,7 +9,6 @@ import {
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { executeAuction } from 'shio-sdk'
 import {
   normalizeAggregatorDryRunResult,
@@ -63,16 +62,16 @@ export async function getQuote(
 export async function executeTransaction(
   txb: Transaction,
   signer: Signer,
-  options?: {
-    client?: NaviAggregatorExecutionClient
+  options: {
+    client: NaviAggregatorExecutionClient
   }
 ): Promise<NaviAggregatorTransactionResult> {
-  const client =
-    options?.client ||
-    new SuiJsonRpcClient({
-      network: 'mainnet',
-      url: getJsonRpcFullnodeUrl('mainnet')
-    })
+  const client = options.client
+  if (!client) {
+    throw new Error(
+      'executeTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
+    )
+  }
   const txBytes = await txb.build({
     client: client as any
   })
@@ -98,6 +97,12 @@ export async function executeTransaction(
       }
     })
     return normalizeAggregatorCoreTransactionResult(result)
+  }
+
+  if (typeof client.executeTransactionBlock !== 'function') {
+    throw new Error(
+      'executeTransaction requires core.executeTransaction or an explicit legacy executeTransactionBlock client'
+    )
   }
 
   const result = await client.executeTransactionBlock({
@@ -143,6 +148,11 @@ export async function dryRunSwapTransaction(
   const txBytes = await txb.build({
     client: options.client as any
   })
+  if (typeof options.client.dryRunTransactionBlock !== 'function') {
+    throw new Error(
+      'dryRunSwapTransaction requires core.simulateTransaction or an explicit legacy dryRunTransactionBlock client'
+    )
+  }
   const result = await options.client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })

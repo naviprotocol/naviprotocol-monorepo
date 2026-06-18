@@ -235,7 +235,7 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     }
 
     const builtTx = await tx.build({
-      client: this.walletClient.client
+      client: this.walletClient.client as any
     })
 
     const signed = await this.walletClient.signer.signTransaction(builtTx)
@@ -255,11 +255,19 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
             signatures,
             include: transactionIncludeOptions()
           })
-        : await this.walletClient.client.executeTransactionBlock({
-            transactionBlock: signed!.bytes,
-            signature: signatures,
-            options: defaultTransactionResponseOptions
-          })
+        : await (() => {
+            const legacyJsonRpc = this.walletClient.clientBundle.legacyJsonRpc
+            if (!legacyJsonRpc) {
+              throw new Error(
+                'Swap execution requires core.executeTransaction or an explicit legacyJsonRpc client'
+              )
+            }
+            return legacyJsonRpc.executeTransactionBlock({
+              transactionBlock: signed!.bytes,
+              signature: signatures,
+              options: defaultTransactionResponseOptions
+            })
+          })()
 
     const normalizedResult = normalizeTransactionResult('execute', result)
 

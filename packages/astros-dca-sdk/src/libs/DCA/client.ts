@@ -16,12 +16,12 @@ export type NaviDcaPaginatedCoins = {
 
 export type NaviDcaCoinClient = NaviDcaCoreClient & {
   /** @deprecated Use `core.getCoinMetadata` on the injected v2 Core API client. */
-  getCoinMetadata(options: any): Promise<{ decimals?: number } | null | undefined>
+  getCoinMetadata?(options: any): Promise<{ decimals?: number } | null | undefined>
   /** @deprecated Use `core.listCoins` on the injected v2 Core API client. */
-  getCoins(options: any): Promise<NaviDcaPaginatedCoins>
+  getCoins?(options: any): Promise<NaviDcaPaginatedCoins>
 }
 
 export type NaviDcaDryRunClient = NaviDcaCoreClient & {
   /** @deprecated Use `core.simulateTransaction` on the injected v2 Core API client. */
-  dryRunTransactionBlock(options: any): Promise<any>
+  dryRunTransactionBlock?(options: any): Promise<any>
 }

@@ -13,18 +13,32 @@ dotenv.config()
 const testAddress = '0x4a662a70184c9e8f62e9d298c9969318a74cec5e9d3b5e0616a687052e654e57'
 
 const signer = new WatchSigner(testAddress)
+const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
+const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
 
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
 
 const suilendWalletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
 const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'

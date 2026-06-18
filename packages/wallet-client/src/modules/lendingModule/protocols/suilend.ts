@@ -1,6 +1,5 @@
 import { LendingPool, LendingProtocol } from '.'
 import { Transaction, TransactionObjectInput, TransactionResult } from '@mysten/sui/transactions'
-import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { SuilendClient, LENDING_MARKET_ID, LENDING_MARKET_TYPE } from '@suilend/sdk/client'
 import { parseObligation } from '@suilend/sdk/parsers/obligation'
@@ -25,16 +24,22 @@ function createSuilendGrpcClient(
     return options.grpcClient
   }
 
-  const network = walletClient.client.network
-  const baseUrl =
-    options.grpcUrl ??
-    walletClient.clientUrl ??
-    getJsonRpcFullnodeUrl(network as 'mainnet' | 'testnet' | 'devnet' | 'localnet')
+  const network = walletClient.clientBundle.network
 
-  return new SuiGrpcClient({
-    network,
-    baseUrl
-  })
+  if (options.grpcUrl) {
+    return new SuiGrpcClient({
+      network,
+      baseUrl: options.grpcUrl
+    })
+  }
+
+  if (walletClient.clientBundle.grpc !== walletClient.clientBundle.legacyJsonRpc) {
+    return walletClient.clientBundle.grpc as SuiGrpcClient
+  }
+
+  throw new Error(
+    'Suilend requires an explicit Sui gRPC client or grpcUrl; JSON-RPC endpoints are not valid gRPC endpoints'
+  )
 }
 
 class SuilendProtocol implements LendingProtocol {

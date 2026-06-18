@@ -10,11 +10,19 @@ dotenv.config()
 const signer = new WatchSigner(
   process.env.address || '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 )
+const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
+const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
 
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
 

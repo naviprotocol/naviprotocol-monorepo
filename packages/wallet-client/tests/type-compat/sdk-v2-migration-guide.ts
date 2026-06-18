@@ -19,7 +19,13 @@ const client = new SuiJsonRpcClient({
 const walletClient = new WalletClient({
   signer: new WatchSigner(address),
   client: {
-    url: getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: 'https://grpc.mainnet.sui.example'
+    },
+    legacyJsonRpc: {
+      url: getJsonRpcFullnodeUrl('mainnet')
+    }
   }
 })
 

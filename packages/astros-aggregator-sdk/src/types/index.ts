@@ -28,22 +28,22 @@ export type NaviAggregatorCoreApi = {
 
 export type NaviAggregatorCoinClient = NaviAggregatorCoreClient & {
   /** @deprecated Use `core.listCoins` on the injected v2 Core API client. */
-  getCoins(options: any): Promise<any>
+  getCoins?(options: any): Promise<any>
 }
 
 export type NaviAggregatorTransactionQueryClient = NaviAggregatorCoreClient & {
   /** @deprecated Use `core.getTransaction` on the injected v2 Core API client. */
-  getTransactionBlock(options: any): Promise<any>
+  getTransactionBlock?(options: any): Promise<any>
 }
 
 export type NaviAggregatorDryRunClient = NaviAggregatorCoreClient & {
   /** @deprecated Use `core.simulateTransaction` on the injected v2 Core API client. */
-  dryRunTransactionBlock(options: any): Promise<any>
+  dryRunTransactionBlock?(options: any): Promise<any>
 }
 
 export type NaviAggregatorExecutionClient = NaviAggregatorCoreClient & {
   /** @deprecated Use `core.executeTransaction` on the injected v2 Core API client. */
-  executeTransactionBlock(options: any): Promise<any>
+  executeTransactionBlock?(options: any): Promise<any>
 }
 
 export type NaviAggregatorTransactionStatus = {
@@ -216,6 +216,13 @@ export type SwapOptions = {
   serviceFee?: FeeOption
   /** Slippage tolerance as a ratio (e.g., 0.01 for 1%). Only used in swapPTB, not in getQuote. If provided, it will be used to calculate minAmountOut instead of using the minAmountOut parameter. */
   slippage?: number
+  /** Optional NAVI service endpoints used by SDK-internal API calls. */
+  services?: {
+    naviOpenApi?: {
+      baseUrl?: string
+      headers?: Record<string, string>
+    }
+  }
 }
 
 /**

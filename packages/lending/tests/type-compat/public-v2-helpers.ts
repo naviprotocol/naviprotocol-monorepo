@@ -1,15 +1,26 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import {
+  createNaviSuiClientBundle,
   createNaviSuiClient,
   SuiPriceServiceConnection,
   SuiPythClient,
   type NaviJsonRpcCompatClient,
-  type NaviSuiClient
+  type NaviSuiClient,
+  type NaviSuiClientBundle
 } from '@naviprotocol/lending'
 
-const client: NaviSuiClient = createNaviSuiClient()
-const customClient: NaviSuiClient = createNaviSuiClient(
+const bundle: NaviSuiClientBundle = createNaviSuiClientBundle({
+  network: 'mainnet',
+  grpc: {
+    url: 'https://grpc.mainnet.sui.example'
+  },
+  legacyJsonRpc: {
+    url: getJsonRpcFullnodeUrl('mainnet')
+  }
+})
+const client: NaviSuiClient = bundle.coreClient
+const legacyClient: NaviJsonRpcCompatClient = createNaviSuiClient(
   'https://fullnode.mainnet.sui.io:443',
   'mainnet'
 )
@@ -20,7 +31,7 @@ const jsonRpcClient: NaviJsonRpcCompatClient = new SuiJsonRpcClient({
 
 const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
 const pyth = new SuiPythClient(
-  customClient,
+  client,
   '0x0000000000000000000000000000000000000000000000000000000000000001',
   '0x0000000000000000000000000000000000000000000000000000000000000002'
 )
@@ -34,5 +45,6 @@ async function buildPythUpdate() {
 }
 
 void client
+void legacyClient
 void jsonRpcClient
 void buildPythUpdate

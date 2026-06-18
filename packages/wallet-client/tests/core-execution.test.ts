@@ -9,7 +9,13 @@ function createWalletClient() {
   return new WalletClient({
     signer: new WatchSigner(address),
     client: {
-      url: 'https://json-rpc.example'
+      network: 'mainnet',
+      grpc: {
+        url: 'https://grpc.example'
+      },
+      legacyJsonRpc: {
+        url: 'https://json-rpc.example'
+      }
     }
   })
 }
@@ -32,7 +38,10 @@ describe('WalletClient Core execution adapter', () => {
     ;(walletClient.client as any).core = {
       simulateTransaction
     }
-    const legacyDryRun = vi.spyOn(walletClient.client, 'dryRunTransactionBlock')
+    const legacyDryRun = vi.spyOn(
+      walletClient.clientBundle.legacyJsonRpc!,
+      'dryRunTransactionBlock'
+    )
     const tx = new Transaction()
 
     const result = await walletClient.signExecuteTransaction({
@@ -80,7 +89,10 @@ describe('WalletClient Core execution adapter', () => {
     ;(walletClient.client as any).core = {
       executeTransaction
     }
-    const legacyExecute = vi.spyOn(walletClient.client, 'signAndExecuteTransaction')
+    const legacyExecute = vi.spyOn(
+      walletClient.clientBundle.legacyJsonRpc!,
+      'signAndExecuteTransaction'
+    )
 
     const result = await walletClient.signExecuteTransaction({
       transaction: tx

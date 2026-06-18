@@ -1,5 +1,5 @@
 import type { CoinStruct } from '@mysten/sui/jsonRpc'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { normalizeStructTag } from '@mysten/sui/utils'
@@ -10,6 +10,9 @@ export type NaviSuiNetwork = 'mainnet' | 'testnet' | 'devnet' | 'localnet' | (st
 
 export type NaviSuiGrpcEndpoint = {
   url: string
+  headers?: Record<string, string>
+  fetchInit?: Omit<RequestInit, 'body' | 'headers' | 'method' | 'signal'>
+  fetch?: typeof fetch
 }
 
 export type NaviSuiGraphQLEndpoint = {
@@ -23,6 +26,7 @@ export type NaviSuiGrpcOptions =
       client: NaviCoreClient
       url?: never
       headers?: never
+      fetchInit?: never
       fetch?: never
     }
   | NaviSuiGrpcEndpoint
@@ -105,7 +109,7 @@ export type NaviJsonRpcCompatClient = NaviCoreClient & {
   waitForTransaction(options: any): Promise<any>
 }
 
-export type NaviSuiClient = NaviJsonRpcCompatClient
+export type NaviSuiClient = NaviCoreClient & Partial<NaviJsonRpcCompatClient>
 
 export type NaviAddressBalance = {
   coinType: string
@@ -207,7 +211,10 @@ function createGrpcClient(network: NaviSuiNetwork, grpc: NaviSuiGrpcOptions): Na
   }
   return new SuiGrpcClient({
     network,
-    baseUrl: grpc.url
+    baseUrl: grpc.url,
+    meta: grpc.headers,
+    fetchInit: grpc.fetchInit,
+    fetch: grpc.fetch
   })
 }
 
@@ -226,7 +233,7 @@ function createGraphQLClient(
   })
 }
 
-function createLegacyJsonRpcClient(
+export function createNaviLegacyJsonRpcClient(
   network: NaviSuiNetwork,
   legacyJsonRpc: NaviSuiLegacyJsonRpcOptions
 ): NaviJsonRpcCompatClient {
@@ -247,7 +254,7 @@ export function createNaviSuiClientBundle(options: NaviSuiClientOptions): NaviSu
     grpc,
     graphql: options.graphql ? createGraphQLClient(options.network, options.graphql) : undefined,
     legacyJsonRpc: options.legacyJsonRpc
-      ? createLegacyJsonRpcClient(options.network, options.legacyJsonRpc)
+      ? createNaviLegacyJsonRpcClient(options.network, options.legacyJsonRpc)
       : undefined,
     services: options.services
   }
@@ -263,12 +270,49 @@ export function requireNaviGraphQLClient(
   return bundle.graphql
 }
 
+function createMissingNaviSuiClient(): NaviSuiClient {
+  const message =
+    'NAVI Sui SDK requires an explicit v2 gRPC/Core client. Pass { network, grpc } or an explicit legacyJsonRpc client for deprecated compatibility.'
+  const missingCore = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error(message)
+      }
+    }
+  )
+  return new Proxy(
+    { core: missingCore },
+    {
+      get(target, prop) {
+        if (prop === 'core') {
+          return target.core
+        }
+        if (prop === 'network') {
+          return 'mainnet'
+        }
+        throw new Error(message)
+      }
+    }
+  ) as NaviSuiClient
+}
+
+export function createNaviSuiClient(options: NaviSuiClientOptions): NaviSuiClientBundle
+/**
+ * @deprecated JSON-RPC is a short-lived compatibility transport. Use
+ * `createNaviSuiClientBundle({ network, grpc, legacyJsonRpc? })` for release paths.
+ */
+export function createNaviSuiClient(url: string, network?: NaviSuiNetwork): NaviJsonRpcCompatClient
+export function createNaviSuiClient(): NaviSuiClient
 export function createNaviSuiClient(
-  url = getJsonRpcFullnodeUrl('mainnet'),
+  optionsOrUrl?: NaviSuiClientOptions | string,
   network: NaviSuiNetwork = 'mainnet'
-): NaviSuiClient {
-  return new SuiJsonRpcClient({
-    network,
-    url
-  })
+): NaviSuiClientBundle | NaviJsonRpcCompatClient | NaviSuiClient {
+  if (!optionsOrUrl) {
+    return createMissingNaviSuiClient()
+  }
+  if (typeof optionsOrUrl === 'string') {
+    return createNaviLegacyJsonRpcClient(network, { url: optionsOrUrl })
+  }
+  return createNaviSuiClientBundle(optionsOrUrl)
 }

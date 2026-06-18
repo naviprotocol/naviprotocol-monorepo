@@ -61,6 +61,11 @@ export async function dryRunDcaTransaction(
   const txBytes = await tx.build({
     client: options.client as any
   })
+  if (typeof options.client.dryRunTransactionBlock !== 'function') {
+    throw new Error(
+      'DCA simulation requires core.simulateTransaction or an explicit legacy dryRunTransactionBlock client'
+    )
+  }
   const result = await options.client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
