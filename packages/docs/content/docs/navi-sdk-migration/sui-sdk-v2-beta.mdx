@@ -28,6 +28,8 @@ Install only the NAVI packages your app uses.
 
 ## Client Setup
 
+Current beta packages accept Sui SDK v2 JSON-RPC clients for compatibility:
+
 ```ts
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
@@ -38,7 +40,60 @@ const client = new SuiJsonRpcClient({
 ```
 
 NAVI SDK v2 accepts Sui SDK v2-compatible clients. JSON-RPC remains a supported
-transport through Sui SDK v2, but old `@mysten/sui.js` clients are not supported.
+transport through Sui SDK v2 beta, but old `@mysten/sui.js` clients are not
+supported.
+
+JSON-RPC is a compatibility transport, not the long-term primary v2 transport.
+The next NAVI SDK transport milestone will use explicit gRPC / GraphQL
+configuration. Production apps should prefer injecting constructed clients so
+provider authentication, gRPC metadata, and custom transports stay under the
+integrator's control:
+
+```ts
+new WalletClient({
+  signer,
+  client: {
+    network: 'mainnet',
+    grpc: { client: grpcClient },
+    graphql: { client: graphqlClient },
+    legacyJsonRpc: { client: jsonRpcClient }
+  }
+})
+```
+
+When provider auth can be represented as HTTP or gRPC-web headers, apps can use
+the simplified URL form:
+
+```ts
+new WalletClient({
+  signer,
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: process.env.SUI_GRPC_URL!,
+      headers: { 'x-token': process.env.SUI_GRPC_TOKEN! }
+    },
+    graphql: {
+      url: process.env.SUI_GRAPHQL_URL!,
+      headers: { Authorization: `Bearer ${process.env.SUI_GRAPHQL_TOKEN}` }
+    }
+  }
+})
+```
+
+Public Sui endpoints are only suitable for low-volume development or demos.
+For production traffic, use private endpoints or route high-concurrency reads
+through Open API to avoid public endpoint rate limits.
+
+Use `graphql` for Sui-native history, event/transaction filtering, object or
+package history, and cross-resource joined reads. If a feature needs those
+semantics and GraphQL is not configured, the SDK should fail clearly instead of
+silently falling back to JSON-RPC or public endpoints.
+
+NAVI protocol service-backed history APIs, such as lending transaction history
+or claimed reward history, are not automatically GraphQL requirements. They can
+continue using NAVI/Open API service endpoints unless the feature is explicitly
+migrated to Sui-native GraphQL queries.
 
 ## Common Import Changes
 
@@ -47,6 +102,23 @@ transport through Sui SDK v2, but old `@mysten/sui.js` clients are not supported
 | `@mysten/sui.js/transactions` `TransactionBlock` | `@mysten/sui/transactions` `Transaction`      |
 | `@mysten/sui/client` `SuiClient`                 | `@mysten/sui/jsonRpc` `SuiJsonRpcClient`      |
 | `@mysten/sui/client` `getFullnodeUrl`            | `@mysten/sui/jsonRpc` `getJsonRpcFullnodeUrl` |
+| long-term current-state transport                | `@mysten/sui/grpc` `SuiGrpcClient`            |
+| long-term historical/filter reads                 | `@mysten/sui/graphql` `SuiGraphQLClient`      |
+
+## gRPC / GraphQL Transport Guidance
+
+Use this decision table when preparing an app for the post-beta transport
+milestone:
+
+| App need | Transport |
+| --- | --- |
+| Current objects, coins, balances, point lookup by known digest, dry-run, execute | gRPC |
+| Transaction/event filters, historical queries, object/package history, joined reads | GraphQL |
+| Existing NAVI service history endpoints | NAVI/Open API service endpoint |
+| Unmigrated beta compatibility path | Deprecated JSON-RPC compatibility |
+
+Do not treat a generic Sui RPC URL as a gRPC endpoint. Providers can expose
+different URLs and authentication modes for JSON-RPC, gRPC, and GraphQL.
 
 ## Lending
 
@@ -243,6 +315,10 @@ const tx = await createDcaOrder(client, address, {
 - Install `@mysten/sui@^2`.
 - Replace legacy `TransactionBlock` with v2 `Transaction`.
 - Remove app-level `@mysten/sui.js` clients from NAVI SDK calls.
+- For the next transport milestone, plan to provide explicit `grpc` config and
+  add `graphql` when using Sui-native history/filter/join features.
+- Keep JSON-RPC as `legacyJsonRpc` compatibility only; do not use a generic
+  `url` as the long-term v2 primary client shape.
 - Keep third-party Sui v1 SDKs out of app root and shared SDK entry points.
 - Install Suilend optional peers only if Suilend migration paths are used.
 - Use `enableSuilend: false` when Suilend is not needed.

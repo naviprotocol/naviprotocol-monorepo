@@ -1,6 +1,6 @@
 # Sui SDK v2 Upgrade Plan
 
-Last updated: 2026-06-08
+Last updated: 2026-06-17
 
 ## Decision
 
@@ -17,6 +17,9 @@ The current SDK-side decision is:
   or old Sui JSON-RPC response types.
 - Keep unavoidable Sui v1 third-party code internal, lazy, and out of root
   entry points.
+- Treat JSON-RPC as a deprecated compatibility transport. The next transport
+  milestone uses explicit `grpc`, optional `graphql`, and deprecated
+  `legacyJsonRpc` capabilities instead of a generic `url`.
 - Preserve upgrade cost for integrators: existing NAVI business flows should
   keep the same route, amount, status, and wallet ownership semantics unless an
   explicit bug fix is documented.
@@ -33,6 +36,10 @@ The SDK v2 beta scope covers:
 | `@naviprotocol/astros-bridge-sdk`     | In scope                | Public Sui v2 API with an internal lazy Mayan provider for Sui-source Bridge paths.                             |
 | `@naviprotocol/astros-dca-sdk`        | In scope                | v2 transaction creation, cancel, and dry-run DTOs.                                                              |
 | Copilot / open-api                    | Related, separate owner | Use SDK results and dependency-boundary decisions, but keep backend/frontend implementation documents separate. |
+
+## Related Design Documents
+
+- [NAVI SDK v2 gRPC / GraphQL 适配技术设计](./grpc-adaptation-technical-design.md)
 
 ## Architecture
 
@@ -66,6 +73,74 @@ flowchart LR
 4. JSON-RPC remains a compatibility transport through Sui SDK v2
    `SuiJsonRpcClient`; it is not a reason to expose old v1 types.
 5. Real execute tests require explicit authorization and small test amounts.
+6. gRPC / GraphQL production endpoints must be transport-explicit. SDK APIs
+   should accept injected `SuiGrpcClient` / `SuiGraphQLClient` because provider
+   auth can require metadata or headers, not just URL query params.
+7. SDK v2 transport options should use grouped capabilities:
+   `client.grpc`, `client.graphql`, and deprecated `client.legacyJsonRpc`.
+   A generic `client.url` must not be presented as the v2 primary shape.
+8. `ClientWithCoreApi` is the method-level Core API contract. Low-level read
+   helpers and SDK extension registration can expose it, but high-level SDK
+   initialization remains transport-explicit.
+9. Sui-native history, filtering, event queries, object/package history, and
+   cross-resource joined reads require explicit GraphQL. If a caller has not
+   configured GraphQL, the SDK should fail clearly instead of silently using
+   JSON-RPC or public endpoint fallback.
+10. NAVI/Open API service-backed history is not automatically a GraphQL
+   requirement. Keep those service APIs unless a feature is explicitly migrated
+   to Sui-native GraphQL semantics.
+
+## Transport Contract
+
+The target SDK-side client contract is:
+
+Use `ClientWithCoreApi` inside SDK internals as the normalized `coreClient` for
+`client.core.*` reads and transaction input resolution. High-level simulate and
+execute paths still use the explicit `grpc` capability; do not use
+`ClientWithCoreApi` as a replacement for explicit `grpc`, `graphql`, or
+`legacyJsonRpc` capabilities.
+
+```ts
+type NaviSuiClientOptions = {
+  network: 'mainnet' | 'testnet' | 'devnet' | 'localnet' | (string & {})
+  grpc: { client: SuiGrpcClient } | { url: string; headers?: Record<string, string> }
+  graphql?:
+    | { url: string; headers?: Record<string, string> }
+    | { client: SuiGraphQLClient }
+  /** @deprecated JSON-RPC compatibility only. */
+  legacyJsonRpc?:
+    | { url: string; headers?: Record<string, string> }
+    | { client: SuiJsonRpcClient }
+}
+```
+
+Minimum integration rules:
+
+| Use case | Required transport | Notes |
+| --- | --- | --- |
+| Current state, objects, coins, balances, dry-run, execute | `grpc` | This is the v2 primary path. |
+| Sui-native history, filters, event queries, joins, object/package history | `grpc + graphql` | Missing GraphQL should be an explicit caller error. |
+| NAVI protocol service history | SDK/Open API service endpoint | Do not rewrite to GraphQL just for transport purity. |
+| Legacy unmigrated methods | `legacyJsonRpc` | Deprecated and not a long-term release contract. |
+
+Production integrations should prefer injected clients. `url + headers` is a
+simplified option for providers whose auth can be represented as HTTP or
+gRPC-web headers. The SDK must not silently fall back to public endpoints on
+rate limit or upstream failure; caching, retry, and multi-endpoint failover
+belong in Open API, provider infrastructure, or a custom injected client.
+
+Do not expose `archivalGrpc` / `archivalUrl` as normal user options in this
+milestone. If a future method truly needs old pruned point lookup, design that
+as a named advanced capability.
+
+## Integrator Guidance
+
+| Integrator | Target接入方式 | Notes |
+| --- | --- | --- |
+| `navi-open-api` | Construct `grpc`, `graphql`, and `legacyJsonRpc` separately from `SUI_GRPC_ENDPOINT` / `SUI_GRPC_TOKEN`, `SUI_GRAPHQL_URL`, and `SUI_JSON_RPC_URL`. | Validate each transport independently. Do not pass a JSON-RPC URL into `SuiGrpcClient`. |
+| `copilot/apps/lending` | Keep wallet UI on dapp-kit where needed; use open-api or explicit `grpc`/`graphql` for NAVI SDK v2 paths. | Browser apps must not expose private gRPC tokens. Existing direct GraphQL reads should move to configured `NEXT_PUBLIC_SUI_GRAPHQL_URL`. |
+| `copilot/apps/astros` | Pass explicit `grpc` to swap/bridge/DCA SDK paths; use `graphql` or open-api for history/filter pages. | `NEXT_PUBLIC_SUI_RPC_URL` remains legacy JSON-RPC only. |
+| `copilot/apps/astros-aggregator` | Same as Astros: explicit `grpc` for current state and execution-related SDK paths, `graphql` for history/filter/join reads. | Do not treat a generic RPC URL as v2 transport. |
 
 ## Dependency Boundaries
 
