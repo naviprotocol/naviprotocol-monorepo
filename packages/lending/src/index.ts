@@ -48,7 +48,12 @@ export * from './sui'
 
 export * from './pyth'
 
-export { configureNaviSdk } from './services'
+export {
+  buildNaviOpenApiUrl,
+  configureNaviSdk,
+  mergeServiceHeaders,
+  resolveNaviOpenApiEndpoint
+} from './services'
 export type {
   NaviSdkConfig,
   NaviSdkServiceOptions,
