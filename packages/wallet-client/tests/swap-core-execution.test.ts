@@ -26,16 +26,18 @@ vi.mock('shio-sdk', () => ({
 
 const { WalletClient, WatchSigner } = await import('../src')
 const { executeAuction } = await import('shio-sdk')
+const { buildSwapPTBFromQuote } = await import('@naviprotocol/astros-aggregator-sdk')
 
 const address = `0x${'1'.repeat(64)}`
 
-function createSwapClient() {
+function createSwapClient(options: Partial<ConstructorParameters<typeof WalletClient>[0]> = {}) {
   const walletClient = new WalletClient({
     signer: new WatchSigner(address),
     configs: {
       balance: {
         disableCoinPolling: true
-      }
+      },
+      ...options.configs
     },
     client: {
       network: 'mainnet',
@@ -44,7 +46,16 @@ function createSwapClient() {
       },
       legacyJsonRpc: {
         url: 'https://json-rpc.example'
-      }
+      },
+      services: {
+        naviOpenApi: {
+          baseUrl: 'https://preview-open-api.example/api',
+          headers: {
+            'x-navi-preview': '1'
+          }
+        }
+      },
+      ...options.client
     }
   })
   const balanceModule = walletClient.module('balance') as any
@@ -128,5 +139,42 @@ describe('SwapModule Core execution adapter', () => {
       }
     })
     expect(walletClient.module('balance').updatePortfolio).toHaveBeenCalled()
+  })
+
+  it('passes wallet service endpoint overrides to aggregator swap builders', async () => {
+    const walletClient = createSwapClient()
+    const tx = new Transaction()
+
+    await walletClient.module('swap').buildSwapPTBFromQuote(
+      tx,
+      {
+        amount_out: '200'
+      } as any,
+      tx.gas,
+      0.01
+    )
+
+    expect(buildSwapPTBFromQuote).toHaveBeenCalledWith(
+      address,
+      tx,
+      198,
+      tx.gas,
+      {
+        amount_out: '200'
+      },
+      0,
+      false,
+      '',
+      expect.objectContaining({
+        services: {
+          naviOpenApi: {
+            baseUrl: 'https://preview-open-api.example/api',
+            headers: {
+              'x-navi-preview': '1'
+            }
+          }
+        }
+      })
+    )
   })
 })

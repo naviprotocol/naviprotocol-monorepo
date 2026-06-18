@@ -21,7 +21,7 @@ import { fromBase64 } from '@mysten/sui/utils'
 import { Module } from '../module'
 import type { NaviWalletTransactionResult } from '../../types'
 import BigNumber from 'bignumber.js'
-import { mergeCoinsPTB } from '@naviprotocol/lending'
+import { mergeCoinsPTB, type NaviSdkServiceOptions } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'
 import {
   defaultTransactionResponseOptions,
@@ -45,6 +45,8 @@ export interface SwapModuleConfig {
   serviceFee: FeeOption | undefined
   /** Environment setting */
   env: 'dev' | 'prod'
+  /** Optional NAVI service endpoint overrides. */
+  services?: NaviSdkServiceOptions
 }
 
 /**
@@ -130,7 +132,8 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
       baseUrl: this.config.baseUrl,
       dexList: this.config.dexList,
       depth: this.config.depth,
-      serviceFee: this.config.serviceFee
+      serviceFee: this.config.serviceFee,
+      services: this.config.services ?? this.walletClient?.clientBundle.services
     }
   }
 
