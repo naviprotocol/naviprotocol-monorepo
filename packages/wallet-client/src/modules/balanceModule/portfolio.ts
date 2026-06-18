@@ -40,6 +40,9 @@ export class UserPortfolio {
       const balances: { [key in string]: UserCoinBalance } = {}
 
       coins?.forEach((item) => {
+        if (!item.coinType || item.balance === undefined || item.balance === null) {
+          return
+        }
         // Normalize coin type for consistent key usage
         const normalizedCoinType = normalizeStructTag(item.coinType)
         let existPofolio = balances[normalizedCoinType]

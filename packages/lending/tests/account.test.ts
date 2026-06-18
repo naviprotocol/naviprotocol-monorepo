@@ -29,7 +29,7 @@ describe('getCoins Core API adapter', () => {
               objectId: `0x${'1'.repeat(64)}`,
               version: '1',
               digest: 'digest',
-              coinType: '0x2::test::COIN',
+              type: '0x2::coin::Coin<0x2::test::COIN>',
               balance: '100'
             }
           ],
@@ -54,6 +54,9 @@ describe('getCoins Core API adapter', () => {
     })
     expect(client.getCoins).not.toHaveBeenCalled()
     expect(coins[0]?.coinObjectId).toBe(`0x${'1'.repeat(64)}`)
+    expect(coins[0]?.coinType).toBe(
+      '0x0000000000000000000000000000000000000000000000000000000000000002::test::COIN'
+    )
   })
 
   it('uses core.listBalances and paginated listCoins for all coin reads', async () => {
@@ -75,7 +78,7 @@ describe('getCoins Core API adapter', () => {
             objects: [
               {
                 objectId: `0x${'2'.repeat(64)}`,
-                coinType: '0x2::sui::SUI',
+                type: '0x2::coin::Coin<0x2::sui::SUI>',
                 balance: '1'
               }
             ],
@@ -85,7 +88,7 @@ describe('getCoins Core API adapter', () => {
             objects: [
               {
                 objectId: `0x${'3'.repeat(64)}`,
-                coinType: '0x2::test::COIN',
+                type: '0x2::coin::Coin<0x2::test::COIN>',
                 balance: '2'
               }
             ],
@@ -95,7 +98,7 @@ describe('getCoins Core API adapter', () => {
             objects: [
               {
                 objectId: `0x${'4'.repeat(64)}`,
-                coinType: '0x2::test::COIN',
+                type: '0x2::coin::Coin<0x2::test::COIN>',
                 balance: '3'
               }
             ],
@@ -116,6 +119,11 @@ describe('getCoins Core API adapter', () => {
       `0x${'2'.repeat(64)}`,
       `0x${'3'.repeat(64)}`,
       `0x${'4'.repeat(64)}`
+    ])
+    expect(coins.map((coin) => coin.coinType)).toEqual([
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
+      '0x0000000000000000000000000000000000000000000000000000000000000002::test::COIN',
+      '0x0000000000000000000000000000000000000000000000000000000000000002::test::COIN'
     ])
   })
 })

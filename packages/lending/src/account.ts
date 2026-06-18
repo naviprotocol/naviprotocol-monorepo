@@ -53,6 +53,28 @@ import BigNumber from 'bignumber.js'
 import { getMarketConfig, MARKETS } from './market'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
+function getCoreCoinType(coin: any, fallbackCoinType?: string) {
+  if (coin.coinType) return coin.coinType
+  if (fallbackCoinType) return fallbackCoinType
+
+  const match = typeof coin.type === 'string' ? coin.type.match(/::coin::Coin<(.+)>$/) : null
+  return match?.[1]
+}
+
+function normalizeCoreCoin(coin: any, fallbackCoinType?: string): CoinStruct | null {
+  const coinType = getCoreCoinType(coin, fallbackCoinType)
+  const coinObjectId = coin.coinObjectId ?? coin.objectId
+  if (!coinType || !coinObjectId || coin.balance === undefined || coin.balance === null) {
+    return null
+  }
+
+  return {
+    ...coin,
+    coinType: normalizeCoinType(coinType),
+    coinObjectId
+  } as CoinStruct
+}
+
 /**
  * Merges multiple coins into a single coin for transaction building
  *
@@ -546,10 +568,9 @@ export async function getCoins(
           limit: 100
         })
         res = {
-          data: (response.objects ?? response.data ?? []).map((coin: any) => ({
-            ...coin,
-            coinObjectId: coin.coinObjectId ?? coin.objectId
-          })),
+          data: (response.objects ?? response.data ?? [])
+            .map((coin: any) => normalizeCoreCoin(coin, options?.coinType))
+            .filter(Boolean) as CoinStruct[],
           nextCursor: response.cursor ?? response.nextCursor ?? null,
           hasNextPage: response.hasNextPage ?? false
         } as PaginatedCoins
@@ -573,7 +594,9 @@ export async function getCoins(
           cursor: balanceCursor,
           limit: 100
         })
-        coinTypes.push(...(response.balances ?? []).map((balance: any) => balance.coinType))
+        coinTypes.push(
+          ...(response.balances ?? []).map((balance: any) => balance.coinType).filter(Boolean)
+        )
         balanceCursor = response.cursor ?? response.nextCursor ?? null
       } while (balanceCursor)
 
@@ -587,10 +610,9 @@ export async function getCoins(
             limit: 100
           })
           allCoinDatas.push(
-            ...(response.objects ?? response.data ?? []).map((coin: any) => ({
-              ...coin,
-              coinObjectId: coin.coinObjectId ?? coin.objectId
-            }))
+            ...((response.objects ?? response.data ?? [])
+              .map((coin: any) => normalizeCoreCoin(coin, coinType))
+              .filter(Boolean) as CoinStruct[])
           )
           coinCursor = response.cursor ?? response.nextCursor ?? null
         } while (coinCursor)

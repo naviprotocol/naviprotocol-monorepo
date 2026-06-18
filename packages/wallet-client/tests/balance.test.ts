@@ -1,7 +1,9 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
+import { UserPortfolio } from '../src/modules/balanceModule/portfolio'
 import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import type { CoinStruct } from '@mysten/sui/jsonRpc'
 
 import dotenv from 'dotenv'
 
@@ -30,6 +32,25 @@ const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 describe('balance module', () => {
   it('module exists', async () => {
     expect(walletClient.module('balance')).toBeDefined()
+  })
+
+  it('ignores malformed Core coin objects without breaking portfolio reads', () => {
+    const portfolio = new UserPortfolio([
+      {
+        coinType: '0x2::sui::SUI',
+        coinObjectId: `0x${'1'.repeat(64)}`,
+        balance: '100'
+      },
+      {
+        coinObjectId: `0x${'2'.repeat(64)}`,
+        balance: '50'
+      } as any
+    ] as CoinStruct[])
+
+    expect(portfolio.balanceOf('0x2::sui::SUI').toString()).toBe('100')
+    expect(portfolio.getCoinTypes()).toEqual([
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+    ])
   })
 
   it.skipIf(!runLiveTests)('update portfolio', async () => {
