@@ -531,12 +531,34 @@ export async function getCoins(
 
     // Use specific coin type filter if provided, otherwise get all coins
     if (options?.coinType) {
-      res = await client.getCoins({
-        owner: address,
-        coinType: options?.coinType,
-        cursor,
-        limit: 100
-      })
+      const core = client.core as
+        | {
+            listCoins?(options: any): Promise<any>
+          }
+        | undefined
+      if (typeof core?.listCoins === 'function') {
+        const response = await core.listCoins({
+          owner: address,
+          coinType: options?.coinType,
+          cursor,
+          limit: 100
+        })
+        res = {
+          data: (response.objects ?? response.data ?? []).map((coin: any) => ({
+            ...coin,
+            coinObjectId: coin.coinObjectId ?? coin.objectId
+          })),
+          nextCursor: response.cursor ?? response.nextCursor ?? null,
+          hasNextPage: response.hasNextPage ?? false
+        } as PaginatedCoins
+      } else {
+        res = await client.getCoins({
+          owner: address,
+          coinType: options?.coinType,
+          cursor,
+          limit: 100
+        })
+      }
     } else {
       res = await client.getAllCoins({
         owner: address,

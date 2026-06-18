@@ -33,7 +33,10 @@ export type NaviTransactionExecutionOptions = {
 }
 
 export type NaviWalletExecutionClient = {
-  core: unknown
+  core: {
+    simulateTransaction?(options: any): Promise<any>
+    executeTransaction?(options: any): Promise<any>
+  }
 }
 
 export type NaviTransactionStatus = {

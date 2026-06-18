@@ -19,6 +19,7 @@ import { CustomTransport } from './transport'
 import { Module, ModuleConfig } from './modules/module'
 import { modules, ModuleName, ModuleEvents } from './modules'
 import { Transaction } from '@mysten/sui/transactions'
+import { fromBase64 } from '@mysten/sui/utils'
 import {
   DryRunOptions,
   NaviTransactionExecutionOptions,
@@ -59,6 +60,25 @@ const defaultClientOptions = {
   network: 'mainnet',
   url: getJsonRpcFullnodeUrl('mainnet')
 } as const
+
+function transactionIncludeOptions(options?: NaviTransactionExecutionOptions['options']) {
+  const merged = mergeTransactionResponseOptions(options)
+  return {
+    effects: merged.showEffects,
+    events: merged.showEvents,
+    balanceChanges: merged.showBalanceChanges,
+    objectTypes: merged.showObjectChanges
+  }
+}
+
+function getCoreTransactionClient(client: unknown) {
+  return (client as { core?: unknown }).core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+        executeTransaction?(options: any): Promise<any>
+      }
+    | undefined
+}
 
 /**
  * Main wallet client class that provides unified access to blockchain operations
@@ -148,6 +168,18 @@ export class WalletClient {
     const { dryRun = false, ...rest } = options
 
     if (dryRun) {
+      const core = getCoreTransactionClient(this.client)
+      if (typeof core?.simulateTransaction === 'function') {
+        if (options.transaction instanceof Transaction) {
+          options.transaction.setSenderIfNotSet(this.address)
+        }
+        const result = await core.simulateTransaction({
+          transaction: options.transaction,
+          include: transactionIncludeOptions(rest.options)
+        })
+        return normalizeTransactionResult('dryRun', result)
+      }
+
       // Handle dry run mode for transaction simulation
       let txBytes
       if (options.transaction instanceof Transaction) {
@@ -162,6 +194,26 @@ export class WalletClient {
         transactionBlock: txBytes
       })
       return normalizeTransactionResult('dryRun', result)
+    }
+
+    const core = getCoreTransactionClient(this.client)
+    if (typeof core?.executeTransaction === 'function') {
+      let txBytes: Uint8Array
+      if (options.transaction instanceof Transaction) {
+        options.transaction.setSenderIfNotSet(this.address)
+        txBytes = await options.transaction.build({
+          client: this.client
+        })
+      } else {
+        txBytes = options.transaction
+      }
+      const signed = await this.signer.signTransaction(txBytes)
+      const result = await core.executeTransaction({
+        transaction: fromBase64(signed.bytes),
+        signatures: [signed.signature],
+        include: transactionIncludeOptions(rest.options)
+      })
+      return normalizeTransactionResult('execute', result)
     }
 
     // Execute the actual transaction

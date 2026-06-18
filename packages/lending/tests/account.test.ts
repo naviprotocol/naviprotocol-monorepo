@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getLendingState,
   getHealthFactor,
@@ -18,6 +18,44 @@ import type { CoinStruct } from '@mysten/sui/jsonRpc'
 const keypair = Ed25519Keypair.generate()
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
+
+describe('getCoins Core API adapter', () => {
+  it('uses core.listCoins for coin-type-specific reads', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [
+            {
+              objectId: `0x${'1'.repeat(64)}`,
+              version: '1',
+              digest: 'digest',
+              coinType: '0x2::test::COIN',
+              balance: '100'
+            }
+          ],
+          cursor: null,
+          hasNextPage: false
+        }))
+      },
+      getCoins: vi.fn(),
+      getAllCoins: vi.fn()
+    }
+
+    const coins = await getCoins(testAddress, {
+      coinType: '0x2::test::COIN',
+      client: client as any
+    })
+
+    expect(client.core.listCoins).toHaveBeenCalledWith({
+      owner: testAddress,
+      coinType: '0x2::test::COIN',
+      cursor: null,
+      limit: 100
+    })
+    expect(client.getCoins).not.toHaveBeenCalled()
+    expect(coins[0]?.coinObjectId).toBe(`0x${'1'.repeat(64)}`)
+  })
+})
 
 describe.skipIf(!runLiveTests)('getLendingState', () => {
   it('check no state', async () => {
