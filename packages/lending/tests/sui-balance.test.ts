@@ -3,7 +3,9 @@ import {
   getAddressBalance,
   getCoinObjectOnlyBalance,
   listAddressBalances,
-  normalizeAddressBalance
+  NaviMissingGraphQLClientError,
+  normalizeAddressBalance,
+  requireNaviGraphQLClient
 } from '../src/sui'
 import type { CoinStruct } from '@mysten/sui/jsonRpc'
 
@@ -89,5 +91,33 @@ describe('Address Balances', () => {
     })
     expect(coinObjectOnlyBalance).toBe('100')
     expect(coinObjectOnlyBalance).not.toBe(balance.totalBalance)
+  })
+})
+
+describe('GraphQL capability guard', () => {
+  it('throws a clear error instead of falling back for GraphQL-only capabilities', () => {
+    expect(() =>
+      requireNaviGraphQLClient(
+        {
+          graphql: undefined
+        },
+        'sui-native-history'
+      )
+    ).toThrow(NaviMissingGraphQLClientError)
+  })
+
+  it('returns the explicitly configured GraphQL client', () => {
+    const graphql = {
+      query: vi.fn()
+    }
+
+    expect(
+      requireNaviGraphQLClient(
+        {
+          graphql
+        },
+        'sui-native-history'
+      )
+    ).toBe(graphql)
   })
 })

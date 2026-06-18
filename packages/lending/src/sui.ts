@@ -115,6 +115,15 @@ export type NaviAddressBalance = {
   coinObjectCount?: number
 }
 
+export class NaviMissingGraphQLClientError extends Error {
+  constructor(capability: string) {
+    super(
+      `NAVI Sui SDK capability "${capability}" requires an explicit graphql client; no public GraphQL fallback is configured`
+    )
+    this.name = 'NaviMissingGraphQLClientError'
+  }
+}
+
 function balanceValueToString(value: string | number | bigint | null | undefined) {
   return value === null || value === undefined ? undefined : String(value)
 }
@@ -242,6 +251,16 @@ export function createNaviSuiClientBundle(options: NaviSuiClientOptions): NaviSu
       : undefined,
     services: options.services
   }
+}
+
+export function requireNaviGraphQLClient(
+  bundle: Pick<NaviSuiClientBundle, 'graphql'>,
+  capability: string
+) {
+  if (!bundle.graphql) {
+    throw new NaviMissingGraphQLClientError(capability)
+  }
+  return bundle.graphql
 }
 
 export function createNaviSuiClient(
