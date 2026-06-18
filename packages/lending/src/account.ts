@@ -525,6 +525,12 @@ export async function getCoins(
   let cursor: string | undefined | null = null
   const allCoinDatas: CoinStruct[] = []
   const client = options?.client ?? suiClient
+  const core = client.core as
+    | {
+        listBalances?(options: any): Promise<any>
+        listCoins?(options: any): Promise<any>
+      }
+    | undefined
 
   // Fetch all coins using pagination
   do {
@@ -532,11 +538,6 @@ export async function getCoins(
 
     // Use specific coin type filter if provided, otherwise get all coins
     if (options?.coinType) {
-      const core = client.core as
-        | {
-            listCoins?(options: any): Promise<any>
-          }
-        | undefined
       if (typeof core?.listCoins === 'function') {
         const response = await core.listCoins({
           owner: address,
@@ -560,6 +561,38 @@ export async function getCoins(
           limit: 100
         })
       }
+    } else if (typeof core?.listBalances === 'function' && typeof core?.listCoins === 'function') {
+      const coinTypes: string[] = []
+      let balanceCursor: string | null | undefined = null
+      do {
+        const response = await core.listBalances({
+          owner: address,
+          cursor: balanceCursor,
+          limit: 100
+        })
+        coinTypes.push(...(response.balances ?? []).map((balance: any) => balance.coinType))
+        balanceCursor = response.cursor ?? response.nextCursor ?? null
+      } while (balanceCursor)
+
+      for (const coinType of coinTypes) {
+        let coinCursor: string | null | undefined = null
+        do {
+          const response = await core.listCoins({
+            owner: address,
+            coinType,
+            cursor: coinCursor,
+            limit: 100
+          })
+          allCoinDatas.push(
+            ...(response.objects ?? response.data ?? []).map((coin: any) => ({
+              ...coin,
+              coinObjectId: coin.coinObjectId ?? coin.objectId
+            }))
+          )
+          coinCursor = response.cursor ?? response.nextCursor ?? null
+        } while (coinCursor)
+      }
+      break
     } else {
       res = await client.getAllCoins({
         owner: address,

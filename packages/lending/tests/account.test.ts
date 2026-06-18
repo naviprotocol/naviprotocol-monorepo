@@ -55,6 +55,69 @@ describe('getCoins Core API adapter', () => {
     expect(client.getCoins).not.toHaveBeenCalled()
     expect(coins[0]?.coinObjectId).toBe(`0x${'1'.repeat(64)}`)
   })
+
+  it('uses core.listBalances and paginated listCoins for all coin reads', async () => {
+    const client = {
+      core: {
+        listBalances: vi
+          .fn()
+          .mockResolvedValueOnce({
+            balances: [{ coinType: '0x2::sui::SUI' }],
+            cursor: 'next-balances'
+          })
+          .mockResolvedValueOnce({
+            balances: [{ coinType: '0x2::test::COIN' }],
+            cursor: null
+          }),
+        listCoins: vi
+          .fn()
+          .mockResolvedValueOnce({
+            objects: [
+              {
+                objectId: `0x${'2'.repeat(64)}`,
+                coinType: '0x2::sui::SUI',
+                balance: '1'
+              }
+            ],
+            cursor: null
+          })
+          .mockResolvedValueOnce({
+            objects: [
+              {
+                objectId: `0x${'3'.repeat(64)}`,
+                coinType: '0x2::test::COIN',
+                balance: '2'
+              }
+            ],
+            cursor: 'next-coins'
+          })
+          .mockResolvedValueOnce({
+            objects: [
+              {
+                objectId: `0x${'4'.repeat(64)}`,
+                coinType: '0x2::test::COIN',
+                balance: '3'
+              }
+            ],
+            cursor: null
+          })
+      },
+      getAllCoins: vi.fn()
+    }
+
+    const coins = await getCoins(testAddress, {
+      client: client as any
+    })
+
+    expect(client.core.listBalances).toHaveBeenCalledTimes(2)
+    expect(client.core.listCoins).toHaveBeenCalledTimes(3)
+    expect(client.getAllCoins).not.toHaveBeenCalled()
+    expect(coins.map((coin) => coin.coinObjectId)).toEqual([
+      `0x${'2'.repeat(64)}`,
+      `0x${'3'.repeat(64)}`,
+      `0x${'4'.repeat(64)}`
+    ])
+  })
 })
 
 describe.skipIf(!runLiveTests)('getLendingState', () => {
