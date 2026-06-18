@@ -160,7 +160,7 @@ async function runGraphQLSmoke() {
               }
             }
           }
-          transactionBlocks(first: 1) {
+          transactions(first: 1) {
             nodes {
               digest
             }
