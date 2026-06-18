@@ -290,6 +290,7 @@ export async function depositCoinPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         amount: number | TransactionResult
       }
@@ -392,7 +393,7 @@ export async function withdrawCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption & MarketOption>
+  options?: Partial<EnvOption & AccountCapOption & MarketOption & ServiceOption>
 ): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
@@ -493,7 +494,7 @@ export async function borrowCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption & MarketOption>
+  options?: Partial<EnvOption & AccountCapOption & MarketOption & ServiceOption>
 ): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
@@ -621,6 +622,7 @@ export async function repayCoinPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         amount: number | TransactionResult
       }

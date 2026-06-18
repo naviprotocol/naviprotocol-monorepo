@@ -7,7 +7,8 @@ const DEFAULT_NAVI_OPEN_API_BASE_URL = 'https://open-api.naviprotocol.io/api'
 const address = `0x${'1'.repeat(64)}`
 
 function createWalletClient(
-  configs: ConstructorParameters<typeof WalletClient>[0]['configs'] = {}
+  configs: ConstructorParameters<typeof WalletClient>[0]['configs'] = {},
+  clientOptions: Partial<ConstructorParameters<typeof WalletClient>[0]['client']> = {}
 ) {
   const walletClient = new WalletClient({
     signer: new WatchSigner(address),
@@ -24,7 +25,8 @@ function createWalletClient(
       },
       legacyJsonRpc: {
         url: 'https://json-rpc.example'
-      }
+      },
+      ...clientOptions
     }
   })
   walletClient.module('balance').uninstall()
@@ -100,5 +102,44 @@ describe('wallet service endpoint configuration', () => {
         'x-wallet-preview': '1'
       }
     })
+  })
+
+  it('uses wallet-level Open API endpoint overrides for lending reads', async () => {
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({
+        data: [],
+        meta: {
+          emodes: []
+        }
+      })
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const walletClient = createWalletClient(
+      {},
+      {
+        services: {
+          naviOpenApi: {
+            baseUrl: 'https://wallet-open-api.example/api',
+            headers: {
+              'x-wallet-preview': '1'
+            }
+          }
+        }
+      }
+    )
+
+    await expect(
+      walletClient.module('lending').getPools({
+        disableCache: true
+      })
+    ).resolves.toEqual([])
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('https://wallet-open-api.example/api/navi/pools?'),
+      {
+        headers: expect.objectContaining({
+          'x-wallet-preview': '1'
+        })
+      }
+    )
   })
 })

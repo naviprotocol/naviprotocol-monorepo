@@ -14,7 +14,8 @@ import type {
   Pool,
   SuiClientOption,
   MarketOption,
-  LendingPosition
+  LendingPosition,
+  ServiceOption
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
@@ -221,6 +222,7 @@ export async function updateOraclePricesPTB(
   options?: Partial<
     EnvOption &
       SuiClientOption &
+      ServiceOption &
       MarketOption & {
         updatePythPriceFeeds?: boolean
       }
@@ -289,7 +291,9 @@ export async function updateOraclePricesPTB(
  * @param options - Optional environment configuration
  * @returns Array of oracle price feed configurations
  */
-export async function getPriceFeeds(options?: Partial<EnvOption>): Promise<OraclePriceFeed[]> {
+export async function getPriceFeeds(
+  options?: Partial<EnvOption & ServiceOption>
+): Promise<OraclePriceFeed[]> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME

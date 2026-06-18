@@ -63,7 +63,7 @@ export const getAllFlashLoanAssets = withCache(
  */
 export async function getFlashLoanAsset(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & ServiceOption>
 ): Promise<FloashloanAsset | null> {
   const assets = await getAllFlashLoanAssets(options)
   return (
@@ -96,7 +96,7 @@ export async function flashloanPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & MarketOption>
+  options?: Partial<EnvOption & MarketOption & ServiceOption>
 ) {
   const config = await getConfig({
     ...options,
@@ -164,7 +164,7 @@ export async function repayFlashLoanPTB(
   identifier: AssetIdentifier,
   receipt: TransactionResult | string,
   coinObject: CoinObject,
-  options?: Partial<EnvOption & MarketOption>
+  options?: Partial<EnvOption & MarketOption & ServiceOption>
 ) {
   const config = await getConfig({
     ...options,

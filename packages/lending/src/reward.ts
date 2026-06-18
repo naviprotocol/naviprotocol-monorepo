@@ -50,7 +50,7 @@ async function getLendingRewardsBatch(
     owner: string
     emodeId?: number
   }[],
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & ServiceOption>
 ): Promise<LendingReward[]> {
   const client = options?.client ?? suiClient
   const tx = new Transaction()
@@ -168,7 +168,7 @@ async function getLendingRewardsBatch(
  */
 export async function getUserAvailableLendingRewards(
   address: string | AccountCap,
-  options?: Partial<SuiClientOption & EnvOption & MarketsOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketsOption & ServiceOption>
 ): Promise<LendingReward[]> {
   const markets = (options?.markets || [MARKETS.main]).map((identity) => {
     return getMarketConfig(identity)
@@ -355,6 +355,7 @@ export async function claimLendingRewardsPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         customCoinReceive?: {
           type: 'transfer' | 'depositNAVI' | 'skip'
