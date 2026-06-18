@@ -1,22 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const legacySui = vi.hoisted(() => {
-  const instances: Array<{ url: string }> = []
-  return {
-    instances,
-    getFullnodeUrl: vi.fn((network: string) => `https://${network}.legacy.sui.invalid`),
-    SuiClient: class {
-      url: string
-
-      constructor(options: { url: string }) {
-        this.url = options.url
-        instances.push(this)
-      }
-    }
-  }
-})
-
 const mayanSdk = vi.hoisted(() => ({
   createSwapFromSuiMoveCalls: vi.fn(),
   swapFromSolana: vi.fn(),
@@ -38,11 +22,6 @@ vi.mock('@mayanfinance/swap-sdk', () => ({
   }
 }))
 
-vi.mock('@mysten/sui-v1/client', () => ({
-  SuiClient: legacySui.SuiClient,
-  getFullnodeUrl: legacySui.getFullnodeUrl
-}))
-
 vi.mock('ethers', () => ({
   Signer: class {},
   Overrides: class {},
@@ -53,19 +32,21 @@ vi.mock('ethers', () => ({
   parseUnits: ethersSdk.parseUnits
 }))
 
-async function buildFixtureTransactionBytes() {
+function createMayanTransaction() {
   const tx = new Transaction()
-  tx.setSender(`0x${'1'.repeat(64)}`)
-  tx.setGasBudget(1_000_000)
-  tx.setGasPrice(1_000)
-  tx.setGasPayment([
-    {
-      objectId: `0x${'2'.repeat(64)}`,
-      version: '1',
-      digest: '11111111111111111111111111111111'
-    }
-  ])
-  return tx.build()
+  vi.spyOn(tx, 'setSenderIfNotSet')
+  vi.spyOn(tx, 'setGasBudget')
+  return tx
+}
+
+const signedBytes = 'AQID'
+
+function createSuiCoreApi() {
+  return {
+    getMoveFunction: vi.fn(),
+    listCoins: vi.fn(),
+    getObject: vi.fn()
+  }
 }
 
 async function settleSwap<T>(promise: Promise<T>) {
@@ -77,10 +58,6 @@ describe('mayan provider', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    legacySui.instances.length = 0
-    legacySui.getFullnodeUrl.mockImplementation(
-      (network: string) => `https://${network}.legacy.sui.invalid`
-    )
     ethersSdk.parseUnits.mockImplementation((amount: string, decimals: number) => {
       const [whole, fraction = ''] = amount.split('.')
       return BigInt(`${whole}${fraction.padEnd(decimals, '0').slice(0, decimals)}`)
@@ -91,32 +68,33 @@ describe('mayan provider', () => {
     vi.useRealTimers()
   })
 
-  it('executes the Sui adapter path through legacy bytes, v2 sign, execute, and wait contracts', async () => {
+  it('executes the Sui adapter path through Mayan v2 transaction, sign, execute, and wait contracts', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'d'.repeat(64)}`
-    const legacyBytes = await buildFixtureTransactionBytes()
-    const legacyTx = {
-      setSenderIfNotSet: vi.fn(),
-      setGasBudget: vi.fn(),
-      build: vi.fn(async () => legacyBytes)
-    }
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
     const client = {
       network: 'mainnet',
-      executeTransactionBlock: vi.fn(async () => ({
-        digest,
-        effects: {
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: {
+          digest,
           status: {
-            status: 'success'
+            success: true,
+            error: null
           }
         }
       })),
-      waitForTransaction: vi.fn(async () => ({ digest }))
+      waitForTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      }))
     }
     const signTransaction = vi.fn(async ({ transaction }: { transaction: Transaction }) => {
       expect(transaction).toBeInstanceOf(Transaction)
       return {
-        bytes: 'signed-bytes',
+        bytes: signedBytes,
         signature: 'signed-signature'
       }
     })
@@ -145,50 +123,83 @@ describe('mayan provider', () => {
     const result = await settleSwap(resultPromise)
 
     expect(result).toBe(digest)
-    expect(legacySui.instances).toHaveLength(1)
-    expect(legacySui.instances[0].url).toBe('https://custom.sui.rpc')
     expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
       route.info_for_bridge,
       '0xfrom',
       '0xto',
       undefined,
       null,
-      legacySui.instances[0]
+      client
     )
-    expect(legacyTx.setSenderIfNotSet).toHaveBeenCalledWith('0xfrom')
-    expect(legacyTx.setGasBudget).toHaveBeenCalledWith(123456)
-    expect(legacyTx.build).toHaveBeenCalledWith({ client: legacySui.instances[0] })
-    expect(client.executeTransactionBlock).toHaveBeenCalledWith({
-      transactionBlock: 'signed-bytes',
-      signature: ['signed-signature'],
-      options: {
-        showEffects: true,
-        showEvents: true,
-        showBalanceChanges: true
+    expect(mayanTx.setSenderIfNotSet).toHaveBeenCalledWith('0xfrom')
+    expect(mayanTx.setGasBudget).toHaveBeenCalledWith(123456)
+    expect(client.executeTransaction).toHaveBeenCalledWith({
+      transaction: new Uint8Array([1, 2, 3]),
+      signatures: ['signed-signature'],
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true
       }
     })
     expect(client.waitForTransaction).toHaveBeenCalledWith({
-      digest
+      result: expect.objectContaining({
+        Transaction: expect.objectContaining({ digest })
+      }),
+      include: {
+        effects: true
+      }
     })
+  })
+
+  it('rejects Sui source bridge before Mayan when the v2 Core API provider is incomplete', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const signTransaction = vi.fn()
+
+    await expect(
+      swap(
+        {
+          from_token: { chainId: 1999 },
+          to_token: { chainId: 0 },
+          info_for_bridge: { fromToken: { standard: 'sui' } }
+        } as any,
+        '0xfrom',
+        '0xto',
+        {
+          sui: {
+            provider: {
+              network: 'mainnet',
+              core: {
+                getObject: vi.fn()
+              },
+              executeTransaction: vi.fn(),
+              waitForTransaction: vi.fn()
+            } as any,
+            signTransaction
+          }
+        }
+      )
+    ).rejects.toThrow(
+      'Sui bridge provider must implement Sui SDK v2 Core API and execution methods: missing core.getMoveFunction, core.listCoins'
+    )
+    expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
+    expect(signTransaction).not.toHaveBeenCalled()
   })
 
   it('throws when the Sui source transaction reports a failed execution effect', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'e'.repeat(64)}`
-    const legacyBytes = await buildFixtureTransactionBytes()
-    const legacyTx = {
-      setSenderIfNotSet: vi.fn(),
-      setGasBudget: vi.fn(),
-      build: vi.fn(async () => legacyBytes)
-    }
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
     const client = {
       network: 'mainnet',
-      executeTransactionBlock: vi.fn(async () => ({
-        digest,
-        effects: {
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'FailedTransaction',
+        FailedTransaction: {
+          digest,
           status: {
-            status: 'failure',
+            success: false,
             error: 'MoveAbort(bridge)'
           }
         }
@@ -196,7 +207,7 @@ describe('mayan provider', () => {
       waitForTransaction: vi.fn()
     }
     const signTransaction = vi.fn(async () => ({
-      bytes: 'signed-bytes',
+      bytes: signedBytes,
       signature: 'signed-signature'
     }))
 
@@ -217,27 +228,29 @@ describe('mayan provider', () => {
         }
       )
     ).rejects.toThrow('Sui bridge source transaction failed: MoveAbort(bridge)')
-    expect(legacyTx.setGasBudget).not.toHaveBeenCalled()
+    expect(mayanTx.setGasBudget).not.toHaveBeenCalled()
     expect(client.waitForTransaction).not.toHaveBeenCalled()
   })
 
-  it('keeps the v1-compatible Sui source path when execution status is omitted', async () => {
+  it('keeps the Sui source path compatible when execution status is omitted', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'a'.repeat(64)}`
-    const legacyBytes = await buildFixtureTransactionBytes()
-    const legacyTx = {
-      setSenderIfNotSet: vi.fn(),
-      setGasBudget: vi.fn(),
-      build: vi.fn(async () => legacyBytes)
-    }
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
     const client = {
       network: 'mainnet',
-      executeTransactionBlock: vi.fn(async () => ({ digest })),
-      waitForTransaction: vi.fn(async () => ({ digest }))
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      })),
+      waitForTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      }))
     }
     const signTransaction = vi.fn(async () => ({
-      bytes: 'signed-bytes',
+      bytes: signedBytes,
       signature: 'signed-signature'
     }))
 
@@ -259,33 +272,41 @@ describe('mayan provider', () => {
     const result = await settleSwap(resultPromise)
 
     expect(result).toBe(digest)
-    expect(client.waitForTransaction).toHaveBeenCalledWith({ digest })
+    expect(client.waitForTransaction).toHaveBeenCalledWith({
+      result: expect.objectContaining({
+        Transaction: expect.objectContaining({ digest })
+      }),
+      include: {
+        effects: true
+      }
+    })
   })
 
-  it('uses the provider network to create the legacy Sui client when rpcUrl is omitted', async () => {
+  it('does not require rpcUrl when a v2 Sui provider is supplied', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'f'.repeat(64)}`
-    const legacyBytes = await buildFixtureTransactionBytes()
-    const legacyTx = {
-      setSenderIfNotSet: vi.fn(),
-      setGasBudget: vi.fn(),
-      build: vi.fn(async () => legacyBytes)
-    }
-    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(legacyTx)
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
     const client = {
-      network: 'testnet',
-      executeTransactionBlock: vi.fn(async () => ({
-        digest,
-        effects: {
+      network: 'localnet',
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: {
+          digest,
           status: {
-            status: 'success'
+            success: true,
+            error: null
           }
         }
       })),
-      waitForTransaction: vi.fn(async () => ({ digest }))
+      waitForTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      }))
     }
     const signTransaction = vi.fn(async () => ({
-      bytes: 'signed-bytes',
+      bytes: signedBytes,
       signature: 'signed-signature'
     }))
 
@@ -307,41 +328,15 @@ describe('mayan provider', () => {
     const result = await settleSwap(resultPromise)
 
     expect(result).toBe(digest)
-    expect(legacySui.getFullnodeUrl).toHaveBeenCalledWith('testnet')
-    expect(legacySui.instances[0].url).toBe('https://testnet.legacy.sui.invalid')
-    expect(legacyTx.setGasBudget).not.toHaveBeenCalled()
-  })
-
-  it('requires an explicit rpcUrl for custom Sui networks', async () => {
-    const { swap } = await import('../src/providers/mayan')
-    const signTransaction = vi.fn(async () => ({
-      bytes: 'signed-bytes',
-      signature: 'signed-signature'
-    }))
-
-    await expect(
-      swap(
-        {
-          from_token: { chainId: 1999 },
-          to_token: { chainId: 0 },
-          info_for_bridge: { fromToken: { standard: 'sui' } }
-        } as any,
-        '0xfrom',
-        '0xto',
-        {
-          sui: {
-            provider: {
-              network: 'localnet'
-            } as any,
-            signTransaction
-          }
-        }
-      )
-    ).rejects.toThrow(
-      'Unsupported Sui network "localnet"; provide walletConnection.sui.rpcUrl for custom networks'
+    expect(mayanTx.setGasBudget).not.toHaveBeenCalled()
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
+      expect.anything(),
+      '0xfrom',
+      '0xto',
+      undefined,
+      null,
+      client
     )
-    expect(legacySui.instances).toHaveLength(0)
-    expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
   })
 
   it('keeps Solana source routing on bridge API chain id 0', async () => {

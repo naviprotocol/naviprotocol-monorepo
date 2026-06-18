@@ -8,14 +8,10 @@ import {
   Erc20Permit,
   addresses
 } from '@mayanfinance/swap-sdk'
-import {
-  SuiClient as LegacySuiClient,
-  getFullnodeUrl as getLegacyFullnodeUrl
-} from '@mysten/sui-v1/client'
 import { BridgeSwapQuote, WalletConnection } from '../types'
-import { Transaction } from '@mysten/sui/transactions'
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
+import { fromBase64 } from '@mysten/sui/utils'
 
 const ERC20_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -29,11 +25,19 @@ enum BridgeChain {
 }
 
 type SuiExecutionResponse = {
-  digest?: string
-  effects?: null | {
+  $kind?: 'Transaction' | 'FailedTransaction'
+  Transaction?: {
+    digest: string
     status?: {
-      status?: string
-      error?: string
+      success: boolean
+      error?: unknown
+    }
+  }
+  FailedTransaction?: {
+    digest: string
+    status?: {
+      success: boolean
+      error?: unknown
     }
   }
 }
@@ -49,35 +53,62 @@ function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
 }
 
 function assertSuiExecutionSuccess(resp: SuiExecutionResponse) {
-  if (!resp.digest) {
+  const transaction = resp.Transaction ?? resp.FailedTransaction
+  if (!transaction?.digest) {
     throw new Error('Sui bridge source transaction did not return a digest')
   }
 
-  const status = resp.effects?.status
-  if (status?.status && status.status !== 'success') {
+  if (resp.$kind === 'FailedTransaction' || transaction.status?.success === false) {
     throw new Error(
-      `Sui bridge source transaction failed: ${status?.error ?? status?.status ?? 'unknown status'}`
+      `Sui bridge source transaction failed: ${String(transaction.status?.error ?? 'unknown status')}`
     )
   }
 }
 
-function getLegacySuiRpcUrl(walletConnection: NonNullable<WalletConnection['sui']>) {
-  if (walletConnection.rpcUrl) {
-    return walletConnection.rpcUrl
+function getSuiExecutionDigest(resp: SuiExecutionResponse) {
+  const digest = resp.Transaction?.digest ?? resp.FailedTransaction?.digest
+  if (!digest) {
+    throw new Error('Sui bridge source transaction did not return a digest')
+  }
+  return digest
+}
+
+function assertSuiBridgeProvider(client: unknown): asserts client is {
+  core: {
+    getMoveFunction(options: any): Promise<any>
+    listCoins(options: any): Promise<any>
+    getObject(options: any): Promise<any>
+  }
+  executeTransaction(options: any): Promise<any>
+  waitForTransaction(options: any): Promise<any>
+} {
+  const provider = client as {
+    core?: Record<string, unknown>
+    executeTransaction?: unknown
+    waitForTransaction?: unknown
+  }
+  const missing: string[] = []
+
+  if (!provider?.core || typeof provider.core !== 'object') {
+    missing.push('core')
+  } else {
+    for (const method of ['getMoveFunction', 'listCoins', 'getObject'] as const) {
+      if (typeof provider.core[method] !== 'function') {
+        missing.push(`core.${method}`)
+      }
+    }
   }
 
-  const network = walletConnection.provider.network
-  switch (network) {
-    case 'mainnet':
-      return getLegacyFullnodeUrl('mainnet')
-    case 'testnet':
-      return getLegacyFullnodeUrl('testnet')
-    case 'devnet':
-      return getLegacyFullnodeUrl('devnet')
-    default:
-      throw new Error(
-        `Unsupported Sui network "${String(network)}"; provide walletConnection.sui.rpcUrl for custom networks`
-      )
+  for (const method of ['executeTransaction', 'waitForTransaction'] as const) {
+    if (typeof provider?.[method] !== 'function') {
+      missing.push(method)
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Sui bridge provider must implement Sui SDK v2 Core API and execution methods: missing ${missing.join(', ')}`
+    )
   }
 }
 
@@ -112,40 +143,39 @@ export async function swap(
     }
     const connection = walletConnection.sui
     const client = connection.provider
-    const legacyClient = new LegacySuiClient({
-      url: getLegacySuiRpcUrl(connection)
-    })
-    const legacySwapTrx = await createSwapFromSuiMoveCalls(
+    assertSuiBridgeProvider(client)
+    const swapTrx = await createSwapFromSuiMoveCalls(
       mayanQuote,
       fromAddress,
       toAddress,
       referrerAddresses,
       null,
-      legacyClient as any
+      client as any
     )
-    legacySwapTrx.setSenderIfNotSet(fromAddress)
+    swapTrx.setSenderIfNotSet(fromAddress)
     if (connection.gasBudget !== undefined) {
-      legacySwapTrx.setGasBudget(connection.gasBudget)
+      swapTrx.setGasBudget(connection.gasBudget)
     }
-    const legacyBytes = await legacySwapTrx.build({ client: legacyClient as any })
-    const swapTrx = Transaction.from(legacyBytes)
     const signed: {
       bytes: string
       signature: string
     } = await connection.signTransaction({ transaction: swapTrx })
-    const resp = await client.executeTransactionBlock({
-      transactionBlock: signed.bytes,
-      signature: [signed.signature],
-      options: {
-        showEffects: true,
-        showEvents: true,
-        showBalanceChanges: true
+    const resp = await client.executeTransaction({
+      transaction: fromBase64(signed.bytes),
+      signatures: [signed.signature],
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true
       }
     })
     assertSuiExecutionSuccess(resp)
-    hash = resp.digest
+    hash = getSuiExecutionDigest(resp)
     await client.waitForTransaction({
-      digest: hash
+      result: resp,
+      include: {
+        effects: true
+      }
     })
   } else if (route.from_token.chainId === BridgeChain.SOLANA) {
     if (!walletConnection.solana) {

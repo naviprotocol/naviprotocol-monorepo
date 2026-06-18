@@ -218,9 +218,16 @@ export type BridgeSwapTransaction = {
 
 export type NaviBridgeSuiNetwork = 'mainnet' | 'testnet' | 'devnet'
 
+export type NaviBridgeSuiCoreApi = {
+  getMoveFunction(options: any): Promise<any>
+  listCoins(options: any): Promise<any>
+  getObject(options: any): Promise<any>
+}
+
 export type NaviBridgeSuiProvider = {
   network?: string
-  executeTransactionBlock(options: any): Promise<any>
+  core: NaviBridgeSuiCoreApi
+  executeTransaction(options: any): Promise<any>
   waitForTransaction(options: any): Promise<any>
 }
 
@@ -236,6 +243,7 @@ export type SuiWalletConnection = SuiWalletConnectionBase &
   (
     | {
         provider: NaviBridgeSuiProvider
+        /** @deprecated Sui-source bridge now uses the injected v2 Core/gRPC client. */
         rpcUrl: string
       }
     | {
