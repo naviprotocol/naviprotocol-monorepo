@@ -82,13 +82,14 @@ function normalizeEvents(events: unknown): NaviTransactionEvent[] {
   }
 
   return events.map((event) => {
-    if (!isRecord(event) || event.parsedJson !== undefined || event.json === undefined) {
+    if (!isRecord(event)) {
       return event
     }
 
     return {
       ...event,
-      parsedJson: event.json
+      type: event.type ?? event.eventType,
+      parsedJson: event.parsedJson ?? event.json
     }
   }) as NaviTransactionEvent[]
 }

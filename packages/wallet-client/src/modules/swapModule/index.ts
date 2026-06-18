@@ -17,6 +17,7 @@ import {
   Quote
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
+import { fromBase64 } from '@mysten/sui/utils'
 import { Module } from '../module'
 import type { NaviWalletTransactionResult } from '../../types'
 import BigNumber from 'bignumber.js'
@@ -24,6 +25,7 @@ import { mergeCoinsPTB } from '@naviprotocol/lending'
 import { executeAuction } from 'shio-sdk'
 import {
   defaultTransactionResponseOptions,
+  mergeTransactionResponseOptions,
   normalizeTransactionResult
 } from '../../transaction-result'
 
@@ -62,6 +64,29 @@ export type Events = {
     /** Output amount received */
     toAmount: number
   }
+}
+
+function transactionIncludeOptions() {
+  const merged = mergeTransactionResponseOptions(defaultTransactionResponseOptions)
+  return {
+    effects: merged.showEffects,
+    events: merged.showEvents,
+    balanceChanges: merged.showBalanceChanges,
+    objectTypes: merged.showObjectChanges
+  }
+}
+
+function getCoreExecutor(client: unknown) {
+  return (client as { core?: unknown }).core as
+    | {
+        executeTransaction?(options: any): Promise<any>
+      }
+    | undefined
+}
+
+function isSuccessfulTransaction(result: NaviWalletTransactionResult<boolean>) {
+  const status = result.effects?.status as Record<string, unknown> | undefined
+  return status?.status === 'success' || status?.success === true
 }
 
 /**
@@ -222,16 +247,26 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
       console.error(e)
     }
 
-    const result = await this.walletClient.client.executeTransactionBlock({
-      transactionBlock: signed!.bytes,
-      signature: signatures,
-      options: defaultTransactionResponseOptions
-    })
+    const core = getCoreExecutor(this.walletClient.client)
+    const result =
+      typeof core?.executeTransaction === 'function'
+        ? await core.executeTransaction({
+            transaction: fromBase64(signed.bytes),
+            signatures,
+            include: transactionIncludeOptions()
+          })
+        : await this.walletClient.client.executeTransactionBlock({
+            transactionBlock: signed!.bytes,
+            signature: signatures,
+            options: defaultTransactionResponseOptions
+          })
 
-    if (result.effects?.status?.status === 'success') {
+    const normalizedResult = normalizeTransactionResult('execute', result)
+
+    if (isSuccessfulTransaction(normalizedResult)) {
       // Find slippage event to get actual output amount
-      const slippageEvent = result.events?.find((event) => {
-        return event.type.includes('::slippage::SwapEvent')
+      const slippageEvent = normalizedResult.events?.find((event) => {
+        return event.type?.includes('::slippage::SwapEvent')
       })
 
       if (slippageEvent) {
@@ -249,6 +284,6 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
       this.walletClient.module('balance').updatePortfolio()
     }
 
-    return normalizeTransactionResult('execute', result) as any
+    return normalizedResult as any
   }
 }
