@@ -121,6 +121,53 @@ describe('DCA PTB builders', () => {
     })
   })
 
+  it('fetches paginated coins from Core API when the v2 client is available', async () => {
+    const client = {
+      core: {
+        listCoins: vi
+          .fn()
+          .mockResolvedValueOnce({
+            objects: [
+              {
+                coinObjectId: objectId,
+                balance: '1000'
+              }
+            ],
+            cursor: 'cursor-1',
+            hasNextPage: true
+          })
+          .mockResolvedValueOnce({
+            objects: [
+              {
+                coinObjectId: `0x${'6'.repeat(64)}`,
+                balance: '500'
+              }
+            ],
+            cursor: null,
+            hasNextPage: false
+          })
+      },
+      getCoins: vi.fn()
+    }
+
+    const coins = await getCoins(client as any, userAddress, '0x2::test::COIN')
+
+    expect(coins.data).toHaveLength(2)
+    expect(client.core.listCoins).toHaveBeenNthCalledWith(1, {
+      owner: userAddress,
+      coinType: '0x2::test::COIN',
+      cursor: null,
+      limit: 100
+    })
+    expect(client.core.listCoins).toHaveBeenNthCalledWith(2, {
+      owner: userAddress,
+      coinType: '0x2::test::COIN',
+      cursor: 'cursor-1',
+      limit: 100
+    })
+    expect(client.getCoins).not.toHaveBeenCalled()
+  })
+
   it('rejects non-SUI DCA funding when balance is insufficient', async () => {
     const client = createMockClient() as any
     const tx = new Transaction()
@@ -248,5 +295,54 @@ describe('DCA PTB builders', () => {
     expect(result.events).toEqual([])
     expect(result.balanceChanges).toEqual([])
     expect(result.objectChanges).toEqual([])
+  })
+
+  it('dry-runs a DCA transaction through Core API when the v2 client is available', async () => {
+    const tx = await cancelDcaOrder(
+      {
+        fromCoinType: '0x2::test::COIN',
+        toCoinType: '0x2::sui::SUI'
+      },
+      `0x${'7'.repeat(64)}`,
+      userAddress,
+      dcaOptions
+    )
+    const buildSpy = vi.spyOn(tx, 'build')
+    const dryRunClient = {
+      core: {
+        simulateTransaction: vi.fn(async () => ({
+          $kind: 'Transaction',
+          Transaction: {
+            effects: {
+              status: {
+                status: 'success'
+              }
+            },
+            events: [{ type: 'core::dca' }],
+            balanceChanges: [],
+            objectChanges: []
+          }
+        }))
+      },
+      dryRunTransactionBlock: vi.fn()
+    }
+
+    const result = await dryRunDcaTransaction(tx, {
+      client: dryRunClient as any
+    })
+
+    expect(buildSpy).not.toHaveBeenCalled()
+    expect(dryRunClient.core.simulateTransaction).toHaveBeenCalledWith({
+      transaction: tx,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    expect(dryRunClient.dryRunTransactionBlock).not.toHaveBeenCalled()
+    expect(result.effects?.status?.status).toBe('success')
+    expect(result.events).toEqual([{ type: 'core::dca' }])
   })
 })

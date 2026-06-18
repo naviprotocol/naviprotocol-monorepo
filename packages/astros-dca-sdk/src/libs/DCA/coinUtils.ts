@@ -20,21 +20,35 @@ export async function getCoins(
 
   // Fetch all coins using pagination
   do {
-    const response = await client.getCoins({
-      owner: address,
-      coinType,
-      cursor,
-      limit: 100 // Maximum limit per page
-    })
+    const core = client.core as
+      | {
+          listCoins?(options: any): Promise<any>
+        }
+      | undefined
+    const response: any =
+      typeof core?.listCoins === 'function'
+        ? await core.listCoins({
+            owner: address,
+            coinType,
+            cursor,
+            limit: 100
+          })
+        : await client.getCoins({
+            owner: address,
+            coinType,
+            cursor,
+            limit: 100 // Maximum limit per page
+          })
+    const pageData = response.objects ?? response.data ?? []
 
     // Break if no more data
-    if (!response.data || response.data.length === 0) {
+    if (!pageData.length) {
       break
     }
 
     // Collect coin data and continue with next page
-    allCoinData.push(...response.data)
-    cursor = response.nextCursor
+    allCoinData.push(...pageData)
+    cursor = response.cursor ?? response.nextCursor
   } while (cursor)
 
   // Return all coins in the same format as PaginatedCoins

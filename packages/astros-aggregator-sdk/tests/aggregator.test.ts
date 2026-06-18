@@ -289,6 +289,98 @@ describe('swap test', () => {
     })
   })
 
+  it('executes a swap through Core API when the v2 client is available', async () => {
+    const { executeTransaction } = await import('../src/astros-sdk')
+    const txb = createTransaction(coins.sui.holder)
+    vi.spyOn(txb, 'build').mockResolvedValue(Uint8Array.from([1, 2, 3]))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const signer = {
+      signTransaction: vi.fn(async () => ({
+        bytes: 'AQID',
+        signature: 'signed-signature'
+      }))
+    }
+    const client = {
+      core: {
+        executeTransaction: vi.fn(async () => ({
+          $kind: 'Transaction',
+          Transaction: {
+            digest: '0xcore',
+            effects: {
+              status: {
+                status: 'success'
+              }
+            },
+            events: [{ type: 'core::event' }],
+            balanceChanges: [],
+            objectChanges: []
+          }
+        }))
+      },
+      executeTransactionBlock: vi.fn()
+    }
+
+    const result = await executeTransaction(txb, signer as any, {
+      client: client as any
+    })
+
+    expect(client.core.executeTransaction).toHaveBeenCalledWith({
+      transaction: new Uint8Array([1, 2, 3]),
+      signatures: ['signed-signature'],
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    expect(client.executeTransactionBlock).not.toHaveBeenCalled()
+    expect(result.digest).toBe('0xcore')
+    expect(result.events).toEqual([{ type: 'core::event' }])
+  })
+
+  it('dry-runs a swap through Core API when the v2 client is available', async () => {
+    const { dryRunSwapTransaction } = await import('../src/astros-sdk')
+    const txb = createTransaction(coins.sui.holder)
+    const buildSpy = vi.spyOn(txb, 'build')
+    const client = {
+      core: {
+        simulateTransaction: vi.fn(async () => ({
+          $kind: 'Transaction',
+          Transaction: {
+            effects: {
+              status: {
+                status: 'success'
+              }
+            },
+            events: [{ type: 'core::dry-run' }],
+            balanceChanges: [],
+            objectChanges: []
+          }
+        }))
+      },
+      dryRunTransactionBlock: vi.fn()
+    }
+
+    const result = await dryRunSwapTransaction(txb, {
+      client: client as any
+    })
+
+    expect(buildSpy).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).toHaveBeenCalledWith({
+      transaction: txb,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    expect(client.dryRunTransactionBlock).not.toHaveBeenCalled()
+    expect(result.effects?.status?.status).toBe('success')
+    expect(result.events).toEqual([{ type: 'core::dry-run' }])
+  })
+
   // it('should successfully swap SUI through bluefin using single route', async () => {
   //   const testCaseName = expect.getState().currentTestName || 'test_case'
   //   const txb = createTransaction(coins.sui.holder)

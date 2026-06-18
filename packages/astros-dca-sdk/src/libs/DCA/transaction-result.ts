@@ -15,3 +15,19 @@ export function normalizeDcaDryRunResult(result: unknown): NaviDcaDryRunResult {
     raw: result
   }
 }
+
+function unwrapCoreTransaction(result: unknown) {
+  const response = (result ?? {}) as Record<string, any>
+  return response.Transaction ?? response.FailedTransaction ?? response
+}
+
+export function normalizeDcaCoreDryRunResult(result: unknown): NaviDcaDryRunResult {
+  const transaction = unwrapCoreTransaction(result)
+  return normalizeDcaDryRunResult({
+    effects: transaction.effects,
+    events: transaction.events,
+    balanceChanges: transaction.balanceChanges,
+    objectChanges: transaction.objectChanges,
+    raw: result
+  })
+}

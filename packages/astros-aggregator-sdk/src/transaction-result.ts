@@ -37,3 +37,33 @@ export function normalizeAggregatorDryRunResult(result: unknown): NaviAggregator
     raw: result
   }
 }
+
+function unwrapCoreTransaction(result: unknown) {
+  const response = (result ?? {}) as Record<string, any>
+  return response.Transaction ?? response.FailedTransaction ?? response
+}
+
+export function normalizeAggregatorCoreTransactionResult(
+  result: unknown
+): NaviAggregatorTransactionResult {
+  const transaction = unwrapCoreTransaction(result)
+  return normalizeAggregatorTransactionResult({
+    digest: transaction.digest,
+    effects: transaction.effects,
+    events: transaction.events,
+    balanceChanges: transaction.balanceChanges,
+    objectChanges: transaction.objectChanges,
+    raw: result
+  })
+}
+
+export function normalizeAggregatorCoreDryRunResult(result: unknown): NaviAggregatorDryRunResult {
+  const transaction = unwrapCoreTransaction(result)
+  return normalizeAggregatorDryRunResult({
+    effects: transaction.effects,
+    events: transaction.events,
+    balanceChanges: transaction.balanceChanges,
+    objectChanges: transaction.objectChanges,
+    raw: result
+  })
+}

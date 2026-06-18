@@ -1,6 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
 import type { NaviDcaDryRunClient } from './client'
-import { normalizeDcaDryRunResult } from './transaction-result'
+import { normalizeDcaCoreDryRunResult, normalizeDcaDryRunResult } from './transaction-result'
 
 export type NaviDcaDryRunResult = {
   effects?: {
@@ -40,6 +40,24 @@ export async function dryRunDcaTransaction(
     client: NaviDcaDryRunClient
   }
 ): Promise<NaviDcaDryRunResult> {
+  const core = options.client.core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+      }
+    | undefined
+  if (typeof core?.simulateTransaction === 'function') {
+    const result = await core.simulateTransaction({
+      transaction: tx,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    return normalizeDcaCoreDryRunResult(result)
+  }
+
   const txBytes = await tx.build({
     client: options.client as any
   })

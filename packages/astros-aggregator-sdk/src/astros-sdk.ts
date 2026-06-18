@@ -13,8 +13,20 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { executeAuction } from 'shio-sdk'
 import {
   normalizeAggregatorDryRunResult,
+  normalizeAggregatorCoreDryRunResult,
+  normalizeAggregatorCoreTransactionResult,
   normalizeAggregatorTransactionResult
 } from './transaction-result'
+import { fromBase64 } from '@mysten/sui/utils'
+
+function getCore(client: { core?: unknown }) {
+  return client.core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+        executeTransaction?(options: any): Promise<any>
+      }
+    | undefined
+}
 
 /**
  * Retrieves a quote for swapping one coin to another.
@@ -73,6 +85,21 @@ export async function executeTransaction(
     console.error(e)
   }
 
+  const core = getCore(client)
+  if (typeof core?.executeTransaction === 'function') {
+    const result = await core.executeTransaction({
+      transaction: fromBase64(signResult.bytes),
+      signatures,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    return normalizeAggregatorCoreTransactionResult(result)
+  }
+
   const result = await client.executeTransactionBlock({
     transactionBlock: signResult.bytes,
     signature: signatures,
@@ -83,7 +110,6 @@ export async function executeTransaction(
       showObjectChanges: true
     }
   })
-
   return normalizeAggregatorTransactionResult(result)
 }
 
@@ -100,12 +126,25 @@ export async function dryRunSwapTransaction(
     client: NaviAggregatorDryRunClient
   }
 ): Promise<NaviAggregatorDryRunResult> {
+  const core = getCore(options.client)
+  if (typeof core?.simulateTransaction === 'function') {
+    const result = await core.simulateTransaction({
+      transaction: txb,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    return normalizeAggregatorCoreDryRunResult(result)
+  }
+
   const txBytes = await txb.build({
     client: options.client as any
   })
   const result = await options.client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
-
   return normalizeAggregatorDryRunResult(result)
 }

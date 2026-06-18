@@ -19,19 +19,30 @@ export type NaviAggregatorCoreClient = {
   core: unknown
 }
 
+export type NaviAggregatorCoreApi = {
+  listCoins(options: any): Promise<any>
+  getTransaction(options: any): Promise<any>
+  simulateTransaction(options: any): Promise<any>
+  executeTransaction(options: any): Promise<any>
+}
+
 export type NaviAggregatorCoinClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.listCoins` on the injected v2 Core API client. */
   getCoins(options: any): Promise<any>
 }
 
 export type NaviAggregatorTransactionQueryClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.getTransaction` on the injected v2 Core API client. */
   getTransactionBlock(options: any): Promise<any>
 }
 
 export type NaviAggregatorDryRunClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.simulateTransaction` on the injected v2 Core API client. */
   dryRunTransactionBlock(options: any): Promise<any>
 }
 
 export type NaviAggregatorExecutionClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.executeTransaction` on the injected v2 Core API client. */
   executeTransactionBlock(options: any): Promise<any>
 }
 

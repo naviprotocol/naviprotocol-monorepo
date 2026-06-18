@@ -37,6 +37,23 @@ export async function getCoins(
   coinType: any = '0x2::sui::SUI'
 ) {
   const coinAddress = coinType.address ? coinType.address : coinType
+  const core = client.core as
+    | {
+        listCoins?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.listCoins === 'function') {
+    const response = await core.listCoins({
+      owner: address,
+      coinType: coinAddress
+    })
+    return {
+      data: response.objects ?? response.data ?? [],
+      nextCursor: response.cursor ?? response.nextCursor ?? null,
+      hasNextPage: response.hasNextPage ?? false
+    }
+  }
 
   const coinDetails = await client.getCoins({
     owner: address,
@@ -326,6 +343,26 @@ export async function checkIfNAVIIntegrated(
   digest: string,
   client: NaviAggregatorTransactionQueryClient
 ): Promise<boolean> {
+  const core = client.core as
+    | {
+        getTransaction?(options: any): Promise<any>
+      }
+    | undefined
+  if (typeof core?.getTransaction === 'function') {
+    const response = await core.getTransaction({
+      digest,
+      include: {
+        events: true
+      }
+    })
+    const transaction = response.Transaction ?? response.FailedTransaction ?? response
+    return (
+      transaction.events?.some((event: any) =>
+        event.type.includes(`${AggregatorConfig.aggregatorContract}::slippage`)
+      ) ?? false
+    )
+  }
+
   const results = await client.getTransactionBlock({
     digest,
     options: { showEvents: true }
