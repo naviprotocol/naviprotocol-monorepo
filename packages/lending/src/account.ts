@@ -31,6 +31,7 @@ import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
   suiClient,
   parseDevInspectResult,
+  devInspectTransaction,
   withSingleton,
   processContractHealthFactor,
   parseTxValue,
@@ -244,7 +245,7 @@ async function getLendingStateBatch(
     })
   }
 
-  const resp = await client.devInspectTransactionBlock({
+  const resp = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })
@@ -385,7 +386,7 @@ export async function getHealthFactor(
   const client = options?.client ?? suiClient
   const tx = new Transaction()
   await getHealthFactorPTB(tx, address, options)
-  const result = await client.devInspectTransactionBlock({
+  const result = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })
@@ -453,7 +454,7 @@ export async function getSimulatedHealthFactor(
   )
 
   // Execute dry run to get the result
-  const result = await client.devInspectTransactionBlock({
+  const result = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })

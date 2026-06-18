@@ -27,6 +27,7 @@ import {
   suiClient,
   camelize,
   parseDevInspectResult,
+  devInspectTransaction,
   normalizeCoinType,
   withSingleton,
   parseTxValue,
@@ -79,7 +80,7 @@ async function getLendingRewardsBatch(
     })
   }
 
-  const result = await client.devInspectTransactionBlock({
+  const result = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })

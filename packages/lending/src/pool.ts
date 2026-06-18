@@ -34,12 +34,14 @@ import {
   parseTxValue,
   suiClient,
   requestHeaders,
-  parsePoolUID
+  parsePoolUID,
+  parseDevInspectResult,
+  devInspectTransaction,
+  getSuiObject
 } from './utils'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 import { Transaction } from '@mysten/sui/transactions'
 import BigNumber from 'bignumber.js'
-import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
@@ -721,10 +723,10 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
+      const client = options?.client ?? suiClient
       if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
-          const client = options?.client ?? suiClient
           const tx = new Transaction()
           tx.moveCall({
             target: `${config.package}::incentive_v3::get_borrow_fee_v2`,
@@ -736,7 +738,7 @@ export const getBorrowFee = withCache(
             ],
             typeArguments: []
           })
-          const result = await client.devInspectTransactionBlock({
+          const result = await devInspectTransaction(client, {
             transactionBlock: tx,
             sender: options.address
           })
@@ -746,7 +748,7 @@ export const getBorrowFee = withCache(
           console.error(error)
         }
       }
-      const rawData: any = await suiClient.getObject({
+      const rawData: any = await getSuiObject(client, {
         id: config.incentiveV3,
         options: { showType: true, showOwner: true, showContent: true }
       })

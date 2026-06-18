@@ -13,7 +13,7 @@ import type { DevInspectResults } from '@mysten/sui/jsonRpc'
 import camelCase from 'lodash.camelcase'
 import { Transaction } from '@mysten/sui/transactions'
 import { BcsType } from '@mysten/sui/bcs'
-import { normalizeStructTag } from '@mysten/sui/utils'
+import { fromBase64, normalizeStructTag } from '@mysten/sui/utils'
 import BigNumber from 'bignumber.js'
 import { userAgent } from './ua'
 import { createNaviSuiClient } from './sui'
@@ -24,6 +24,168 @@ import { getNaviSdkConfigVersion } from './services'
  * Default Sui client instance configured for mainnet
  */
 export const suiClient = createNaviSuiClient()
+
+type CoreCommandOutput = {
+  bcs?: Uint8Array | number[] | string | null
+}
+
+type CoreCommandResult = {
+  returnValues?: CoreCommandOutput[]
+  mutatedReferences?: CoreCommandOutput[]
+}
+
+function toByteArray(value: Uint8Array | number[] | string | null | undefined) {
+  if (!value) {
+    return []
+  }
+  if (value instanceof Uint8Array) {
+    return Array.from(value)
+  }
+  if (Array.isArray(value)) {
+    return value
+  }
+  return Array.from(fromBase64(value))
+}
+
+function normalizeCoreDevInspectResult(result: any): DevInspectResults {
+  const commandResults = (result?.commandResults ?? []) as CoreCommandResult[]
+  const tx = result?.Transaction ?? result?.FailedTransaction ?? {}
+  const error =
+    tx.effects?.errors?.[0] ??
+    tx.effects?.status?.error ??
+    tx.status?.error ??
+    tx.status?.errors?.[0]
+
+  return {
+    effects: tx.effects,
+    events: tx.events,
+    error,
+    results: commandResults.map((command) => ({
+      returnValues: (command.returnValues ?? []).map((output) => [toByteArray(output.bcs), '']),
+      mutableReferenceOutputs: (command.mutatedReferences ?? []).map((output) => [
+        '',
+        toByteArray(output.bcs),
+        ''
+      ])
+    }))
+  } as unknown as DevInspectResults
+}
+
+export async function devInspectTransaction(
+  client: any,
+  options: {
+    transactionBlock?: Transaction | Uint8Array
+    transaction?: Transaction | Uint8Array
+    sender: string
+  }
+): Promise<DevInspectResults> {
+  const core = client?.core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.simulateTransaction === 'function') {
+    const transaction = options.transaction ?? options.transactionBlock
+    if (transaction instanceof Transaction) {
+      transaction.setSenderIfNotSet(options.sender)
+    }
+    const result = await core.simulateTransaction({
+      transaction,
+      checksEnabled: false,
+      include: {
+        effects: true,
+        events: true,
+        commandResults: true
+      }
+    })
+    return normalizeCoreDevInspectResult(result)
+  }
+
+  return client.devInspectTransactionBlock({
+    transactionBlock: options.transactionBlock ?? options.transaction,
+    sender: options.sender
+  })
+}
+
+function toCoreObjectInclude(options?: Record<string, any>) {
+  return {
+    json: Boolean(options?.showContent),
+    display: Boolean(options?.showDisplay),
+    previousTransaction: Boolean(options?.showPreviousTransaction),
+    objectBcs: Boolean(options?.showBcs)
+  }
+}
+
+function normalizeCoreObjectResponse(object: any) {
+  if (!object || object instanceof Error) {
+    return {
+      error: object instanceof Error ? { code: 'notFound', error: object.message } : undefined
+    }
+  }
+
+  return {
+    data: {
+      objectId: object.objectId,
+      version: object.version,
+      digest: object.digest,
+      type: object.type,
+      owner: object.owner,
+      previousTransaction: object.previousTransaction,
+      content:
+        object.json === undefined
+          ? undefined
+          : {
+              dataType: 'moveObject',
+              type: object.type,
+              fields: object.json
+            },
+      display: object.display
+    }
+  }
+}
+
+export async function getSuiObject(
+  client: any,
+  options: { id: string; options?: Record<string, any> }
+) {
+  const core = client?.core as
+    | {
+        getObject?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.getObject === 'function') {
+    const { object } = await core.getObject({
+      objectId: options.id,
+      include: toCoreObjectInclude(options.options)
+    })
+    return normalizeCoreObjectResponse(object)
+  }
+
+  return client.getObject(options)
+}
+
+export async function multiGetSuiObjects(
+  client: any,
+  options: { ids: string[]; options?: Record<string, any> }
+) {
+  const core = client?.core as
+    | {
+        getObjects?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.getObjects === 'function') {
+    const { objects } = await core.getObjects({
+      objectIds: options.ids,
+      include: toCoreObjectInclude(options.options)
+    })
+    return objects.map(normalizeCoreObjectResponse)
+  }
+
+  return client.multiGetObjects(options)
+}
 
 /**
  * Generates a cache key from function arguments

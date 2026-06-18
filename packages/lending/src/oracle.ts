@@ -18,7 +18,7 @@ import type {
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
-import { suiClient } from './utils'
+import { multiGetSuiObjects, suiClient } from './utils'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -93,7 +93,7 @@ async function getOnChainPriceInfo(
     const client = options?.client ?? suiClient
 
     const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
-    const priceInfoObjects = await client.multiGetObjects({
+    const priceInfoObjects = await multiGetSuiObjects(client, {
       ids: Array.from(new Set(priceInfoObjectIds)),
       options: { showContent: true }
     })
