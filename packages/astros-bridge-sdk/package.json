@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@mayanfinance/swap-sdk": "15.0.0",
-    "@mysten/sui": "2.17.0",
+    "@mysten/sui": "2.19.0",
     "@types/node": "22.7.5",
     "tsconfig-paths": "4.2.0",
     "tslint": "6.1.3",

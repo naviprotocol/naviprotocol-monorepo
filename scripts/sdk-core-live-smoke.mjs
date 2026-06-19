@@ -523,7 +523,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
 
   const buildQuote = async () => {
     const fromChain = SUI_CHAIN_ID
-    const toChain = Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 0)
+    const toChain = Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161)
     const [fromTokens, toTokens] = await Promise.all([
       getSupportTokens(fromChain, 1, 20),
       getSupportTokens(toChain, 1, 20)
@@ -543,7 +543,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
       throw new Error('No bridge target token available')
     }
 
-    const amount = envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '2')
+    const amount = envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1')
     const quote = await getQuote(fromToken, toToken, amount, {
       slippageBps: Number(env('NAVI_SMOKE_BRIDGE_SLIPPAGE_BPS') ?? 50)
     })
@@ -567,7 +567,13 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
 
   if (env('NAVI_SMOKE_BRIDGE_BUILD_SIGN') === '1') {
     await runStep(summary, 'astros-bridge.sui-source.build-sign.simulate', async () => {
-      const { route } = quoteContext?.route ? quoteContext : await buildQuote()
+      const { route, toToken } = quoteContext?.route ? quoteContext : await buildQuote()
+      const destinationAddress = env('NAVI_SMOKE_BRIDGE_TO_ADDRESS')
+      if (!destinationAddress && toToken.chainId !== SUI_CHAIN_ID) {
+        throw new Error(
+          'NAVI_SMOKE_BRIDGE_TO_ADDRESS is required for non-Sui bridge build/sign validation'
+        )
+      }
       const captured = {
         bytesLength: 0,
         signatures: 0
@@ -601,7 +607,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
       const digest = await swap(
         route,
         wallet.address,
-        env('NAVI_SMOKE_BRIDGE_TO_ADDRESS') ?? wallet.address,
+        destinationAddress ?? wallet.address,
         {
           sui: {
             provider: dryProvider,
@@ -701,8 +707,8 @@ function printPlan(summary, clients, wallet, scopes, smokeMode) {
         ? {
             package: '@naviprotocol/astros-bridge-sdk',
             action: 'quote Sui-source bridge route',
-            amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '2'),
-            targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 0),
+            amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1'),
+            targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161),
             execute: false,
             note: 'real bridge execute requires a separate exact approval'
           }

@@ -145,8 +145,8 @@ importers:
         version: 1.0.9
     devDependencies:
       '@mysten/sui':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@5.8.3)
+        specifier: 2.19.0
+        version: 2.19.0(typescript@5.8.3)
       '@types/crypto-js':
         specifier: 4.2.2
         version: 4.2.2
@@ -188,8 +188,8 @@ importers:
         specifier: 15.0.0
         version: 15.0.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@mysten/sui':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@5.8.3)
+        specifier: 2.19.0
+        version: 2.19.0(typescript@5.8.3)
       '@types/node':
         specifier: 22.7.5
         version: 22.7.5
@@ -225,8 +225,8 @@ importers:
         version: 1.0.9
     devDependencies:
       '@mysten/sui':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@5.8.3)
+        specifier: 2.19.0
+        version: 2.19.0(typescript@5.8.3)
       '@types/crypto-js':
         specifier: 4.2.2
         version: 4.2.2
@@ -326,8 +326,8 @@ importers:
         version: 4.3.0
     devDependencies:
       '@mysten/sui':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@5.8.3)
+        specifier: 2.19.0
+        version: 2.19.0(typescript@5.8.3)
       '@types/lodash.camelcase':
         specifier: 4.3.9
         version: 4.3.9
@@ -375,17 +375,17 @@ importers:
         specifier: 2.0.1
         version: 2.0.1
       '@mysten/sui':
-        specifier: 2.17.0
-        version: 2.17.0(typescript@5.8.3)
+        specifier: 2.19.0
+        version: 2.19.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js':
         specifier: 2.2.0
         version: 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@suilend/sdk':
         specifier: 3.0.4
-        version: 3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@suilend/sui-fe@3.0.7(@mysten/sui@2.17.0(typescript@5.8.3)))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)
+        version: 3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@suilend/sui-fe@3.0.7(@mysten/sui@2.19.0(typescript@5.8.3)))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)
       '@suilend/sui-fe':
         specifier: 3.0.7
-        version: 3.0.7(@mysten/sui@2.17.0(typescript@5.8.3))
+        version: 3.0.7(@mysten/sui@2.19.0(typescript@5.8.3))
       '@types/node':
         specifier: 22.7.5
         version: 22.7.5
@@ -415,11 +415,25 @@ packages:
       graphql:
         optional: true
 
+  '@0no-co/graphql.web@1.3.2':
+    resolution: {integrity: sha512-Q1+pRlLhE31GOY/2c9BAEnFTNxO7Awtc6fhhEDlxyCBQ2N0IhD32cPVvPChrK9mwBNSgRdW/sF1kd2e0ojHj1Q==}
+    peerDependencies:
+      graphql: 16.8.1
+    peerDependenciesMeta:
+      graphql:
+        optional: true
+
   '@0no-co/graphqlsp@1.15.0':
     resolution: {integrity: sha512-SReJAGmOeXrHGod+9Odqrz4s43liK0b2DFUetb/jmYvxFpWmeNfFYo0seCh0jz8vG3p1pnYMav0+Tm7XwWtOJw==}
     peerDependencies:
       graphql: 16.8.1
       typescript: ^5.0.0
+
+  '@0no-co/graphqlsp@1.17.3':
+    resolution: {integrity: sha512-4PPvxDPmbntddpgMyA3VId5/E9YGdRuuS/mW+THOvtTx/C79Pf+lN28LkNNACJrF9L7YACiAJelyOkC6LqUzvw==}
+    peerDependencies:
+      graphql: 16.8.1
+      typescript: ^5.0.0 || ^6.0.0
 
   '@adraffy/ens-normalize@1.10.1':
     resolution: {integrity: sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==}
@@ -1756,6 +1770,19 @@ packages:
       '@gql.tada/vue-support':
         optional: true
 
+  '@gql.tada/cli-utils@1.9.2':
+    resolution: {integrity: sha512-cVNs4v8ewLRYJfyAsaHbiAmd5Hm+zXEMvMhBksH58ZU87d6f8crsp2CQG6QtIqnJJw1q0CBWfWTZepGWNcL3QA==}
+    peerDependencies:
+      '@gql.tada/svelte-support': 1.0.3
+      '@gql.tada/vue-support': 1.0.3
+      graphql: 16.8.1
+      typescript: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      '@gql.tada/svelte-support':
+        optional: true
+      '@gql.tada/vue-support':
+        optional: true
+
   '@gql.tada/internal@1.0.8':
     resolution: {integrity: sha512-XYdxJhtHC5WtZfdDqtKjcQ4d7R1s0d1rnlSs3OcBEUbYiPoJJfZU7tWsVXuv047Z6msvmr4ompJ7eLSK5Km57g==}
     peerDependencies:
@@ -1767,6 +1794,12 @@ packages:
     peerDependencies:
       graphql: 16.8.1
       typescript: ^5.0.0 || ^6.0.0
+
+  '@gql.tada/internal@1.2.1':
+    resolution: {integrity: sha512-1kPMv9KRpD6mfVwtXK+iy43U/gi4bpr4ganfhPLD0TjxpbuVJm7CtZ9wMFdwy3FjLBFN2QhwscNnL7lRPHg4vg==}
+    peerDependencies:
+      graphql: 16.8.1
+      typescript: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
@@ -1975,8 +2008,8 @@ packages:
   '@mysten/bcs@2.0.1':
     resolution: {integrity: sha512-/q1uC5Vw/RjXzR4fE9QiIwmTvRx9BstduxkR1j1Z5EbE7ZJynLkFKcJJlXRcnnEytIPcsyiR+TkQixzSbz3msQ==}
 
-  '@mysten/bcs@2.0.5':
-    resolution: {integrity: sha512-Dop9Xq36DPLlsmIDQZvUg4uJeBBxIGirgp2OXGaEff+mtLKFBoW2HnE3aSTSSpiMQH9XRhjwtiM16zFJhFqz0Q==}
+  '@mysten/bcs@2.1.0':
+    resolution: {integrity: sha512-rIR/cDAqDfBDxmYEZXppN/on8gmh1OW0dYi/Bk2kMBZcYMTaBaEtEX1VR6g7HicVxuMbFAIP0/SQkdH7J9Y5dQ==}
 
   '@mysten/sui.js@0.54.1':
     resolution: {integrity: sha512-TSmGIX7U9O/uS9EKIQdv7/S69KTbBhMJVelXCafJE6IJw8iB9cN9uLu0+uklkBSDrbRmLSEY70jMr3uRFjReIg==}
@@ -1987,8 +2020,8 @@ packages:
     resolution: {integrity: sha512-tH6V4BJsYi5d97MOiLoOhyldrYxkm/cu8dYV52asqh1i88HrSVMbPAJ9sVoeWN2Ju+QsJ/Go4ldSjdCkaBCyJQ==}
     engines: {node: '>=18'}
 
-  '@mysten/sui@2.17.0':
-    resolution: {integrity: sha512-TrS1BCPm4V6rC69MBejmcqnKIyJ5t1iksax4XA9jWarZxAAp9LMmdxEBebejyDT/yAJxYIf3fNm5WBkHE2qnIw==}
+  '@mysten/sui@2.19.0':
+    resolution: {integrity: sha512-dXhYK3pUiaybEB6T9nru+cPrFa61NMSjEknOCoAEV5WCC589iY6bP7EM+H84DBMZttB1LhD3gpYnPntQ4Vvcgg==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.1.0':
@@ -1999,6 +2032,9 @@ packages:
 
   '@mysten/utils@0.3.3':
     resolution: {integrity: sha512-gVHn5toh24eXXLEyBknwwM2F/tbDgqPX0yj77KtHjuoYUallcQ9vSwGfGsAy39IcTB259Yprt/ZOEwdup+zrpA==}
+
+  '@mysten/utils@0.4.0':
+    resolution: {integrity: sha512-nHlXECBl9kE+AHF/aw5a7JVNizae8Kb71A4H18BV/sXd5/l2BaWNGWVatq05fzJo3hF78AWorDxa++1TgcBKWw==}
 
   '@mysten/wallet-standard@0.20.0':
     resolution: {integrity: sha512-GtPDZu212uRjcKFEgYh6sOkSOIv1jhO62DqmDYQ+IyzHb2Kqa/6pzaWsKBY0Ij2FYUQPrTdo4PJuoASPbqpICw==}
@@ -4584,6 +4620,12 @@ packages:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
 
+  gql.tada@1.11.2:
+    resolution: {integrity: sha512-oBr7ShA5/TmcwOO7BZgN1SynX2rBU+/ltysB0zXc+NCBF+9YOg6MRzJcTfLjIqDKdcE3LGxpOl0l9hBbxmyzmA==}
+    hasBin: true
+    peerDependencies:
+      typescript: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+
   gql.tada@1.9.2:
     resolution: {integrity: sha512-QxRHVpxtrOVdYXz6oavq0lBM+Zdp0swapLGJcD4SLpXDcsD337BHDFrzqqjfkbepv0sSAiO0LGabu1kI5D5Gyg==}
     hasBin: true
@@ -6967,9 +7009,19 @@ snapshots:
     optionalDependencies:
       graphql: 16.8.1
 
+  '@0no-co/graphql.web@1.3.2(graphql@16.8.1)':
+    optionalDependencies:
+      graphql: 16.8.1
+
   '@0no-co/graphqlsp@1.15.0(graphql@16.8.1)(typescript@5.8.3)':
     dependencies:
       '@gql.tada/internal': 1.0.8(graphql@16.8.1)(typescript@5.8.3)
+      graphql: 16.8.1
+      typescript: 5.8.3
+
+  '@0no-co/graphqlsp@1.17.3(graphql@16.8.1)(typescript@5.8.3)':
+    dependencies:
+      '@gql.tada/internal': 1.2.1(graphql@16.8.1)(typescript@5.8.3)
       graphql: 16.8.1
       typescript: 5.8.3
 
@@ -7877,20 +7929,20 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bluefin-exchange/bluefin7k-aggregator-sdk@4.3.2(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))':
+  '@bluefin-exchange/bluefin7k-aggregator-sdk@4.3.2(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js': 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
 
-  '@bluefin-exchange/bluefin7k-aggregator-sdk@7.3.0(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))':
+  '@bluefin-exchange/bluefin7k-aggregator-sdk@7.3.0(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js': 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       uuid: 13.0.2
 
   '@cetusprotocol/aggregator-sdk@1.5.8(axios@1.13.2)(typescript@5.8.3)':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@pythnetwork/hermes-client': 3.1.0(axios@1.13.2)
       bip39: 3.1.0
       dotenv: 16.4.7
@@ -8355,11 +8407,11 @@ snapshots:
 
   '@flowx-finance/sdk@2.1.0(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)':
     dependencies:
-      '@bluefin-exchange/bluefin7k-aggregator-sdk': 4.3.2(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@bluefin-exchange/bluefin7k-aggregator-sdk': 4.3.2(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@cetusprotocol/aggregator-sdk': 1.5.8(axios@1.13.2)(typescript@5.8.3)
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@mysten/sui.js': 0.54.1(typescript@5.8.3)
-      aftermath-ts-sdk: 1.3.23(@mysten/sui@2.17.0(typescript@5.8.3))
+      aftermath-ts-sdk: 1.3.23(@mysten/sui@2.19.0(typescript@5.8.3))
       bignumber.js: 9.1.2
       bn.js: 5.2.2
       crypto-js: 4.2.0
@@ -8399,6 +8451,13 @@ snapshots:
       graphql: 16.8.1
       typescript: 5.8.3
 
+  '@gql.tada/cli-utils@1.9.2(graphql@16.8.1)(typescript@5.8.3)':
+    dependencies:
+      '@0no-co/graphqlsp': 1.17.3(graphql@16.8.1)(typescript@5.8.3)
+      '@gql.tada/internal': 1.2.1(graphql@16.8.1)(typescript@5.8.3)
+      graphql: 16.8.1
+      typescript: 5.8.3
+
   '@gql.tada/internal@1.0.8(graphql@16.8.1)(typescript@5.8.3)':
     dependencies:
       '@0no-co/graphql.web': 1.2.0(graphql@16.8.1)
@@ -8408,6 +8467,12 @@ snapshots:
   '@gql.tada/internal@1.0.9(graphql@16.8.1)(typescript@5.8.3)':
     dependencies:
       '@0no-co/graphql.web': 1.2.0(graphql@16.8.1)
+      graphql: 16.8.1
+      typescript: 5.8.3
+
+  '@gql.tada/internal@1.2.1(graphql@16.8.1)(typescript@5.8.3)':
+    dependencies:
+      '@0no-co/graphql.web': 1.3.2(graphql@16.8.1)
       graphql: 16.8.1
       typescript: 5.8.3
 
@@ -8559,7 +8624,7 @@ snapshots:
 
   '@mayanfinance/swap-sdk@15.0.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@noble/hashes': 1.8.0
       '@solana/buffer-layout': 4.0.1
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -8659,9 +8724,9 @@ snapshots:
       '@mysten/utils': 0.3.3
       '@scure/base': 2.2.0
 
-  '@mysten/bcs@2.0.5':
+  '@mysten/bcs@2.1.0':
     dependencies:
-      '@mysten/utils': 0.3.3
+      '@mysten/utils': 0.4.0
       '@scure/base': 2.2.0
 
   '@mysten/sui.js@0.54.1(typescript@5.8.3)':
@@ -8702,11 +8767,11 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/sui@2.17.0(typescript@5.8.3)':
+  '@mysten/sui@2.19.0(typescript@5.8.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.8.1)
-      '@mysten/bcs': 2.0.5
-      '@mysten/utils': 0.3.3
+      '@mysten/bcs': 2.1.0
+      '@mysten/utils': 0.4.0
       '@noble/curves': 2.2.0
       '@noble/hashes': 2.2.0
       '@protobuf-ts/grpcweb-transport': 2.11.1
@@ -8715,7 +8780,7 @@ snapshots:
       '@scure/base': 2.2.0
       '@scure/bip32': 2.2.0
       '@scure/bip39': 2.2.0
-      gql.tada: 1.9.2(graphql@16.8.1)(typescript@5.8.3)
+      gql.tada: 1.11.2(graphql@16.8.1)(typescript@5.8.3)
       graphql: 16.8.1
       poseidon-lite: 0.2.1
       valibot: 1.4.1(typescript@5.8.3)
@@ -8736,9 +8801,13 @@ snapshots:
     dependencies:
       '@scure/base': 2.2.0
 
-  '@mysten/wallet-standard@0.20.0(@mysten/sui@2.17.0(typescript@5.8.3))':
+  '@mysten/utils@0.4.0':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@scure/base': 2.2.0
+
+  '@mysten/wallet-standard@0.20.0(@mysten/sui@2.19.0(typescript@5.8.3))':
+    dependencies:
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@wallet-standard/core': 1.1.1
 
   '@napi-rs/wasm-runtime@0.2.12':
@@ -9477,16 +9546,16 @@ snapshots:
 
   '@suchipi/femver@1.0.0': {}
 
-  '@suilend/sdk@3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@suilend/sui-fe@3.0.7(@mysten/sui@2.17.0(typescript@5.8.3)))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)':
+  '@suilend/sdk@3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@suilend/sui-fe@3.0.7(@mysten/sui@2.19.0(typescript@5.8.3)))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)':
     dependencies:
-      '@bluefin-exchange/bluefin7k-aggregator-sdk': 7.3.0(@mysten/sui@2.17.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@bluefin-exchange/bluefin7k-aggregator-sdk': 7.3.0(@mysten/sui@2.19.0(typescript@5.8.3))(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@cetusprotocol/aggregator-sdk': 1.5.8(axios@1.13.2)(typescript@5.8.3)
       '@flowx-finance/sdk': 2.1.0(@pythnetwork/pyth-sui-js@2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(axios@1.13.2)(graphql@16.8.1)(typescript@5.8.3)
       '@mysten/bcs': 2.0.1
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js': 2.2.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      '@suilend/springsui-sdk': 3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.17.0(typescript@5.8.3))(@suilend/sui-fe@3.0.7(@mysten/sui@2.17.0(typescript@5.8.3)))
-      '@suilend/sui-fe': 3.0.7(@mysten/sui@2.17.0(typescript@5.8.3))
+      '@suilend/springsui-sdk': 3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.19.0(typescript@5.8.3))(@suilend/sui-fe@3.0.7(@mysten/sui@2.19.0(typescript@5.8.3)))
+      '@suilend/sui-fe': 3.0.7(@mysten/sui@2.19.0(typescript@5.8.3))
       bignumber.js: 9.1.2
       bn.js: 5.2.2
       crypto-js: 4.2.0
@@ -9501,17 +9570,17 @@ snapshots:
       - graphql
       - typescript
 
-  '@suilend/springsui-sdk@3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.17.0(typescript@5.8.3))(@suilend/sui-fe@3.0.7(@mysten/sui@2.17.0(typescript@5.8.3)))':
+  '@suilend/springsui-sdk@3.0.4(@mysten/bcs@2.0.1)(@mysten/sui@2.19.0(typescript@5.8.3))(@suilend/sui-fe@3.0.7(@mysten/sui@2.19.0(typescript@5.8.3)))':
     dependencies:
       '@mysten/bcs': 2.0.1
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
-      '@suilend/sui-fe': 3.0.7(@mysten/sui@2.17.0(typescript@5.8.3))
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
+      '@suilend/sui-fe': 3.0.7(@mysten/sui@2.19.0(typescript@5.8.3))
       bignumber.js: 9.1.2
 
-  '@suilend/sui-fe@3.0.7(@mysten/sui@2.17.0(typescript@5.8.3))':
+  '@suilend/sui-fe@3.0.7(@mysten/sui@2.19.0(typescript@5.8.3))':
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
-      '@mysten/wallet-standard': 0.20.0(@mysten/sui@2.17.0(typescript@5.8.3))
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
+      '@mysten/wallet-standard': 0.20.0(@mysten/sui@2.19.0(typescript@5.8.3))
       bignumber.js: 9.1.2
       blake2b: 2.1.4
       lodash: 4.17.21
@@ -10074,9 +10143,9 @@ snapshots:
 
   aes-js@4.0.0-beta.5: {}
 
-  aftermath-ts-sdk@1.3.23(@mysten/sui@2.17.0(typescript@5.8.3)):
+  aftermath-ts-sdk@1.3.23(@mysten/sui@2.19.0(typescript@5.8.3)):
     dependencies:
-      '@mysten/sui': 2.17.0(typescript@5.8.3)
+      '@mysten/sui': 2.19.0(typescript@5.8.3)
       bn.js: 5.2.2
       dayjs: 1.11.18
       node-fetch: 3.3.2
@@ -11814,6 +11883,18 @@ snapshots:
   globrex@0.1.2: {}
 
   gopd@1.2.0: {}
+
+  gql.tada@1.11.2(graphql@16.8.1)(typescript@5.8.3):
+    dependencies:
+      '@0no-co/graphql.web': 1.3.2(graphql@16.8.1)
+      '@0no-co/graphqlsp': 1.17.3(graphql@16.8.1)(typescript@5.8.3)
+      '@gql.tada/cli-utils': 1.9.2(graphql@16.8.1)(typescript@5.8.3)
+      '@gql.tada/internal': 1.2.1(graphql@16.8.1)(typescript@5.8.3)
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - graphql
 
   gql.tada@1.9.2(graphql@16.8.1)(typescript@5.8.3):
     dependencies:

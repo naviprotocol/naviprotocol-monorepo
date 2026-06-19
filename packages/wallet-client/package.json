@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@mysten/bcs": "2.0.1",
-    "@mysten/sui": "2.17.0",
+    "@mysten/sui": "2.19.0",
     "@pythnetwork/pyth-sui-js": "2.2.0",
     "@suilend/sdk": "3.0.4",
     "@suilend/sui-fe": "3.0.7",

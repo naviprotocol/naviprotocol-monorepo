@@ -50,8 +50,8 @@ Optional:
 - `NAVI_SMOKE_DCA_MIST`
 - `NAVI_SMOKE_SWAP_TO_COIN`
 - `NAVI_SMOKE_DCA_TO_COIN`
-- `NAVI_SMOKE_BRIDGE_AMOUNT` (human SUI amount, default `2`)
-- `NAVI_SMOKE_BRIDGE_TO_CHAIN` (default `0`, Solana)
+- `NAVI_SMOKE_BRIDGE_AMOUNT` (human SUI amount, default `1`)
+- `NAVI_SMOKE_BRIDGE_TO_CHAIN` (default `42161`, Arbitrum)
 - `NAVI_SMOKE_BRIDGE_TO_TOKEN`
 - `NAVI_SMOKE_BRIDGE_TO_ADDRESS`
 - `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1`
@@ -91,5 +91,7 @@ cross-chain, fee-sensitive, and has longer finality semantics.
 
 Bridge build/sign validation is available without broadcasting by setting
 `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1`. The wallet must hold enough SUI for the active
-Mayan route minimum; the default quote amount is `2` SUI because Mayan routes can
-reject sub-minimum quote amounts.
+Mayan route minimum; the default route is Sui SUI to Arbitrum USDC with `1` SUI
+because it passed the Mayan v2 build/sign/Core-simulate gate. For non-Sui destinations, also provide
+`NAVI_SMOKE_BRIDGE_TO_ADDRESS`; otherwise Mayan will reject an incompatible Sui
+address as the destination wallet.
