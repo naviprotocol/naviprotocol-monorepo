@@ -49,6 +49,21 @@ function createSuiCoreApi() {
   }
 }
 
+async function createBuiltTransactionBytes() {
+  const tx = new Transaction()
+  tx.setSender(`0x${'1'.repeat(64)}`)
+  tx.setGasBudget(1000)
+  tx.setGasPrice(1000)
+  tx.setGasPayment([
+    {
+      objectId: `0x${'2'.repeat(64)}`,
+      version: '1',
+      digest: '11111111111111111111111111111111'
+    }
+  ])
+  return tx.build()
+}
+
 async function settleSwap<T>(promise: Promise<T>) {
   await vi.runAllTimersAsync()
   return promise
@@ -337,6 +352,82 @@ describe('mayan provider', () => {
       null,
       client
     )
+  })
+
+  it('uses an explicit Sui build client for Mayan transaction construction while executing with the provider', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const digest = `0x${'b'.repeat(64)}`
+    const mayanTx = createMayanTransaction()
+    const builtBytes = await createBuiltTransactionBytes()
+    vi.spyOn(mayanTx, 'build').mockResolvedValueOnce(builtBytes)
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
+    const client = {
+      network: 'mainnet',
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: {
+          digest,
+          status: {
+            success: true,
+            error: null
+          }
+        }
+      })),
+      waitForTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      }))
+    }
+    const buildClient = {
+      core: createSuiCoreApi()
+    }
+    const signTransaction = vi.fn(async ({ transaction }: { transaction: Transaction }) => {
+      expect(transaction).toBeInstanceOf(Transaction)
+      expect(transaction).not.toBe(mayanTx)
+      return {
+        bytes: signedBytes,
+        signature: 'signed-signature'
+      }
+    })
+
+    const resultPromise = swap(
+      {
+        from_token: { chainId: 1999 },
+        to_token: { chainId: 0 },
+        info_for_bridge: { fromToken: { standard: 'sui' } }
+      } as any,
+      '0xfrom',
+      '0xto',
+      {
+        sui: {
+          provider: client as any,
+          buildClient: buildClient as any,
+          signTransaction
+        }
+      }
+    )
+    const result = await settleSwap(resultPromise)
+
+    expect(result).toBe(digest)
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
+      expect.anything(),
+      '0xfrom',
+      '0xto',
+      undefined,
+      null,
+      buildClient
+    )
+    expect(mayanTx.build).toHaveBeenCalledWith({ client: buildClient })
+    expect(client.executeTransaction).toHaveBeenCalledWith({
+      transaction: new Uint8Array([1, 2, 3]),
+      signatures: ['signed-signature'],
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true
+      }
+    })
   })
 
   it('keeps Solana source routing on bridge API chain id 0', async () => {

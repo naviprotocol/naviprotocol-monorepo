@@ -11,6 +11,7 @@ import {
 import { BridgeSwapQuote, WalletConnection } from '../types'
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
+import { Transaction } from '@mysten/sui/transactions'
 import { fromBase64 } from '@mysten/sui/utils'
 
 const ERC20_ABI = [
@@ -144,22 +145,27 @@ export async function swap(
     const connection = walletConnection.sui
     const client = connection.provider
     assertSuiBridgeProvider(client)
+    const buildClient = connection.buildClient ?? client
     const swapTrx = await createSwapFromSuiMoveCalls(
       mayanQuote,
       fromAddress,
       toAddress,
       referrerAddresses,
       null,
-      client as any
+      buildClient as any
     )
     swapTrx.setSenderIfNotSet(fromAddress)
     if (connection.gasBudget !== undefined) {
       swapTrx.setGasBudget(connection.gasBudget)
     }
+    const transaction =
+      buildClient === client
+        ? swapTrx
+        : Transaction.from(await swapTrx.build({ client: buildClient as any }))
     const signed: {
       bytes: string
       signature: string
-    } = await connection.signTransaction({ transaction: swapTrx })
+    } = await connection.signTransaction({ transaction })
     const resp = await client.executeTransaction({
       transaction: fromBase64(signed.bytes),
       signatures: [signed.signature],

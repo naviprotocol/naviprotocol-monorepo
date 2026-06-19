@@ -231,7 +231,17 @@ export type NaviBridgeSuiProvider = {
   waitForTransaction(options: any): Promise<any>
 }
 
+export type NaviBridgeSuiBuildClient = {
+  core: NaviBridgeSuiCoreApi
+}
+
 type SuiWalletConnectionBase = {
+  /**
+   * Optional explicit build client for third-party Sui transaction builders.
+   * This is intended for compatibility with Mayan routes that still fail Sui v2
+   * gRPC/Core transaction resolution; execution stays on `provider`.
+   */
+  buildClient?: NaviBridgeSuiBuildClient
   gasBudget?: number
   signTransaction: (data: { transaction: Transaction }) => Promise<{
     bytes: string
