@@ -56,6 +56,10 @@ function envAmount(name, fallback) {
   return value
 }
 
+function envBoolean(name) {
+  return env(name) === '1'
+}
+
 function log(message) {
   console.log(`[sdk-core-live] ${message}`)
 }
@@ -266,7 +270,12 @@ async function runStep(summary, name, fn, { optional = false } = {}) {
   } catch (error) {
     const durationMs = Date.now() - startedAt
     const message = error instanceof Error ? error.message : String(error)
-    summary.steps.push({ name, status: optional ? 'skipped' : 'failed', durationMs, error: message })
+    summary.steps.push({
+      name,
+      status: optional ? 'skipped' : 'failed',
+      durationMs,
+      error: message
+    })
     log(`${name} ${optional ? 'skipped' : 'failed'}: ${message}`)
     if (!optional) throw error
     return undefined
@@ -282,7 +291,8 @@ async function runTransportSmoke(summary, clients, address) {
     ])
     return {
       balances: balances.balances?.length ?? 0,
-      totalBalance: balance.balance?.totalBalance ?? balance.balance?.balance ?? balance.totalBalance,
+      totalBalance:
+        balance.balance?.totalBalance ?? balance.balance?.balance ?? balance.totalBalance,
       coinObjects: coins.objects?.length ?? 0
     }
   })
@@ -534,7 +544,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
     const toTokenAddress = env('NAVI_SMOKE_BRIDGE_TO_TOKEN')
     const toToken = toTokenAddress
       ? toTokens.find((token) => token.address === toTokenAddress)
-      : toTokens.find((token) => token.symbol?.toUpperCase() === 'USDC') ?? toTokens[0]
+      : (toTokens.find((token) => token.symbol?.toUpperCase() === 'USDC') ?? toTokens[0])
 
     if (!fromToken) {
       throw new Error('No bridge SUI source token available')
@@ -554,7 +564,28 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
     return { amount, fromToken, toToken, quote, route }
   }
 
-  const quoteContext = await runStep(summary, 'astros-bridge.tokens.quote', async () => {
+  const runSuiSourceSwap = async (provider) => {
+    const { route, toToken } = await buildQuote()
+    const destinationAddress = env('NAVI_SMOKE_BRIDGE_TO_ADDRESS')
+    if (!destinationAddress && toToken.chainId !== SUI_CHAIN_ID) {
+      throw new Error(
+        'NAVI_SMOKE_BRIDGE_TO_ADDRESS is required for non-Sui bridge build/sign validation'
+      )
+    }
+    const gasBudget = envInt('NAVI_SMOKE_BRIDGE_GAS_BUDGET', 0)
+    return swap(route, wallet.address, destinationAddress ?? wallet.address, {
+      sui: {
+        provider,
+        ...(gasBudget > 0 ? { gasBudget } : {}),
+        signTransaction: async ({ transaction }) => {
+          const txBytes = await transaction.build({ client: clients.grpc })
+          return wallet.keypair.signTransaction(txBytes)
+        }
+      }
+    })
+  }
+
+  await runStep(summary, 'astros-bridge.tokens.quote', async () => {
     const { amount, quote, route, toToken } = await buildQuote()
     return {
       amount,
@@ -567,13 +598,6 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
 
   if (env('NAVI_SMOKE_BRIDGE_BUILD_SIGN') === '1') {
     await runStep(summary, 'astros-bridge.sui-source.build-sign.simulate', async () => {
-      const { route, toToken } = quoteContext?.route ? quoteContext : await buildQuote()
-      const destinationAddress = env('NAVI_SMOKE_BRIDGE_TO_ADDRESS')
-      if (!destinationAddress && toToken.chainId !== SUI_CHAIN_ID) {
-        throw new Error(
-          'NAVI_SMOKE_BRIDGE_TO_ADDRESS is required for non-Sui bridge build/sign validation'
-        )
-      }
       const captured = {
         bytesLength: 0,
         signatures: 0
@@ -604,20 +628,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
         },
         waitForTransaction: async ({ result }) => result
       }
-      const digest = await swap(
-        route,
-        wallet.address,
-        destinationAddress ?? wallet.address,
-        {
-          sui: {
-            provider: dryProvider,
-            signTransaction: async ({ transaction }) => {
-              const txBytes = await transaction.build({ client: clients.grpc })
-              return wallet.keypair.signTransaction(txBytes)
-            }
-          }
-        }
-      )
+      const digest = await runSuiSourceSwap(dryProvider)
       return {
         digest,
         bytesLength: captured.bytesLength,
@@ -635,13 +646,26 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
   }
 
   if (smokeMode === 'execute') {
-    summary.steps.push({
-      name: 'astros-bridge.sui-source.execute',
-      status: 'skipped',
-      reason:
-        'Bridge execute is intentionally excluded from the default execute gate; it requires exact target chain, recipient, token, amount, fee, and wait-time approval.'
-    })
-    log('astros-bridge.sui-source.execute skipped; exact bridge approval is required')
+    if (envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE')) {
+      await runStep(summary, 'astros-bridge.sui-source.execute', async () => {
+        const digest = await runSuiSourceSwap(clients.grpc)
+        return {
+          digest,
+          amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1'),
+          targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161)
+        }
+      })
+    } else {
+      summary.steps.push({
+        name: 'astros-bridge.sui-source.execute',
+        status: 'skipped',
+        reason:
+          'Set NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1 after exact bridge approval to broadcast the Sui-source bridge route.'
+      })
+      log(
+        'astros-bridge.sui-source.execute skipped; set NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1 after exact bridge approval'
+      )
+    }
   }
 }
 
@@ -709,8 +733,11 @@ function printPlan(summary, clients, wallet, scopes, smokeMode) {
             action: 'quote Sui-source bridge route',
             amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1'),
             targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161),
-            execute: false,
-            note: 'real bridge execute requires a separate exact approval'
+            execute: smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE'),
+            note:
+              smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE')
+                ? 'broadcasts the Sui-source bridge route and waits for Sui execution'
+                : 'real bridge execute requires NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1 after exact approval'
           }
         : undefined
     ].filter(Boolean)

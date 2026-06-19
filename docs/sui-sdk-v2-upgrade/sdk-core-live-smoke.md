@@ -55,17 +55,20 @@ Optional:
 - `NAVI_SMOKE_BRIDGE_TO_TOKEN`
 - `NAVI_SMOKE_BRIDGE_TO_ADDRESS`
 - `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1`
+- `NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1` (requires `execute` mode and exact
+  bridge approval)
+- `NAVI_SMOKE_BRIDGE_GAS_BUDGET`
 
 ## Coverage Matrix
 
-| Scope | Package | Simulate coverage | Execute coverage |
-| --- | --- | --- | --- |
-| transport | shared Sui clients | gRPC `listBalances/getBalance/listCoins`, GraphQL balance/history, explicit legacy JSON-RPC `getBalance` | none |
-| wallet | `@naviprotocol/wallet-client` | Core dry-run self-transfer through `WalletClient.signExecuteTransaction` | 1 MIST default self-transfer |
-| lending | `@naviprotocol/lending` | pools read, oracle update, SUI deposit PTB via Core simulate | small SUI deposit |
-| aggregator | `@naviprotocol/astros-aggregator-sdk` | quote, build swap PTB, Core simulate | small SUI swap |
-| dca | `@naviprotocol/astros-dca-sdk` | create DCA order PTB, Core simulate | small DCA order creation |
-| bridge | `@naviprotocol/astros-bridge-sdk` | Sui-source Mayan quote route; optional build/sign/Core-simulate with `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1` and a funded wallet | skipped by default; requires separate exact bridge approval |
+| Scope      | Package                               | Simulate coverage                                                                                                         | Execute coverage                                                                       |
+| ---------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| transport  | shared Sui clients                    | gRPC `listBalances/getBalance/listCoins`, GraphQL balance/history, explicit legacy JSON-RPC `getBalance`                  | none                                                                                   |
+| wallet     | `@naviprotocol/wallet-client`         | Core dry-run self-transfer through `WalletClient.signExecuteTransaction`                                                  | 1 MIST default self-transfer                                                           |
+| lending    | `@naviprotocol/lending`               | pools read, oracle update, SUI deposit PTB via Core simulate                                                              | small SUI deposit                                                                      |
+| aggregator | `@naviprotocol/astros-aggregator-sdk` | quote, build swap PTB, Core simulate                                                                                      | small SUI swap                                                                         |
+| dca        | `@naviprotocol/astros-dca-sdk`        | create DCA order PTB, Core simulate                                                                                       | small DCA order creation                                                               |
+| bridge     | `@naviprotocol/astros-bridge-sdk`     | Sui-source Mayan quote route; optional build/sign/Core-simulate with `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1` and a funded wallet | skipped unless `NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1` is set after exact bridge approval |
 
 ## Intended Regression Use
 
@@ -87,7 +90,16 @@ NAVI_SMOKE_ENABLE_EXECUTE=1 pnpm smoke:sdk-core-live:execute -- --only=wallet
 ```
 
 Bridge execute is intentionally outside the default execute gate because it is
-cross-chain, fee-sensitive, and has longer finality semantics.
+cross-chain, fee-sensitive, and has longer finality semantics. To broadcast a
+previously approved bridge route, set both execute guards:
+
+```bash
+NAVI_SMOKE_ENABLE_EXECUTE=1 \
+NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1 \
+NAVI_SMOKE_BRIDGE_BUILD_SIGN=1 \
+NAVI_SMOKE_BRIDGE_TO_ADDRESS=0x... \
+pnpm smoke:sdk-core-live:execute -- --only=bridge
+```
 
 Bridge build/sign validation is available without broadcasting by setting
 `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1`. The wallet must hold enough SUI for the active
