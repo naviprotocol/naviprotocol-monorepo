@@ -579,12 +579,24 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
       )
     }
     const gasBudget = envInt('NAVI_SMOKE_BRIDGE_GAS_BUDGET', 0)
+    const buildClientMode = env('NAVI_SMOKE_BRIDGE_BUILD_CLIENT')
+    if (buildClientMode && buildClientMode !== 'legacyJsonRpc') {
+      throw new Error('NAVI_SMOKE_BRIDGE_BUILD_CLIENT must be legacyJsonRpc when set')
+    }
+    let buildClient
+    if (buildClientMode === 'legacyJsonRpc') {
+      if (!clients.legacyJsonRpc) {
+        throw new Error('NAVI_SMOKE_BRIDGE_BUILD_CLIENT=legacyJsonRpc requires SUI_JSON_RPC_URL')
+      }
+      buildClient = clients.legacyJsonRpc
+    }
     return swap(route, wallet.address, destinationAddress ?? wallet.address, {
       sui: {
         provider,
+        ...(buildClient ? { buildClient } : {}),
         ...(gasBudget > 0 ? { gasBudget } : {}),
         signTransaction: async ({ transaction }) => {
-          const txBytes = await transaction.build({ client: clients.grpc })
+          const txBytes = await transaction.build({ client: buildClient ?? clients.grpc })
           return wallet.keypair.signTransaction(txBytes)
         }
       }
@@ -739,6 +751,7 @@ function printPlan(summary, clients, wallet, scopes, smokeMode) {
             action: 'quote Sui-source bridge route',
             amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1'),
             targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161),
+            buildClient: env('NAVI_SMOKE_BRIDGE_BUILD_CLIENT') ?? 'grpc',
             execute: smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE'),
             note:
               smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE')

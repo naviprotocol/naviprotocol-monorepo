@@ -10,6 +10,7 @@ TypeScript source.
 pnpm smoke:sdk-core-live:plan
 pnpm smoke:sdk-core-live
 pnpm smoke:sdk-core-live:execute
+pnpm smoke:sdk-bridge-routes
 ```
 
 Default `smoke:sdk-core-live` runs `simulate` mode. It reads a test wallet from
@@ -60,9 +61,17 @@ Optional:
 - `NAVI_SMOKE_BRIDGE_TO_TOKEN`
 - `NAVI_SMOKE_BRIDGE_TO_ADDRESS`
 - `NAVI_SMOKE_BRIDGE_BUILD_SIGN=1`
+- `NAVI_SMOKE_BRIDGE_BUILD_CLIENT=legacyJsonRpc` for route-level Mayan v2
+  transaction construction only; signing, Core simulation, and execution still
+  use the injected Sui v2 provider.
 - `NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1` (requires `execute` mode and exact
   bridge approval)
 - `NAVI_SMOKE_BRIDGE_GAS_BUDGET`
+- `NAVI_SMOKE_BRIDGE_ROUTES=arbitrum-usdc,solana-usdc`
+- `NAVI_SMOKE_BRIDGE_ARBITRUM_ADDRESS` or `FE_E2E_BNB_ADDRESS`
+- `NAVI_SMOKE_BRIDGE_SOLANA_ADDRESS` or `FE_E2E_SOL_ADDRESS`
+- `NAVI_SMOKE_BRIDGE_ARBITRUM_AMOUNT` (default `1`)
+- `NAVI_SMOKE_BRIDGE_SOLANA_AMOUNT` (default `2`)
 
 ## Coverage Matrix
 
@@ -112,3 +121,13 @@ Mayan route minimum; the default route is Sui SUI to Arbitrum USDC with `1` SUI
 because it passed the Mayan v2 build/sign/Core-simulate gate. For non-Sui destinations, also provide
 `NAVI_SMOKE_BRIDGE_TO_ADDRESS`; otherwise Mayan will reject an incompatible Sui
 address as the destination wallet.
+
+`pnpm smoke:sdk-bridge-routes` is the route matrix gate for Mayan v2 Sui-source
+routes. It does not broadcast. It builds, signs, and Core-simulates:
+
+- Sui SUI -> Arbitrum USDC with the gRPC/Core build client.
+- Sui SUI -> Solana USDC with explicit `legacyJsonRpc` as the Mayan
+  third-party build client, then gRPC/Core simulation of the resulting bytes.
+
+This route matrix is intentionally separate from the default bridge execute
+gate because Mayan transaction shape is route-dependent.
