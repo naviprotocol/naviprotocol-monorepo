@@ -30,6 +30,11 @@ Required:
 - `FE_E2E_SUI_PRIVATE_KEY`
 - `SUI_GRPC_ENDPOINT`
 
+`SUI_GRPC_ENDPOINT` may be either host-only (`sui.grpc.example.com` or
+`sui.grpc.example.com:443`) or a full gRPC-web URL (`https://...`). The smoke
+scripts normalize host-only values to `https://...` before constructing
+`SuiGrpcClient`; logs only report env key presence, not endpoint or token values.
+
 Recommended for upgrade regression:
 
 - `SUI_GRPC_TOKEN`

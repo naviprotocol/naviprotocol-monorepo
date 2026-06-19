@@ -16,6 +16,12 @@ function env(name) {
   return value && value.trim() ? value.trim() : undefined
 }
 
+function normalizeGrpcBaseUrl(endpoint) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(endpoint)
+    ? endpoint
+    : `https://${endpoint.replace(/\/+$/, '')}`
+}
+
 function logStep(message) {
   console.log(`[sui-v2-smoke] ${message}`)
 }
@@ -49,7 +55,7 @@ async function runGrpcSmoke() {
 
   const client = new SuiGrpcClient({
     network: env('SUI_NETWORK') ?? 'mainnet',
-    baseUrl: endpoint,
+    baseUrl: normalizeGrpcBaseUrl(endpoint),
     fetchInit: {
       headers: authHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
     }
@@ -60,7 +66,9 @@ async function runGrpcSmoke() {
 
   const suiBalance = await client.core.getBalance({ owner, coinType: DEFAULT_SUI_COIN_TYPE })
   logStep(
-    `gRPC getBalance passed; fields=${Object.keys(suiBalance.balance ?? {}).sort().join(',')}`
+    `gRPC getBalance passed; fields=${Object.keys(suiBalance.balance ?? {})
+      .sort()
+      .join(',')}`
   )
 
   const coins = await client.core.listCoins({
@@ -201,7 +209,9 @@ async function runLegacyJsonRpcSmoke() {
 }
 
 async function main() {
-  logStep('starting read-only provider smoke; no private keys are read and no transaction is executed')
+  logStep(
+    'starting read-only provider smoke; no private keys are read and no transaction is executed'
+  )
   await runGrpcSmoke()
   await runGraphQLSmoke()
   await runLegacyJsonRpcSmoke()

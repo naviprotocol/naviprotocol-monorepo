@@ -60,6 +60,12 @@ function envBoolean(name) {
   return env(name) === '1'
 }
 
+function normalizeGrpcBaseUrl(endpoint) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(endpoint)
+    ? endpoint
+    : `https://${endpoint.replace(/\/+$/, '')}`
+}
+
 function log(message) {
   console.log(`[sdk-core-live] ${message}`)
 }
@@ -129,7 +135,7 @@ function getWallet() {
 
 function getClients() {
   const network = env('SUI_NETWORK') ?? 'mainnet'
-  const grpcEndpoint = requireEnv('SUI_GRPC_ENDPOINT')
+  const grpcEndpoint = normalizeGrpcBaseUrl(requireEnv('SUI_GRPC_ENDPOINT'))
   const grpcHeaders = tokenHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
   const graphqlUrl = env('SUI_GRAPHQL_URL')
   const legacyJsonRpcUrl = env('SUI_JSON_RPC_URL')
