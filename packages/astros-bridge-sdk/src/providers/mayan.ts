@@ -120,6 +120,14 @@ function getSuiExecutionDigest(resp: SuiExecutionResponse) {
   return digest
 }
 
+function assertSuiWaitResult(
+  resp: SuiExecutionResponse | undefined
+): asserts resp is SuiExecutionResponse {
+  if (!resp) {
+    throw new Error('Sui bridge source transaction wait did not return final transaction effects')
+  }
+}
+
 function assertSuiBuildClient(
   client: unknown,
   label = 'Sui bridge build client'
@@ -301,9 +309,8 @@ export async function swap(
         effects: true
       }
     })
-    if (waitResult) {
-      assertSuiExecutionSuccess(waitResult)
-    }
+    assertSuiWaitResult(waitResult)
+    assertSuiExecutionSuccess(waitResult)
   } else if (route.from_token.chainId === BridgeChain.SOLANA) {
     if (!walletConnection.solana) {
       throw new Error('Solana wallet connection not found')

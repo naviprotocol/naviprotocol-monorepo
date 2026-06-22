@@ -434,6 +434,56 @@ describe('mayan provider', () => {
     })
   })
 
+  it('throws when the Sui source transaction wait does not return final effects', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const digest = `0x${'7'.repeat(64)}`
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
+    const client = {
+      network: 'mainnet',
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: {
+          digest,
+          status: {
+            success: true,
+            error: null
+          }
+        }
+      })),
+      waitForTransaction: vi.fn(async () => undefined)
+    }
+    const signTransaction = vi.fn(async () => ({
+      bytes: signedBytes,
+      signature: 'signed-signature'
+    }))
+
+    await expect(
+      swap(
+        {
+          from_token: { chainId: 1999 },
+          to_token: { chainId: 0 },
+          info_for_bridge: { fromToken: { standard: 'sui' } }
+        } as any,
+        '0xfrom',
+        '0xto',
+        {
+          sui: {
+            provider: client as any,
+            signTransaction
+          }
+        }
+      )
+    ).rejects.toThrow('Sui bridge source transaction wait did not return final transaction effects')
+    expect(client.waitForTransaction).toHaveBeenCalledWith({
+      digest,
+      include: {
+        effects: true
+      }
+    })
+  })
+
   it('does not require rpcUrl when a v2 Sui provider is supplied', async () => {
     const { swap } = await import('../src/providers/mayan')
     const digest = `0x${'f'.repeat(64)}`
