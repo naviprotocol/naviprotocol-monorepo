@@ -14,6 +14,9 @@ export * from './getQuote'
 // Export configuration management
 export * from './config'
 
+// Export service endpoint configuration
+export * from './services'
+
 // Export swap transaction building utilities
 export * from './swapPTB'
 

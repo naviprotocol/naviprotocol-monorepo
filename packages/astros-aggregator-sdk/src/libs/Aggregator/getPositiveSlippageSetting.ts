@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { withCache, withSingleton } from './utils'
+import { resolveNaviOpenApiEndpoint } from './services'
 
 const DEFAULT_NAVI_OPEN_API_BASE_URL = 'https://open-api.naviprotocol.io/api'
 
@@ -25,10 +26,15 @@ export const getRemotePositiveSlippageSetting = withCache(
       cacheTime?: number
       service?: PositiveSlippageServiceOptions
     }): Promise<boolean> => {
-      const resp = await axios.get(buildPositiveSlippageUrl(options?.service?.baseUrl), {
+      const service = resolveNaviOpenApiEndpoint({
+        services: {
+          naviOpenApi: options?.service
+        }
+      })
+      const resp = await axios.get(buildPositiveSlippageUrl(service.baseUrl), {
         headers: {
           'User-Agent': 'navi-aggregator-sdk',
-          ...options?.service?.headers
+          ...service.headers
         }
       })
       return resp.data.data.should_enable_positive_slippage
