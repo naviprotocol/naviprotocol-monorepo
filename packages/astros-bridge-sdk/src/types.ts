@@ -227,6 +227,8 @@ export type NaviBridgeSuiCoreApi = {
   getCurrentSystemState(options?: any): Promise<any>
   getChainIdentifier(options?: any): Promise<any>
   simulateTransaction(options: any): Promise<any>
+  executeTransaction?(options: any): Promise<any>
+  waitForTransaction?(options: any): Promise<any>
   resolveTransactionPlugin?(): any
 }
 
@@ -236,8 +238,8 @@ export type NaviBridgeSuiBuildClient = {
 
 export type NaviBridgeSuiProvider = NaviBridgeSuiBuildClient & {
   network?: string
-  executeTransaction(options: any): Promise<any>
-  waitForTransaction(options: any): Promise<any>
+  executeTransaction?(options: any): Promise<any>
+  waitForTransaction?(options: any): Promise<any>
 }
 
 type SuiWalletConnectionBase = {

@@ -170,6 +170,81 @@ describe('mayan provider', () => {
     })
   })
 
+  it('executes the Sui source path through core execution methods when no top-level methods are present', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const digest = `0x${'8'.repeat(64)}`
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
+    const executeTransaction = vi.fn(async () => ({
+      $kind: 'Transaction',
+      Transaction: {
+        digest,
+        status: {
+          success: true,
+          error: null
+        }
+      }
+    }))
+    const waitForTransaction = vi.fn(async () => ({
+      $kind: 'Transaction',
+      Transaction: { digest }
+    }))
+    const client = {
+      network: 'mainnet',
+      core: {
+        ...createSuiCoreApi(),
+        executeTransaction,
+        waitForTransaction
+      }
+    }
+    const signTransaction = vi.fn(async () => ({
+      bytes: signedBytes,
+      signature: 'signed-signature'
+    }))
+
+    const resultPromise = swap(
+      {
+        from_token: { chainId: 1999 },
+        to_token: { chainId: 0 },
+        info_for_bridge: { fromToken: { standard: 'sui' } }
+      } as any,
+      '0xfrom',
+      '0xto',
+      {
+        sui: {
+          provider: client as any,
+          signTransaction
+        }
+      }
+    )
+    const result = await settleSwap(resultPromise)
+
+    expect(result).toBe(digest)
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
+      expect.anything(),
+      '0xfrom',
+      '0xto',
+      undefined,
+      null,
+      client
+    )
+    expect(executeTransaction).toHaveBeenCalledWith({
+      transaction: new Uint8Array([1, 2, 3]),
+      signatures: ['signed-signature'],
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true
+      }
+    })
+    expect(waitForTransaction).toHaveBeenCalledWith({
+      digest,
+      include: {
+        effects: true
+      }
+    })
+  })
+
   it('rejects Sui source bridge before Mayan when the v2 Core API provider is incomplete', async () => {
     const { swap } = await import('../src/providers/mayan')
     const signTransaction = vi.fn()

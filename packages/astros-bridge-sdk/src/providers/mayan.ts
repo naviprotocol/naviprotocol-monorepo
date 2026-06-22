@@ -63,6 +63,11 @@ type SuiExecutionResponse = {
   }
 }
 
+type SuiBridgeExecutionClient = {
+  executeTransaction(options: any): Promise<SuiExecutionResponse>
+  waitForTransaction(options: any): Promise<SuiExecutionResponse | undefined>
+}
+
 function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
   const amountInBaseUnits = (mayanQuote as MayanQuote & { effectiveAmountIn64?: string | number })
     .effectiveAmountIn64
@@ -171,27 +176,56 @@ function assertSuiBridgeProvider(client: unknown): asserts client is {
     getCurrentSystemState(options?: any): Promise<any>
     getChainIdentifier(options?: any): Promise<any>
     simulateTransaction(options: any): Promise<any>
+    executeTransaction?(options: any): Promise<any>
+    waitForTransaction?(options: any): Promise<any>
   }
-  executeTransaction(options: any): Promise<any>
-  waitForTransaction(options: any): Promise<any>
+  executeTransaction?(options: any): Promise<any>
+  waitForTransaction?(options: any): Promise<any>
 } {
   assertSuiBuildClient(client, 'Sui bridge provider')
+  getSuiBridgeExecutionClient(client)
+}
+
+function getSuiBridgeExecutionClient(client: unknown): SuiBridgeExecutionClient {
   const provider = client as {
     executeTransaction?: unknown
     waitForTransaction?: unknown
-  }
-  const missing: string[] = []
-
-  for (const method of ['executeTransaction', 'waitForTransaction'] as const) {
-    if (typeof provider?.[method] !== 'function') {
-      missing.push(method)
+    core?: {
+      executeTransaction?: unknown
+      waitForTransaction?: unknown
     }
+  }
+
+  const executeTransaction =
+    typeof provider?.executeTransaction === 'function'
+      ? provider.executeTransaction.bind(provider)
+      : typeof provider?.core?.executeTransaction === 'function'
+        ? provider.core.executeTransaction.bind(provider.core)
+        : undefined
+  const waitForTransaction =
+    typeof provider?.waitForTransaction === 'function'
+      ? provider.waitForTransaction.bind(provider)
+      : typeof provider?.core?.waitForTransaction === 'function'
+        ? provider.core.waitForTransaction.bind(provider.core)
+        : undefined
+
+  const missing: string[] = []
+  if (!executeTransaction) {
+    missing.push('executeTransaction')
+  }
+  if (!waitForTransaction) {
+    missing.push('waitForTransaction')
   }
 
   if (missing.length > 0) {
     throw new Error(
       `Sui bridge provider must implement Sui SDK v2 Core API and execution methods: missing ${missing.join(', ')}`
     )
+  }
+
+  return {
+    executeTransaction,
+    waitForTransaction
   }
 }
 
@@ -227,6 +261,7 @@ export async function swap(
     const connection = walletConnection.sui
     const client = connection.provider
     assertSuiBridgeProvider(client)
+    const executionClient = getSuiBridgeExecutionClient(client)
     const buildClient = connection.buildClient ?? client
     assertSuiBuildClient(buildClient)
     const swapTrx = await createSwapFromSuiMoveCalls(
@@ -249,7 +284,7 @@ export async function swap(
       bytes: string
       signature: string
     } = await connection.signTransaction({ transaction })
-    const resp = await client.executeTransaction({
+    const resp = await executionClient.executeTransaction({
       transaction: fromBase64(signed.bytes),
       signatures: [signed.signature],
       include: {
@@ -260,7 +295,7 @@ export async function swap(
     })
     assertSuiExecutionSuccess(resp)
     hash = getSuiExecutionDigest(resp)
-    const waitResult = await client.waitForTransaction({
+    const waitResult = await executionClient.waitForTransaction({
       digest: hash,
       include: {
         effects: true
