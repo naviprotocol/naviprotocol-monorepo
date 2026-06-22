@@ -48,6 +48,7 @@
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
     "test": "vitest --config ./vite.config.unit.js",
+    "test:types": "pnpm build:lib && tsc --noEmit -p tsconfig.json",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typedoc": "typedoc"
