@@ -18,16 +18,16 @@ development workflows.
 
 ```bash
 npm install @mysten/sui@^2
-npm install @naviprotocol/lending@<beta-version>
-npm install @naviprotocol/wallet-client@<beta-version>
-npm install @naviprotocol/astros-aggregator-sdk@<beta-version>
-npm install @naviprotocol/astros-bridge-sdk@<beta-version>
-npm install @naviprotocol/astros-dca-sdk@<beta-version>
+npm install @naviprotocol/lending@2.0.0-beta.1
+npm install @naviprotocol/wallet-client@2.0.0-beta.1
+npm install @naviprotocol/astros-aggregator-sdk@2.0.0-beta.1
+npm install @naviprotocol/astros-bridge-sdk@2.0.0-beta.1
+npm install @naviprotocol/astros-dca-sdk@2.0.0-beta.1
 ```
 
 Install only the NAVI packages your app uses.
 
-NAVI SDK v2 beta is currently verified with `@mysten/sui@2.19.0`.
+NAVI SDK v2 beta.1 is currently verified with `@mysten/sui@2.19.0`.
 
 ## Sui Migration References
 
@@ -37,6 +37,11 @@ NAVI SDK v2 beta is currently verified with `@mysten/sui@2.19.0`.
 JSON-RPC is being deactivated on July 31, 2026. New integrations should use
 gRPC/Core now; NAVI's remaining JSON-RPC compatibility path is deprecated and
 will be removed.
+
+Do not start new integrations with `legacyJsonRpc`. If a temporary
+compatibility path is unavoidable, it must be configured explicitly as
+`legacyJsonRpc`; NAVI SDK does not silently fall back from gRPC/Core to
+JSON-RPC.
 
 ## Package Changes From 1.x
 
@@ -117,11 +122,21 @@ epochs, or other query APIs.
 
 ## Common Import Changes
 
-| Old                                              | New                                      |
-| ------------------------------------------------ | ---------------------------------------- |
-| `@mysten/sui.js/transactions` `TransactionBlock` | `@mysten/sui/transactions` `Transaction` |
-| `@mysten/sui/client` `SuiClient`                 | `@mysten/sui/grpc` `SuiGrpcClient`       |
-| Sui-native historical/filter reads               | `@mysten/sui/graphql` `SuiGraphQLClient` |
+| Old                                                            | New                                                                  |
+| -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `@mysten/sui.js/transactions` `TransactionBlock`               | `@mysten/sui/transactions` `Transaction`                             |
+| `@mysten/sui/client` `SuiClient` for NAVI SDK release paths    | `@mysten/sui/grpc` `SuiGrpcClient` or another Core-capable client    |
+| Sui-native historical/filter reads                             | `@mysten/sui/graphql` `SuiGraphQLClient`                             |
+| `@mysten/sui/transactions` `Commands`                          | `@mysten/sui/transactions` `TransactionCommands`                     |
+| `@mysten/sui/bcs` `ObjectBcs`                                  | `@mysten/sui/bcs` `bcs.Object`                                       |
+| `@mysten/sui/experimental` and `Experimental_*` client names   | `@mysten/sui/client` stable names without the `Experimental_` prefix |
+| `@mysten/sui/graphql/schemas/latest` or versioned schema paths | `@mysten/sui/graphql/schema`                                         |
+| Executor `executeTransaction(...).data`                        | Executor `executeTransaction(...).result`                            |
+| zkLogin address helpers without `legacyAddress`                | Pass an explicit `legacyAddress` boolean                             |
+
+When a transaction is built with a client, Sui SDK v2 gives it a default
+expiration of the current epoch plus one. If your app must preserve the old
+no-expiration behavior, call `tx.setExpiration({ None: true })` before signing.
 
 ## gRPC / GraphQL Transport Guidance
 
@@ -164,6 +179,23 @@ await depositCoinPTB(tx, '0x2::sui::SUI', coin, {
 
 Pyth update helpers are handled by NAVI's Sui SDK v2 path. Apps do not need to
 install `@pythnetwork/pyth-sui-js` for the `@naviprotocol/lending` main path.
+
+Address balance helpers expose the Sui SDK v2 Address Balances model:
+
+```ts
+import { getAddressBalance, listAddressBalances } from '@naviprotocol/lending'
+
+const suiBalance = await getAddressBalance(grpcClient, {
+  owner: address,
+  coinType: '0x2::sui::SUI'
+})
+
+const allBalances = await listAddressBalances(grpcClient, { owner: address })
+```
+
+Use `totalBalance` for the full address balance, `coinBalance` for coin-object
+only views, and `addressBalance` for funds held directly in address balance.
+`totalBalance` is normalized as `coinBalance + addressBalance`.
 
 ## Wallet Client
 
@@ -229,7 +261,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import { buildSwapPTBFromQuote, getQuote } from '@naviprotocol/astros-aggregator-sdk'
 
 const tx = new Transaction()
-const coinIn = tx.splitCoins(tx.gas, [1_000_000n])
+const [coinIn] = tx.splitCoins(tx.gas, [1_000_000n])
 const quote = await getQuote(
   '0x2::sui::SUI',
   '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
@@ -273,8 +305,8 @@ const suiProvider = new SuiGrpcClient({
 const suiUsdcCoinType =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
 const arbitrumUsdcAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
-const suiSenderAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
-const evmRecipientAddress = '0x0000000000000000000000000000000000000000'
+const suiSenderAddress = 'YOUR_SUI_ADDRESS'
+const evmRecipientAddress = 'YOUR_EVM_ADDRESS'
 
 const fromToken = (await searchSupportTokens(1999, suiUsdcCoinType))[0]
 const toToken = (await searchSupportTokens(42161, arbitrumUsdcAddress))[0]
@@ -293,6 +325,8 @@ const walletConnection: WalletConnection = {
 const tx = await swap(quote.routes[0], suiSenderAddress, evmRecipientAddress, walletConnection)
 const latest = await getTransaction(tx.id)
 ```
+
+Replace the placeholder addresses before signing a real bridge transaction.
 
 Most Sui-source bridge routes build and execute with the same gRPC provider. In
 rare provider-specific cases that need a separate transaction build client, pass
@@ -338,6 +372,10 @@ const tx = await createDcaOrder(grpcClient, address, {
 - Keep third-party Sui v1 SDKs out of app root and shared SDK entry points.
 - Install Suilend optional peers only if Suilend migration paths are used.
 - Use `enableSuilend: false` when Suilend is not needed.
-- Use small authorized-wallet transactions for final live validation.
-- Treat live quote/route failures and test-wallet state failures as fixture or
-  upstream blockers until verified against current valid routes/accounts.
+
+## Validation
+
+Before production rollout, validate the paths your app actually uses with a
+small authorized wallet transaction. Treat live quote, route, or wallet-state
+failures as fixture or upstream blockers until verified against current valid
+routes and accounts.
