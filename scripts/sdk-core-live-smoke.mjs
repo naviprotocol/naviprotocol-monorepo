@@ -622,6 +622,7 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
         bytesLength: 0,
         signatures: 0
       }
+      let lastExecutionResult
       const dryProvider = {
         network: clients.network,
         core: clients.grpc.core,
@@ -637,16 +638,24 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
             }
           })
           assertSuccess(simulation, 'astros-bridge.sui-source build-sign simulate')
-          return {
+          lastExecutionResult = {
             $kind: 'Transaction',
             Transaction: {
               digest: 'dry-run-not-broadcast',
-              status: { success: true }
+              status: { success: true },
+              effects: simulation.Transaction?.effects ?? simulation.effects
             },
             rawSimulation: simulation
           }
+          return lastExecutionResult
         },
-        waitForTransaction: async ({ result }) => result
+        waitForTransaction: async ({ digest }) => {
+          if (!lastExecutionResult) {
+            return undefined
+          }
+          const lastDigest = lastExecutionResult.Transaction?.digest ?? lastExecutionResult.digest
+          return !digest || digest === lastDigest ? lastExecutionResult : undefined
+        }
       }
       const digest = await runSuiSourceSwap(dryProvider)
       return {
