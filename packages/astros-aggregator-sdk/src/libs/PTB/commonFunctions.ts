@@ -1,5 +1,14 @@
 import { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions'
 import { AggregatorConfig } from '../Aggregator/config'
+
+function getCoinObjectId(coin: any) {
+  const objectId = coin?.coinObjectId ?? coin?.objectId
+  if (!objectId) {
+    throw new Error('Coin object is missing an object id')
+  }
+  return objectId
+}
+
 /**
  * Merges multiple coins into a single coin object.
  *
@@ -9,13 +18,13 @@ import { AggregatorConfig } from '../Aggregator/config'
  */
 export function returnMergedCoins(txb: Transaction, coinInfo: any) {
   if (coinInfo.data.length >= 2) {
-    let baseObj = coinInfo.data[0].coinObjectId
-    let all_list = coinInfo.data.slice(1).map((coin: any) => coin.coinObjectId)
+    const baseObj = getCoinObjectId(coinInfo.data[0])
+    const all_list = coinInfo.data.slice(1).map(getCoinObjectId)
 
     txb.mergeCoins(baseObj, all_list)
   }
 
-  let mergedCoinObject = txb.object(coinInfo.data[0].coinObjectId)
+  const mergedCoinObject = txb.object(getCoinObjectId(coinInfo.data[0]))
   return mergedCoinObject
 }
 

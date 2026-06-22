@@ -30,6 +30,13 @@ type SuiExecutionResponse = {
   digest?: string
   Transaction?: {
     digest: string
+    effects?: null | {
+      status?: {
+        success?: boolean
+        status?: string
+        error?: unknown
+      }
+    }
     status?: {
       success: boolean
       error?: unknown
@@ -37,6 +44,13 @@ type SuiExecutionResponse = {
   }
   FailedTransaction?: {
     digest: string
+    effects?: null | {
+      status?: {
+        success?: boolean
+        status?: string
+        error?: unknown
+      }
+    }
     status?: {
       success: boolean
       error?: unknown
@@ -69,13 +83,21 @@ function assertSuiExecutionSuccess(resp: SuiExecutionResponse) {
     throw new Error('Sui bridge source transaction did not return a digest')
   }
 
-  const status = transaction.status as
-    | {
+  const statusSource = transaction as {
+    status?: {
+      success?: boolean
+      status?: string
+      error?: unknown
+    }
+    effects?: null | {
+      status?: {
         success?: boolean
         status?: string
         error?: unknown
       }
-    | undefined
+    }
+  }
+  const status = statusSource.status ?? statusSource.effects?.status
   const failed =
     resp.$kind === 'FailedTransaction' || status?.success === false || status?.status === 'failure'
   if (failed) {
@@ -238,12 +260,15 @@ export async function swap(
     })
     assertSuiExecutionSuccess(resp)
     hash = getSuiExecutionDigest(resp)
-    await client.waitForTransaction({
+    const waitResult = await client.waitForTransaction({
       digest: hash,
       include: {
         effects: true
       }
     })
+    if (waitResult) {
+      assertSuiExecutionSuccess(waitResult)
+    }
   } else if (route.from_token.chainId === BridgeChain.SOLANA) {
     if (!walletConnection.solana) {
       throw new Error('Solana wallet connection not found')

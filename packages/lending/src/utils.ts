@@ -328,10 +328,10 @@ export function camelize<T extends Record<string, any>>(obj: T): T {
  * @returns Transaction result in the appropriate format
  */
 export function parseTxValue(
-  value: string | number | boolean | object | undefined,
+  value: string | number | boolean | object | null | undefined,
   format: any
 ): TransactionResult {
-  if (typeof value === 'undefined') {
+  if (value === undefined || value === null) {
     throw new Error('Transaction value is required')
   }
   if (typeof value === 'object') {

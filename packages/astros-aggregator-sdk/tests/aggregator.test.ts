@@ -2,7 +2,7 @@ import './fetch'
 import { describe, it, expect, vi } from 'vitest'
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
-import { buildSwapPTBFromQuote, swapPTB } from '../src/libs/Aggregator/swapPTB'
+import { buildSwapPTBFromQuote, getCoinPTB, swapPTB } from '../src/libs/Aggregator/swapPTB'
 import { getQuote } from '../src/astros-sdk'
 import { Dex } from '../src/types'
 
@@ -132,6 +132,42 @@ describe('swap test', () => {
     await expect(
       buildSwapPTBFromQuote(coins.sui.holder, txb, 0, coinIn, quote, 0, false)
     ).rejects.toThrow('Outer amount_in does not match the sum of route amount_in values')
+  })
+
+  it('builds non-SUI coin inputs from Core API listCoins object ids', async () => {
+    const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const txb = createTransaction(userAddress)
+    const listCoins = vi.fn(async () => ({
+      objects: [
+        {
+          objectId: `0x${'a'.repeat(64)}`,
+          balance: '1000',
+          coinType: coins.deep.address
+        },
+        {
+          objectId: `0x${'b'.repeat(64)}`,
+          balance: '1000',
+          coinType: coins.deep.address
+        }
+      ],
+      cursor: null,
+      hasNextPage: false
+    }))
+
+    const coin = await getCoinPTB(userAddress, coins.deep.address, 100n, txb, {
+      core: {
+        listCoins
+      }
+    } as any)
+    const commands = txb.getData().commands
+
+    expect(coin).toBeDefined()
+    expect(listCoins).toHaveBeenCalledWith({
+      owner: userAddress,
+      coinType: coins.deep.address
+    })
+    expect(commands[0]).toHaveProperty('MergeCoins')
+    expect(commands[1]).toHaveProperty('SplitCoins')
   })
 
   it('normalizes executeTransaction into a NAVI DTO even when shio auction fails', async () => {

@@ -4,8 +4,17 @@
   }
   const _fetch = fetch
   const shouldUseNaviHeaders = (input: RequestInfo | URL) => {
-    const url =
-      input instanceof URL ? input : typeof input === 'string' ? new URL(input) : new URL(input.url)
+    let url: URL
+    try {
+      url =
+        input instanceof URL
+          ? input
+          : typeof input === 'string'
+            ? new URL(input)
+            : new URL(input.url)
+    } catch {
+      return false
+    }
 
     return url.hostname.endsWith('naviprotocol.io')
   }

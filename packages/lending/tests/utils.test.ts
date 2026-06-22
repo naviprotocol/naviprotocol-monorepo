@@ -69,6 +69,10 @@ describe('parseTxValue', () => {
   it('throws a clear error for undefined transaction arguments', () => {
     expect(() => parseTxValue(undefined, vi.fn())).toThrow('Transaction value is required')
   })
+
+  it('throws a clear error for null transaction arguments', () => {
+    expect(() => parseTxValue(null, vi.fn())).toThrow('Transaction value is required')
+  })
 })
 
 describe('Sui Core API adapters', () => {
