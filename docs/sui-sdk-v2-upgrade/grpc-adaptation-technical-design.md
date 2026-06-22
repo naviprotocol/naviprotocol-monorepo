@@ -1,6 +1,22 @@
 # NAVI SDK v2 gRPC / GraphQL 适配技术设计
 
-Last updated: 2026-06-18
+Last updated: 2026-06-22
+
+## 当前实现状态
+
+本文是 gRPC / GraphQL 迁移的设计和执行计划，包含 2026-06-18 执行前的差距描述。
+截至 2026-06-22，SDK 包侧迁移已按本文方向完成并进入 acceptance review：五个发布包
+dev dependency 使用 `@mysten/sui@2.19.0`，public peer contract 保持
+`@mysten/sui >=2.0.0`；主路径使用显式 gRPC/Core client，GraphQL 作为可选历史/过滤/
+join 能力，剩余 JSON-RPC 只允许显式 `legacyJsonRpc` 或已记录的第三方 adapter 边界。
+
+Bridge 当前使用 `@mayanfinance/swap-sdk@15.0.0`，之前的 Mayan v1 +
+`@mysten/sui-v1` 临时 alias 已移除。Sui -> Solana USDC 这类 route-specific Mayan
+构造问题通过显式 `legacyJsonRpc` build client 作为内部第三方 adapter 处理；签名、Core
+simulate 和 execute 仍走注入的 Sui v2 provider，不做 public endpoint 自动 fallback。
+
+最终状态和验证证据以 `acceptance.md` 为准。本文件中“当前 beta / 当前状态和差距 /
+执行计划”小节如果描述的是实现前状态，应按历史计划阅读，不代表当前代码仍处于该状态。
 
 ## 背景
 
@@ -117,12 +133,16 @@ JSON-RPC，而是区分两个交付阶段：
 - 如果 SDK 方法内部调用 NAVI/Open API service，必须能把 base URL 切到 preview/staging；
   否则前端引用本地 SDK 时仍会请求生产 open-api，无法验证 SDK + open-api preview 组合。
 
-## 当前状态和差距
+## 2026-06-18 执行前状态和差距
 
-### 当前 beta 是否“同时支持 JSON-RPC 和 gRPC”
+本节记录 2026-06-18 执行前的差距快照，用来解释为什么需要后续 Phase 1-4
+迁移。当前代码状态请以上方“当前实现状态”和 `acceptance.md` 为准。
 
-当前 beta 只能说“底层引入了 Sui SDK v2 能力，并在 Suilend adapter 局部使用
-gRPC”，不能说所有 NAVI SDK public 方法已经同时支持 JSON-RPC 和 gRPC。
+### 当时 beta 是否“同时支持 JSON-RPC 和 gRPC”
+
+当时 beta 只能说“底层引入了 Sui SDK v2 能力，并在 Suilend adapter 局部使用
+gRPC”，不能说所有 NAVI SDK public 方法已经同时支持 JSON-RPC 和 gRPC。该表不是
+当前实现状态。
 
 | 包                                    | 当前 transport 状态                                                                | 与目标差距                                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
