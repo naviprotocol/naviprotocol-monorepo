@@ -27,6 +27,8 @@ npm install @naviprotocol/astros-dca-sdk@<beta-version>
 
 Install only the NAVI packages your app uses.
 
+NAVI SDK v2 beta is currently verified with `@mysten/sui@2.19.0`.
+
 ## Sui Migration References
 
 - [Sui TypeScript SDK 2.0 migration guide](https://sdk.mystenlabs.com/sui/migrations/sui-2.0)
@@ -35,6 +37,16 @@ Install only the NAVI packages your app uses.
 JSON-RPC is being deactivated on July 31, 2026. New integrations should use
 gRPC/Core now; NAVI's remaining JSON-RPC compatibility path is deprecated and
 will be removed.
+
+## Package Changes From 1.x
+
+| Package                               | Main integration change                                                                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@naviprotocol/lending`               | Use Sui SDK v2 `Transaction`; read helpers accept Core-capable clients such as `SuiGrpcClient`.                                                                  |
+| `@naviprotocol/wallet-client`         | Initialize with `{ network, grpc, graphql? }` instead of a generic RPC URL/client shape.                                                                         |
+| `@naviprotocol/astros-aggregator-sdk` | PTB builders use v2 `Transaction`; dry-run and execute helpers return normalized NAVI DTOs.                                                                      |
+| `@naviprotocol/astros-bridge-sdk`     | Bridge business flow stays quote, wallet signature, execution, and status polling. Sui-source routes now use a Sui SDK v2 provider and wallet `signTransaction`. |
+| `@naviprotocol/astros-dca-sdk`        | Order builders use v2 `Transaction`; coin and metadata reads work with Core-capable clients.                                                                     |
 
 ## Client Setup
 
@@ -99,6 +111,9 @@ Use `graphql` for Sui-native history, event/transaction filtering, object or
 package history, and cross-resource joined reads. If a feature needs those
 semantics and GraphQL is not configured, the SDK should fail clearly instead of
 silently falling back to another transport or public endpoints.
+See Sui's [methods requiring GraphQL](https://sdk.mystenlabs.com/sui/migrations/sui-2.0/json-rpc-migration#methods-requiring-graphql)
+when migrating historical queries, event or transaction filters, checkpoints,
+epochs, or other query APIs.
 
 ## Common Import Changes
 
@@ -159,9 +174,7 @@ const walletClient = new WalletClient({
   signer: new WatchSigner(address),
   client: {
     network: 'mainnet',
-    grpc: {
-      url: process.env.SUI_GRPC_ENDPOINT!
-    }
+    grpc: { client: grpcClient }
   }
 })
 
@@ -176,12 +189,11 @@ dryRun.effects?.status?.status
 For real execution, pass an authorized Sui SDK v2 signer from the connected
 wallet. Wallet methods return NAVI result DTOs.
 
-### Optional Suilend Adapter
+### If You Use Suilend Migration Paths
 
-`wallet-client` keeps Suilend enabled by default to preserve the previous
-cross-protocol migration behavior. The adapter is optional and lazy-loaded when
-the lending protocol registry initializes. The wallet root import does not load
-Suilend.
+This section only applies if your app uses wallet-client Suilend migration
+paths. `wallet-client` keeps Suilend enabled by default to preserve 1.x
+cross-protocol migration behavior.
 
 Install the optional peers only if your app uses Suilend migration paths:
 
@@ -196,9 +208,7 @@ const walletClient = new WalletClient({
   signer: new WatchSigner(address),
   client: {
     network: 'mainnet',
-    grpc: {
-      url: process.env.SUI_GRPC_ENDPOINT!
-    }
+    grpc: { client: grpcClient }
   },
   configs: {
     lending: {
@@ -237,12 +247,12 @@ compatibility/debugging.
 
 ## Bridge
 
-The Bridge v2 package keeps Mayan v2 internal to the Sui-source lazy provider.
-Root imports do not load Mayan, and apps should not install or parse Mayan
-internals.
+Bridge SDK uses Mayan v2 internally. Apps should use NAVI Bridge APIs directly
+and should not import Mayan or parse provider transaction internals.
 
 The business flow stays the same as v1: quote, route builder, wallet signature,
-source-chain execution, and status polling. The v2 package changes the SDK
+source-chain execution, and status polling. For Sui-source routes, pass a Sui
+SDK v2 provider and wallet `signTransaction`. The v2 package changes the SDK
 boundary, not route or amount semantics.
 
 ```ts
@@ -284,10 +294,10 @@ const tx = await swap(quote.routes[0], suiSenderAddress, evmRecipientAddress, wa
 const latest = await getTransaction(tx.id)
 ```
 
-Most Sui-source bridge routes build and execute with the same gRPC provider. If
-a provider-specific Mayan route needs a separate transaction build client, pass
-`walletConnection.sui.buildClient` explicitly. Execution and status waiting
-still use `walletConnection.sui.provider`.
+Most Sui-source bridge routes build and execute with the same gRPC provider. In
+rare provider-specific cases that need a separate transaction build client, pass
+`walletConnection.sui.buildClient` explicitly. Execution and status waiting use
+`walletConnection.sui.provider`.
 
 The SDK only overrides Sui bridge `gasBudget` when you explicitly pass
 `walletConnection.sui.gasBudget`.
