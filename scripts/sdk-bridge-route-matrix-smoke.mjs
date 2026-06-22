@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 const suiPackageRoot = new URL('../packages/lending/node_modules/@mysten/sui/', import.meta.url)
-const [{ SuiGrpcClient }, { SuiJsonRpcClient }, { Ed25519Keypair }] = await Promise.all([
-  import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
-  import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
-  import(new URL('./dist/keypairs/ed25519/index.mjs', suiPackageRoot))
-])
+const [{ GrpcWebFetchTransport, SuiGrpcClient }, { SuiJsonRpcClient }, { Ed25519Keypair }] =
+  await Promise.all([
+    import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
+    import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
+    import(new URL('./dist/keypairs/ed25519/index.mjs', suiPackageRoot))
+  ])
 
 const SUI = '0x2::sui::SUI'
 const SUI_CHAIN_ID = 1999
@@ -13,7 +14,9 @@ const SUI_CHAIN_ID = 1999
 const ROUTES = {
   'arbitrum-usdc': {
     label: 'Sui SUI -> Arbitrum USDC',
+    provider: 'Mayan',
     toChain: 42161,
+    toSymbol: 'USDC',
     amountEnv: 'NAVI_SMOKE_BRIDGE_ARBITRUM_AMOUNT',
     defaultAmount: '1',
     addressEnv: 'FE_E2E_BNB_ADDRESS',
@@ -22,7 +25,9 @@ const ROUTES = {
   },
   'solana-usdc': {
     label: 'Sui SUI -> Solana USDC',
+    provider: 'Mayan',
     toChain: 0,
+    toSymbol: 'USDC',
     amountEnv: 'NAVI_SMOKE_BRIDGE_SOLANA_AMOUNT',
     defaultAmount: '2',
     addressEnv: 'FE_E2E_SOL_ADDRESS',
@@ -86,10 +91,10 @@ function getClients() {
   const network = env('SUI_NETWORK') ?? 'mainnet'
   const grpc = new SuiGrpcClient({
     network,
-    baseUrl: normalizeGrpcBaseUrl(requireEnv('SUI_GRPC_ENDPOINT')),
-    fetchInit: {
-      headers: tokenHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
-    }
+    transport: new GrpcWebFetchTransport({
+      baseUrl: normalizeGrpcBaseUrl(requireEnv('SUI_GRPC_ENDPOINT')),
+      meta: tokenHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
+    })
   })
   const legacyJsonRpcUrl = env('SUI_JSON_RPC_URL')
   const legacyJsonRpc = legacyJsonRpcUrl
@@ -113,7 +118,7 @@ function findSuiToken(tokens) {
 }
 
 function findUsdcToken(tokens) {
-  return tokens.find((token) => token.symbol?.toUpperCase() === 'USDC') ?? tokens[0]
+  return tokens.find((token) => token.symbol?.toUpperCase() === 'USDC')
 }
 
 function assertSuccess(result, label) {
@@ -122,6 +127,38 @@ function assertSuccess(result, label) {
   const status = failed?.status ?? tx?.status ?? tx?.effects?.status
   if (failed || status?.success === false || status?.status === 'failure') {
     throw new Error(`${label} failed: ${String(status?.error ?? 'unknown status')}`)
+  }
+}
+
+function normalizeTokenAddress(address) {
+  return typeof address === 'string' ? address.toLowerCase() : address
+}
+
+function assertRouteMatches({ route, routeConfig, fromToken, toToken }) {
+  const fromChain = Number(route.from_token?.chainId)
+  const toChain = Number(route.to_token?.chainId)
+  const routeToSymbol = route.to_token?.symbol?.toUpperCase()
+  const expectedToSymbol = routeConfig.toSymbol.toUpperCase()
+  const routeFromAddress = normalizeTokenAddress(route.from_token?.address)
+  const expectedFromAddress = normalizeTokenAddress(fromToken.address)
+  const routeToAddress = normalizeTokenAddress(route.to_token?.address)
+  const expectedToAddress = normalizeTokenAddress(toToken.address)
+  const routeProvider = String(route.provider ?? '').toLowerCase()
+  const expectedProvider = routeConfig.provider.toLowerCase()
+
+  if (routeProvider !== expectedProvider) {
+    throw new Error(`${routeConfig.label}: route provider mismatch, got ${route.provider}`)
+  }
+  if (fromChain !== SUI_CHAIN_ID || toChain !== routeConfig.toChain) {
+    throw new Error(`${routeConfig.label}: route chain mismatch, got ${fromChain}->${toChain}`)
+  }
+  if (routeFromAddress !== expectedFromAddress) {
+    throw new Error(`${routeConfig.label}: route source token mismatch`)
+  }
+  if (routeToAddress !== expectedToAddress || routeToSymbol !== expectedToSymbol) {
+    throw new Error(
+      `${routeConfig.label}: route target token mismatch, got ${route.to_token?.chainId}:${route.to_token?.symbol}`
+    )
   }
 }
 
@@ -136,7 +173,7 @@ async function buildQuote(bridge, routeConfig) {
     throw new Error(`${routeConfig.label}: no SUI source token available`)
   }
   if (!toToken) {
-    throw new Error(`${routeConfig.label}: no target token available`)
+    throw new Error(`${routeConfig.label}: no ${routeConfig.toSymbol} target token available`)
   }
   const amount = env(routeConfig.amountEnv) ?? routeConfig.defaultAmount
   const quote = await bridge.getQuote(fromToken, toToken, amount, {
@@ -146,7 +183,8 @@ async function buildQuote(bridge, routeConfig) {
   if (!route) {
     throw new Error(`${routeConfig.label}: no route available`)
   }
-  return { amount, toToken, quote, route }
+  assertRouteMatches({ route, routeConfig, fromToken, toToken })
+  return { amount, fromToken, toToken, quote, route }
 }
 
 function resolveDestination(routeConfig) {
@@ -156,12 +194,9 @@ function resolveDestination(routeConfig) {
 async function simulateRoute({ bridge, clients, wallet, key, routeConfig }) {
   const destination = resolveDestination(routeConfig)
   if (!destination) {
-    return {
-      key,
-      label: routeConfig.label,
-      status: 'skipped',
-      reason: `missing env key: ${routeConfig.overrideAddressEnv} or ${routeConfig.addressEnv}`
-    }
+    throw new Error(
+      `${routeConfig.label}: missing env key ${routeConfig.overrideAddressEnv} or ${routeConfig.addressEnv}`
+    )
   }
   if (routeConfig.buildClientMode === 'legacyJsonRpc' && !clients.legacyJsonRpc) {
     throw new Error(
@@ -213,6 +248,12 @@ async function simulateRoute({ bridge, clients, wallet, key, routeConfig }) {
       }
     }
   })
+  if (captured.bytesLength <= 0) {
+    throw new Error(`${routeConfig.label}: signed transaction bytes were not captured`)
+  }
+  if (captured.signatures !== 1) {
+    throw new Error(`${routeConfig.label}: expected one signature, captured ${captured.signatures}`)
+  }
 
   return {
     key,

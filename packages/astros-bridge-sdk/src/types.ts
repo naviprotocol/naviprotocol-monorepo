@@ -220,26 +220,33 @@ export type NaviBridgeSuiNetwork = 'mainnet' | 'testnet' | 'devnet'
 
 export type NaviBridgeSuiCoreApi = {
   getMoveFunction(options: any): Promise<any>
+  getObjects(options: any): Promise<any>
+  getBalance(options: any): Promise<any>
   listCoins(options: any): Promise<any>
   getObject(options: any): Promise<any>
-}
-
-export type NaviBridgeSuiProvider = {
-  network?: string
-  core: NaviBridgeSuiCoreApi
-  executeTransaction(options: any): Promise<any>
-  waitForTransaction(options: any): Promise<any>
+  getCurrentSystemState(options?: any): Promise<any>
+  getChainIdentifier(options?: any): Promise<any>
+  simulateTransaction(options: any): Promise<any>
+  resolveTransactionPlugin?(): any
 }
 
 export type NaviBridgeSuiBuildClient = {
   core: NaviBridgeSuiCoreApi
 }
 
+export type NaviBridgeSuiProvider = NaviBridgeSuiBuildClient & {
+  network?: string
+  executeTransaction(options: any): Promise<any>
+  waitForTransaction(options: any): Promise<any>
+}
+
 type SuiWalletConnectionBase = {
   /**
    * Optional explicit build client for third-party Sui transaction builders.
    * This is intended for compatibility with Mayan routes that still fail Sui v2
-   * gRPC/Core transaction resolution; execution stays on `provider`.
+   * gRPC/Core transaction resolution. Pass a full explicit `legacyJsonRpc`
+   * client here only for that documented internal adapter boundary; execution,
+   * waiting, and SDK-level simulation stay on `provider`.
    */
   buildClient?: NaviBridgeSuiBuildClient
   gasBudget?: number

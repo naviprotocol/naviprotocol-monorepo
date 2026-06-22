@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
 const suiPackageRoot = new URL('../packages/lending/node_modules/@mysten/sui/', import.meta.url)
-const [{ SuiGrpcClient }, { SuiGraphQLClient }, { SuiJsonRpcClient }, { Transaction }] =
-  await Promise.all([
-    import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
-    import(new URL('./dist/graphql/index.mjs', suiPackageRoot)),
-    import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
-    import(new URL('./dist/transactions/index.mjs', suiPackageRoot))
-  ])
+const [
+  { GrpcWebFetchTransport, SuiGrpcClient },
+  { SuiGraphQLClient },
+  { SuiJsonRpcClient },
+  { Transaction }
+] = await Promise.all([
+  import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
+  import(new URL('./dist/graphql/index.mjs', suiPackageRoot)),
+  import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
+  import(new URL('./dist/transactions/index.mjs', suiPackageRoot))
+])
 
 const DEFAULT_SUI_COIN_TYPE = '0x2::sui::SUI'
 
@@ -55,10 +59,10 @@ async function runGrpcSmoke() {
 
   const client = new SuiGrpcClient({
     network: env('SUI_NETWORK') ?? 'mainnet',
-    baseUrl: normalizeGrpcBaseUrl(endpoint),
-    fetchInit: {
-      headers: authHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
-    }
+    transport: new GrpcWebFetchTransport({
+      baseUrl: normalizeGrpcBaseUrl(endpoint),
+      meta: authHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
+    })
   })
 
   const balances = await client.core.listBalances({ owner, limit: 10 })

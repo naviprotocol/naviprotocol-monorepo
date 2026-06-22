@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   getAddressBalance,
   getCoinObjectOnlyBalance,
+  createNaviSuiClientBundle,
   listAddressBalances,
   NaviMissingGraphQLClientError,
   normalizeAddressBalance,
@@ -92,6 +93,50 @@ describe('Address Balances', () => {
     expect(coinObjectOnlyBalance).toBe('100')
     expect(coinObjectOnlyBalance).not.toBe(balance.totalBalance)
   })
+
+  it('maps v2 Core listBalances cursor while forwarding cursor and limit options', async () => {
+    const listBalances = vi.fn(async () => ({
+      balances: [
+        {
+          coinType: '0x2::sui::SUI',
+          balance: '200',
+          coinBalance: '150',
+          addressBalance: '50'
+        }
+      ],
+      cursor: 'next-v2-cursor',
+      hasNextPage: true
+    }))
+    const client = {
+      core: {
+        getBalance: vi.fn(),
+        listBalances
+      }
+    }
+
+    await expect(
+      listAddressBalances(client, {
+        owner: '0xowner',
+        cursor: 'current-v2-cursor',
+        limit: 1
+      })
+    ).resolves.toEqual({
+      balances: [
+        {
+          coinType: NORMALIZED_SUI_COIN_TYPE,
+          totalBalance: '200',
+          coinBalance: '150',
+          addressBalance: '50'
+        }
+      ],
+      nextCursor: 'next-v2-cursor'
+    })
+    expect(listBalances).toHaveBeenCalledWith({
+      owner: '0xowner',
+      cursor: 'current-v2-cursor',
+      limit: 1
+    })
+  })
 })
 
 describe('GraphQL capability guard', () => {
@@ -119,5 +164,28 @@ describe('GraphQL capability guard', () => {
         'sui-native-history'
       )
     ).toBe(graphql)
+  })
+})
+
+describe('NaviSuiClientOptions', () => {
+  it('passes grpc.headers as grpc-web metadata for private providers', () => {
+    const bundle = createNaviSuiClientBundle({
+      network: 'mainnet',
+      grpc: {
+        url: 'https://grpc.example',
+        headers: {
+          'x-token': 'redacted'
+        }
+      }
+    })
+
+    const transport = (bundle.grpc as any).stateService?._transport
+
+    expect(transport?.defaultOptions).toMatchObject({
+      baseUrl: 'https://grpc.example',
+      meta: {
+        'x-token': 'redacted'
+      }
+    })
   })
 })

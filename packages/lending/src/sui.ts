@@ -1,7 +1,7 @@
 import type { CoinStruct } from '@mysten/sui/jsonRpc'
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
-import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import type { NaviSdkServiceOptions } from './services'
 
@@ -86,7 +86,9 @@ type NaviBalanceCore = {
   getBalance(options: any): Promise<{ balance?: SuiAddressBalanceLike } | SuiAddressBalanceLike>
   listBalances(options: any): Promise<{
     balances?: SuiAddressBalanceLike[]
+    cursor?: string | null
     nextCursor?: string | null
+    hasNextPage?: boolean
   }>
 }
 
@@ -196,12 +198,15 @@ export async function getAddressBalance(
   return normalizeAddressBalance(balance ?? {}, options.coinType)
 }
 
-export async function listAddressBalances(client: NaviCoreClient, options: { owner: string }) {
-  const { balances = [], nextCursor = null } =
-    await getCoreBalanceClient(client).listBalances(options)
+export async function listAddressBalances(
+  client: NaviCoreClient,
+  options: { owner: string; cursor?: string | null; limit?: number }
+) {
+  const response = await getCoreBalanceClient(client).listBalances(options)
+  const { balances = [] } = response
   return {
     balances: balances.map((balance) => normalizeAddressBalance(balance)),
-    nextCursor
+    nextCursor: response.nextCursor ?? response.cursor ?? null
   }
 }
 
@@ -209,12 +214,15 @@ function createGrpcClient(network: NaviSuiNetwork, grpc: NaviSuiGrpcOptions): Na
   if ('client' in grpc) {
     return grpc.client
   }
-  return new SuiGrpcClient({
-    network,
+  const transport = new GrpcWebFetchTransport({
     baseUrl: grpc.url,
     meta: grpc.headers,
     fetchInit: grpc.fetchInit,
     fetch: grpc.fetch
+  })
+  return new SuiGrpcClient({
+    network,
+    transport
   })
 }
 

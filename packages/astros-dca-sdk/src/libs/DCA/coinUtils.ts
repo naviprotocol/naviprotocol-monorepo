@@ -65,6 +65,14 @@ export async function getCoins(
   }
 }
 
+function getCoinObjectId(coin: { coinObjectId?: string; objectId?: string }) {
+  const objectId = coin.coinObjectId ?? coin.objectId
+  if (!objectId) {
+    throw new Error('Coin object is missing coinObjectId/objectId')
+  }
+  return objectId
+}
+
 /**
  * Merge coins and return a merged coin object in PTB
  * @param tx - Transaction to build
@@ -83,13 +91,13 @@ export function returnMergedCoins(tx: Transaction, coinInfo: any) {
 
   // Merge all coins into the largest one if there are multiple coins
   if (sortedCoins.length >= 2) {
-    const baseObj = sortedCoins[0].coinObjectId
-    const allList = sortedCoins.slice(1).map((coin: any) => coin.coinObjectId)
+    const baseObj = getCoinObjectId(sortedCoins[0])
+    const allList = sortedCoins.slice(1).map(getCoinObjectId)
     tx.mergeCoins(baseObj, allList)
   }
 
   // Return the merged coin object
-  const mergedCoinObject = tx.object(sortedCoins[0].coinObjectId)
+  const mergedCoinObject = tx.object(getCoinObjectId(sortedCoins[0]))
   return mergedCoinObject
 }
 

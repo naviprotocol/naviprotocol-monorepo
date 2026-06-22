@@ -1,83 +1,110 @@
 # Sui SDK v2 Acceptance
 
-Last updated: 2026-06-08
+Last updated: 2026-06-22
 
 ## Current Status
 
-The SDK code is in a PR-ready state for review, but not final release-ready
-until live smoke blockers are closed or explicitly accepted.
+The SDK package migration is SDK-level acceptance ready for review. The release
+main paths now use explicit Sui v2 gRPC/Core clients, GraphQL is covered as an
+optional capability, and remaining JSON-RPC usage is limited to explicit
+`legacyJsonRpc` compatibility or documented third-party adapter boundaries.
 
-| Area                       | Status                       | Evidence                                                                                                           |
-| -------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| SDK package build          | Passed                       | `lending`, `wallet-client`, `astros-aggregator-sdk`, `astros-bridge-sdk`, and `astros-dca-sdk` build successfully. |
-| SDK package tests          | Passed                       | Default deterministic tests pass for the target SDK packages.                                                      |
-| Type compatibility         | Passed                       | Type tests pass for packages that expose `test:types`; Bridge has no `test:types` script.                          |
-| SDK v2 boundary scan       | Passed                       | Root bundles and public declarations pass the Sui v2 boundary script.                                              |
-| Suilend v3 adapter         | Passed with live-read caveat | Adapter unit tests pass; live Suilend initialization succeeds after scoping the test fetch shim.                   |
-| Bridge Mayan lazy boundary | Passed                       | Mayan/Sui v1 are limited to Bridge lazy artifacts and tests.                                                       |
-| Aggregator execute DTO     | Passed                       | Execute result preserves normalized fields, passthrough fields, and `raw`.                                         |
-| Live smoke                 | Blocked                      | Current public fixtures/routes/account states are not stable enough for a full green run.                          |
+Cross-repo open-api and Copilot validation remains a separate integration gate
+because those repos can have their own baseline or UI parity failures.
 
-## Latest Deterministic Verification
+| Area                     | Status | Evidence                                                                                                                                                                                                                                                                                |
+| ------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SDK package build        | Passed | `pnpm build` passed for `lending`, `wallet-client`, `astros-aggregator-sdk`, `astros-bridge-sdk`, `astros-dca-sdk`, and docs. Docs still emit existing typedoc/Next warnings.                                                                                                           |
+| SDK package tests        | Passed | `pnpm test` passed: Aggregator 6 passed / 1 skipped, Bridge 16 passed, DCA 11 passed, Lending 53 passed / 51 skipped, Wallet 20 passed / 25 skipped.                                                                                                                                    |
+| Type compatibility       | Passed | `test:types` passed for Aggregator, DCA, Lending, and Wallet. Bridge has no `test:types` script; its package build generated declarations successfully.                                                                                                                                 |
+| SDK v2 boundary scan     | Passed | `pnpm test:sdk-v2-boundaries` passed after build output generation.                                                                                                                                                                                                                     |
+| gRPC / GraphQL transport | Passed | `pnpm smoke:sui-v2-transport` covered gRPC `listBalances/getBalance/listCoins/getObject/simulateTransaction`, GraphQL balance/history, and explicit legacy JSON-RPC `getBalance`.                                                                                                       |
+| Core live simulate smoke | Passed | `pnpm smoke:sdk-core-live` passed transport, wallet self-transfer simulate, lending deposit simulate, aggregator swap simulate, DCA create-order simulate, and Bridge quote.                                                                                                            |
+| Mayan v2 route matrix    | Passed | `pnpm smoke:sdk-bridge-routes` passed Sui -> Arbitrum USDC with gRPC build client and Sui -> Solana USDC with explicit `legacyJsonRpc` build client, then gRPC/Core simulation of signed bytes. The gate asserts Mayan provider, route token/chain, non-empty bytes, and one signature. |
+| Real execute smoke       | Passed | Small mainnet executes were completed for wallet, lending, aggregator, DCA, and bridge source transaction; see digest list below.                                                                                                                                                       |
 
-Run these gates before merging a release candidate:
+## Latest Verification
+
+Deterministic gates run on 2026-06-22:
 
 ```bash
-pnpm --filter @naviprotocol/lending build
-pnpm --filter @naviprotocol/wallet-client build
-pnpm --filter @naviprotocol/astros-aggregator-sdk build
-pnpm --filter @naviprotocol/astros-bridge-sdk build
-pnpm --filter @naviprotocol/astros-dca-sdk build
-pnpm run test:sdk-v2-boundaries
+pnpm test
+pnpm build
+pnpm test:sdk-v2-boundaries
+pnpm --filter @naviprotocol/astros-aggregator-sdk test:types
+pnpm --filter @naviprotocol/astros-dca-sdk test:types
+pnpm --filter @naviprotocol/lending test:types
+pnpm --filter @naviprotocol/wallet-client test:types
 ```
 
-The current branch has already passed the target package builds, deterministic
-package tests, type compatibility tests where defined, and the SDK v2 boundary
-scan. Targeted tests also cover Suilend adapter lazy loading, Bridge Mayan lazy
-loading, Bridge legacy bytes parsing, Aggregator transaction result
-normalization, and lending live PTB oracle-await behavior.
+Live provider gates run on 2026-06-22 with public mainnet endpoints:
 
-## Live Smoke Result
+```bash
+SUI_NETWORK=mainnet \
+SUI_GRPC_ENDPOINT=fullnode.mainnet.sui.io:443 \
+SUI_JSON_RPC_URL=https://fullnode.mainnet.sui.io:443 \
+SUI_GRAPHQL_URL=https://graphql.mainnet.sui.io/graphql \
+SUI_SMOKE_ADDRESS=0x439f285f559997df4b4ad42c282581b1ca991631ab020a29c8031a0849b7e30f \
+pnpm smoke:sui-v2-transport
 
-The latest no-broadcast live smoke used `NAVI_LIVE_TESTS=1` and covered lending,
-wallet-client, and aggregator read/dry-run paths. It did not perform real
-wallet signatures or source-chain broadcasts.
+SUI_NETWORK=mainnet \
+SUI_GRPC_ENDPOINT=fullnode.mainnet.sui.io:443 \
+SUI_JSON_RPC_URL=https://fullnode.mainnet.sui.io:443 \
+SUI_GRAPHQL_URL=https://graphql.mainnet.sui.io/graphql \
+pnpm smoke:sdk-core-live
 
-| Package                               | Result               | Blocking failures                                                                                        |
-| ------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| `@naviprotocol/lending`               | 31 passed / 1 failed | `repayCoinPTB` dry-run aborts with `MoveAbort 1602`, which depends on the current test account state.    |
-| `@naviprotocol/wallet-client`         | 12 passed / 8 failed | Test wallet balance/position gaps, old migration route API `404`, and repay dry-run account-state abort. |
-| `@naviprotocol/astros-aggregator-sdk` | 4 passed / 1 failed  | DEEP -> SUI DeepBook live quote API currently returns `400`.                                             |
+SUI_NETWORK=mainnet \
+SUI_GRPC_ENDPOINT=fullnode.mainnet.sui.io:443 \
+SUI_JSON_RPC_URL=https://fullnode.mainnet.sui.io:443 \
+pnpm smoke:sdk-bridge-routes
+```
 
-Important Suilend finding: the earlier `Protocol suilend not found` live failure
-was caused by the test fetch shim adding NAVI web headers to Sui fullnode gRPC
-requests. The shim now applies those headers only to NAVI domains. After that,
-Suilend initializes and reads pool data; the remaining cross-protocol failures
-are aggregator route API failures.
+## Real Execute Evidence
 
-## Risk Classification
+These small mainnet execute gates were run with the test wallet private key read
+from env and never printed:
 
-| Risk                                                                     | Classification                           | Release impact                                                                                         |
-| ------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Deterministic SDK tests fail                                             | Blocking                                 | Not currently present.                                                                                 |
-| Public API leaks old Sui v1 types                                        | Blocking                                 | Not currently present.                                                                                 |
-| Root bundle loads Mayan/Sui v1 or Suilend                                | Blocking                                 | Not currently present.                                                                                 |
-| Live smoke fails because current fixture wallet lacks balances/positions | Acceptance blocker                       | Needs updated fixtures or explicit acceptance.                                                         |
-| Live smoke fails because route API returns 400/404 for old pairs         | Acceptance blocker / external dependency | Needs current valid route fixtures or aggregator owner confirmation.                                   |
-| Repay dry-run aborts for current account state                           | Acceptance blocker                       | Needs a wallet fixture with expected borrow/debt state or a test expectation update.                   |
-| Frontend-owned third-party packages still carry Sui v1 paths             | Outside SDK package ownership            | Must be handled by frontend/open-api/protocol owners before claiming clean full-app Sui v2 acceptance. |
+| Package                               | Action                                           | Digest                                         |
+| ------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `@naviprotocol/wallet-client`         | 1 MIST SUI self-transfer                         | `2UuNTqbNniTBp7TxAPEbdWfMyY1GLGNw2T99hc6XVnMP` |
+| `@naviprotocol/lending`               | 10,000,000 MIST SUI deposit                      | `D8v2H7tapMAjAFeB2a5j7ddPzRB7r4sTAKqsbVxxT7EB` |
+| `@naviprotocol/astros-aggregator-sdk` | 10,000,000 MIST SUI -> NAVX swap                 | `3PwZS6VDvB3q1Q7XNERp97idyqS9bSAkspRzw9wzEi39` |
+| `@naviprotocol/astros-dca-sdk`        | 10,000,000 MIST DCA order creation               | `3dQrcD9ixdugnGxJTVrMaAWRi6zm3HkvrHt4zQwroUjP` |
+| `@naviprotocol/astros-bridge-sdk`     | Mayan v2 Sui -> Arbitrum USDC source transaction | `5jUwMv78rj4fuw5yHnozN8RiQSRUv91jL3pXrujEqDAv` |
 
-## Release Decision
+The bridge transaction reached Mayan completed status with destination
+transaction `0x1425b783c97d247bc9f98e5ba353eb6f915aad1d39cd4024c5949d82083f6232`.
 
-The SDK branch can continue through PR review because the code-level gates that
-protect integration cost and Sui v2 boundaries pass.
+## Review Closure Items
 
-Do not mark the beta as fully releasable until one of these is true:
+The 2026-06-22 cross-review found and closed these SDK-level migration risks:
 
-1. live smoke passes with controlled RPC, valid route fixtures, and funded
-   golden wallets; or
-2. product/engineering accepts the listed live blockers as non-SDK blockers and
-   records owner, impact, and follow-up plan.
+- gRPC token headers were not passed as grpc-web metadata. `NaviSuiClientOptions.grpc.headers`
+  and smoke scripts now construct `GrpcWebFetchTransport({ meta })`.
+- Mayan Bridge route matrix could previously skip or validate the wrong target.
+  It now requires destination addresses, requires target USDC, and asserts
+  Mayan provider, route source/destination chain and token, non-empty
+  transaction bytes, and one signature.
+- Bridge Sui execution now normalizes v2 Core and legacy-compatible execution
+  result shapes, and waits by digest instead of passing a transport-specific
+  result object back into `waitForTransaction`.
+- DCA non-SUI funding now supports Core `listCoins` objects that expose
+  `objectId` instead of legacy `coinObjectId`.
+- Pyth helper now parses normalized Core table types such as
+  `0x000...0002::table::Table<...>` instead of hard-coding `0x2`.
+- Address Balances now forwards `cursor` / `limit` and maps Core `cursor` back
+  to the SDK `nextCursor` shape.
+
+## Residual Risks
+
+- Bridge Sui -> Solana USDC still requires explicit `legacyJsonRpc` as the
+  Mayan third-party build client for route construction. This is an internal
+  third-party adapter boundary; signing, simulation, and execution stay on the
+  injected v2 provider.
+- open-api and Copilot tarball parity are cross-repo integration gates. They
+  should be rerun with the latest SDK tarball before release tagging.
+- Real bridge execute is cross-chain and fee-sensitive. Keep it behind exact
+  action approval and `NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE=1`.
 
 ## Acceptance Checklist
 
@@ -85,9 +112,14 @@ Do not mark the beta as fully releasable until one of these is true:
 - [x] SDK public entry points use Sui SDK v2 imports.
 - [x] Old Sui v1 public types are blocked by boundary scan.
 - [x] `lending` main path does not depend on `pyth-sui-js`.
+- [x] Pyth helper read path supports Core API.
 - [x] Suilend is v3, optional, and lazy.
-- [x] Bridge Mayan/Sui v1 implementation is internal and lazy.
+- [x] Bridge uses Mayan v2 and has no `@mysten/sui-v1` alias.
 - [x] Bridge Sui path preserves caller gas semantics unless `gasBudget` is set.
 - [x] Aggregator execute result is a backward-compatible superset.
-- [ ] Live smoke has a stable, green fixture set.
-- [ ] Frontend/open-api owners close or accept remaining non-SDK Sui v1 paths.
+- [x] Address Balances cover total, coin-object, and address balance semantics.
+- [x] gRPC, GraphQL, and explicit legacy JSON-RPC provider smoke pass.
+- [x] Mayan v2 Sui-source route build/sign/Core simulate passes for gRPC and
+      explicit `legacyJsonRpc` route construction.
+- [x] Small real execute smoke passed for each SDK release package core flow.
+- [ ] Repack latest SDK tarballs and rerun open-api / Copilot integration gates.

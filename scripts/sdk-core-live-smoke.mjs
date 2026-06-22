@@ -2,7 +2,7 @@
 
 const suiPackageRoot = new URL('../packages/lending/node_modules/@mysten/sui/', import.meta.url)
 const [
-  { SuiGrpcClient },
+  { GrpcWebFetchTransport, SuiGrpcClient },
   { SuiGraphQLClient },
   { SuiJsonRpcClient },
   { Ed25519Keypair },
@@ -142,8 +142,10 @@ function getClients() {
 
   const grpc = new SuiGrpcClient({
     network,
-    baseUrl: grpcEndpoint,
-    fetchInit: grpcHeaders ? { headers: grpcHeaders } : undefined
+    transport: new GrpcWebFetchTransport({
+      baseUrl: grpcEndpoint,
+      meta: grpcHeaders
+    })
   })
   const graphql = graphqlUrl
     ? new SuiGraphQLClient({

@@ -27,6 +27,7 @@ enum BridgeChain {
 
 type SuiExecutionResponse = {
   $kind?: 'Transaction' | 'FailedTransaction'
+  digest?: string
   Transaction?: {
     digest: string
     status?: {
@@ -41,6 +42,11 @@ type SuiExecutionResponse = {
       error?: unknown
     }
   }
+  status?: {
+    success?: boolean
+    status?: string
+    error?: unknown
+  }
 }
 
 function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
@@ -53,52 +59,106 @@ function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
   return parseUnits(String(mayanQuote.effectiveAmountIn), decimals)
 }
 
+function getSuiExecutionTransaction(resp: SuiExecutionResponse) {
+  return resp.Transaction ?? resp.FailedTransaction ?? (resp.digest ? resp : undefined)
+}
+
 function assertSuiExecutionSuccess(resp: SuiExecutionResponse) {
-  const transaction = resp.Transaction ?? resp.FailedTransaction
+  const transaction = getSuiExecutionTransaction(resp)
   if (!transaction?.digest) {
     throw new Error('Sui bridge source transaction did not return a digest')
   }
 
-  if (resp.$kind === 'FailedTransaction' || transaction.status?.success === false) {
+  const status = transaction.status as
+    | {
+        success?: boolean
+        status?: string
+        error?: unknown
+      }
+    | undefined
+  const failed =
+    resp.$kind === 'FailedTransaction' || status?.success === false || status?.status === 'failure'
+  if (failed) {
     throw new Error(
-      `Sui bridge source transaction failed: ${String(transaction.status?.error ?? 'unknown status')}`
+      `Sui bridge source transaction failed: ${String(status?.error ?? 'unknown status')}`
     )
   }
 }
 
 function getSuiExecutionDigest(resp: SuiExecutionResponse) {
-  const digest = resp.Transaction?.digest ?? resp.FailedTransaction?.digest
+  const digest = getSuiExecutionTransaction(resp)?.digest
   if (!digest) {
     throw new Error('Sui bridge source transaction did not return a digest')
   }
   return digest
 }
 
-function assertSuiBridgeProvider(client: unknown): asserts client is {
+function assertSuiBuildClient(
+  client: unknown,
+  label = 'Sui bridge build client'
+): asserts client is {
   core: {
     getMoveFunction(options: any): Promise<any>
+    getObjects(options: any): Promise<any>
+    getBalance(options: any): Promise<any>
     listCoins(options: any): Promise<any>
     getObject(options: any): Promise<any>
+    getCurrentSystemState(options?: any): Promise<any>
+    getChainIdentifier(options?: any): Promise<any>
+    simulateTransaction(options: any): Promise<any>
   }
-  executeTransaction(options: any): Promise<any>
-  waitForTransaction(options: any): Promise<any>
 } {
   const provider = client as {
     core?: Record<string, unknown>
-    executeTransaction?: unknown
-    waitForTransaction?: unknown
   }
   const missing: string[] = []
 
   if (!provider?.core || typeof provider.core !== 'object') {
     missing.push('core')
   } else {
-    for (const method of ['getMoveFunction', 'listCoins', 'getObject'] as const) {
+    for (const method of [
+      'getMoveFunction',
+      'getObjects',
+      'getBalance',
+      'listCoins',
+      'getObject',
+      'getCurrentSystemState',
+      'getChainIdentifier',
+      'simulateTransaction'
+    ] as const) {
       if (typeof provider.core[method] !== 'function') {
         missing.push(`core.${method}`)
       }
     }
   }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `${label} must implement the Sui SDK v2 Core API required by Transaction.build: missing ${missing.join(', ')}`
+    )
+  }
+}
+
+function assertSuiBridgeProvider(client: unknown): asserts client is {
+  core: {
+    getMoveFunction(options: any): Promise<any>
+    getObjects(options: any): Promise<any>
+    getBalance(options: any): Promise<any>
+    listCoins(options: any): Promise<any>
+    getObject(options: any): Promise<any>
+    getCurrentSystemState(options?: any): Promise<any>
+    getChainIdentifier(options?: any): Promise<any>
+    simulateTransaction(options: any): Promise<any>
+  }
+  executeTransaction(options: any): Promise<any>
+  waitForTransaction(options: any): Promise<any>
+} {
+  assertSuiBuildClient(client, 'Sui bridge provider')
+  const provider = client as {
+    executeTransaction?: unknown
+    waitForTransaction?: unknown
+  }
+  const missing: string[] = []
 
   for (const method of ['executeTransaction', 'waitForTransaction'] as const) {
     if (typeof provider?.[method] !== 'function') {
@@ -146,6 +206,7 @@ export async function swap(
     const client = connection.provider
     assertSuiBridgeProvider(client)
     const buildClient = connection.buildClient ?? client
+    assertSuiBuildClient(buildClient)
     const swapTrx = await createSwapFromSuiMoveCalls(
       mayanQuote,
       fromAddress,
@@ -178,7 +239,7 @@ export async function swap(
     assertSuiExecutionSuccess(resp)
     hash = getSuiExecutionDigest(resp)
     await client.waitForTransaction({
-      result: resp,
+      digest: hash,
       include: {
         effects: true
       }

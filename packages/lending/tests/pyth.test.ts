@@ -209,4 +209,113 @@ describe('SuiPythClient', () => {
     expect(splitCoinCommands[0].amounts).toHaveLength(1)
     expect(fetchMock).toHaveBeenCalledOnce()
   })
+
+  it('parses normalized Core price table types before fetching price feed dynamic fields', async () => {
+    const pythStateId = `0x${'1'.repeat(64)}`
+    const wormholeStateId = `0x${'2'.repeat(64)}`
+    const pythPackageId = `0x${'3'.repeat(64)}`
+    const wormholePackageId = `0x${'4'.repeat(64)}`
+    const priceTableId = `0x${'5'.repeat(64)}`
+    const priceInfoObjectId = `0x${'6'.repeat(64)}`
+    const normalizedSystemPackage = `0x${'0'.repeat(63)}2`
+    const feedId = `0x${'b'.repeat(64)}`
+    const accumulatorMessage = Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3])
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              binary: {
+                encoding: 'base64',
+                data: [btoa(String.fromCharCode(...Array.from(accumulatorMessage)))]
+              }
+            })
+          )
+      )
+    )
+
+    const provider = {
+      core: {
+        getObject: vi.fn(async ({ objectId }: { objectId: string }) => {
+          if (objectId === pythStateId) {
+            return {
+              object: {
+                objectId,
+                json: {
+                  base_update_fee: '7',
+                  upgrade_cap: {
+                    fields: {
+                      package: pythPackageId
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (objectId === wormholeStateId) {
+            return {
+              object: {
+                objectId,
+                json: {
+                  upgrade_cap: {
+                    fields: {
+                      package: wormholePackageId
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          throw new Error(`unexpected object id ${objectId}`)
+        }),
+        getDynamicObjectField: vi.fn(
+          async ({ parentId, name }: { parentId: string; name: { type: string } }) => {
+            if (parentId === pythStateId) {
+              expect(name.type).toBe('vector<u8>')
+              return {
+                object: {
+                  objectId: priceTableId,
+                  type: `${normalizedSystemPackage}::table::Table<${pythPackageId}::price_identifier::PriceIdentifier, ${normalizedSystemPackage}::object::ID>`
+                }
+              }
+            }
+
+            if (parentId === priceTableId) {
+              expect(name.type).toBe(`${pythPackageId}::price_identifier::PriceIdentifier`)
+              return {
+                object: {
+                  objectId: priceInfoObjectId,
+                  json: {
+                    value: priceInfoObjectId
+                  }
+                }
+              }
+            }
+
+            throw new Error(`unexpected dynamic field parent ${parentId}`)
+          }
+        )
+      }
+    }
+
+    const tx = new Transaction()
+    const connection = new SuiPriceServiceConnection('https://hermes.pyth.network')
+    const updates = await connection.getPriceFeedsUpdateData([feedId])
+    const client = new SuiPythClient(provider as any, pythStateId, wormholeStateId)
+    const updatedObjects = await client.updatePriceFeeds(tx, updates, [feedId])
+
+    expect(updatedObjects).toEqual([priceInfoObjectId])
+    expect(provider.core.getObject).toHaveBeenCalledWith({
+      objectId: pythStateId,
+      include: { json: true }
+    })
+    expect(provider.core.getObject).toHaveBeenCalledWith({
+      objectId: wormholeStateId,
+      include: { json: true }
+    })
+  })
 })

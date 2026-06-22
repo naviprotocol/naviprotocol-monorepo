@@ -129,7 +129,7 @@ describe('DCA PTB builders', () => {
           .mockResolvedValueOnce({
             objects: [
               {
-                coinObjectId: objectId,
+                objectId,
                 balance: '1000'
               }
             ],
@@ -139,7 +139,7 @@ describe('DCA PTB builders', () => {
           .mockResolvedValueOnce({
             objects: [
               {
-                coinObjectId: `0x${'6'.repeat(64)}`,
+                objectId: `0x${'6'.repeat(64)}`,
                 balance: '500'
               }
             ],
@@ -166,6 +166,42 @@ describe('DCA PTB builders', () => {
       limit: 100
     })
     expect(client.getCoins).not.toHaveBeenCalled()
+  })
+
+  it('merges and splits Core API coins that expose objectId instead of coinObjectId', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [
+            {
+              objectId,
+              balance: '1000'
+            },
+            {
+              objectId: `0x${'6'.repeat(64)}`,
+              balance: '500'
+            }
+          ],
+          cursor: null,
+          hasNextPage: false
+        }))
+      },
+      getCoins: vi.fn()
+    }
+    const tx = new Transaction()
+
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 100)
+
+    const data = tx.getData() as any
+    expect(client.core.listCoins).toHaveBeenCalledWith({
+      owner: userAddress,
+      coinType: '0x2::test::COIN',
+      cursor: null,
+      limit: 100
+    })
+    expect(client.getCoins).not.toHaveBeenCalled()
+    expect(JSON.stringify(data)).toContain('MergeCoins')
+    expect(JSON.stringify(data)).toContain('SplitCoins')
   })
 
   it('rejects non-SUI DCA funding when balance is insufficient', async () => {

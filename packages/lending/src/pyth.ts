@@ -107,6 +107,46 @@ function encodePriceIdentifier(bytes: Uint8Array) {
     .toBytes()
 }
 
+function splitTopLevelTypeArgs(args: string) {
+  const parts: string[] = []
+  let depth = 0
+  let start = 0
+
+  for (let index = 0; index < args.length; index += 1) {
+    const char = args[index]
+    if (char === '<') {
+      depth += 1
+    } else if (char === '>') {
+      depth -= 1
+    } else if (char === ',' && depth === 0) {
+      parts.push(args.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+
+  parts.push(args.slice(start).trim())
+  return parts
+}
+
+function getPythPackageIdFromPriceTableType(type: string) {
+  const tablePrefix = '::table::Table'
+  const tableIndex = type.indexOf(tablePrefix)
+  const argsStart = type.indexOf('<', tableIndex)
+  const argsEnd = type.lastIndexOf('>')
+  const priceIdentifierSuffix = '::price_identifier::PriceIdentifier'
+
+  if (tableIndex < 0 || argsStart < 0 || argsEnd <= argsStart) {
+    throw new Error(`Unexpected Pyth price table type: ${type}`)
+  }
+
+  const [keyType, valueType] = splitTopLevelTypeArgs(type.slice(argsStart + 1, argsEnd))
+  if (!keyType?.endsWith(priceIdentifierSuffix) || !valueType?.endsWith('::object::ID')) {
+    throw new Error(`Unexpected Pyth price table type arguments: ${type}`)
+  }
+
+  return keyType.slice(0, -priceIdentifierSuffix.length)
+}
+
 function base64ToBytes(value: string) {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0))
 }
@@ -450,11 +490,9 @@ export class SuiPythClient {
       if (!result?.type) {
         throw new Error('Price Table not found, contract may not be initialized')
       }
-      let type = result.type.replace('0x2::table::Table<', '')
-      type = type.replace('::price_identifier::PriceIdentifier, 0x2::object::ID>', '')
       this.priceTableInfo = {
         id: result.objectId,
-        fieldType: type
+        fieldType: getPythPackageIdFromPriceTableType(result.type)
       }
     }
     return this.priceTableInfo

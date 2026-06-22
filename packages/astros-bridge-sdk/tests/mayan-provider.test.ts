@@ -44,8 +44,13 @@ const signedBytes = 'AQID'
 function createSuiCoreApi() {
   return {
     getMoveFunction: vi.fn(),
+    getObjects: vi.fn(),
+    getBalance: vi.fn(),
     listCoins: vi.fn(),
-    getObject: vi.fn()
+    getObject: vi.fn(),
+    getCurrentSystemState: vi.fn(),
+    getChainIdentifier: vi.fn(),
+    simulateTransaction: vi.fn()
   }
 }
 
@@ -158,9 +163,7 @@ describe('mayan provider', () => {
       }
     })
     expect(client.waitForTransaction).toHaveBeenCalledWith({
-      result: expect.objectContaining({
-        Transaction: expect.objectContaining({ digest })
-      }),
+      digest,
       include: {
         effects: true
       }
@@ -195,7 +198,7 @@ describe('mayan provider', () => {
         }
       )
     ).rejects.toThrow(
-      'Sui bridge provider must implement Sui SDK v2 Core API and execution methods: missing core.getMoveFunction, core.listCoins'
+      'Sui bridge provider must implement the Sui SDK v2 Core API required by Transaction.build: missing core.getMoveFunction, core.getObjects, core.getBalance, core.listCoins, core.getCurrentSystemState, core.getChainIdentifier, core.simulateTransaction'
     )
     expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
     expect(signTransaction).not.toHaveBeenCalled()
@@ -288,9 +291,7 @@ describe('mayan provider', () => {
 
     expect(result).toBe(digest)
     expect(client.waitForTransaction).toHaveBeenCalledWith({
-      result: expect.objectContaining({
-        Transaction: expect.objectContaining({ digest })
-      }),
+      digest,
       include: {
         effects: true
       }
@@ -426,6 +427,57 @@ describe('mayan provider', () => {
         effects: true,
         events: true,
         balanceChanges: true
+      }
+    })
+  })
+
+  it('normalizes flat Sui v2 execution responses before waiting by digest', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const digest = `0x${'c'.repeat(64)}`
+    const mayanTx = createMayanTransaction()
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(mayanTx)
+    const client = {
+      network: 'mainnet',
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({
+        digest,
+        status: {
+          success: true,
+          error: null
+        }
+      })),
+      waitForTransaction: vi.fn(async () => ({
+        $kind: 'Transaction',
+        Transaction: { digest }
+      }))
+    }
+    const signTransaction = vi.fn(async () => ({
+      bytes: signedBytes,
+      signature: 'signed-signature'
+    }))
+
+    const resultPromise = swap(
+      {
+        from_token: { chainId: 1999 },
+        to_token: { chainId: 0 },
+        info_for_bridge: { fromToken: { standard: 'sui' } }
+      } as any,
+      '0xfrom',
+      '0xto',
+      {
+        sui: {
+          provider: client as any,
+          signTransaction
+        }
+      }
+    )
+    const result = await settleSwap(resultPromise)
+
+    expect(result).toBe(digest)
+    expect(client.waitForTransaction).toHaveBeenCalledWith({
+      digest,
+      include: {
+        effects: true
       }
     })
   })
