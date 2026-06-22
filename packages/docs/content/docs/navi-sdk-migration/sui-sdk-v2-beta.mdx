@@ -12,8 +12,9 @@ development workflows.
 - Use ESM imports.
 - Install `@mysten/sui@^2`.
 - Replace legacy `TransactionBlock` usage with Sui SDK v2 `Transaction`.
-- Do not pass `@mysten/sui.js` clients or v1 transaction objects into NAVI SDK
-  v2 APIs.
+- Use Sui SDK v2 gRPC/Core clients for NAVI SDK release paths.
+- Do not pass `@mysten/sui.js` clients, legacy `SuiClient`, or v1 transaction
+  objects into NAVI SDK v2 APIs.
 
 ```bash
 npm install @mysten/sui@^2
@@ -26,43 +27,52 @@ npm install @naviprotocol/astros-dca-sdk@<beta-version>
 
 Install only the NAVI packages your app uses.
 
+## Sui Migration References
+
+- [Sui TypeScript SDK 2.0 migration guide](https://sdk.mystenlabs.com/sui/migrations/sui-2.0)
+- [Sui data stack and JSON-RPC sunset](https://blog.sui.io/graphql-archival-store-sui-data-stack/)
+
+JSON-RPC is being deactivated on July 31, 2026. New integrations should use
+gRPC/Core now; NAVI's remaining JSON-RPC compatibility path is deprecated and
+will be removed.
+
 ## Client Setup
 
-Current beta packages accept Sui SDK v2 JSON-RPC clients for compatibility:
+NAVI SDK v2 release paths use Sui SDK v2 gRPC/Core clients. GraphQL is optional
+and only needed for Sui-native historical queries, transaction/event filters,
+object or package history, and cross-resource joined reads.
+
+Production apps should prefer injecting constructed clients so provider
+authentication, gRPC metadata, and custom transports stay under the integrator's
+control:
 
 ```ts
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import { SuiGraphQLClient } from '@mysten/sui/graphql'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { WalletClient } from '@naviprotocol/wallet-client'
 
-const client = new SuiJsonRpcClient({
+const grpcClient = new SuiGrpcClient({
   network: 'mainnet',
-  url: getJsonRpcFullnodeUrl('mainnet')
+  baseUrl: process.env.SUI_GRPC_ENDPOINT!
 })
-```
 
-NAVI SDK v2 accepts Sui SDK v2-compatible clients. JSON-RPC remains a supported
-transport through Sui SDK v2 beta, but old `@mysten/sui.js` clients are not
-supported.
+const graphqlClient = new SuiGraphQLClient({
+  network: 'mainnet',
+  url: process.env.SUI_GRAPHQL_URL!
+})
 
-JSON-RPC is a compatibility transport, not the long-term primary v2 transport.
-The next NAVI SDK transport milestone will use explicit gRPC / GraphQL
-configuration. Production apps should prefer injecting constructed clients so
-provider authentication, gRPC metadata, and custom transports stay under the
-integrator's control:
-
-```ts
 new WalletClient({
   signer,
   client: {
     network: 'mainnet',
     grpc: { client: grpcClient },
-    graphql: { client: graphqlClient },
-    legacyJsonRpc: { client: jsonRpcClient }
+    graphql: { client: graphqlClient }
   }
 })
 ```
 
 When provider auth can be represented as HTTP or gRPC-web headers, apps can use
-the simplified URL form:
+the simplified URL form and let NAVI construct the clients:
 
 ```ts
 new WalletClient({
@@ -70,7 +80,7 @@ new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: process.env.SUI_GRPC_URL!,
+      url: process.env.SUI_GRPC_ENDPOINT!,
       headers: { 'x-token': process.env.SUI_GRPC_TOKEN! }
     },
     graphql: {
@@ -82,55 +92,45 @@ new WalletClient({
 ```
 
 Public Sui endpoints are only suitable for low-volume development or demos.
-For production traffic, use private endpoints or route high-concurrency reads
-through Open API to avoid public endpoint rate limits.
+For production traffic, use private provider endpoints to avoid public endpoint
+rate limits.
 
 Use `graphql` for Sui-native history, event/transaction filtering, object or
 package history, and cross-resource joined reads. If a feature needs those
 semantics and GraphQL is not configured, the SDK should fail clearly instead of
-silently falling back to JSON-RPC or public endpoints.
-
-NAVI protocol service-backed history APIs, such as lending transaction history
-or claimed reward history, are not automatically GraphQL requirements. They can
-continue using NAVI/Open API service endpoints unless the feature is explicitly
-migrated to Sui-native GraphQL queries.
+silently falling back to another transport or public endpoints.
 
 ## Common Import Changes
 
-| Old                                              | New                                           |
-| ------------------------------------------------ | --------------------------------------------- |
-| `@mysten/sui.js/transactions` `TransactionBlock` | `@mysten/sui/transactions` `Transaction`      |
-| `@mysten/sui/client` `SuiClient`                 | `@mysten/sui/jsonRpc` `SuiJsonRpcClient`      |
-| `@mysten/sui/client` `getFullnodeUrl`            | `@mysten/sui/jsonRpc` `getJsonRpcFullnodeUrl` |
-| long-term current-state transport                | `@mysten/sui/grpc` `SuiGrpcClient`            |
-| long-term historical/filter reads                 | `@mysten/sui/graphql` `SuiGraphQLClient`      |
+| Old                                              | New                                      |
+| ------------------------------------------------ | ---------------------------------------- |
+| `@mysten/sui.js/transactions` `TransactionBlock` | `@mysten/sui/transactions` `Transaction` |
+| `@mysten/sui/client` `SuiClient`                 | `@mysten/sui/grpc` `SuiGrpcClient`       |
+| Sui-native historical/filter reads               | `@mysten/sui/graphql` `SuiGraphQLClient` |
 
 ## gRPC / GraphQL Transport Guidance
 
-Use this decision table when preparing an app for the post-beta transport
-milestone:
+Use this decision table when preparing an app:
 
-| App need | Transport |
-| --- | --- |
-| Current objects, coins, balances, point lookup by known digest, dry-run, execute | gRPC |
-| Transaction/event filters, historical queries, object/package history, joined reads | GraphQL |
-| Existing NAVI service history endpoints | NAVI/Open API service endpoint |
-| Unmigrated beta compatibility path | Deprecated JSON-RPC compatibility |
+| App need                                                                            | Transport |
+| ----------------------------------------------------------------------------------- | --------- |
+| Current objects, coins, balances, point lookup by known digest, dry-run, execute    | gRPC      |
+| Transaction/event filters, historical queries, object/package history, joined reads | GraphQL   |
 
 Do not treat a generic Sui RPC URL as a gRPC endpoint. Providers can expose
-different URLs and authentication modes for JSON-RPC, gRPC, and GraphQL.
+different URLs and authentication modes for each transport.
 
 ## Lending
 
-Read methods accept a Sui SDK v2 client:
+Read methods accept a Sui SDK v2 client with Core API support:
 
 ```ts
 import { getCoins, getLendingState } from '@naviprotocol/lending'
 
 const address = '0x0000000000000000000000000000000000000000000000000000000000000001'
 
-const coins = await getCoins(address, { client })
-const lendingState = await getLendingState(address, { client })
+const coins = await getCoins(address, { client: grpcClient })
+const lendingState = await getLendingState(address, { client: grpcClient })
 ```
 
 PTB builders use Sui SDK v2 `Transaction`:
@@ -153,13 +153,15 @@ install `@pythnetwork/pyth-sui-js` for the `@naviprotocol/lending` main path.
 ## Wallet Client
 
 ```ts
-import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
   signer: new WatchSigner(address),
   client: {
-    url: getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: process.env.SUI_GRPC_ENDPOINT!
+    }
   }
 })
 
@@ -193,7 +195,10 @@ Apps that do not use Suilend can opt out:
 const walletClient = new WalletClient({
   signer: new WatchSigner(address),
   client: {
-    url: getJsonRpcFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: process.env.SUI_GRPC_ENDPOINT!
+    }
   },
   configs: {
     lending: {
@@ -232,9 +237,9 @@ compatibility/debugging.
 
 ## Bridge
 
-The Bridge v2 package keeps Mayan and Sui v1 internal to the Sui-source lazy
-provider. Root imports do not load Mayan or Sui v1, and apps should not install
-or parse Mayan internals.
+The Bridge v2 package keeps Mayan v2 internal to the Sui-source lazy provider.
+Root imports do not load Mayan, and apps should not install or parse Mayan
+internals.
 
 The business flow stays the same as v1: quote, route builder, wallet signature,
 source-chain execution, and status polling. The v2 package changes the SDK
@@ -248,11 +253,11 @@ import {
   swap,
   type WalletConnection
 } from '@naviprotocol/astros-bridge-sdk'
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 
-const client = new SuiJsonRpcClient({
+const suiProvider = new SuiGrpcClient({
   network: 'mainnet',
-  url: getJsonRpcFullnodeUrl('mainnet')
+  baseUrl: process.env.SUI_GRPC_ENDPOINT!
 })
 
 const suiUsdcCoinType =
@@ -270,7 +275,7 @@ if (!quote.routes.length) throw new Error('No bridge route is available')
 
 const walletConnection: WalletConnection = {
   sui: {
-    provider: client,
+    provider: suiProvider,
     signTransaction: async ({ transaction }) => connectedWallet.signTransaction({ transaction })
   }
 }
@@ -279,8 +284,10 @@ const tx = await swap(quote.routes[0], suiSenderAddress, evmRecipientAddress, wa
 const latest = await getTransaction(tx.id)
 ```
 
-For known Sui networks, the SDK can derive the legacy builder RPC from the
-provider network. For custom Sui networks, pass `walletConnection.sui.rpcUrl`.
+Most Sui-source bridge routes build and execute with the same gRPC provider. If
+a provider-specific Mayan route needs a separate transaction build client, pass
+`walletConnection.sui.buildClient` explicitly. Execution and status waiting
+still use `walletConnection.sui.provider`.
 
 The SDK only overrides Sui bridge `gasBudget` when you explicitly pass
 `walletConnection.sui.gasBudget`.
@@ -294,7 +301,7 @@ instead of a source-chain transaction hash. Use the returned
 ```ts
 import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-dca-sdk'
 
-const tx = await createDcaOrder(client, address, {
+const tx = await createDcaOrder(grpcClient, address, {
   fromCoinType: '0x2::sui::SUI',
   toCoinType: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
   depositedAmount: '1500000000',
@@ -315,10 +322,9 @@ const tx = await createDcaOrder(client, address, {
 - Install `@mysten/sui@^2`.
 - Replace legacy `TransactionBlock` with v2 `Transaction`.
 - Remove app-level `@mysten/sui.js` clients from NAVI SDK calls.
-- For the next transport milestone, plan to provide explicit `grpc` config and
-  add `graphql` when using Sui-native history/filter/join features.
-- Keep JSON-RPC as `legacyJsonRpc` compatibility only; do not use a generic
-  `url` as the long-term v2 primary client shape.
+- Provide explicit `grpc` config and add `graphql` only when using Sui-native
+  history/filter/join features.
+- Do not use a generic RPC `url` as the v2 primary client shape.
 - Keep third-party Sui v1 SDKs out of app root and shared SDK entry points.
 - Install Suilend optional peers only if Suilend migration paths are used.
 - Use `enableSuilend: false` when Suilend is not needed.
