@@ -292,6 +292,7 @@ type NaviSuiClientOptions = {
   network: NaviNetwork
   grpc: NaviTransportInput<SuiGrpcClient>
   graphql?: NaviTransportInput<SuiGraphQLClient>
+  services?: NaviSdkServiceOptions
 
   /**
    * Deprecated compatibility for old JSON-RPC-only paths.
@@ -354,8 +355,8 @@ type NaviSuiClientBundle = {
 ### Open API service endpoint options
 
 Sui transport 和 NAVI/Open API service endpoint 是两类不同配置，不能混在
-`grpc/graphql/legacyJsonRpc` 里。下一阶段需要新增 SDK service 配置，解决前端和
-open-api preview 环境联调问题。
+`grpc/graphql/legacyJsonRpc` 里。SDK service 配置用于让前端、本地 SDK tarball 和
+open-api preview 环境联调时显式切换 NAVI service endpoint。
 
 推荐 public contract：
 
@@ -400,6 +401,8 @@ type NaviSdkConfig = {
 示例：
 
 ```ts
+import { configureNaviSdk } from '@naviprotocol/lending'
+
 configureNaviSdk({
   services: {
     naviOpenApi: {
@@ -415,6 +418,8 @@ configureNaviSdk({
 如果前端环境变量保存的是 preview origin：
 
 ```ts
+import { configureNaviSdk } from '@naviprotocol/lending'
+
 configureNaviSdk({
   services: {
     naviOpenApi: {
@@ -423,6 +428,61 @@ configureNaviSdk({
   }
 })
 ```
+
+内部前端接入速记：
+
+```ts
+import { configureNaviSdk } from '@naviprotocol/lending'
+import { configureNaviAggregatorSdk } from '@naviprotocol/astros-aggregator-sdk'
+
+const naviOpenApiBaseUrl = process.env.NEXT_PUBLIC_OPEN_API_BASE_URL
+const services = naviOpenApiBaseUrl
+  ? {
+      naviOpenApi: {
+        // Must include `/api`.
+        baseUrl: naviOpenApiBaseUrl
+      }
+    }
+  : undefined
+
+if (services) {
+  configureNaviSdk({ services })
+  configureNaviAggregatorSdk({ services })
+}
+
+const walletClientOptions = {
+  network: 'mainnet',
+  grpc: { client: grpcClient },
+  ...(graphqlClient ? { graphql: { client: graphqlClient } } : {}),
+  ...(services ? { services } : {})
+}
+```
+
+| SDK path                                | 前端配置方式                                                                                         |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `@naviprotocol/lending` read helpers    | app 启动时 `configureNaviSdk({ services })`，或单次调用传 `{ services }`。                           |
+| `@naviprotocol/wallet-client`           | `new WalletClient({ client: { network, grpc, graphql?, services } })`。                              |
+| `@naviprotocol/astros-aggregator-sdk`   | `configureNaviAggregatorSdk({ services })`；单次 swap builder 可传 `swapOptions.services`。          |
+| Aggregator route quote                  | 仍用 `getQuote(..., apiKey?, { baseUrl })`；这个 `baseUrl` 是完整 `find_routes` URL，不是 Open API。 |
+| `@naviprotocol/astros-bridge-sdk`       | Bridge API 继续用 `config({ baseUrl })`；Sui provider 通过 `walletConnection.sui.provider` 注入。    |
+| `@naviprotocol/astros-dca-sdk` 查询路径 | order 查询继续用 query `baseUrl` override；build/create 路径传 gRPC/Core client。                    |
+
+### legacyJsonRpc 内部接入边界
+
+前端和 open-api 不应把 JSON-RPC 当作 v2 主路径，也不能把 `NEXT_PUBLIC_SUI_RPC_URL`
+传给 `grpc.url`。`legacyJsonRpc` 只允许两类显式场景：
+
+| 场景                                | 允许方式                                                                                                       | 禁止事项                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 旧 compat overload 临时未迁移路径   | `client: { network, grpc, graphql?, legacyJsonRpc: { url: NEXT_PUBLIC_SUI_RPC_URL } }`。                       | 新功能、新页面、新主路径继续依赖 JSON-RPC。 |
+| Mayan v2 个别 Sui-source route 构造 | `walletConnection.sui.buildClient = explicitLegacyJsonRpcClient`；签名、simulate、execute 仍走 gRPC provider。 | SDK 内部自动 fallback 到 public JSON-RPC。  |
+
+使用规则：
+
+- 默认不要配置 `legacyJsonRpc`；只有命中已记录 compat/third-party adapter 边界时才传。
+- `legacyJsonRpc` 必须显式命名，不能复用 `grpc`、`graphql` 或 generic `url` 字段。
+- 日志只记录 env key 是否存在，不打印 endpoint token 或私钥。
+- 一旦对应路径迁到 gRPC/Core 或 GraphQL，删除 `legacyJsonRpc` 配置。
 
 需要迁移的 SDK open-api call site：
 
