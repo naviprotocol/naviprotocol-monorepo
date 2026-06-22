@@ -1,5 +1,12 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.0-beta.1
+
+### Patch Changes
+
+- Prepare the Sui SDK v2 beta release with Core API gRPC dry-run/execute
+  adapters and normalized transaction result handling for swap PTBs.
+
 ## 1.14.3
 
 ### Patch Changes
