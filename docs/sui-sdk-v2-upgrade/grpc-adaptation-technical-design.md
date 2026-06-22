@@ -391,81 +391,61 @@ type NaviSdkConfig = {
   前端应传 `https://navi-open-api-git-feat-sui-sdk-v2-navi-fd9a1df6.vercel.app/api`。
 - `astrosApi.baseUrl` 是 open-aggregator / Astros API origin；现有 aggregator `getQuote`
   的 `swapOptions.baseUrl` 仍保留，因为它当前表示完整 `find_routes` URL。
-- 优先级：per-call service options > SDK instance options > global SDK service config >
-  production default。
-- SSR/server 代码应优先使用 per-call 或 instance options，避免跨请求共享全局配置。
-- global service config 是前端 preview/dev 的便利入口；配置变化必须清理相关
-  `withCache` / `withSingleton` 缓存，或把 resolved `baseUrl` 纳入 cache key，避免从
-  production 切到 preview 后复用旧缓存。
+- 当前 Copilot 前端统一使用 app-level bootstrap，不在业务 hook、PTB builder、wallet action
+  里分散传 `services`。
+- SSR/server 代码如需按请求切 endpoint，不能复用全局配置，应单独传 request-scoped
+  service options。
 
-示例：
+内部前端推荐落地：
 
-```ts
-import { configureNaviSdk } from '@naviprotocol/lending'
-
-configureNaviSdk({
-  services: {
-    naviOpenApi: {
-      baseUrl: `${process.env.NEXT_PUBLIC_OPEN_API_BASE_URL!}`
-    },
-    astrosApi: {
-      baseUrl: process.env.NEXT_PUBLIC_AGGREGATOR_API_HOST!
-    }
-  }
-})
-```
-
-如果前端环境变量保存的是 preview origin：
+1. 在每个 app 的 `_app` 入口 import 一次无 UI bootstrap module。
+2. bootstrap module 读取 `NEXT_PUBLIC_OPEN_API_BASE_URL`，默认 production。
+3. `NEXT_PUBLIC_OPEN_API_BASE_URL` 必须包含 `/api`。
 
 ```ts
-import { configureNaviSdk } from '@naviprotocol/lending'
-
-configureNaviSdk({
-  services: {
-    naviOpenApi: {
-      baseUrl: `${process.env.NEXT_PUBLIC_OPEN_API_ORIGIN!}/api`
-    }
-  }
-})
+import '@/services/navi-sdk-service-config'
 ```
 
-内部前端接入速记：
+Lending / Astros / Astros Aggregator 使用同一个 bootstrap：
 
 ```ts
 import { configureNaviSdk } from '@naviprotocol/lending'
 import { configureNaviAggregatorSdk } from '@naviprotocol/astros-aggregator-sdk'
 
-const naviOpenApiBaseUrl = process.env.NEXT_PUBLIC_OPEN_API_BASE_URL
-const services = naviOpenApiBaseUrl
-  ? {
-      naviOpenApi: {
-        // Must include `/api`.
-        baseUrl: naviOpenApiBaseUrl
-      }
-    }
-  : undefined
+const naviOpenApiBaseUrl =
+  process.env['NEXT_PUBLIC_OPEN_API_BASE_URL'] || 'https://open-api.naviprotocol.io/api'
 
-if (services) {
-  configureNaviSdk({ services })
-  configureNaviAggregatorSdk({ services })
+const services = {
+  naviOpenApi: {
+    baseUrl: naviOpenApiBaseUrl
+  }
 }
 
-const walletClientOptions = {
-  network: 'mainnet',
-  grpc: { client: grpcClient },
-  ...(graphqlClient ? { graphql: { client: graphqlClient } } : {}),
-  ...(services ? { services } : {})
-}
+configureNaviSdk({ services })
+configureNaviAggregatorSdk({ services })
 ```
 
-| SDK path                                | 前端配置方式                                                                                         |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `@naviprotocol/lending` read helpers    | app 启动时 `configureNaviSdk({ services })`，或单次调用传 `{ services }`。                           |
-| `@naviprotocol/wallet-client`           | `new WalletClient({ client: { network, grpc, graphql?, services } })`。                              |
-| `@naviprotocol/astros-aggregator-sdk`   | `configureNaviAggregatorSdk({ services })`；单次 swap builder 可传 `swapOptions.services`。          |
-| Aggregator route quote                  | 仍用 `getQuote(..., apiKey?, { baseUrl })`；这个 `baseUrl` 是完整 `find_routes` URL，不是 Open API。 |
-| `@naviprotocol/astros-bridge-sdk`       | Bridge API 继续用 `config({ baseUrl })`；Sui provider 通过 `walletConnection.sui.provider` 注入。    |
-| `@naviprotocol/astros-dca-sdk` 查询路径 | order 查询继续用 query `baseUrl` override；build/create 路径传 gRPC/Core client。                    |
+Volo 当前不直接依赖 `@naviprotocol/astros-aggregator-sdk`，只需要：
+
+```ts
+import { configureNaviSdk } from '@naviprotocol/lending'
+
+const naviOpenApiBaseUrl =
+  process.env['NEXT_PUBLIC_OPEN_API_BASE_URL'] || 'https://open-api.naviprotocol.io/api'
+
+configureNaviSdk({
+  services: {
+    naviOpenApi: {
+      baseUrl: naviOpenApiBaseUrl
+    }
+  }
+})
+```
+
+这样可以覆盖当前前端使用的函数式 lending helpers、wallet action 内部 lending 路径、
+aggregator SDK 内部 open-api 读路径，并与现有 Copilot open-api client 共用同一个
+`NEXT_PUBLIC_OPEN_API_BASE_URL`。Aggregator quote、bridge quote、DCA order API 仍按各自
+现有 `apiHost` / `baseUrl` 配置，不属于 `naviOpenApi`。
 
 ### legacyJsonRpc 内部接入边界
 
