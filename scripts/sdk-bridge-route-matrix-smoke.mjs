@@ -211,6 +211,7 @@ async function simulateRoute({ bridge, clients, wallet, key, routeConfig }) {
     bytesLength: 0,
     signatures: 0
   }
+  let lastExecutionResult
   const dryProvider = {
     network: clients.network,
     core: clients.grpc.core,
@@ -226,16 +227,24 @@ async function simulateRoute({ bridge, clients, wallet, key, routeConfig }) {
         }
       })
       assertSuccess(simulation, `${routeConfig.label} Core simulate`)
-      return {
+      lastExecutionResult = {
         $kind: 'Transaction',
         Transaction: {
           digest: 'route-matrix-dry-run-not-broadcast',
-          status: { success: true }
+          status: { success: true },
+          effects: simulation.Transaction?.effects ?? simulation.effects
         },
         rawSimulation: simulation
       }
+      return lastExecutionResult
     },
-    waitForTransaction: async ({ result }) => result
+    waitForTransaction: async ({ digest }) => {
+      if (!lastExecutionResult) {
+        return undefined
+      }
+      const lastDigest = lastExecutionResult.Transaction?.digest ?? lastExecutionResult.digest
+      return !digest || digest === lastDigest ? lastExecutionResult : undefined
+    }
   }
 
   const result = await bridge.swap(route, wallet.address, destination, {
