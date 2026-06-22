@@ -50,7 +50,7 @@ describe('positive slippage service endpoint configuration', () => {
     )
   })
 
-  it('lets per-call Open API endpoints override the aggregator global endpoint', async () => {
+  it('lets per-call Open API endpoints override the aggregator global endpoint fields', async () => {
     const { configureNaviAggregatorSdk } = await import('../src/libs/Aggregator/services')
     const { getRemotePositiveSlippageSetting } = await import(
       '../src/libs/Aggregator/getPositiveSlippageSetting'
@@ -90,7 +90,100 @@ describe('positive slippage service endpoint configuration', () => {
       {
         headers: {
           'User-Agent': 'navi-aggregator-sdk',
+          'x-global': '1',
           'x-call': '1'
+        }
+      }
+    )
+  })
+
+  it('keeps the global Open API baseUrl when a per-call service only adds headers', async () => {
+    const { configureNaviAggregatorSdk } = await import('../src/libs/Aggregator/services')
+    const { getRemotePositiveSlippageSetting } = await import(
+      '../src/libs/Aggregator/getPositiveSlippageSetting'
+    )
+    axiosGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          should_enable_positive_slippage: true
+        }
+      }
+    })
+
+    configureNaviAggregatorSdk({
+      services: {
+        naviOpenApi: {
+          baseUrl: 'https://preview-open-api.example/api',
+          headers: {
+            'x-global': '1',
+            'x-shared': 'global'
+          }
+        }
+      }
+    })
+
+    await expect(
+      getRemotePositiveSlippageSetting({
+        disableCache: true,
+        service: {
+          headers: {
+            'x-call': '1',
+            'x-shared': 'call'
+          }
+        }
+      })
+    ).resolves.toBe(true)
+    expect(axiosGet).toHaveBeenCalledWith(
+      'https://preview-open-api.example/api/internal/ag/positive-slippage',
+      {
+        headers: {
+          'User-Agent': 'navi-aggregator-sdk',
+          'x-global': '1',
+          'x-shared': 'call',
+          'x-call': '1'
+        }
+      }
+    )
+  })
+
+  it('keeps global Open API headers when a per-call service only changes baseUrl', async () => {
+    const { configureNaviAggregatorSdk } = await import('../src/libs/Aggregator/services')
+    const { getRemotePositiveSlippageSetting } = await import(
+      '../src/libs/Aggregator/getPositiveSlippageSetting'
+    )
+    axiosGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          should_enable_positive_slippage: true
+        }
+      }
+    })
+
+    configureNaviAggregatorSdk({
+      services: {
+        naviOpenApi: {
+          baseUrl: 'https://global-open-api.example/api',
+          headers: {
+            'x-global': '1'
+          }
+        }
+      }
+    })
+
+    await expect(
+      getRemotePositiveSlippageSetting({
+        disableCache: true,
+        service: {
+          baseUrl: 'https://call-open-api.example/api/'
+        }
+      })
+    ).resolves.toBe(true)
+    expect(axiosGet).toHaveBeenCalledWith(
+      'https://call-open-api.example/api/internal/ag/positive-slippage',
+      {
+        headers: {
+          'User-Agent': 'navi-aggregator-sdk',
+          'x-global': '1'
         }
       }
     )

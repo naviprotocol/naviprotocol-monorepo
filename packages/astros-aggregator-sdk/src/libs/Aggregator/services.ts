@@ -69,7 +69,10 @@ export function getNaviAggregatorSdkConfigVersion() {
 export function resolveNaviOpenApiEndpoint(
   options?: AggregatorServiceEndpointOption
 ): Required<NaviAggregatorServiceEndpoint> {
-  const endpoint = options?.services?.naviOpenApi ?? globalConfig.services?.naviOpenApi
+  const endpoint = mergeNaviOpenApiEndpoint(
+    globalConfig.services?.naviOpenApi,
+    options?.services?.naviOpenApi
+  )
   return {
     baseUrl: normalizeBaseUrl(endpoint?.baseUrl ?? DEFAULT_NAVI_OPEN_API_BASE_URL),
     headers: endpoint?.headers ?? {}
