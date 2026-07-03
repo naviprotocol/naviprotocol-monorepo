@@ -20,7 +20,7 @@ import { DEFAULT_CACHE_TIME, getConfig } from './config'
 import { parseTxValue, normalizeCoinType, withCache, withSingleton, requestHeaders } from './utils'
 import { getPool } from './pool'
 import packageJson from '../package.json'
-import { DEFAULT_MARKET_IDENTITY } from './market'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 
 /**
  * Get all available flash loan assets from the API
@@ -34,7 +34,8 @@ export const getAllFlashLoanAssets = withCache(
     async (
       options?: Partial<EnvOption & CacheOption & MarketOption>
     ): Promise<FloashloanAsset[]> => {
-      const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
+      const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
+      const url = `https://open-api.naviprotocol.io/api/navi/flashloan?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${market.key}`
       const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
       return Object.keys(res.data).map((coinType) => {
         return {
@@ -55,7 +56,7 @@ export const getAllFlashLoanAssets = withCache(
  */
 export async function getFlashLoanAsset(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption>
+  options?: Partial<EnvOption & CacheOption & MarketOption>
 ): Promise<FloashloanAsset | null> {
   const assets = await getAllFlashLoanAssets(options)
   return (

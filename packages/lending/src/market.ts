@@ -33,6 +33,36 @@ export const MARKETS = {
     id: 3,
     key: 'sui-eco',
     name: 'Sui Eco Market'
+  },
+  'vsui-usdc': {
+    id: 4,
+    key: 'vsui-usdc',
+    name: 'vSUI/USDC Market'
+  },
+  'sui-usdc': {
+    id: 5,
+    key: 'sui-usdc',
+    name: 'SUI/USDC Market'
+  },
+  'hasui-sui': {
+    id: 6,
+    key: 'hasui-sui',
+    name: 'haSUI/SUI Market'
+  },
+  'wbtc-usdc': {
+    id: 7,
+    key: 'wbtc-usdc',
+    name: 'WBTC/USDC Market'
+  },
+  'vsui-sui': {
+    id: 8,
+    key: 'vsui-sui',
+    name: 'vSUI/SUI Market'
+  },
+  'xbtc-usdc': {
+    id: 9,
+    key: 'xbtc-usdc',
+    name: 'xBTC/USDC Market'
   }
 }
 

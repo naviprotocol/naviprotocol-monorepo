@@ -18,7 +18,7 @@ The Market module provides management functionality for different markets in the
 Markets can be identified by:
 
 - Numeric ID (e.g., `0` for Main Market, `1` for Ember Market)
-- String key (e.g., `'main'`, `'ember'`)
+- String key (e.g., `'main'`, `'ember'`, `'sui-usdc'`)
 - MarketConfig object
 
 ## API Reference
@@ -35,10 +35,12 @@ import { getMarketConfig } from '@naviprotocol/lending'
 // Get by string key
 const mainConfig = getMarketConfig('main')
 const emberConfig = getMarketConfig('ember')
+const suiUsdcConfig = getMarketConfig('sui-usdc')
 
 // Get by numeric ID
 const configById = getMarketConfig(0) // Main Market
 const emberConfigById = getMarketConfig(1) // Ember Market
+const suiUsdcConfigById = getMarketConfig(7) // SUI/USDC Market
 
 // Get by MarketConfig object
 const configByObject = getMarketConfig({ id: 0, key: 'main', name: 'Main Market' })
@@ -252,7 +254,13 @@ const mainMarket = MARKETS.main
 // Access ember market
 const emberMarket = MARKETS.ember
 // { id: 1, key: 'ember', name: 'Ember Market' }
+
+// Access isolated markets
+const suiUsdcMarket = MARKETS['sui-usdc']
+// { id: 7, key: 'sui-usdc', name: 'SUI/USDC Market' }
 ```
+
+Available isolated market keys include `vsui-usdc`, `sui-usdc`, `hasui-sui`, `wbtc-usdc`, `vsui-sui`, and `xbtc-usdc`.
 
 ### DEFAULT_MARKET_IDENTITY
 

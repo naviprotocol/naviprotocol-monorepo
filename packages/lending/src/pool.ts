@@ -281,7 +281,7 @@ export async function depositCoinPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
   const pool = await getPool(identifier, options)
-  const market = options?.market || DEFAULT_MARKET_IDENTITY
+  const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
   const env = options?.env || 'prod'
 
   if (pool?.deprecatedAt && Date.now() > pool.deprecatedAt) {
@@ -345,7 +345,12 @@ export async function depositCoinPTB(
   }
 
   // refresh stake for sui pool to balance the stake after deposit
-  if (config.version === 2 && pool.token.symbol === 'SUI' && env === 'prod' && market === 'main') {
+  if (
+    config.version === 2 &&
+    pool.token.symbol === 'SUI' &&
+    env === 'prod' &&
+    market.key === 'main'
+  ) {
     tx.moveCall({
       target: `${config.package}::pool::refresh_stake`,
       arguments: [tx.object(pool.contract.pool), tx.object('0x05')]

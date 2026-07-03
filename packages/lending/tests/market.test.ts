@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   getMarketConfig,
   getMarket,
@@ -13,6 +13,15 @@ import type { Pool, EnvOption } from '../src/types'
 const options = {
   env: 'test'
 } as EnvOption
+
+const isolatedMarkets = [
+  { id: 6, key: 'vsui-usdc', name: 'vSUI/USDC Market' },
+  { id: 7, key: 'sui-usdc', name: 'SUI/USDC Market' },
+  { id: 8, key: 'hasui-sui', name: 'haSUI/SUI Market' },
+  { id: 9, key: 'wbtc-usdc', name: 'WBTC/USDC Market' },
+  { id: 10, key: 'vsui-sui', name: 'vSUI/SUI Market' },
+  { id: 11, key: 'xbtc-usdc', name: 'xBTC/USDC Market' }
+]
 
 describe('getMarketConfig', () => {
   it('should get market config by string key', () => {
@@ -47,6 +56,14 @@ describe('getMarketConfig', () => {
       'Market not found'
     )
   })
+
+  it('should get isolated market configs by key, id, and config object', () => {
+    isolatedMarkets.forEach((expectedMarket) => {
+      expect(getMarketConfig(expectedMarket.key)).toEqual(expectedMarket)
+      expect(getMarketConfig(expectedMarket.id)).toEqual(expectedMarket)
+      expect(getMarketConfig(expectedMarket)).toEqual(expectedMarket)
+    })
+  })
 })
 
 describe('MARKETS constant', () => {
@@ -55,6 +72,12 @@ describe('MARKETS constant', () => {
     expect(MARKETS.main.id).toBe(0)
     expect(MARKETS.main.key).toBe('main')
     expect(MARKETS.main.name).toBe('Main Market')
+  })
+
+  it('should have isolated markets defined', () => {
+    isolatedMarkets.forEach((expectedMarket) => {
+      expect(MARKETS[expectedMarket.key as keyof typeof MARKETS]).toEqual(expectedMarket)
+    })
   })
 })
 
