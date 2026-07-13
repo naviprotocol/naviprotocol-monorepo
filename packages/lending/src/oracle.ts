@@ -111,12 +111,22 @@ async function getOnChainPriceInfo(
         continue
       }
 
+      // The Sui v2 client returns nested Move structs directly, without the
+      // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
+      // Read the flattened shape and skip (not throw) on an unexpected object so
+      // a single malformed feed can't abort the whole batch and silently leave
+      // every on-chain price un-refreshed.
       // @ts-ignore
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      const objectFields = data.content.fields.price_info.fields.price_feed.fields.price.fields
-      const { magnitude, negative } = objectFields.price.fields
-      const conf = objectFields.conf
-      const timestamp = objectFields.timestamp
+      const priceStruct = data.content.fields?.price_info?.price_feed?.price
+      const priceValue = priceStruct?.price
+      if (!priceValue) {
+        console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
+        continue
+      }
+      const { magnitude, negative } = priceValue
+      const conf = priceStruct.conf
+      const timestamp = priceStruct.timestamp
 
       priceInfos.push({
         priceFeedId: pythInfo.priceFeedId,
