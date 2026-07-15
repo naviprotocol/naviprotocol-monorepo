@@ -1,0 +1,6 @@
+{
+	"root": true,
+	"title": "Sui SDK v2 Migration",
+	"description": "Upgrade NAVI SDK packages to the Sui SDK v2 (Transaction, gRPC/GraphQL clients)",
+	"pages": ["index"]
+}

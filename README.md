@@ -42,12 +42,29 @@ Comprehensive Wallet Client SDK that provides a unified interface for DeFi opera
 - 💳 Balance Management
 - 🔄 Modular Design
 
+## 🆙 SDK v1 vs v2
+
+This monorepo is the **Sui SDK v2** generation of the NAVI TypeScript SDKs, replacing the legacy `navi-sdk` npm package.
+
+| | v1 (`navi-sdk`) | v2 (this monorepo) |
+| --- | --- | --- |
+| Package | single `navi-sdk` npm package | `@naviprotocol/{lending,wallet-client,astros-aggregator-sdk,astros-bridge-sdk,astros-dca-sdk}` |
+| Sui SDK | `@mysten/sui.js` | `@mysten/sui@^2` |
+| Transaction | `TransactionBlock` | `Transaction` |
+| Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended) / `SuiJsonRpcClient` (legacy JSON-RPC, **deprecated, removed after 2026-07-31**) / `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
+| Module format | CommonJS | ESM |
+| Runtime | — | Node.js 22+ |
+
+Upgrading an existing `navi-sdk` integration? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first. Package-level migration notes (old `navi-sdk` → new packages) are kept under [NAVI SDK Migration](http://sdk.naviprotocol.io/navi-sdk-migration/lending).
+
 ## 📚 Documentation
 
+- [Sui SDK v2 Migration](http://sdk.naviprotocol.io/sui-sdk-v2-migration)
 - [Astros Aggregator SDK](http://sdk.naviprotocol.io/swap)
 - [Astros Bridge SDK](http://sdk.naviprotocol.io/bridge)
 - [Lending SDK](http://sdk.naviprotocol.io/lending)
 - [Wallet Client](http://sdk.naviprotocol.io/wallet-client)
+- [NAVI SDK Migration (from `navi-sdk`)](http://sdk.naviprotocol.io/navi-sdk-migration/lending)
 
 
 ### Contribution Process
@@ -73,10 +90,13 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 | Package | Version | Status |
 |---|---|---|
-| @naviprotocol/astros-aggregator-sdk | 1.4.1 | ✅ Stable |
-| @naviprotocol/astros-bridge-sdk | 1.0.1 | ✅ Stable |
-| @naviprotocol/lending | 1.0.6 | ✅ Stable |
-| @naviprotocol/wallet-client | 1.0.4 | ✅ Stable |
+| @naviprotocol/astros-aggregator-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+| @naviprotocol/astros-bridge-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+| @naviprotocol/astros-dca-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+| @naviprotocol/lending | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+| @naviprotocol/wallet-client | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+
+Looking for the last stable v1 releases (`navi-sdk`-era)? See npm for the previously published 1.x versions of each package.
 
 ---
 
