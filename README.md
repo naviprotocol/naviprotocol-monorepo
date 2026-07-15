@@ -5,6 +5,20 @@
 
 NAVI Protocol TypeScript SDK is a comprehensive DeFi SDK collection designed for the Sui blockchain. It provides complete decentralized finance functionality including token swapping, cross-chain bridging, lending, flash loans, and more.
 
+## 🆙 SDK v1 vs v2
+
+The NAVI TypeScript SDKs have moved to the **Sui SDK v2** stack. What changed from the v1 (1.x) line:
+
+| | v1 (1.x) | v2 (2.x) |
+| --- | --- | --- |
+| Sui SDK | `@mysten/sui.js` | `@mysten/sui@^2` |
+| Transaction | `TransactionBlock` | `Transaction` |
+| Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended), optional `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
+| Module format | CommonJS | ESM |
+| Runtime | — | Node.js 22+ |
+
+Interfaces are otherwise unchanged — the one required step is constructing a Sui v2 client and passing it in. Upgrading a 1.x integration to 2.x? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first.
+
 ## 📦 Included Packages
 
 ### [@naviprotocol/astros-aggregator-sdk](./packages/astros-aggregator-sdk/)
@@ -41,20 +55,6 @@ Comprehensive Wallet Client SDK that provides a unified interface for DeFi opera
 - 🏦 Lending Operations
 - 💳 Balance Management
 - 🔄 Modular Design
-
-## 🆙 SDK v1 vs v2
-
-The NAVI TypeScript SDKs have moved to the **Sui SDK v2** stack. Here is what changed from the v1 (1.x) line:
-
-| | v1 (1.x) | v2 (2.x) |
-| --- | --- | --- |
-| Sui SDK | `@mysten/sui.js` | `@mysten/sui@^2` |
-| Transaction | `TransactionBlock` | `Transaction` |
-| Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended) / `SuiJsonRpcClient` (legacy JSON-RPC, **deprecated, removed after 2026-07-31**) / `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
-| Module format | CommonJS | ESM |
-| Runtime | — | Node.js 22+ |
-
-Upgrading a 1.x integration to 2.x? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first.
 
 ## 📚 Documentation
 
