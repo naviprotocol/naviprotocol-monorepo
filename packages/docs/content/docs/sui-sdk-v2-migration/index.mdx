@@ -28,7 +28,7 @@ npm install @naviprotocol/astros-dca-sdk@2.0.0-beta.1
 
 Install only the NAVI packages your app uses.
 
-NAVI SDK v2 beta.1 is currently verified with `@mysten/sui@2.19.0`.
+NAVI SDK v2 beta.1 is currently verified against `@mysten/sui@2.x` (latest tested: `2.20.2`).
 
 ## Sui Migration References
 
@@ -116,7 +116,10 @@ rate limits.
 Use `graphql` for Sui-native history, event/transaction filtering, object or
 package history, and cross-resource joined reads. If a feature needs those
 semantics and GraphQL is not configured, the SDK should fail clearly instead of
-silently falling back to another transport or public endpoints.
+silently falling back to another transport or public endpoints. (Note: in the
+current beta no SDK function consumes GraphQL yet — the `graphql` client is only
+wired through the client bundle; this describes the intended contract for when
+GraphQL-backed reads are added.)
 See Sui's [methods requiring GraphQL](https://sdk.mystenlabs.com/sui/migrations/sui-2.0/json-rpc-migration#methods-requiring-graphql)
 when migrating historical queries, event or transaction filters, checkpoints,
 epochs, or other query APIs.
