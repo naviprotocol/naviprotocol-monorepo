@@ -80,18 +80,22 @@ if (!quotes.routes.length) {
 ## Execute A Sui-Source Bridge
 
 For Sui-source routes, the SDK keeps the Mayan provider internal and lazy-loaded.
-The app provides a Sui SDK v2 `SuiJsonRpcClient` and wallet-standard
-`signTransaction` function. The SDK builds the provider transaction internally,
-converts it to a v2 `Transaction`, requests the wallet signature, executes the
-source-chain transaction, and returns a `BridgeSwapTransaction`.
+The app provides a Sui SDK v2 gRPC/Core client (such as `SuiGrpcClient`) and a
+wallet-standard `signTransaction` function. The SDK builds the provider
+transaction internally, converts it to a v2 `Transaction`, requests the wallet
+signature, executes the source-chain transaction, and returns a
+`BridgeSwapTransaction`.
 
 ```ts
 import { swap, type WalletConnection } from '@naviprotocol/astros-bridge-sdk'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
 
-const client = new SuiJsonRpcClient({
+const client = new SuiGrpcClient({
   network: 'mainnet',
-  url: getJsonRpcFullnodeUrl('mainnet')
+  transport: new GrpcWebFetchTransport({
+    baseUrl: 'https://fullnode.mainnet.sui.io:443',
+    format: 'binary'
+  })
 })
 
 const walletConnection: WalletConnection = {
@@ -105,6 +109,13 @@ const walletConnection: WalletConnection = {
 
 const transaction = await swap(quotes.routes[0], suiAddress, evmRecipientAddress, walletConnection)
 ```
+
+<Callout>
+  If you need to stay on the legacy JSON-RPC transport temporarily, use
+  `SuiJsonRpcClient` from `@mysten/sui/jsonRpc` as the `provider` instead. JSON-RPC
+  is deprecated and scheduled for removal on 2026-07-31; new integrations should
+  use gRPC/Core clients like `SuiGrpcClient` directly.
+</Callout>
 
 The v2 SDK keeps the same business path as the v1 bridge package: quote,
 Mayan route builder, wallet signature, source-chain execution, and status

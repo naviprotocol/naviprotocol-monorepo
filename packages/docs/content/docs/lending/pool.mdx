@@ -13,6 +13,24 @@ The pool operations module provides comprehensive lending functionality, includi
 - **Pool Information**: Query detailed pool information and statistics
 - **Interest Rate Queries**: Get current supply and borrowing rates
 
+## Client Setup
+
+The "specific fee rate" mode of `getBorrowFee` reads on-chain state, so it requires an explicit
+v2 gRPC/Core client — the SDK's default client is a placeholder that throws until you pass one.
+Construct a client once and reuse it:
+
+```ts
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+const grpcClient = new SuiGrpcClient({
+  network: 'mainnet',
+  transport: new GrpcWebFetchTransport({
+    baseUrl: 'https://fullnode.mainnet.sui.io:443',
+    format: 'binary'
+  })
+})
+```
+
 ## API Reference
 
 ### getPools
@@ -384,7 +402,7 @@ const borrowFee = await getBorrowFee({
   address: '0x...', // user address
   asset: 'USDC', // asset identifier
   env: 'prod', // Optional: environment configuration
-  client: suiClient, // Optional: Sui client instance for on-chain queries
+  client: grpcClient, // Optional: Sui client instance for on-chain queries
   cacheTime: 30000, // Optional: cache expiration time in milliseconds
   market: 'main' // Optional: market identifier
 })

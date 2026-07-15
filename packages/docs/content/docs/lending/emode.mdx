@@ -16,6 +16,24 @@ EMode (Efficiency Mode) is a special lending mode that allows users to borrow at
 
 EMode Cap is a special capability that combines Account Cap and EMode functionality, allowing users to perform EMode operations using Account Cap.
 
+## Client Setup
+
+`getUserEModeCaps` reads on-chain state, so it requires an explicit v2 gRPC/Core client — the
+SDK's default client is a placeholder that throws until you pass one. Construct a client once and
+reuse it:
+
+```ts
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+const grpcClient = new SuiGrpcClient({
+  network: 'mainnet',
+  transport: new GrpcWebFetchTransport({
+    baseUrl: 'https://fullnode.mainnet.sui.io:443',
+    format: 'binary'
+  })
+})
+```
+
 ## API Reference
 
 ### enterEModePTB
@@ -129,7 +147,8 @@ import { getUserEModeCaps } from '@naviprotocol/lending'
 // Get user's EMode Caps
 const caps = await getUserEModeCaps(userAddress, {
   env: 'prod', // Optional: environment configuration
-  cacheTime: 30000 // Optional: cache time
+  cacheTime: 30000, // Optional: cache time
+  client: grpcClient
 })
 ```
 

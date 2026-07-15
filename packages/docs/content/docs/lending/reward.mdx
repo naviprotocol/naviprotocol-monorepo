@@ -4,6 +4,24 @@ title: Reward System
 
 The reward module provides comprehensive lending reward functionality, including reward queries, claiming, and management for users who participate in lending activities.
 
+## Client Setup
+
+`getUserAvailableLendingRewards` reads on-chain state, so it requires an explicit v2 gRPC/Core
+client — the SDK's default client is a placeholder that throws until you pass one. Construct a
+client once and reuse it:
+
+```ts
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+const grpcClient = new SuiGrpcClient({
+  network: 'mainnet',
+  transport: new GrpcWebFetchTransport({
+    baseUrl: 'https://fullnode.mainnet.sui.io:443',
+    format: 'binary'
+  })
+})
+```
+
 ## API Reference
 
 ### getUserAvailableLendingRewards
@@ -15,7 +33,7 @@ Get user's available lending rewards. See [documentation](/typedoc/functions/_na
 ```typescript
 import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards('0x...')
+const rewards = await getUserAvailableLendingRewards('0x...', { client: grpcClient })
 ```
 
 **Result Example**
@@ -67,7 +85,7 @@ Summarize lending rewards by asset and reward type. See [documentation](/typedoc
 ```typescript
 import { summaryLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards('0x...')
+const rewards = await getUserAvailableLendingRewards('0x...', { client: grpcClient })
 const summary = summaryLendingRewards(rewards)
 ```
 
@@ -179,7 +197,8 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 const rewards = await getUserAvailableLendingRewards(
-  '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+  '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe',
+  { client: grpcClient }
 )
 
 // Standard claiming (automatically handles both standard and EMode rewards)
