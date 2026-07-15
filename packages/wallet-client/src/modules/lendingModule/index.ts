@@ -559,7 +559,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return getUserAvailableLendingRewards(this.walletClient.address, {
       ...this.naviServiceOptions,
       ...options,
-      env: this.config.env
+      env: this.config.env,
+      client: this.walletClient.client
     })
   }
 
@@ -602,7 +603,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const rewards = await getUserAvailableLendingRewards(this.walletClient.address, {
       ...this.naviServiceOptions,
-      env: this.config.env
+      env: this.config.env,
+      client: this.walletClient.client
     })
 
     await claimLendingRewardsPTB(tx, rewards, {
@@ -644,7 +646,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     await updateOraclePricesPTB(tx, filteredFeeds, {
       ...this.naviServiceOptions,
       env: this.config.env,
-      updatePythPriceFeeds: true
+      updatePythPriceFeeds: true,
+      client: this.walletClient?.client
     })
   }
 

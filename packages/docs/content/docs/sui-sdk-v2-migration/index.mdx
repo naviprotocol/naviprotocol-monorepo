@@ -156,6 +156,7 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
   ```ts
   await executeTransaction(tx, signer, { client: suiClient })
   ```
+- `dryRunSwapTransaction(tx, { client })` — `client` is also required.
 - `getCoins` / `getCoinPTB` take a v2 client (Core `listCoins`), not a legacy
   `SuiClient`.
 - `getQuote` and `buildSwapPTBFromQuote` are unchanged.
@@ -180,6 +181,7 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
   ```ts
   await createDcaOrder(suiClient, address, params)
   ```
+- `dryRunDcaTransaction(tx, { client })` — `client` is also required.
 - Query / cancel functions (`getUserDcaOrders`, `getDcaOrderDetails`,
   `listDcaOrders`, `cancelDcaOrder`) are unchanged.
 
