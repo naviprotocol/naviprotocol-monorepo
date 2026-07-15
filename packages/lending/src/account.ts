@@ -586,7 +586,7 @@ export async function getCoins(
         })
       }
     } else if (typeof core?.listBalances === 'function' && typeof core?.listCoins === 'function') {
-      const coinTypes: string[] = []
+      const coinTypes = new Set<string>()
       let balanceCursor: string | null | undefined = null
       do {
         const response = await core.listBalances({
@@ -594,9 +594,11 @@ export async function getCoins(
           cursor: balanceCursor,
           limit: 100
         })
-        coinTypes.push(
-          ...(response.balances ?? []).map((balance: any) => balance.coinType).filter(Boolean)
-        )
+        for (const balance of response.balances ?? []) {
+          if (balance?.coinType) {
+            coinTypes.add(balance.coinType)
+          }
+        }
         balanceCursor = response.cursor ?? response.nextCursor ?? null
       } while (balanceCursor)
 

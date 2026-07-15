@@ -66,7 +66,7 @@ export async function executeTransaction(
     client: NaviAggregatorExecutionClient
   }
 ): Promise<NaviAggregatorTransactionResult> {
-  const client = options.client
+  const client = options?.client
   if (!client) {
     throw new Error(
       'executeTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
@@ -131,7 +131,13 @@ export async function dryRunSwapTransaction(
     client: NaviAggregatorDryRunClient
   }
 ): Promise<NaviAggregatorDryRunResult> {
-  const core = getCore(options.client)
+  const client = options?.client
+  if (!client) {
+    throw new Error(
+      'dryRunSwapTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
+    )
+  }
+  const core = getCore(client)
   if (typeof core?.simulateTransaction === 'function') {
     const result = await core.simulateTransaction({
       transaction: txb,
@@ -146,14 +152,14 @@ export async function dryRunSwapTransaction(
   }
 
   const txBytes = await txb.build({
-    client: options.client as any
+    client: client as any
   })
-  if (typeof options.client.dryRunTransactionBlock !== 'function') {
+  if (typeof client.dryRunTransactionBlock !== 'function') {
     throw new Error(
       'dryRunSwapTransaction requires core.simulateTransaction or an explicit legacy dryRunTransactionBlock client'
     )
   }
-  const result = await options.client.dryRunTransactionBlock({
+  const result = await client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
   return normalizeAggregatorDryRunResult(result)

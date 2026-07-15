@@ -44,14 +44,22 @@ export async function getCoins(
     | undefined
 
   if (typeof core?.listCoins === 'function') {
-    const response = await core.listCoins({
-      owner: address,
-      coinType: coinAddress
-    })
+    const data: any[] = []
+    let cursor: string | null | undefined = null
+    do {
+      const response = await core.listCoins({
+        owner: address,
+        coinType: coinAddress,
+        cursor,
+        limit: 100
+      })
+      data.push(...(response.objects ?? response.data ?? []))
+      cursor = response.cursor ?? response.nextCursor ?? null
+    } while (cursor)
     return {
-      data: response.objects ?? response.data ?? [],
-      nextCursor: response.cursor ?? response.nextCursor ?? null,
-      hasNextPage: response.hasNextPage ?? false
+      data,
+      nextCursor: null,
+      hasNextPage: false
     }
   }
 

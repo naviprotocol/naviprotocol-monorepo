@@ -164,7 +164,62 @@ describe('swap test', () => {
     expect(coin).toBeDefined()
     expect(listCoins).toHaveBeenCalledWith({
       owner: userAddress,
-      coinType: coins.deep.address
+      coinType: coins.deep.address,
+      cursor: null,
+      limit: 100
+    })
+    expect(commands[0]).toHaveProperty('MergeCoins')
+    expect(commands[1]).toHaveProperty('SplitCoins')
+  })
+
+  it('paginates through Core API listCoins pages when selecting coin inputs', async () => {
+    const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const txb = createTransaction(userAddress)
+    const listCoins = vi
+      .fn()
+      .mockResolvedValueOnce({
+        objects: [
+          {
+            objectId: `0x${'a'.repeat(64)}`,
+            balance: '1000',
+            coinType: coins.deep.address
+          }
+        ],
+        cursor: 'page-2',
+        hasNextPage: true
+      })
+      .mockResolvedValueOnce({
+        objects: [
+          {
+            objectId: `0x${'b'.repeat(64)}`,
+            balance: '1000',
+            coinType: coins.deep.address
+          }
+        ],
+        cursor: null,
+        hasNextPage: false
+      })
+
+    const coin = await getCoinPTB(userAddress, coins.deep.address, 100n, txb, {
+      core: {
+        listCoins
+      }
+    } as any)
+    const commands = txb.getData().commands
+
+    expect(coin).toBeDefined()
+    expect(listCoins).toHaveBeenCalledTimes(2)
+    expect(listCoins).toHaveBeenNthCalledWith(1, {
+      owner: userAddress,
+      coinType: coins.deep.address,
+      cursor: null,
+      limit: 100
+    })
+    expect(listCoins).toHaveBeenNthCalledWith(2, {
+      owner: userAddress,
+      coinType: coins.deep.address,
+      cursor: 'page-2',
+      limit: 100
     })
     expect(commands[0]).toHaveProperty('MergeCoins')
     expect(commands[1]).toHaveProperty('SplitCoins')

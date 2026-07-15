@@ -40,7 +40,13 @@ export async function dryRunDcaTransaction(
     client: NaviDcaDryRunClient
   }
 ): Promise<NaviDcaDryRunResult> {
-  const core = options.client.core as
+  const client = options?.client
+  if (!client) {
+    throw new Error(
+      'dryRunDcaTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
+    )
+  }
+  const core = client.core as
     | {
         simulateTransaction?(options: any): Promise<any>
       }
@@ -59,14 +65,14 @@ export async function dryRunDcaTransaction(
   }
 
   const txBytes = await tx.build({
-    client: options.client as any
+    client: client as any
   })
-  if (typeof options.client.dryRunTransactionBlock !== 'function') {
+  if (typeof client.dryRunTransactionBlock !== 'function') {
     throw new Error(
       'DCA simulation requires core.simulateTransaction or an explicit legacy dryRunTransactionBlock client'
     )
   }
-  const result = await options.client.dryRunTransactionBlock({
+  const result = await client.dryRunTransactionBlock({
     transactionBlock: txBytes
   })
 

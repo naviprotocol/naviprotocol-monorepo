@@ -29,7 +29,8 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js"
+      "import": "./dist/index.esm.js",
+      "default": "./dist/index.esm.js"
     }
   },
   "publishConfig": {
