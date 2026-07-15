@@ -11,8 +11,7 @@ The NAVI TypeScript SDKs have moved to the **Sui SDK v2** stack. What changed fr
 
 | | v1 (1.x) | v2 (2.x) |
 | --- | --- | --- |
-| Sui SDK | `@mysten/sui.js` | `@mysten/sui@^2` |
-| Transaction | `TransactionBlock` | `Transaction` |
+| Sui SDK | `@mysten/sui@^1` | `@mysten/sui@^2` |
 | Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended), optional `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
 | Module format | CommonJS | ESM |
 | Runtime | — | Node.js 22+ |
