@@ -361,7 +361,14 @@ export class SuiPythClient {
     if (result?.fields) {
       const fields = result.fields as any
       if ('upgrade_cap' in fields) {
-        return fields.upgrade_cap.fields.package as string
+        // Sui v2 Core(gRPC)返回扁平 json:upgrade_cap.package;legacy JSON-RPC 为
+        // 嵌套:upgrade_cap.fields.package。两种都兼容,否则 Core 路径取不到 packageId
+        // → getPythPackageId/getWormholePackageId 抛错 → Pyth 价格推送整体失败。
+        const upgradeCap = fields.upgrade_cap
+        const packageId = upgradeCap?.package ?? upgradeCap?.fields?.package
+        if (packageId) {
+          return packageId as string
+        }
       }
     }
     throw new Error(`Cannot fetch package id for object ${objectId}`)

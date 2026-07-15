@@ -56,6 +56,13 @@ function normalizeCoreDevInspectResult(result: any): DevInspectResults {
     tx.status?.error ??
     tx.status?.errors?.[0]
 
+  if (error) {
+    // 只上报、不改控制流:Core simulateTransaction 的 abort/错误此前被算出却从不暴露,
+    // 使 reward/positions 等批次在某链上状态下静默返空(见 reward.ts 已修的批次连坐)。
+    // 显式 warn 便于定位;是否据此中断由各调用方决定(此处不 throw 以免改变既有行为)。
+    console.warn('[lending] devInspect(core simulate) returned error:', error)
+  }
+
   return {
     effects: tx.effects,
     events: tx.events,
