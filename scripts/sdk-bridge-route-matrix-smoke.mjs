@@ -32,7 +32,9 @@ const ROUTES = {
     defaultAmount: '2',
     addressEnv: 'FE_E2E_SOL_ADDRESS',
     overrideAddressEnv: 'NAVI_SMOKE_BRIDGE_SOLANA_ADDRESS',
-    buildClientMode: 'legacyJsonRpc'
+    // 2026-07-15 实测 Mayan v15 + @mysten/sui v2:纯 gRPC 的 .build() 对 Sui→Solana 已可用,
+    // 故默认切 gRPC。SDK 的 legacyJsonRpc buildClient 参数仍保留作 7/31 下线前的备用。
+    buildClientMode: 'grpc'
   }
 }
 
