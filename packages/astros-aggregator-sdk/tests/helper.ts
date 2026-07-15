@@ -1,5 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 import * as fs from 'fs'
 import * as path from 'path'
 import { SignAndSubmitTXB } from '../src/libs/PTB/commonFunctions'
@@ -30,7 +30,7 @@ const parseErrorMessage = (errorMessage: string) => {
  * @param client The Sui client to interact with the blockchain.
  * @returns The result of the dry run.
  */
-export async function dryRunTXB(txb: Transaction, client: SuiClient) {
+export async function dryRunTXB(txb: Transaction, client: SuiJsonRpcClient) {
   const txBytes = await txb.build({ client })
   return await client.dryRunTransactionBlock({ transactionBlock: txBytes })
 }
@@ -95,7 +95,7 @@ const logTransactionResultToFile = (txRes: any, testName: string) => {
  */
 export const handleTransactionResult = async (
   txb: Transaction,
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Keypair,
   testName = '',
   isDryRun = true,

@@ -1,5 +1,5 @@
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { Quote } from '../../types'
+import { Quote, SingleCoinTransactionResult } from '../../types'
 import { AggregatorConfig } from './config'
 import { Dex } from '../../types'
 import { makeCETUSPTB } from './Dex/cetus'
@@ -18,6 +18,7 @@ import { makeFLOWXPTB } from './Dex/flowx'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
 import { parsePoolTypeArgs } from './utils'
 import { moveCallTransferNonzero } from '../PTB/commonFunctions'
+import type { SwapOptions } from '../../types'
 /**
  * Build a swap transaction without service fee
  * @param userAddress - The address of the user
@@ -36,8 +37,9 @@ export async function buildSwapWithoutServiceFee(
   quote: Quote,
   minAmountOut: number,
   referral: number = 0,
-  ifPrint: boolean = true
-): Promise<TransactionResult> {
+  ifPrint: boolean = true,
+  swapOptions?: Pick<SwapOptions, 'services'>
+): Promise<SingleCoinTransactionResult> {
   const tokenA = quote.from
   const tokenB = quote.target
   const allPaths = JSON.parse(JSON.stringify(quote.routes))
@@ -371,7 +373,8 @@ export async function buildSwapWithoutServiceFee(
   }
 
   const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting({
-    cacheTime: Date.now() + 5 * 60 * 1000 // 5 minutes
+    cacheTime: Date.now() + 5 * 60 * 1000, // 5 minutes
+    service: swapOptions?.services?.naviOpenApi
   })
 
   moveCallTransferNonzero(txb, coinIn, userAddress, tokenA)
@@ -398,5 +401,5 @@ export async function buildSwapWithoutServiceFee(
     typeArguments: [tokenA, tokenB]
   })
 
-  return finalCoinB
+  return finalCoinB as SingleCoinTransactionResult
 }

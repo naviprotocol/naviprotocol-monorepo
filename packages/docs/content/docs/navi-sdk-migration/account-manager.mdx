@@ -44,7 +44,10 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 // Private key wallet
 const walletClient = new WalletClient({
     client: {
-        url: '' // custom rpc url
+        network: 'mainnet',
+        grpc: {
+            url: '' // custom gRPC url
+        }
     },
     signer: Ed25519Keypair.fromSecretKey(privateKey)
 })
@@ -53,7 +56,10 @@ const walletClient = new WalletClient({
 // Watch-only wallet (cannot perform on-chain operations, can only read on-chain asset data)
 const walletClient = new WalletClient({
     client: {
-        url: '' // custom rpc url
+        network: 'mainnet',
+        grpc: {
+            url: '' // custom gRPC url
+        }
     },
     signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
 })
@@ -67,7 +73,10 @@ class WebSignerAdapter extends WebSigner {
 
 const walletClient = new WalletClient({
     client: {
-        url: '' // custom rpc url
+        network: 'mainnet',
+        grpc: {
+            url: '' // custom gRPC url
+        }
     },
     signer: new WebSignerAdapter()
 })
@@ -109,7 +118,7 @@ account.getAllCoins()
 await walletClient.balance.updatePortfolio();
 
 walletClient.balance.coins
-waleetClient.balance.portfolio
+walletClient.balance.portfolio
 ```
 <br/>
 
@@ -128,7 +137,7 @@ account.getCoins("0x2::sui::SUI")
 ```typescript
 await walletClient.balance.updatePortfolio();
 
-waleetClient.balance.portfolio.getBalance('0x2::sui::SUI')
+walletClient.balance.portfolio.getBalance('0x2::sui::SUI')
 ```
 <br/>
 
@@ -147,7 +156,7 @@ account.getWalletBalance()
 ```typescript
 await walletClient.balance.updatePortfolio();
 
-waleetClient.balance.portfolio
+walletClient.balance.portfolio
 ```
 <br/>
 
@@ -422,12 +431,18 @@ await account.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut, apiKe
 
 ```typescript
 const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: '' // custom gRPC url
+        }
+    },
+    signer: Ed25519Keypair.fromSecretKey(privateKey),
     configs: {
         swap: {
             apiKey
         }
     }
-   ...
 })
 await walletClient.swap.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut)
 ```
@@ -449,12 +464,18 @@ await account.dryRunSwap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut,
 
 ```typescript
 const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: '' // custom gRPC url
+        }
+    },
+    signer: Ed25519Keypair.fromSecretKey(privateKey),
     configs: {
         swap: {
             apiKey
         }
     }
-   ...
 })
 await walletClient.swap.swap(fromCoinAddress, toCoinAddress, amountIn, minAmountOut, {
     dryRun: true

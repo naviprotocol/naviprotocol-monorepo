@@ -6,7 +6,8 @@
  * encoding of complex data types for blockchain transactions and storage.
  */
 
-import { bcs, fromHex, toHex } from '@mysten/bcs'
+import { bcs } from '@mysten/sui/bcs'
+import { fromHex, toHex } from '@mysten/sui/utils'
 
 /**
  * BCS schema for Sui addresses with hex transformation

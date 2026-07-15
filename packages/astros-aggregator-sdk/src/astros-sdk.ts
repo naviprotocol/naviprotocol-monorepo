@@ -1,9 +1,31 @@
-import { SwapOptions, Quote } from './types'
+import {
+  NaviAggregatorDryRunClient,
+  NaviAggregatorDryRunResult,
+  NaviAggregatorExecutionClient,
+  NaviAggregatorTransactionResult,
+  SwapOptions,
+  Quote
+} from './types'
 import { getQuoteInternal } from './libs/Aggregator/getQuote'
 import { Transaction } from '@mysten/sui/transactions'
 import { Signer } from '@mysten/sui/cryptography'
-import { SuiClient } from '@mysten/sui/client'
 import { executeAuction } from 'shio-sdk'
+import {
+  normalizeAggregatorDryRunResult,
+  normalizeAggregatorCoreDryRunResult,
+  normalizeAggregatorCoreTransactionResult,
+  normalizeAggregatorTransactionResult
+} from './transaction-result'
+import { fromBase64 } from '@mysten/sui/utils'
+
+function getCore(client: { core?: unknown }) {
+  return client.core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+        executeTransaction?(options: any): Promise<any>
+      }
+    | undefined
+}
 
 /**
  * Retrieves a quote for swapping one coin to another.
@@ -40,17 +62,18 @@ export async function getQuote(
 export async function executeTransaction(
   txb: Transaction,
   signer: Signer,
-  options?: {
-    client?: SuiClient
+  options: {
+    client: NaviAggregatorExecutionClient
   }
-) {
-  const client =
-    options?.client ||
-    new SuiClient({
-      url: 'https://fullnode.mainnet.sui.io'
-    })
+): Promise<NaviAggregatorTransactionResult> {
+  const client = options?.client
+  if (!client) {
+    throw new Error(
+      'executeTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
+    )
+  }
   const txBytes = await txb.build({
-    client
+    client: client as any
   })
   const signResult = await signer.signTransaction(txBytes)
   const signatures = [signResult.signature]
@@ -61,15 +84,83 @@ export async function executeTransaction(
     console.error(e)
   }
 
+  const core = getCore(client)
+  if (typeof core?.executeTransaction === 'function') {
+    const result = await core.executeTransaction({
+      transaction: fromBase64(signResult.bytes),
+      signatures,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    return normalizeAggregatorCoreTransactionResult(result)
+  }
+
+  if (typeof client.executeTransactionBlock !== 'function') {
+    throw new Error(
+      'executeTransaction requires core.executeTransaction or an explicit legacy executeTransactionBlock client'
+    )
+  }
+
   const result = await client.executeTransactionBlock({
     transactionBlock: signResult.bytes,
     signature: signatures,
     options: {
       showEffects: true,
       showEvents: true,
-      showBalanceChanges: true
+      showBalanceChanges: true,
+      showObjectChanges: true
     }
   })
+  return normalizeAggregatorTransactionResult(result)
+}
 
-  return result
+/**
+ * Dry-runs a built aggregator transaction through the Sui v2 JSON-RPC adapter
+ * and returns a stable NAVI DTO instead of exposing raw RPC response types.
+ *
+ * @param txb - The transaction to build and dry-run.
+ * @param options - The Sui client used for building and dry-run.
+ */
+export async function dryRunSwapTransaction(
+  txb: Transaction,
+  options: {
+    client: NaviAggregatorDryRunClient
+  }
+): Promise<NaviAggregatorDryRunResult> {
+  const client = options?.client
+  if (!client) {
+    throw new Error(
+      'dryRunSwapTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
+    )
+  }
+  const core = getCore(client)
+  if (typeof core?.simulateTransaction === 'function') {
+    const result = await core.simulateTransaction({
+      transaction: txb,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true
+      }
+    })
+    return normalizeAggregatorCoreDryRunResult(result)
+  }
+
+  const txBytes = await txb.build({
+    client: client as any
+  })
+  if (typeof client.dryRunTransactionBlock !== 'function') {
+    throw new Error(
+      'dryRunSwapTransaction requires core.simulateTransaction or an explicit legacy dryRunTransactionBlock client'
+    )
+  }
+  const result = await client.dryRunTransactionBlock({
+    transactionBlock: txBytes
+  })
+  return normalizeAggregatorDryRunResult(result)
 }

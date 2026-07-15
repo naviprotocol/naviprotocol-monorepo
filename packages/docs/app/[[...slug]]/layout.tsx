@@ -35,6 +35,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             icon: <Image src="/assets/logo.png" alt="Lending" width={24} height={24} />
           },
           {
+            title: 'Sui SDK v2 Migration',
+            description: 'Upgrade to Sui SDK v2 (Transaction, gRPC/GraphQL clients)',
+            url: '/sui-sdk-v2-migration',
+            icon: <Image src="/assets/logo.png" alt="Sui SDK v2 Migration" width={24} height={24} />
+          },
+          {
             title: 'NAVI SDK Migration',
             description: 'migration from navi-sdk package',
             url: '/navi-sdk-migration/lending',

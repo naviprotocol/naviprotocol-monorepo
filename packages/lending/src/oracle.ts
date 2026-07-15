@@ -14,11 +14,12 @@ import type {
   Pool,
   SuiClientOption,
   MarketOption,
-  LendingPosition
+  LendingPosition,
+  ServiceOption
 } from './types'
-import { SuiPriceServiceConnection, SuiPythClient } from '@pythnetwork/pyth-sui-js'
+import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
-import { suiClient } from './utils'
+import { multiGetSuiObjects, suiClient } from './utils'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -93,7 +94,7 @@ async function getOnChainPriceInfo(
     const client = options?.client ?? suiClient
 
     const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
-    const priceInfoObjects = await client.multiGetObjects({
+    const priceInfoObjects = await multiGetSuiObjects(client, {
       ids: Array.from(new Set(priceInfoObjectIds)),
       options: { showContent: true }
     })
@@ -110,12 +111,22 @@ async function getOnChainPriceInfo(
         continue
       }
 
+      // The Sui v2 client returns nested Move structs directly, without the
+      // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
+      // Read the flattened shape and skip (not throw) on an unexpected object so
+      // a single malformed feed can't abort the whole batch and silently leave
+      // every on-chain price un-refreshed.
       // @ts-ignore
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      const objectFields = data.content.fields.price_info.fields.price_feed.fields.price.fields
-      const { magnitude, negative } = objectFields.price.fields
-      const conf = objectFields.conf
-      const timestamp = objectFields.timestamp
+      const priceStruct = data.content.fields?.price_info?.price_feed?.price
+      const priceValue = priceStruct?.price
+      if (!priceValue) {
+        console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
+        continue
+      }
+      const { magnitude, negative } = priceValue
+      const conf = priceStruct.conf
+      const timestamp = priceStruct.timestamp
 
       priceInfos.push({
         priceFeedId: pythInfo.priceFeedId,
@@ -221,6 +232,7 @@ export async function updateOraclePricesPTB(
   options?: Partial<
     EnvOption &
       SuiClientOption &
+      ServiceOption &
       MarketOption & {
         updatePythPriceFeeds?: boolean
       }
@@ -289,7 +301,9 @@ export async function updateOraclePricesPTB(
  * @param options - Optional environment configuration
  * @returns Array of oracle price feed configurations
  */
-export async function getPriceFeeds(options?: Partial<EnvOption>): Promise<OraclePriceFeed[]> {
+export async function getPriceFeeds(
+  options?: Partial<EnvOption & ServiceOption>
+): Promise<OraclePriceFeed[]> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME

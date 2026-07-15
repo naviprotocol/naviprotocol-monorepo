@@ -1,7 +1,7 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -13,22 +13,37 @@ dotenv.config()
 const testAddress = '0x4a662a70184c9e8f62e9d298c9969318a74cec5e9d3b5e0616a687052e654e57'
 
 const signer = new WatchSigner(testAddress)
+const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
+const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
 
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
 
 const suilendWalletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('lending supply migration', () => {
+describe.skipIf(!runLiveTests)('lending supply migration', () => {
   it('usdy -> usdt', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBetweenSupplyPTB(
@@ -58,7 +73,7 @@ describe('lending supply migration', () => {
   })
 })
 
-describe('lending borrow migration', () => {
+describe.skipIf(!runLiveTests)('lending borrow migration', () => {
   it('vSUI -> hasui', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBetweenBorrowPTB(
@@ -88,7 +103,7 @@ describe('lending borrow migration', () => {
   })
 })
 
-describe('lending balance migration', () => {
+describe.skipIf(!runLiveTests)('lending balance migration', () => {
   it('vSUI -> usdt', async () => {
     const tx = new Transaction()
     await walletClient.lending.migrateBalanceToSupplyPTB(
@@ -118,7 +133,7 @@ describe('lending balance migration', () => {
   })
 })
 
-describe('cross-protocol supply migration', () => {
+describe.skipIf(!runLiveTests)('cross-protocol supply migration', () => {
   it('suilend usdc -> navi usdt', async () => {
     const tx = new Transaction()
     await suilendWalletClient.lending.migrateBetweenSupplyPTB(
@@ -142,7 +157,7 @@ describe('cross-protocol supply migration', () => {
   })
 })
 
-describe('cross-protocol borrow migration', () => {
+describe.skipIf(!runLiveTests)('cross-protocol borrow migration', () => {
   it('suilend sui -> navi hasui', async () => {
     const tx = new Transaction()
     await suilendWalletClient.lending.migrateBetweenBorrowPTB(

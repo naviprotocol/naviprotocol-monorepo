@@ -8,9 +8,14 @@
  * @module AstrosBridgeSDK
  */
 
-import { Chain, Token, BridgeSwapOptions, BridgeSwapQuote, BridgeSwapTransaction } from './types'
-import * as mayan from './providers/mayan'
-import { WalletConnection } from './providers/mayan'
+import {
+  Chain,
+  Token,
+  BridgeSwapOptions,
+  BridgeSwapQuote,
+  BridgeSwapTransaction,
+  WalletConnection
+} from './types'
 import { apiInstance, config } from './config'
 
 // Export configuration for the bridge SDK
@@ -180,6 +185,7 @@ export async function swap(
   }
 ): Promise<BridgeSwapTransaction> {
   const startAt = new Date().toISOString()
+  const mayan = await import('./providers/mayan')
   const hash = await mayan.swap(quote, fromAddress, toAddress, walletConnection, referrerAddresses)
   const endAt = new Date().toISOString()
 

@@ -1,13 +1,13 @@
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
 import BigNumber from 'bignumber.js'
-import { Quote, SwapOptions } from '../../types'
+import { Quote, SingleCoinTransactionResult, SwapOptions } from '../../types'
 import { getQuoteInternal as getQuote } from './getQuote'
 import { AggregatorConfig } from './config'
 
 export interface ServiceFeeResult {
   router: Quote
   serviceFeeRouter: Quote | null
-  serviceFeeCoinIn: TransactionResult
+  serviceFeeCoinIn: SingleCoinTransactionResult
 }
 
 /**
@@ -35,7 +35,7 @@ export async function handleServiceFee(
   const newAmountIn = new BigNumber(totalAmount).minus(serviceFeeAmount).toFixed(0)
 
   // split coins
-  const serviceFeeCoinIn = txb.splitCoins(coinIn, [serviceFeeAmount])
+  const serviceFeeCoinIn = txb.splitCoins(coinIn, [serviceFeeAmount]) as SingleCoinTransactionResult
 
   // get router
   const [router, serviceFeeRouter] = await Promise.all([

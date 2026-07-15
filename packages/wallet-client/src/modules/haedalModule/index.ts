@@ -9,14 +9,18 @@
 
 import {
   CoinObject,
+  buildNaviOpenApiUrl,
   mergeCoinsPTB,
+  mergeServiceHeaders,
   parseTxValue,
+  resolveNaviOpenApiEndpoint,
   withCache,
-  withSingleton
+  withSingleton,
+  type NaviSdkServiceOptions
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
+import type { NaviWalletTransactionResult } from '../../types'
 
 /**
  * Configuration for the Haedal module
@@ -28,6 +32,12 @@ export interface HaedalModuleConfig {
   configId: string
   /** haSUI coin type */
   coinType: string
+  /** Optional NAVI service endpoint overrides. */
+  services?: NaviSdkServiceOptions
+}
+
+export type HaedalApyOptions = {
+  services?: NaviSdkServiceOptions
 }
 
 /**
@@ -51,7 +61,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
   /** Module name identifier */
   readonly name = 'haedal'
   /** Default configuration values */
-  readonly defaultConfig = {
+  readonly defaultConfig: HaedalModuleConfig = {
     packageId: '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c',
     configId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca',
     coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
@@ -62,17 +72,27 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
    *
    * @returns Current APY of haSUI
    */
-  getApy = withCache(
-    withSingleton(async () => {
+  private getApyCached = withCache(
+    withSingleton(async (options?: HaedalApyOptions) => {
+      const serviceOptions = { services: options?.services }
+      const endpoint = resolveNaviOpenApiEndpoint(serviceOptions)
       const resp: {
         data: {
           apy: number
         }
-      } = await fetch('https://open-api.naviprotocol.io/api/haedal/stats').then((res) => res.json())
+      } = await fetch(buildNaviOpenApiUrl('/haedal/stats', serviceOptions), {
+        headers: mergeServiceHeaders({}, endpoint)
+      }).then((res) => res.json())
 
       return resp.data.apy
     })
   )
+
+  getApy(options?: HaedalApyOptions) {
+    return this.getApyCached({
+      services: options?.services ?? this.config.services
+    })
+  }
 
   /**
    * Builds a transaction block for staking SUI to haSUI
@@ -124,7 +144,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
   async stake<T extends boolean = false>(
     suiAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -158,7 +178,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
   async unstake<T extends boolean = false>(
     haSUIAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

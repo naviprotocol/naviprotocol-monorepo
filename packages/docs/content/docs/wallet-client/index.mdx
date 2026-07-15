@@ -83,7 +83,10 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 // Create wallet client
 const walletClient = new WalletClient({
     client: {
-        url: 'https://fullnode.mainnet.sui.io' // Custom RPC URL
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443' // Custom gRPC URL
+        }
     },
     signer: Ed25519Keypair.fromSecretKey(privateKey),
     configs: {

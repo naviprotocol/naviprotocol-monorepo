@@ -10,9 +10,8 @@
 
 import { Signer } from '@mysten/sui/cryptography'
 import { Transaction } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
-import { Experimental_SuiClientTypes } from '@mysten/sui/experimental'
 import { SignatureWithBytes } from '@mysten/sui/cryptography'
+import type { NaviWalletExecutionClient } from './types'
 
 /**
  * Options for signing and executing transactions
@@ -21,7 +20,7 @@ interface SignAndExecuteOptions {
   /** Transaction to sign and execute */
   transaction: Transaction
   /** Sui client instance */
-  client: SuiClient
+  client: NaviWalletExecutionClient
 }
 
 /**
@@ -173,9 +172,4 @@ export abstract class WebSigner extends Signer {
   abstract signPersonalMessage(bytes: Uint8Array): Promise<SignatureWithBytes>
 
   abstract signTransaction(bytes: Uint8Array): Promise<SignatureWithBytes>
-
-  abstract signAndExecuteTransaction({
-    transaction,
-    client
-  }: SignAndExecuteOptions): Promise<Experimental_SuiClientTypes.TransactionResponse>
 }

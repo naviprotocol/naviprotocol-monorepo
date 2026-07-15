@@ -22,7 +22,8 @@ import type {
   LendingPosition,
   MarketsOption,
   EModePool,
-  EModeCap
+  EModeCap,
+  ServiceOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo, ReserveDataInfo } from './bcs'
@@ -30,6 +31,7 @@ import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
   suiClient,
   parseDevInspectResult,
+  devInspectTransaction,
   withSingleton,
   processContractHealthFactor,
   parseTxValue,
@@ -43,12 +45,35 @@ import {
   uuid
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
-import { CoinStruct, PaginatedCoins } from '@mysten/sui/client'
+import type { CoinStruct, PaginatedCoins } from '@mysten/sui/jsonRpc'
 import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'
 import BigNumber from 'bignumber.js'
 import { getMarketConfig, MARKETS } from './market'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
+
+function getCoreCoinType(coin: any, fallbackCoinType?: string) {
+  if (coin.coinType) return coin.coinType
+  if (fallbackCoinType) return fallbackCoinType
+
+  const match = typeof coin.type === 'string' ? coin.type.match(/::coin::Coin<(.+)>$/) : null
+  return match?.[1]
+}
+
+function normalizeCoreCoin(coin: any, fallbackCoinType?: string): CoinStruct | null {
+  const coinType = getCoreCoinType(coin, fallbackCoinType)
+  const coinObjectId = coin.coinObjectId ?? coin.objectId
+  if (!coinType || !coinObjectId || coin.balance === undefined || coin.balance === null) {
+    return null
+  }
+
+  return {
+    ...coin,
+    coinType: normalizeCoinType(coinType),
+    coinObjectId
+  } as CoinStruct
+}
 
 /**
  * Merges multiple coins into a single coin for transaction building
@@ -242,7 +267,7 @@ async function getLendingStateBatch(
     })
   }
 
-  const resp = await client.devInspectTransactionBlock({
+  const resp = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })
@@ -256,7 +281,7 @@ async function getLendingStateBatch(
   uniqueMarkets.forEach((market, idx) => {
     try {
       const reserves =
-        results[idx]?.returnValues?.map((item) => {
+        results[idx]?.returnValues?.map((item: any) => {
           return bcs.vector(ReserveDataInfo as any).parse(Uint8Array.from(item[0]))
         })[0] || []
       const perAsset: Record<number, { supplyIndex: string; borrowIndex: string }> = {}
@@ -285,9 +310,9 @@ async function getLendingStateBatch(
     }
   })
 
-  const stateList = results.slice(uniqueMarkets.length).map((result) => {
+  const stateList = results.slice(uniqueMarkets.length).map((result: any) => {
     return (
-      result.returnValues?.map((item) => {
+      result.returnValues?.map((item: any) => {
         return bcs.vector(UserStateInfo as any).parse(Uint8Array.from(item[0]))
       })[0] || []
     )
@@ -383,7 +408,7 @@ export async function getHealthFactor(
   const client = options?.client ?? suiClient
   const tx = new Transaction()
   await getHealthFactorPTB(tx, address, options)
-  const result = await client.devInspectTransactionBlock({
+  const result = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })
@@ -451,7 +476,7 @@ export async function getSimulatedHealthFactor(
   )
 
   // Execute dry run to get the result
-  const result = await client.devInspectTransactionBlock({
+  const result = await devInspectTransaction(client, {
     transactionBlock: tx,
     sender: address
   })
@@ -474,7 +499,7 @@ export const getTransactions = withSingleton(
     address: string | AccountCap,
     options?: {
       cursor?: string
-    }
+    } & ServiceOption
   ): Promise<{
     data: NAVITransaction[]
     cursor?: string
@@ -487,8 +512,14 @@ export const getTransactions = withSingleton(
     params.set('userAddress', address)
 
     // Fetch transaction history from Navi protocol API
-    const url = `https://open-api.naviprotocol.io/api/navi/user/transactions?${params.toString()}&sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/transactions?${params.toString()}&sdk=${packageJson.version}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   }
 )
@@ -516,6 +547,12 @@ export async function getCoins(
   let cursor: string | undefined | null = null
   const allCoinDatas: CoinStruct[] = []
   const client = options?.client ?? suiClient
+  const core = client.core as
+    | {
+        listBalances?(options: any): Promise<any>
+        listCoins?(options: any): Promise<any>
+      }
+    | undefined
 
   // Fetch all coins using pagination
   do {
@@ -523,13 +560,72 @@ export async function getCoins(
 
     // Use specific coin type filter if provided, otherwise get all coins
     if (options?.coinType) {
-      res = await client.getCoins({
-        owner: address,
-        coinType: options?.coinType,
-        cursor,
-        limit: 100
-      })
+      if (typeof core?.listCoins === 'function') {
+        const response = await core.listCoins({
+          owner: address,
+          coinType: options?.coinType,
+          cursor,
+          limit: 100
+        })
+        res = {
+          data: (response.objects ?? response.data ?? [])
+            .map((coin: any) => normalizeCoreCoin(coin, options?.coinType))
+            .filter(Boolean) as CoinStruct[],
+          nextCursor: response.cursor ?? response.nextCursor ?? null,
+          hasNextPage: response.hasNextPage ?? false
+        } as PaginatedCoins
+      } else {
+        if (typeof client.getCoins !== 'function') {
+          throw new Error('getCoins requires core.listCoins or an explicit legacy getCoins client')
+        }
+        res = await client.getCoins({
+          owner: address,
+          coinType: options?.coinType,
+          cursor,
+          limit: 100
+        })
+      }
+    } else if (typeof core?.listBalances === 'function' && typeof core?.listCoins === 'function') {
+      const coinTypes = new Set<string>()
+      let balanceCursor: string | null | undefined = null
+      do {
+        const response = await core.listBalances({
+          owner: address,
+          cursor: balanceCursor,
+          limit: 100
+        })
+        for (const balance of response.balances ?? []) {
+          if (balance?.coinType) {
+            coinTypes.add(balance.coinType)
+          }
+        }
+        balanceCursor = response.cursor ?? response.nextCursor ?? null
+      } while (balanceCursor)
+
+      for (const coinType of coinTypes) {
+        let coinCursor: string | null | undefined = null
+        do {
+          const response = await core.listCoins({
+            owner: address,
+            coinType,
+            cursor: coinCursor,
+            limit: 100
+          })
+          allCoinDatas.push(
+            ...((response.objects ?? response.data ?? [])
+              .map((coin: any) => normalizeCoreCoin(coin, coinType))
+              .filter(Boolean) as CoinStruct[])
+          )
+          coinCursor = response.cursor ?? response.nextCursor ?? null
+        } while (coinCursor)
+      }
+      break
     } else {
+      if (typeof client.getAllCoins !== 'function') {
+        throw new Error(
+          'getCoins requires core.listBalances/core.listCoins or an explicit legacy getAllCoins client'
+        )
+      }
       res = await client.getAllCoins({
         owner: address,
         cursor,

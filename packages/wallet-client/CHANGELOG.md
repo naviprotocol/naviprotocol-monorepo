@@ -1,5 +1,13 @@
 # @naviprotocol/wallet-client
 
+## 2.0.0-beta.1
+
+### Patch Changes
+
+- Prepare the Sui SDK v2 beta release with Core API gRPC wallet execution,
+  Suilend v3 lazy adapter support, service endpoint overrides, and updated
+  beta dependencies.
+
 ## 1.4.11
 
 ### Patch Changes

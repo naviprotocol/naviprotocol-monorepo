@@ -1,5 +1,13 @@
 # @naviprotocol/lending
 
+## 2.0.0-beta.1
+
+### Patch Changes
+
+- Prepare the Sui SDK v2 beta release with Core API gRPC read/simulate support,
+  explicit GraphQL capability wiring, Address Balances normalization, and
+  service endpoint configuration for NAVI/Open API callers.
+
 ## 1.4.0
 
 ### Minor Changes

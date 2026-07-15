@@ -4,37 +4,57 @@
  */
 
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { SuiClient, PaginatedCoins } from '@mysten/sui/client'
+import type { NaviDcaCoinClient, NaviDcaPaginatedCoins } from './client'
 
 /**
  * Get coins for a specific address and coin type
  * Handles pagination automatically to fetch all coins
  */
 export async function getCoins(
-  client: SuiClient,
+  client: NaviDcaCoinClient,
   address: string,
   coinType: string = '0x2::sui::SUI'
-): Promise<PaginatedCoins> {
+): Promise<NaviDcaPaginatedCoins> {
   let cursor: string | null | undefined = null
   const allCoinData: any[] = []
 
   // Fetch all coins using pagination
   do {
-    const response = await client.getCoins({
-      owner: address,
-      coinType,
-      cursor,
-      limit: 100 // Maximum limit per page
-    })
+    const core = client.core as
+      | {
+          listCoins?(options: any): Promise<any>
+        }
+      | undefined
+    const response: any =
+      typeof core?.listCoins === 'function'
+        ? await core.listCoins({
+            owner: address,
+            coinType,
+            cursor,
+            limit: 100
+          })
+        : typeof client.getCoins === 'function'
+          ? await client.getCoins({
+              owner: address,
+              coinType,
+              cursor,
+              limit: 100 // Maximum limit per page
+            })
+          : (() => {
+              throw new Error(
+                'DCA coin selection requires core.listCoins or an explicit legacy getCoins client'
+              )
+            })()
+    const pageData = response.objects ?? response.data ?? []
 
     // Break if no more data
-    if (!response.data || response.data.length === 0) {
+    if (!pageData.length) {
       break
     }
 
     // Collect coin data and continue with next page
-    allCoinData.push(...response.data)
-    cursor = response.nextCursor
+    allCoinData.push(...pageData)
+    cursor = response.cursor ?? response.nextCursor
   } while (cursor)
 
   // Return all coins in the same format as PaginatedCoins
@@ -43,6 +63,14 @@ export async function getCoins(
     nextCursor: null,
     hasNextPage: false
   }
+}
+
+function getCoinObjectId(coin: { coinObjectId?: string; objectId?: string }) {
+  const objectId = coin.coinObjectId ?? coin.objectId
+  if (!objectId) {
+    throw new Error('Coin object is missing coinObjectId/objectId')
+  }
+  return objectId
 }
 
 /**
@@ -63,13 +91,13 @@ export function returnMergedCoins(tx: Transaction, coinInfo: any) {
 
   // Merge all coins into the largest one if there are multiple coins
   if (sortedCoins.length >= 2) {
-    const baseObj = sortedCoins[0].coinObjectId
-    const allList = sortedCoins.slice(1).map((coin: any) => coin.coinObjectId)
+    const baseObj = getCoinObjectId(sortedCoins[0])
+    const allList = sortedCoins.slice(1).map(getCoinObjectId)
     tx.mergeCoins(baseObj, allList)
   }
 
   // Return the merged coin object
-  const mergedCoinObject = tx.object(sortedCoins[0].coinObjectId)
+  const mergedCoinObject = tx.object(getCoinObjectId(sortedCoins[0]))
   return mergedCoinObject
 }
 
@@ -85,7 +113,7 @@ export function returnMergedCoins(tx: Transaction, coinInfo: any) {
  * @returns Transaction result containing the split coin
  */
 export async function getCoinForDca(
-  client: SuiClient,
+  client: NaviDcaCoinClient,
   tx: Transaction,
   address: string,
   coinType: string,

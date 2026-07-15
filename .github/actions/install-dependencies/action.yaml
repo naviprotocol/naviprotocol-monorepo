@@ -17,10 +17,10 @@ runs:
         path: ${{ steps.pnpm-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-node-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: ${{ runner.os }}-node-
-    - name: Use Node.js v20
+    - name: Use Node.js v22
       uses: actions/setup-node@v3
       with:
-        node-version: 20
+        node-version: 22
     - shell: bash
       name: Use Latest Corepack
       run: |

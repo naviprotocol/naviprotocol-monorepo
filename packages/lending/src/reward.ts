@@ -18,7 +18,8 @@ import type {
   AccountCap,
   MarketOption,
   MarketsOption,
-  EModeCap
+  EModeCap,
+  ServiceOption
 } from './types'
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
@@ -26,6 +27,7 @@ import {
   suiClient,
   camelize,
   parseDevInspectResult,
+  devInspectTransaction,
   normalizeCoinType,
   withSingleton,
   parseTxValue,
@@ -38,6 +40,7 @@ import BigNumber from 'bignumber.js'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
 import { getUserEModeCaps } from './emode'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 async function getLendingRewardsBatch(
   address: string,
@@ -47,10 +50,9 @@ async function getLendingRewardsBatch(
     owner: string
     emodeId?: number
   }[],
-  options?: Partial<SuiClientOption & EnvOption>
+  options?: Partial<SuiClientOption & EnvOption & ServiceOption>
 ): Promise<LendingReward[]> {
   const client = options?.client ?? suiClient
-  const tx = new Transaction()
 
   const pools = await getPools({
     ...options,
@@ -59,47 +61,6 @@ async function getLendingRewardsBatch(
   })
 
   const feeds = await getPriceFeeds(options)
-
-  for (let task of tasks) {
-    const config = await getConfig({
-      ...options,
-      cacheTime: DEFAULT_CACHE_TIME,
-      market: task.market
-    })
-    tx.moveCall({
-      target: `${config.uiGetter}::incentive_v3_getter::get_user_atomic_claimable_rewards`,
-      arguments: [
-        tx.object('0x06'), // Clock object
-        tx.object(config.storage), // Protocol storage
-        tx.object(config.incentiveV3), // Incentive V3 contract
-        tx.pure.address(task.address) // User address
-      ]
-    })
-  }
-
-  const result = await client.devInspectTransactionBlock({
-    transactionBlock: tx,
-    sender: address
-  })
-
-  const data = [] as [string[], string[], number[], string[], number[]][]
-
-  result?.results?.forEach((item) => {
-    data.push(
-      parseDevInspectResult<[string[], string[], number[], string[], number[]]>(
-        {
-          results: [item]
-        } as any,
-        [
-          bcs.vector(bcs.string()), // Asset coin types
-          bcs.vector(bcs.string()), // Reward coin types
-          bcs.vector(bcs.u8()), // Reward options
-          bcs.vector(bcs.Address), // Rule IDs
-          bcs.vector(bcs.u256()) // Claimable amounts
-        ]
-      )
-    )
-  })
 
   const rewardsList: {
     userClaimableReward: number
@@ -115,39 +76,90 @@ async function getLendingRewardsBatch(
     emodeId?: number
   }[] = []
 
-  data.forEach((rewardsData, index) => {
-    const task = tasks[index]
-    if (rewardsData.length === 5 && Array.isArray(rewardsData[0])) {
-      const count = rewardsData[0].length
-      for (let i = 0; i < count; i++) {
-        const feed = feeds.find(
-          (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
-        )
-        const pool = pools.find(
-          (pool) =>
-            normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i]) &&
-            pool.market === task.market
-        )
-        if (!feed || !pool) {
-          continue
-        }
-        rewardsList.push({
-          assetId: pool.id,
-          assetCoinType: normalizeCoinType(rewardsData[0][i]),
-          rewardCoinType: normalizeCoinType(rewardsData[1][i]),
-          option: Number(rewardsData[2][i]),
-          userClaimableReward: Number(rewardsData[4][i]) / Math.pow(10, feed.priceDecimal),
-          ruleIds: Array.isArray(rewardsData[3][i])
-            ? (rewardsData[3][i] as any)
-            : [rewardsData[3][i]],
-          market: task.market,
-          owner: task.owner,
-          address: task.address,
-          emodeId: task.emodeId
+  // 逐 task 独立 devInspect:此前把所有 market + EMode cap 的 moveCall 塞进同一个 PTB
+  // 只发一次 devInspect,任一子调用 abort(某 market 未接 incentive_v3 / 某 EMode
+  // accountCap 过期或不匹配)就会让整批结果被清空 → 静默返 []。改为每个 task 独立
+  // devInspect 并 try/catch 隔离:一个失败只跳过该 task,不连坐其余(等价旧 navi-sdk
+  // 逐 market 互不干扰的语义)。失败显式打日志,不再静默吞掉。
+  await Promise.all(
+    tasks.map(async (task) => {
+      try {
+        const config = await getConfig({
+          ...options,
+          cacheTime: DEFAULT_CACHE_TIME,
+          market: task.market
         })
+        const tx = new Transaction()
+        tx.moveCall({
+          target: `${config.uiGetter}::incentive_v3_getter::get_user_atomic_claimable_rewards`,
+          arguments: [
+            tx.object('0x06'), // Clock object
+            tx.object(config.storage), // Protocol storage
+            tx.object(config.incentiveV3), // Incentive V3 contract
+            tx.pure.address(task.address) // User address
+          ]
+        })
+
+        const result = await devInspectTransaction(client, {
+          transactionBlock: tx,
+          sender: address
+        })
+
+        const item = result?.results?.[0]
+        if (!item) {
+          // 该 task 无返回(abort/空):跳过,不影响其余 task。
+          return
+        }
+
+        const rewardsData = parseDevInspectResult<
+          [string[], string[], number[], string[], number[]]
+        >({ results: [item] } as any, [
+          bcs.vector(bcs.string()), // Asset coin types
+          bcs.vector(bcs.string()), // Reward coin types
+          bcs.vector(bcs.u8()), // Reward options
+          bcs.vector(bcs.Address), // Rule IDs
+          bcs.vector(bcs.u256()) // Claimable amounts
+        ])
+
+        if (rewardsData.length === 5 && Array.isArray(rewardsData[0])) {
+          const count = rewardsData[0].length
+          for (let i = 0; i < count; i++) {
+            const feed = feeds.find(
+              (feed) => normalizeCoinType(feed.coinType) === normalizeCoinType(rewardsData[1][i])
+            )
+            const pool = pools.find(
+              (pool) =>
+                normalizeCoinType(pool.coinType) === normalizeCoinType(rewardsData[0][i]) &&
+                pool.market === task.market
+            )
+            if (!feed || !pool) {
+              continue
+            }
+            rewardsList.push({
+              assetId: pool.id,
+              assetCoinType: normalizeCoinType(rewardsData[0][i]),
+              rewardCoinType: normalizeCoinType(rewardsData[1][i]),
+              option: Number(rewardsData[2][i]),
+              userClaimableReward: Number(rewardsData[4][i]) / Math.pow(10, feed.priceDecimal),
+              ruleIds: Array.isArray(rewardsData[3][i])
+                ? (rewardsData[3][i] as any)
+                : [rewardsData[3][i]],
+              market: task.market,
+              owner: task.owner,
+              address: task.address,
+              emodeId: task.emodeId
+            })
+          }
+        }
+      } catch (e) {
+        // 单 task 失败不连坐整批;显式记录而非静默吞掉。
+        console.error(
+          `[lending] getLendingRewardsBatch task failed (market=${task.market}, address=${task.address}):`,
+          e
+        )
       }
-    }
-  })
+    })
+  )
 
   return rewardsList
 }
@@ -165,7 +177,7 @@ async function getLendingRewardsBatch(
  */
 export async function getUserAvailableLendingRewards(
   address: string | AccountCap,
-  options?: Partial<SuiClientOption & EnvOption & MarketsOption>
+  options?: Partial<SuiClientOption & EnvOption & MarketsOption & ServiceOption>
 ): Promise<LendingReward[]> {
   const markets = (options?.markets || [MARKETS.main]).map((identity) => {
     return getMarketConfig(identity)
@@ -277,12 +289,18 @@ export function summaryLendingRewards(rewards: LendingReward[]): LendingRewardSu
 export const getUserTotalClaimedReward = withSingleton(
   async (
     address: string | AccountCap,
-    options?: Partial<MarketOption>
+    options?: Partial<MarketOption & ServiceOption>
   ): Promise<{
     USDValue: number
   }> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/total_claimed_reward?userAddress=${address}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   }
 )
@@ -304,14 +322,20 @@ export const getUserClaimedRewardHistory = withSingleton(
       MarketOption & {
         page: number
         size: number
-      }
+      } & ServiceOption
     >
   ): Promise<{
     data: HistoryClaimedReward[]
     cursor?: string
   }> => {
-    const endpoint = `https://open-api.naviprotocol.io/api/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`
-    const res = await fetch(endpoint, { headers: requestHeaders }).then((res) => res.json())
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/user/rewards?userAddress=${address}&page=${options?.page || 1}&pageSize=${options?.size || 400}&sdk=${packageJson.version}&market=${options?.market || DEFAULT_MARKET_IDENTITY}`,
+      options
+    )
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return camelize({
       data: res.data.rewards
     })
@@ -340,6 +364,7 @@ export async function claimLendingRewardsPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         customCoinReceive?: {
           type: 'transfer' | 'depositNAVI' | 'skip'

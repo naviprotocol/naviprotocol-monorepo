@@ -7,8 +7,13 @@
  * @module LendingTypes
  */
 
-import type { SuiClient } from '@mysten/sui/client'
-import type { TransactionResult as TransactionResultType } from '@mysten/sui/transactions'
+import type { NaviSuiClient } from './sui'
+import type { ServiceEndpointOption } from './services'
+import type {
+  TransactionObjectArgument as TransactionObjectArgumentType,
+  TransactionObjectInput as TransactionObjectInputType,
+  TransactionResult as TransactionResultType
+} from '@mysten/sui/transactions'
 
 export type MarketConfig = {
   id: number
@@ -77,6 +82,11 @@ export type TransactionResult =
     }
   | TransactionResultType
 
+export type TransactionObjectArgument = TransactionObjectArgumentType
+export type TransactionObjectInput = TransactionObjectInputType
+export type SingleCoinTransactionResult = TransactionResultType &
+  readonly [TransactionObjectArgumentType]
+
 export type AccountCap = string
 
 /**
@@ -100,7 +110,7 @@ export type AccountCapOption = {
  */
 export type SuiClientOption = {
   /** Sui client instance */
-  client: SuiClient
+  client: NaviSuiClient
 }
 
 /**
@@ -548,17 +558,12 @@ export type FeeDetail = {
  * including transaction results, gas coins, input references, and direct strings.
  */
 export type CoinObject =
-  | TransactionResult
+  | TransactionObjectInput
   | {
       $kind: 'GasCoin'
       GasCoin: true
     }
-  | {
-      $kind: 'Input'
-      Input: number
-      type?: 'object'
-    }
-  | string
+  | undefined
 
 export type BorrowFeeOption = {
   asset: AssetIdentifier
@@ -572,6 +577,8 @@ export type MarketOption = {
 export type MarketsOption = {
   markets?: MarketIdentity[]
 }
+
+export type ServiceOption = ServiceEndpointOption
 
 export type LendingPositionType =
   | 'navi-lending-supply'

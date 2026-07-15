@@ -18,12 +18,14 @@ import type {
   FeeDetail,
   CoinObject,
   TransactionResult,
+  SingleCoinTransactionResult,
   AccountCapOption,
   BorrowFeeOption,
   SuiClientOption,
   MarketOption,
   EMode,
-  MarketsOption
+  MarketsOption,
+  ServiceOption
 } from './types'
 import {
   normalizeCoinType,
@@ -32,11 +34,14 @@ import {
   parseTxValue,
   suiClient,
   requestHeaders,
-  parsePoolUID
+  parsePoolUID,
+  parseDevInspectResult,
+  devInspectTransaction,
+  getSuiObject
 } from './utils'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 import { Transaction } from '@mysten/sui/transactions'
 import BigNumber from 'bignumber.js'
-import { parseDevInspectResult } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import packageJson from '../package.json'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
@@ -69,21 +74,29 @@ export enum PoolOperator {
  */
 export const getPools = withCache(
   withSingleton(
-    async (options?: Partial<EnvOption & CacheOption & MarketsOption>): Promise<Pool[]> => {
+    async (
+      options?: Partial<EnvOption & CacheOption & MarketsOption & ServiceOption>
+    ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
         return getMarketConfig(identity)
       })
-      const url = `https://open-api.naviprotocol.io/api/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
-        (market) => {
-          return market.key
-        }
-      )}`
+      const endpoint = resolveNaviOpenApiEndpoint(options)
+      const url = buildNaviOpenApiUrl(
+        `/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
+          (market) => {
+            return market.key
+          }
+        )}`,
+        options
+      )
       const res: {
         data: Pool[]
         meta: {
           emodes: EMode[]
         }
-      } = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      } = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) }).then((res) =>
+        res.json()
+      )
 
       res.data.forEach((pool) => {
         const filterEmodes = res.meta.emodes.filter((emode) => {
@@ -154,7 +167,7 @@ export const getPools = withCache(
  */
 export async function getPool(
   identifier: AssetIdentifier,
-  options?: Partial<EnvOption & MarketOption>
+  options?: Partial<EnvOption & MarketOption & ServiceOption>
 ): Promise<Pool> {
   let market = options?.market
   if (typeof identifier === 'string') {
@@ -206,9 +219,12 @@ export async function getPool(
  * @returns Promise<PoolStats> - Protocol statistics
  */
 export const getStats = withCache(
-  withSingleton(async (options?: Partial<CacheOption>): Promise<PoolStats> => {
-    const url = `https://open-api.naviprotocol.io/api/navi/stats?sdk=${packageJson.version}`
-    const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+  withSingleton(async (options?: Partial<CacheOption & ServiceOption>): Promise<PoolStats> => {
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(`/navi/stats?sdk=${packageJson.version}`, options)
+    const res = await fetch(url, {
+      headers: mergeServiceHeaders(requestHeaders, endpoint)
+    }).then((res) => res.json())
     return res.data
   })
 )
@@ -228,7 +244,7 @@ export const getStats = withCache(
 export const getFees = withCache(
   withSingleton(
     async (
-      options?: Partial<CacheOption>
+      options?: Partial<CacheOption & ServiceOption>
     ): Promise<{
       totalValue: number
       v3BorrowFee: {
@@ -244,8 +260,11 @@ export const getFees = withCache(
         details: FeeDetail[]
       }
     }> => {
-      const url = `https://open-api.naviprotocol.io/api/navi/fee?sdk=${packageJson.version}`
-      const res = await fetch(url, { headers: requestHeaders }).then((res) => res.json())
+      const endpoint = resolveNaviOpenApiEndpoint(options)
+      const url = buildNaviOpenApiUrl(`/navi/fee?sdk=${packageJson.version}`, options)
+      const res = await fetch(url, {
+        headers: mergeServiceHeaders(requestHeaders, endpoint)
+      }).then((res) => res.json())
       return res
     }
   )
@@ -271,6 +290,7 @@ export async function depositCoinPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         amount: number | TransactionResult
       }
@@ -288,10 +308,12 @@ export async function depositCoinPTB(
     throw new Error(`The lending pool for coinType ${pool.suiCoinType} has been deprecated.`)
   }
 
-  const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
-
   // Handle SUI gas coin deposits
-  if (normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') && isGasCoin) {
+  if (
+    normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') &&
+    typeof coinObject === 'object' &&
+    coinObject?.$kind === 'GasCoin'
+  ) {
     if (!options?.amount) {
       throw new Error('Amount is required for sui coin')
     }
@@ -371,8 +393,8 @@ export async function withdrawCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption & MarketOption>
-) {
+  options?: Partial<EnvOption & AccountCapOption & MarketOption & ServiceOption>
+): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -465,15 +487,15 @@ export async function withdrawCoinPTB(
     typeArguments: [pool.suiCoinType]
   })
 
-  return withdrawCoin
+  return withdrawCoin as SingleCoinTransactionResult
 }
 
 export async function borrowCoinPTB(
   tx: Transaction,
   identifier: AssetIdentifier,
   amount: number | TransactionResult,
-  options?: Partial<EnvOption & AccountCapOption & MarketOption>
-) {
+  options?: Partial<EnvOption & AccountCapOption & MarketOption & ServiceOption>
+): Promise<SingleCoinTransactionResult> {
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -568,7 +590,7 @@ export async function borrowCoinPTB(
     typeArguments: [pool.suiCoinType]
   })
 
-  return coin
+  return coin as SingleCoinTransactionResult
 }
 
 /**
@@ -600,6 +622,7 @@ export async function repayCoinPTB(
   options?: Partial<
     EnvOption &
       AccountCapOption &
+      ServiceOption &
       MarketOption & {
         amount: number | TransactionResult
       }
@@ -610,9 +633,11 @@ export async function repayCoinPTB(
     cacheTime: DEFAULT_CACHE_TIME
   })
   const pool = await getPool(identifier, options)
-  const isGasCoin = typeof coinObject === 'object' && coinObject.$kind === 'GasCoin'
-
-  if (normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') && isGasCoin) {
+  if (
+    normalizeCoinType(pool.suiCoinType) === normalizeCoinType('0x2::sui::SUI') &&
+    typeof coinObject === 'object' &&
+    coinObject?.$kind === 'GasCoin'
+  ) {
     if (!options?.amount) {
       throw new Error('Amount is required for sui coin')
     }
@@ -700,10 +725,10 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
+      const client = options?.client ?? suiClient
       if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
-          const client = options?.client ?? suiClient
           const tx = new Transaction()
           tx.moveCall({
             target: `${config.package}::incentive_v3::get_borrow_fee_v2`,
@@ -715,17 +740,22 @@ export const getBorrowFee = withCache(
             ],
             typeArguments: []
           })
-          const result = await client.devInspectTransactionBlock({
+          const result = await devInspectTransaction(client, {
             transactionBlock: tx,
             sender: options.address
           })
           const res = parseDevInspectResult<number[]>(result, [bcs.u64()])
           return (Number(res[0]) || 0) / 100
         } catch (error) {
-          console.error(error)
+          // 用户维度借款费查询失败 → 下方回退到「全局费率」(语义变化,显式标记便于排查,
+          // 不改回退行为)。
+          console.error(
+            '[lending] getBorrowFee per-user query failed, falling back to global rate:',
+            error
+          )
         }
       }
-      const rawData: any = await suiClient.getObject({
+      const rawData: any = await getSuiObject(client, {
         id: config.incentiveV3,
         options: { showType: true, showOwner: true, showContent: true }
       })

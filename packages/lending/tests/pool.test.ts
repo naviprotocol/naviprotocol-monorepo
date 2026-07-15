@@ -15,14 +15,18 @@ import { updateOraclePricesPTB, getPriceFeeds } from '../src/oracle'
 import { OraclePriceFeed } from '../src/types'
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 let allFeeds: OraclePriceFeed[] = []
 
 beforeAll(async () => {
+  if (!runLiveTests) {
+    return
+  }
   allFeeds = await getPriceFeeds()
 })
 
-describe('getPools', () => {
+describe.skipIf(!runLiveTests)('getPools', () => {
   it('prod pools', async () => {
     const pools = await getPools()
     expect(pools).toBeDefined()
@@ -49,7 +53,7 @@ describe('getPools', () => {
   })
 })
 
-describe('getStats', () => {
+describe.skipIf(!runLiveTests)('getStats', () => {
   it('check response', async () => {
     const stats = await getStats()
     expect(stats).toBeDefined()
@@ -64,7 +68,7 @@ describe('getStats', () => {
   })
 })
 
-describe('getFees', () => {
+describe.skipIf(!runLiveTests)('getFees', () => {
   it('check response', async () => {
     const fees = await getFees()
     expect(fees).toBeDefined()
@@ -75,11 +79,11 @@ describe('getFees', () => {
   })
 })
 
-describe('depositCoinPTB', () => {
+describe.skipIf(!runLiveTests)('depositCoinPTB', () => {
   it('should success deposit 1 Sui', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 0.2])
     await depositCoinPTB(tx, coinType, toDeposit)
     tx.setSender(testAddress)
@@ -96,7 +100,7 @@ describe('depositCoinPTB', () => {
   it('should failed insufficient SUI balance for deposit', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const [toDeposit] = tx.splitCoins(tx.gas, [1e9 * 1000])
     await depositCoinPTB(tx, coinType, toDeposit, {
       amount: 1e9 * 1000
@@ -113,12 +117,12 @@ describe('depositCoinPTB', () => {
   })
 })
 
-describe('withdrawCoinPTB', () => {
+describe.skipIf(!runLiveTests)('withdrawCoinPTB', () => {
   it('should success withdraw 0.2 vSUI', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const withdrawCoins = await withdrawCoinPTB(tx, coinType, 1e9 * 0.2)
     tx.transferObjects([withdrawCoins], testAddress)
     tx.setSender(testAddress)
@@ -134,13 +138,13 @@ describe('withdrawCoinPTB', () => {
   })
 })
 
-describe('borrowCoinPTB', () => {
+describe.skipIf(!runLiveTests)('borrowCoinPTB', () => {
   it('should success borrow 0.1 vSUI', async () => {
     const testAddress = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     const borrowCoin = await borrowCoinPTB(tx, coinType, 1e9 * 0.1)
     tx.transferObjects([borrowCoin], testAddress)
     tx.setSender(testAddress)
@@ -155,11 +159,11 @@ describe('borrowCoinPTB', () => {
   })
 })
 
-describe('repayCoinPTB', () => {
+describe.skipIf(!runLiveTests)('repayCoinPTB', () => {
   it('should success repay 0.1 SUI', async () => {
     const coinType = '0x2::sui::SUI'
     const tx = new Transaction()
-    updateOraclePricesPTB(tx, allFeeds)
+    await updateOraclePricesPTB(tx, allFeeds)
     await repayCoinPTB(tx, coinType, tx.gas, {
       amount: 1e9 * 0.1
     })
@@ -176,7 +180,7 @@ describe('repayCoinPTB', () => {
   })
 })
 
-describe('getBorrowFee', () => {
+describe.skipIf(!runLiveTests)('getBorrowFee', () => {
   it('check response', async () => {
     const fee = await getBorrowFee({
       env: 'dev',

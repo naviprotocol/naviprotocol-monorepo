@@ -15,7 +15,7 @@ Dollar-Cost Averaging (DCA) SDK for Astros Aggregator
 ### 1. Create DCA Order
 
 ```typescript
-import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-aggregator-sdk'
+import { createDcaOrder, TimeUnit } from '@naviprotocol/astros-dca-sdk'
 
 // SDK automatically handles coin selection, merging, and balance checks
 const tx = await createDcaOrder(
@@ -63,7 +63,7 @@ The SDK automatically:
 ### 2. Query User Orders
 
 ```typescript
-import { getUserDcaOrders } from '@naviprotocol/astros-aggregator-sdk'
+import { getUserDcaOrders } from '@naviprotocol/astros-dca-sdk'
 
 // Get all active orders for a user
 const result = await getUserDcaOrders('0xUSER_ADDRESS', {
@@ -79,7 +79,7 @@ console.log('Total:', result.pagination.total)
 ### 3. Get Order Details
 
 ```typescript
-import { getDcaOrderDetails } from '@naviprotocol/astros-aggregator-sdk'
+import { getDcaOrderDetails } from '@naviprotocol/astros-dca-sdk'
 
 const order = await getDcaOrderDetails('ORDER_ID')
 
@@ -104,7 +104,7 @@ order.fills.forEach((fill, i) => {
 ### 4. List All Orders by Status
 
 ```typescript
-import { listDcaOrders } from '@naviprotocol/astros-aggregator-sdk'
+import { listDcaOrders } from '@naviprotocol/astros-dca-sdk'
 
 // Get orders grouped by status
 const orders = await listDcaOrders()
@@ -119,7 +119,7 @@ const activeOrders = await listDcaOrders({ status: 'active' })
 ### 5. Cancel DCA Order
 
 ```typescript
-import { cancelDcaOrder, getUserDcaOrders } from '@naviprotocol/astros-aggregator-sdk'
+import { cancelDcaOrder, getUserDcaOrders } from '@naviprotocol/astros-dca-sdk'
 
 // First, get the order with receiptId from backend API
 const orders = await getUserDcaOrders(userAddress, { status: 'active' })

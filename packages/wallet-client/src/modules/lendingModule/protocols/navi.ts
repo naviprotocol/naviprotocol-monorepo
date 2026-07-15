@@ -44,7 +44,7 @@ class NaviProtocol implements LendingProtocol {
     coinType: string,
     amount: number
   ): Promise<TransactionResult> {
-    return withdrawCoinPTB(tx, coinType, amount)
+    return withdrawCoinPTB(tx, coinType, amount, this.walletClient.lending.naviServiceOptions)
   }
 
   async borrowCoinPTB(
@@ -61,7 +61,10 @@ class NaviProtocol implements LendingProtocol {
     coinObject: CoinObject,
     amount: number
   ): Promise<void> {
-    repayCoinPTB(tx, coinType, coinObject, { amount })
+    repayCoinPTB(tx, coinType, coinObject, {
+      ...this.walletClient.lending.naviServiceOptions,
+      amount
+    })
   }
 }
 

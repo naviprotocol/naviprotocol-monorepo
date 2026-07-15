@@ -21,7 +21,10 @@ Create a wallet client using a private key to perform all blockchain operations:
 // Create wallet client from private key
 const walletClient = new WalletClient({
     client: {
-        url: 'https://fullnode.mainnet.sui.io' // Custom RPC URL
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443' // Custom gRPC URL
+        }
     },
     signer: Ed25519Keypair.fromSecretKey(privateKey)
 })
@@ -38,13 +41,17 @@ Use a watch-only wallet to view wallet information but cannot execute transactio
 // Create watch-only wallet client
 const walletClient = new WalletClient({
     client: {
-        url: 'https://fullnode.mainnet.sui.io'
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
     },
     signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
 })
 
 // Can view balances and portfolio
-const portfolio = await walletClient.balance.getPortfolio()
+await walletClient.balance.updatePortfolio()
+const portfolio = walletClient.balance.portfolio
 const pools = await walletClient.lending.getPools()
 
 // Cannot execute transaction operations (will throw error)
@@ -83,7 +90,10 @@ class WebSignerAdapter extends WebSigner {
 // Create browser wallet client
 const walletClient = new WalletClient({
     client: {
-        url: 'https://fullnode.mainnet.sui.io'
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
     },
     signer: new WebSignerAdapter('0x...')
 })

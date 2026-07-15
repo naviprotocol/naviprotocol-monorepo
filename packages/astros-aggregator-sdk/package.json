@@ -1,8 +1,9 @@
 {
   "name": "@naviprotocol/astros-aggregator-sdk",
-  "version": "1.14.3",
+  "version": "2.0.0",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
+  "type": "module",
   "keywords": [
     "navi",
     "astros",
@@ -16,7 +17,7 @@
     "type": "git",
     "url": "https://github.com/naviprotocol/naviprotocol-monorepo.git"
   },
-  "main": "dist/index.cjs.js",
+  "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
@@ -29,11 +30,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.cjs.js"
+      "default": "./dist/index.esm.js"
     }
   },
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "scripts": {
     "build": "run-p build:lib",
@@ -45,6 +49,7 @@
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
     "test": "vitest --config ./vite.config.unit.js",
+    "test:types": "pnpm build:lib && tsc --noEmit -p tsconfig.type-tests.json",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typedoc": "typedoc"
@@ -57,17 +62,17 @@
     "shio-sdk": "1.0.9"
   },
   "devDependencies": {
-    "@mysten/sui": "1.38.0",
+    "@mysten/sui": "2.20.2",
     "@types/crypto-js": "4.2.2",
-    "@types/node": "20.19.1",
+    "@types/node": "22.7.5",
     "jsdom": "27.0.0",
     "tsconfig-paths": "4.2.0",
     "tslint": "6.1.3",
     "tsx": "^4.7.0",
     "typescript": "5.8.3",
-    "vitest": "3.2.2"
+    "vitest": "3.2.4"
   },
   "peerDependencies": {
-    "@mysten/sui": ">=1.25.0"
+    "@mysten/sui": ">=2.0.0"
   }
 }

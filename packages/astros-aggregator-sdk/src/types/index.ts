@@ -7,6 +7,102 @@
  * @module AstrosAggregatorTypes
  */
 
+import type {
+  TransactionObjectArgument as TransactionObjectArgumentType,
+  TransactionResult as TransactionResultType
+} from '@mysten/sui/transactions'
+
+export type SingleCoinTransactionResult = TransactionResultType &
+  readonly [TransactionObjectArgumentType]
+
+export type NaviAggregatorCoreClient = {
+  core: unknown
+}
+
+export type NaviAggregatorCoreApi = {
+  listCoins(options: any): Promise<any>
+  getTransaction(options: any): Promise<any>
+  simulateTransaction(options: any): Promise<any>
+  executeTransaction(options: any): Promise<any>
+}
+
+export type NaviAggregatorCoinClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.listCoins` on the injected v2 Core API client. */
+  getCoins?(options: any): Promise<any>
+}
+
+export type NaviAggregatorTransactionQueryClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.getTransaction` on the injected v2 Core API client. */
+  getTransactionBlock?(options: any): Promise<any>
+}
+
+export type NaviAggregatorDryRunClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.simulateTransaction` on the injected v2 Core API client. */
+  dryRunTransactionBlock?(options: any): Promise<any>
+}
+
+export type NaviAggregatorExecutionClient = NaviAggregatorCoreClient & {
+  /** @deprecated Use `core.executeTransaction` on the injected v2 Core API client. */
+  executeTransactionBlock?(options: any): Promise<any>
+}
+
+export type NaviAggregatorTransactionStatus = {
+  status: 'success' | 'failure' | (string & {})
+  error?: string
+}
+
+export type NaviAggregatorTransactionResult = {
+  [key: string]: unknown
+  digest?: string
+  effects?: {
+    status?: NaviAggregatorTransactionStatus
+    [key: string]: unknown
+  }
+  events: Array<{
+    type: string
+    parsedJson?: unknown
+    [key: string]: unknown
+  }>
+  balanceChanges: Array<{
+    owner?: unknown
+    amount: string
+    coinType?: string
+    [key: string]: unknown
+  }>
+  objectChanges: Array<{
+    type?: string
+    objectId?: string
+    owner?: unknown
+    [key: string]: unknown
+  }>
+  raw?: unknown
+}
+
+export type NaviAggregatorDryRunResult = {
+  effects?: {
+    status?: NaviAggregatorTransactionStatus
+    [key: string]: unknown
+  }
+  events: Array<{
+    type: string
+    parsedJson?: unknown
+    [key: string]: unknown
+  }>
+  balanceChanges: Array<{
+    owner?: unknown
+    amount: string
+    coinType?: string
+    [key: string]: unknown
+  }>
+  objectChanges: Array<{
+    type?: string
+    objectId?: string
+    owner?: unknown
+    [key: string]: unknown
+  }>
+  raw?: unknown
+}
+
 /**
  * Enumeration of supported decentralized exchanges (DEXes)
  *
@@ -120,6 +216,13 @@ export type SwapOptions = {
   serviceFee?: FeeOption
   /** Slippage tolerance as a ratio (e.g., 0.01 for 1%). Only used in swapPTB, not in getQuote. If provided, it will be used to calculate minAmountOut instead of using the minAmountOut parameter. */
   slippage?: number
+  /** Optional NAVI service endpoints used by SDK-internal API calls. */
+  services?: {
+    naviOpenApi?: {
+      baseUrl?: string
+      headers?: Record<string, string>
+    }
+  }
 }
 
 /**

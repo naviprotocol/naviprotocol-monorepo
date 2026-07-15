@@ -9,22 +9,190 @@
  */
 
 import type { CacheOption, EMode, EModeIdentity, EModePool, Pool, TransactionResult } from './types'
-import type { DevInspectResults } from '@mysten/sui/client'
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
+import type { DevInspectResults } from '@mysten/sui/jsonRpc'
 import camelCase from 'lodash.camelcase'
 import { Transaction } from '@mysten/sui/transactions'
 import { BcsType } from '@mysten/sui/bcs'
-import { normalizeStructTag } from '@mysten/sui/utils'
-import { SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js'
+import { fromBase64, normalizeStructTag } from '@mysten/sui/utils'
 import BigNumber from 'bignumber.js'
 import { userAgent } from './ua'
+import { createNaviSuiClient } from './sui'
+import { SuiPriceServiceConnection } from './pyth'
+import { getNaviSdkConfigVersion } from './services'
 
 /**
  * Default Sui client instance configured for mainnet
  */
-export const suiClient = new SuiClient({
-  url: getFullnodeUrl('mainnet')
-})
+export const suiClient = createNaviSuiClient()
+
+type CoreCommandOutput = {
+  bcs?: Uint8Array | number[] | string | null
+}
+
+type CoreCommandResult = {
+  returnValues?: CoreCommandOutput[]
+  mutatedReferences?: CoreCommandOutput[]
+}
+
+function toByteArray(value: Uint8Array | number[] | string | null | undefined) {
+  if (!value) {
+    return []
+  }
+  if (value instanceof Uint8Array) {
+    return Array.from(value)
+  }
+  if (Array.isArray(value)) {
+    return value
+  }
+  return Array.from(fromBase64(value))
+}
+
+function normalizeCoreDevInspectResult(result: any): DevInspectResults {
+  const commandResults = (result?.commandResults ?? []) as CoreCommandResult[]
+  const tx = result?.Transaction ?? result?.FailedTransaction ?? {}
+  const error =
+    tx.effects?.errors?.[0] ??
+    tx.effects?.status?.error ??
+    tx.status?.error ??
+    tx.status?.errors?.[0]
+
+  if (error) {
+    // 只上报、不改控制流:Core simulateTransaction 的 abort/错误此前被算出却从不暴露,
+    // 使 reward/positions 等批次在某链上状态下静默返空(见 reward.ts 已修的批次连坐)。
+    // 显式 warn 便于定位;是否据此中断由各调用方决定(此处不 throw 以免改变既有行为)。
+    console.warn('[lending] devInspect(core simulate) returned error:', error)
+  }
+
+  return {
+    effects: tx.effects,
+    events: tx.events,
+    error,
+    results: commandResults.map((command) => ({
+      returnValues: (command.returnValues ?? []).map((output) => [toByteArray(output.bcs), '']),
+      mutableReferenceOutputs: (command.mutatedReferences ?? []).map((output) => [
+        '',
+        toByteArray(output.bcs),
+        ''
+      ])
+    }))
+  } as unknown as DevInspectResults
+}
+
+export async function devInspectTransaction(
+  client: any,
+  options: {
+    transactionBlock?: Transaction | Uint8Array
+    transaction?: Transaction | Uint8Array
+    sender: string
+  }
+): Promise<DevInspectResults> {
+  const core = client?.core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.simulateTransaction === 'function') {
+    const transaction = options.transaction ?? options.transactionBlock
+    if (transaction instanceof Transaction) {
+      transaction.setSenderIfNotSet(options.sender)
+    }
+    const result = await core.simulateTransaction({
+      transaction,
+      checksEnabled: false,
+      include: {
+        effects: true,
+        events: true,
+        commandResults: true
+      }
+    })
+    return normalizeCoreDevInspectResult(result)
+  }
+
+  return client.devInspectTransactionBlock({
+    transactionBlock: options.transactionBlock ?? options.transaction,
+    sender: options.sender
+  })
+}
+
+function toCoreObjectInclude(options?: Record<string, any>) {
+  return {
+    json: Boolean(options?.showContent),
+    display: Boolean(options?.showDisplay),
+    previousTransaction: Boolean(options?.showPreviousTransaction),
+    objectBcs: Boolean(options?.showBcs)
+  }
+}
+
+function normalizeCoreObjectResponse(object: any) {
+  if (!object || object instanceof Error) {
+    return {
+      error: object instanceof Error ? { code: 'notFound', error: object.message } : undefined
+    }
+  }
+
+  return {
+    data: {
+      objectId: object.objectId,
+      version: object.version,
+      digest: object.digest,
+      type: object.type,
+      owner: object.owner,
+      previousTransaction: object.previousTransaction,
+      content:
+        object.json === undefined
+          ? undefined
+          : {
+              dataType: 'moveObject',
+              type: object.type,
+              fields: object.json
+            },
+      display: object.display
+    }
+  }
+}
+
+export async function getSuiObject(
+  client: any,
+  options: { id: string; options?: Record<string, any> }
+) {
+  const core = client?.core as
+    | {
+        getObject?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.getObject === 'function') {
+    const { object } = await core.getObject({
+      objectId: options.id,
+      include: toCoreObjectInclude(options.options)
+    })
+    return normalizeCoreObjectResponse(object)
+  }
+
+  return client.getObject(options)
+}
+
+export async function multiGetSuiObjects(
+  client: any,
+  options: { ids: string[]; options?: Record<string, any> }
+) {
+  const core = client?.core as
+    | {
+        getObjects?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.getObjects === 'function') {
+    const { objects } = await core.getObjects({
+      objectIds: options.ids,
+      include: toCoreObjectInclude(options.options)
+    })
+    return objects.map(normalizeCoreObjectResponse)
+  }
+
+  return client.multiGetObjects(options)
+}
 
 /**
  * Generates a cache key from function arguments
@@ -36,17 +204,28 @@ export const suiClient = new SuiClient({
  * @returns JSON string representing the arguments
  */
 function argsKey(args: any[]) {
-  const serializergs = [] as any[]
+  const serializedArgs = [] as any[]
+  let serviceConfigVersionIncluded = false
+
   args.forEach((option: any, index) => {
     const isLast = index === args.length - 1
     if (typeof option === 'object' && option !== null && isLast) {
       const { client, disableCache, cacheTime, ...rest } = option
-      serializergs.push(rest)
+      rest.__naviSdkServiceConfigVersion = getNaviSdkConfigVersion()
+      serializedArgs.push(rest)
+      serviceConfigVersionIncluded = true
     } else {
-      serializergs.push(option)
+      serializedArgs.push(option)
     }
   })
-  return JSON.stringify(serializergs)
+
+  if (!serviceConfigVersionIncluded) {
+    serializedArgs.push({
+      __naviSdkServiceConfigVersion: getNaviSdkConfigVersion()
+    })
+  }
+
+  return JSON.stringify(serializedArgs)
 }
 
 /**
@@ -156,9 +335,12 @@ export function camelize<T extends Record<string, any>>(obj: T): T {
  * @returns Transaction result in the appropriate format
  */
 export function parseTxValue(
-  value: string | number | boolean | object,
+  value: string | number | boolean | object | null | undefined,
   format: any
 ): TransactionResult {
+  if (value === undefined || value === null) {
+    throw new Error('Transaction value is required')
+  }
   if (typeof value === 'object') {
     return value as TransactionResult
   }

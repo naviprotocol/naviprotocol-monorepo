@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": ".",
+    "paths": {
+      "@naviprotocol/astros-aggregator-sdk": ["dist/index.d.ts"]
+    }
+  },
+  "include": ["tests/type-compat/**/*.ts"]
+}

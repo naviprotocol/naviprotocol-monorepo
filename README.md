@@ -5,6 +5,19 @@
 
 NAVI Protocol TypeScript SDK is a comprehensive DeFi SDK collection designed for the Sui blockchain. It provides complete decentralized finance functionality including token swapping, cross-chain bridging, lending, flash loans, and more.
 
+## 🆙 SDK v1 vs v2
+
+The NAVI TypeScript SDKs have moved to the **Sui SDK v2** stack. What changed from the v1 (1.x) line:
+
+| | v1 (1.x) | v2 (2.x) |
+| --- | --- | --- |
+| Sui SDK | `@mysten/sui@^1` | `@mysten/sui@^2` |
+| Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended), optional `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
+| Module format | CommonJS | ESM |
+| Runtime | — | Node.js 22+ |
+
+Interfaces are otherwise unchanged — the one required step is constructing a Sui v2 client and passing it in. Upgrading a 1.x integration to 2.x? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first.
+
 ## 📦 Included Packages
 
 ### [@naviprotocol/astros-aggregator-sdk](./packages/astros-aggregator-sdk/)
@@ -44,6 +57,7 @@ Comprehensive Wallet Client SDK that provides a unified interface for DeFi opera
 
 ## 📚 Documentation
 
+- [Sui SDK v2 Migration](http://sdk.naviprotocol.io/sui-sdk-v2-migration)
 - [Astros Aggregator SDK](http://sdk.naviprotocol.io/swap)
 - [Astros Bridge SDK](http://sdk.naviprotocol.io/bridge)
 - [Lending SDK](http://sdk.naviprotocol.io/lending)
@@ -73,10 +87,13 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 | Package | Version | Status |
 |---|---|---|
-| @naviprotocol/astros-aggregator-sdk | 1.4.1 | ✅ Stable |
-| @naviprotocol/astros-bridge-sdk | 1.0.1 | ✅ Stable |
-| @naviprotocol/lending | 1.0.6 | ✅ Stable |
-| @naviprotocol/wallet-client | 1.0.4 | ✅ Stable |
+| @naviprotocol/astros-aggregator-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/astros-bridge-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/astros-dca-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/lending | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/wallet-client | 2.x | ✅ Sui SDK v2 |
+
+Looking for the previous 1.x releases? They remain available on npm.
 
 ---
 

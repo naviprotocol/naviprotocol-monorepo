@@ -8,14 +8,18 @@
 
 import {
   CoinObject,
+  buildNaviOpenApiUrl,
   mergeCoinsPTB,
+  mergeServiceHeaders,
   parseTxValue,
+  resolveNaviOpenApiEndpoint,
   withCache,
-  withSingleton
+  withSingleton,
+  type NaviSdkServiceOptions
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
 import { Module } from '../module'
-import { SuiTransactionBlockResponse, DryRunTransactionBlockResponse } from '@mysten/sui/client'
+import type { NaviWalletTransactionResult } from '../../types'
 
 /**
  * Configuration interface for the Volo staking module
@@ -29,6 +33,12 @@ export interface VoloModuleConfig {
   coinType: string
   /** The metadata ID for the staking pool */
   metadataId: string
+  /** Optional NAVI service endpoint overrides. */
+  services?: NaviSdkServiceOptions
+}
+
+export type VoloStatsOptions = {
+  services?: NaviSdkServiceOptions
 }
 
 /**
@@ -105,7 +115,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   readonly name = 'volo'
 
   /** Default configuration for the Volo staking protocol */
-  readonly defaultConfig = {
+  readonly defaultConfig: VoloModuleConfig = {
     packageId: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20',
     poolId: '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5',
     metadataId: '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60',
@@ -118,15 +128,25 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
    *
    * @returns Volo staking pool information
    */
-  getStats = withCache(
-    withSingleton(async () => {
+  private getStatsCached = withCache(
+    withSingleton(async (options?: VoloStatsOptions) => {
+      const serviceOptions = { services: options?.services }
+      const endpoint = resolveNaviOpenApiEndpoint(serviceOptions)
       const resp: {
         data: VoloStats
-      } = await fetch('https://open-api.naviprotocol.io/api/volo/stats').then((res) => res.json())
+      } = await fetch(buildNaviOpenApiUrl('/volo/stats', serviceOptions), {
+        headers: mergeServiceHeaders({}, endpoint)
+      }).then((res) => res.json())
 
       return resp.data
     })
   )
+
+  getStats(options?: VoloStatsOptions) {
+    return this.getStatsCached({
+      services: options?.services ?? this.config.services
+    })
+  }
 
   /**
    * Adds staking operation to a transaction black
@@ -181,7 +201,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   async stake<T extends boolean = false>(
     suiAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -232,7 +252,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
   async unstake<T extends boolean = false>(
     vSuiAmount: number,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }

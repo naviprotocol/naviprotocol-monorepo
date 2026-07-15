@@ -11,6 +11,24 @@ The account module provides comprehensive lending account functionality, includi
 - **Token Management**: Merge and manage tokens in accounts
 - **Dynamic Health Factor**: Simulate the impact of operations on health factors
 
+## Client Setup
+
+`getLendingState`, `getHealthFactor`, `getSimulatedHealthFactor`, and `getCoins` read on-chain
+state, so they require an explicit v2 gRPC/Core client — the SDK's default client is a
+placeholder that throws until you pass one. Construct a client once and reuse it:
+
+```ts
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+const grpcClient = new SuiGrpcClient({
+  network: 'mainnet',
+  transport: new GrpcWebFetchTransport({
+    baseUrl: 'https://fullnode.mainnet.sui.io:443',
+    format: 'binary'
+  })
+})
+```
+
 ## API Reference
 
 ### getLendingState
@@ -28,16 +46,18 @@ Get user's lending account information. You can filter by specific market(s). Se
 import { getLendingState } from '@naviprotocol/lending'
 
 // Get lending state from all markets
-const lendingState = await getLendingState('0x...')
+const lendingState = await getLendingState('0x...', { client: grpcClient })
 
 // Get lending state from specific market(s)
 const mainMarketState = await getLendingState('0x...', {
-  markets: ['main'] // Optional: filter by market(s)
+  markets: ['main'], // Optional: filter by market(s)
+  client: grpcClient
 })
 
 // Get lending state from multiple markets
 const multipleMarketsState = await getLendingState('0x...', {
-  markets: ['main', 0] // Can use string or number identifiers
+  markets: ['main', 0], // Can use string or number identifiers
+  client: grpcClient
 })
 ```
 
@@ -231,7 +251,7 @@ Get the current health factor of an account. See [documentation](/typedoc/functi
 ```typescript
 import { getHealthFactor } from '@naviprotocol/lending'
 
-const healthFactor = await getHealthFactor('0x...')
+const healthFactor = await getHealthFactor('0x...', { client: grpcClient })
 ```
 
 **Result Example**
@@ -249,9 +269,12 @@ Simulate the impact of operations on health factors to predict account status af
 ```typescript
 import { getSimulatedHealthFactor } from '@naviprotocol/lending'
 
-const healthFactor = await getSimulatedHealthFactor('0x...', '0x2::sui::SUI', [
-  { type: PoolOperator.Supply, amount: 1000000000 }
-])
+const healthFactor = await getSimulatedHealthFactor(
+  '0x...',
+  '0x2::sui::SUI',
+  [{ type: PoolOperator.Supply, amount: 1000000000 }],
+  { client: grpcClient }
+)
 ```
 
 **Result Example**
@@ -272,7 +295,8 @@ import { getCoins } from '@naviprotocol/lending'
 const coins = await getCoins(
   '0x...', // User address
   {
-    coinType: '0x2::sui::SUI' // Optional token type filter
+    coinType: '0x2::sui::SUI', // Optional token type filter
+    client: grpcClient
   }
 )
 ```

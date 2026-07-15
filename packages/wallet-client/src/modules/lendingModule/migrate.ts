@@ -59,14 +59,15 @@ export async function migrateBetweenSupplyPTB(
 
   const formAmount = options?.amount ?? Number(fromPoolLending.supplyBalance)
 
-  const priceFeeds = await getPriceFeeds()
+  const priceFeeds = await getPriceFeeds(this.naviServiceOptions)
   const pools = await Promise.all([fromPool, toPool])
   await updateOraclePricesPTB(
     tx,
     filterPriceFeeds(priceFeeds, {
       lendingState,
       pools
-    })
+    }),
+    this.naviServiceOptions
   )
 
   if (protocolName !== 'navi' && fromPool.id === toPool.id) {
@@ -76,12 +77,14 @@ export async function migrateBetweenSupplyPTB(
       formAmount
     )
     await depositCoinPTB(tx, toPool, withdrawnFromCoin, {
+      ...this.naviServiceOptions,
       amount: formAmount
     })
     return tx
   }
 
   const toPoolFlashloanAsset = await getFlashLoanAsset(toPool, {
+    ...this.naviServiceOptions,
     env: this.config.env
   })
 
@@ -109,7 +112,12 @@ export async function migrateBetweenSupplyPTB(
     throw new Error('The calculated borrow amount must be positive.')
   }
 
-  const [flashloanBalance, receipt] = await flashloanPTB(tx, toPool, borrowAmountInMin)
+  const [flashloanBalance, receipt] = await flashloanPTB(
+    tx,
+    toPool,
+    borrowAmountInMin,
+    this.naviServiceOptions
+  )
 
   const [flashCoin] = tx.moveCall({
     target: '0x2::coin::from_balance',
@@ -118,6 +126,7 @@ export async function migrateBetweenSupplyPTB(
   })
 
   await depositCoinPTB(tx, toPool, flashCoin, {
+    ...this.naviServiceOptions,
     amount: borrowAmountInMin
   })
 
@@ -137,7 +146,13 @@ export async function migrateBetweenSupplyPTB(
     typeArguments: [toPool.suiCoinType]
   })
 
-  const [leftBalance] = await repayFlashLoanPTB(tx, toPool, receipt, repayBalance)
+  const [leftBalance] = await repayFlashLoanPTB(
+    tx,
+    toPool,
+    receipt,
+    repayBalance,
+    this.naviServiceOptions
+  )
 
   const [extraCoin] = tx.moveCall({
     target: '0x2::coin::from_balance',
@@ -145,7 +160,7 @@ export async function migrateBetweenSupplyPTB(
     typeArguments: [toPool.suiCoinType]
   })
 
-  await depositCoinPTB(tx, toPool, extraCoin)
+  await depositCoinPTB(tx, toPool, extraCoin, this.naviServiceOptions)
 
   return tx
 }
@@ -188,14 +203,15 @@ export async function migrateBetweenBorrowPTB(
     throw new Error('Amount is more than borrow balance')
   }
 
-  const priceFeeds = await getPriceFeeds()
+  const priceFeeds = await getPriceFeeds(this.naviServiceOptions)
   const pools = await Promise.all([fromPool, toPool])
   await updateOraclePricesPTB(
     tx,
     filterPriceFeeds(priceFeeds, {
       lendingState,
       pools
-    })
+    }),
+    this.naviServiceOptions
   )
 
   let formAmount = options?.amount ?? Number(fromPoolLending.borrowBalance)
@@ -212,6 +228,7 @@ export async function migrateBetweenBorrowPTB(
   }
 
   const fromPoolFlashloanAsset = await getFlashLoanAsset(fromPool, {
+    ...this.naviServiceOptions,
     env: this.config.env
   })
 
@@ -254,7 +271,12 @@ export async function migrateBetweenBorrowPTB(
     )
   }
 
-  const [flashloanBalance, receipt] = await flashloanPTB(tx, fromPool, formAmount)
+  const [flashloanBalance, receipt] = await flashloanPTB(
+    tx,
+    fromPool,
+    formAmount,
+    this.naviServiceOptions
+  )
 
   const [flashCoin]: any = tx.moveCall({
     target: '0x2::coin::from_balance',
@@ -264,7 +286,7 @@ export async function migrateBetweenBorrowPTB(
 
   await fromProtocol.repayCoinPTB(tx, fromPool.suiCoinType, flashCoin, formAmount)
 
-  const borrowCoin = await borrowCoinPTB(tx, toPool, shouldBorrowAmount)
+  const borrowCoin = await borrowCoinPTB(tx, toPool, shouldBorrowAmount, this.naviServiceOptions)
 
   const swappedFromCoin = await buildSwapPTBFromQuote(
     address,
@@ -280,7 +302,13 @@ export async function migrateBetweenBorrowPTB(
     typeArguments: [fromPool.suiCoinType]
   })
 
-  const [leftBalance] = await repayFlashLoanPTB(tx, fromPool, receipt, repayBalance)
+  const [leftBalance] = await repayFlashLoanPTB(
+    tx,
+    fromPool,
+    receipt,
+    repayBalance,
+    this.naviServiceOptions
+  )
 
   const [extraCoin] = tx.moveCall({
     target: '0x2::coin::from_balance',
@@ -345,7 +373,7 @@ export async function migrateBalanceToSupplyPTB(
     )) as typeof depositCoin
   }
 
-  await depositCoinPTB(tx, toPool, depositCoin)
+  await depositCoinPTB(tx, toPool, depositCoin, this.naviServiceOptions)
 
   return tx
 }

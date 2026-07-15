@@ -1,7 +1,9 @@
 import './fetch'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { UserPortfolio } from '../src/modules/balanceModule/portfolio'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import type { CoinStruct } from '@mysten/sui/jsonRpc'
 
 import dotenv from 'dotenv'
 
@@ -10,32 +12,88 @@ dotenv.config()
 const signer = new WatchSigner(
   process.env.address || '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
 )
+const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
+const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
 
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
 describe('balance module', () => {
+  it('does not schedule polling when coin polling is disabled', () => {
+    vi.useFakeTimers()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+    try {
+      new WalletClient({
+        signer,
+        configs: {
+          balance: {
+            disableCoinPolling: true,
+            coinPollingInterval: 6000
+          }
+        },
+        client: {
+          network: 'mainnet',
+          grpc: {
+            url: grpcUrl
+          }
+        }
+      })
+
+      expect(setTimeoutSpy).not.toHaveBeenCalled()
+    } finally {
+      setTimeoutSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it('module exists', async () => {
     expect(walletClient.module('balance')).toBeDefined()
   })
 
-  it('update portfolio', async () => {
+  it('ignores malformed Core coin objects without breaking portfolio reads', () => {
+    const portfolio = new UserPortfolio([
+      {
+        coinType: '0x2::sui::SUI',
+        coinObjectId: `0x${'1'.repeat(64)}`,
+        balance: '100'
+      },
+      {
+        coinObjectId: `0x${'2'.repeat(64)}`,
+        balance: '50'
+      } as any
+    ] as CoinStruct[])
+
+    expect(portfolio.balanceOf('0x2::sui::SUI').toString()).toBe('100')
+    expect(portfolio.getCoinTypes()).toEqual([
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+    ])
+  })
+
+  it.skipIf(!runLiveTests)('update portfolio', async () => {
     await walletClient.module('balance').updatePortfolio()
     expect(walletClient.module('balance').coins.length).toBeGreaterThan(0)
   })
 
-  it('portfolio', async () => {
+  it.skipIf(!runLiveTests)('portfolio', async () => {
     await walletClient.module('balance').waitForUpdate()
     const portfolio = walletClient.module('balance').portfolio
     expect(portfolio.balanceOf('0x2::sui::SUI').toNumber()).toBeGreaterThan(0)
     expect(portfolio.getBalance('0x2::sui::SUI').amount.toNumber()).toBeGreaterThan(0)
   })
 
-  it('send coins to many', async () => {
+  it.skipIf(!runLiveTests)('send coins to many', async () => {
     const receipts = [
       '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e',
       '0x91eb74aef86b5a7002c587704f6c0d5a627c4937bb7d6d659d83a911ae9f4c93'
@@ -55,7 +113,7 @@ describe('balance module', () => {
     })
   })
 
-  it('transfer object', async () => {
+  it.skipIf(!runLiveTests)('transfer object', async () => {
     const recipient = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e'
     const result = await walletClient
       .module('balance')

@@ -1,17 +1,46 @@
 import { LendingPool, LendingProtocol } from '.'
 import { Transaction, TransactionObjectInput, TransactionResult } from '@mysten/sui/transactions'
-import {
-  SuilendClient,
-  LENDING_MARKET_ID,
-  LENDING_MARKET_TYPE,
-  parseObligation,
-  parseReserve
-} from '@suilend/sdk'
-import { ObligationOwnerCap } from '@suilend/sdk/_generated/suilend/lending-market/structs'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { SuilendClient, LENDING_MARKET_ID, LENDING_MARKET_TYPE } from '@suilend/sdk/client'
+import { parseObligation } from '@suilend/sdk/parsers/obligation'
+import { parseReserve } from '@suilend/sdk/parsers/reserve'
+import type { ObligationOwnerCap } from '@suilend/sdk/_generated/suilend/lending-market/structs'
 import { WalletClient } from '../../../client'
-import { getCoinMetadataMap, MAX_U64 } from '@suilend/sui-fe'
+import { getCoinMetadataMap } from '@suilend/sui-fe/lib/coinMetadata'
+import { MAX_U64 } from '@suilend/sui-fe/lib/constants'
 import BigNumber from 'bignumber.js'
 import { normalizeStructTag } from '@mysten/sui/utils'
+
+type SuilendProtocolCreateOptions = {
+  grpcClient?: SuiGrpcClient
+  grpcUrl?: string
+}
+
+function createSuilendGrpcClient(
+  walletClient: WalletClient,
+  options: SuilendProtocolCreateOptions
+) {
+  if (options.grpcClient) {
+    return options.grpcClient
+  }
+
+  const network = walletClient.clientBundle.network
+
+  if (options.grpcUrl) {
+    return new SuiGrpcClient({
+      network,
+      baseUrl: options.grpcUrl
+    })
+  }
+
+  if (walletClient.clientBundle.grpc !== walletClient.clientBundle.legacyJsonRpc) {
+    return walletClient.clientBundle.grpc as SuiGrpcClient
+  }
+
+  throw new Error(
+    'Suilend requires an explicit Sui gRPC client or grpcUrl; JSON-RPC endpoints are not valid gRPC endpoints'
+  )
+}
 
 class SuilendProtocol implements LendingProtocol {
   readonly name = 'suilend'
@@ -29,13 +58,14 @@ class SuilendProtocol implements LendingProtocol {
     this.suilendClient = suilendClient
   }
 
-  static async create(walletClient: WalletClient) {
+  static async create(walletClient: WalletClient, options: SuilendProtocolCreateOptions = {}) {
+    const suilendGrpcClient = createSuilendGrpcClient(walletClient, options)
     const [suilendClient, obligations] = await Promise.all([
-      SuilendClient.initialize(LENDING_MARKET_ID, LENDING_MARKET_TYPE, walletClient.client),
+      SuilendClient.initialize(LENDING_MARKET_ID, LENDING_MARKET_TYPE, suilendGrpcClient),
       SuilendClient.getObligationOwnerCaps(
         walletClient.address,
         [LENDING_MARKET_TYPE],
-        walletClient.client
+        suilendGrpcClient
       )
     ])
     if (obligations.length === 0) {

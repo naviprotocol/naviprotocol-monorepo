@@ -3,17 +3,28 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
 import { DcaOrderParams, DcaOptions } from './types'
 import { getDcaConfig } from './getDcaConfig'
 import { convertToRawParams, CoinDecimals } from './utils'
 import { getCoinForDca } from './coinUtils'
+import type { NaviDcaCoinClient } from './client'
 
 /**
  * Fetch coin decimals from chain
  */
-async function fetchCoinDecimals(client: SuiClient, coinType: string): Promise<number> {
-  const metadata = await client.getCoinMetadata({ coinType })
+async function fetchCoinDecimals(client: NaviDcaCoinClient, coinType: string): Promise<number> {
+  const core = client.core as
+    | {
+        getCoinMetadata?(options: any): Promise<any>
+      }
+    | undefined
+  const response =
+    typeof core?.getCoinMetadata === 'function'
+      ? await core.getCoinMetadata({ coinType })
+      : typeof client.getCoinMetadata === 'function'
+        ? await client.getCoinMetadata({ coinType })
+        : undefined
+  const metadata = response?.coinMetadata ?? response
   if (metadata?.decimals === undefined) {
     throw new Error(`Failed to fetch decimals for coin type: ${coinType}`)
   }
@@ -53,7 +64,7 @@ async function fetchCoinDecimals(client: SuiClient, coinType: string): Promise<n
  * @returns Promise<Transaction> - Transaction object ready to be signed and executed
  */
 export async function createDcaOrder(
-  client: SuiClient,
+  client: NaviDcaCoinClient,
   userAddress: string,
   params: DcaOrderParams,
   dcaOptions?: DcaOptions

@@ -8,7 +8,7 @@ import {
   SuiClientOption,
   EModeIdentity
 } from './types'
-import { withSingleton, withCache, parseTxValue, suiClient } from './utils'
+import { withSingleton, withCache, parseTxValue, suiClient, devInspectTransaction } from './utils'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import { Transaction } from '@mysten/sui/transactions'
@@ -111,7 +111,7 @@ export const getUserEModeCaps = withCache(
         arguments: [tx.object(config.emode.contract.registryObject), tx.pure.address(address!)]
       })
 
-      const result: any = await client.devInspectTransactionBlock({
+      const result: any = await devInspectTransaction(client, {
         transactionBlock: tx,
         sender: address
       })

@@ -43,7 +43,7 @@ npm install @naviprotocol/lending
 
 The last `options` parameter of the interface is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
 
-- `client`: Sui network client instance (such as `SuiClient`), used for customizing network requests, suitable for scenarios that require custom RPC nodes or multi-network environments.
+- `client`: Sui SDK v2 client instance, such as `SuiJsonRpcClient` from `@mysten/sui/jsonRpc`, used for customizing network requests in multi-network or custom RPC environments.
 - `env`: Specify environment (such as `'prod'`、`'dev'`), affecting data sources and on-chain contract addresses, ensuring data isolation and compatibility in different deployment environments.
 - `cacheTime`: Custom cache time in milliseconds. By setting cache time, you can reduce duplicate requests and improve performance. For example, `cacheTime: 60000` means cache for 60 seconds.
 - `disableCache`: Whether to disable cache
@@ -63,4 +63,3 @@ The last `options` parameter of the interface is usually an optional object used
 ## Support
 
 - Issues: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-

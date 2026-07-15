@@ -9,7 +9,6 @@ NAVI Wallet Client is a comprehensive wallet client SDK designed for the Sui blo
 
 For SDK documentation visit http://sdk.naviprotocol.io/wallet-client
 
-
 ## Core Features
 
 - 🔐 **Transaction Signing**: Complete transaction signing and execution functionality
@@ -23,27 +22,33 @@ For SDK documentation visit http://sdk.naviprotocol.io/wallet-client
 ## Supported Modules
 
 ### [Balance Module](./wallet-client/balance)
+
 Provides comprehensive wallet balance management functionality, including token tracking, portfolio management, token transfers, and automatic balance updates.
 
 **Key Features:**
+
 - Real-time balance tracking
 - Token transfers
 - Object transfers
 - Automatic balance updates
 
 ### [Swap Module](./wallet-client/swap)
+
 Provides DEX token swapping functionality, integrated with Astros aggregator to find optimal swap paths and execute trades across multiple decentralized exchanges.
 
 **Key Features:**
+
 - Token swapping
 - Aggregator integration
 - Slippage protection
 - Multi-DEX support
 
 ### [Lending Module](./wallet-client/lending)
+
 Provides comprehensive lending protocol functionality, including deposits, withdrawals, borrowing, repayments, liquidations, reward claiming, and oracle price updates.
 
 **Key Features:**
+
 - Deposits and withdrawals
 - Borrowing and repayments
 - Liquidation functionality
@@ -51,17 +56,21 @@ Provides comprehensive lending protocol functionality, including deposits, withd
 - Oracle updates
 
 ### [Haedal Module](./wallet-client/haedal)
+
 Provides Haedal protocol staking and unstaking functionality, allowing users to stake SUI to receive haSUI and obtain APY statistics.
 
 **Key Features:**
+
 - SUI staking
 - haSUI unstaking
 - APY queries
 
 ### [Volo Module](./wallet-client/volo)
+
 Provides Volo staking protocol functionality, allowing users to stake SUI tokens and receive vSUI (volo SUI) tokens for liquid staking.
 
 **Key Features:**
+
 - SUI staking
 - vSUI unstaking
 - Statistics queries
@@ -73,13 +82,57 @@ Provides Volo staking protocol functionality, allowing users to stake SUI tokens
 npm install @naviprotocol/wallet-client
 ```
 
+## Sui SDK v2 Notes
+
+`@naviprotocol/wallet-client@2` defaults to the Sui SDK v2 main path. The
+Suilend adapter is an optional peer dependency and is loaded lazily when the
+lending protocol registry is initialized. This preserves the previous
+cross-protocol migration behavior without adding the Suilend stack to the root
+SDK import path. Install the optional peers only when you use Suilend migration
+paths:
+
+```bash
+npm install @suilend/sdk@^3.0.4 @suilend/sui-fe@^3.0.7 @mysten/bcs@2.0.1 @pythnetwork/pyth-sui-js@2.2.0
+```
+
+```ts
+const walletClient = new WalletClient({
+  signer,
+  client: { url: getJsonRpcFullnodeUrl('mainnet') }
+})
+```
+
+If an app does not use Suilend, it can explicitly opt out:
+
+```ts
+const walletClient = new WalletClient({
+  signer,
+  client: { url: getJsonRpcFullnodeUrl('mainnet') },
+  configs: {
+    lending: {
+      enableSuilend: false
+    }
+  }
+})
+```
+
+For custom Sui environments, pass `configs.lending.suilendGrpcUrl` or
+`configs.lending.suilendGrpcClient` when Suilend needs a dedicated gRPC
+endpoint.
+
 ## Quick Start
 
 ```ts
-import { WalletClient } from '@naviprotocol/wallet-client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { WalletClient, WatchSigner } from '@naviprotocol/wallet-client'
 
-// Create wallet client
-const walletClient = new WalletClient()
+const address = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const walletClient = new WalletClient({
+  signer: new WatchSigner(address),
+  client: {
+    url: getJsonRpcFullnodeUrl('mainnet')
+  }
+})
 
 // Use balance module
 const portfolio = walletClient.balance.portfolio
@@ -90,7 +143,8 @@ const result = await walletClient.swap.swap(
   '0x2::sui::SUI',
   '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN',
   1000000000,
-  0.01
+  0.01,
+  { dryRun: true }
 )
 
 // Use lending module
@@ -99,11 +153,11 @@ const pools = await walletClient.lending.getPools()
 
 // Use Haedal module
 const apy = await walletClient.haedal.getApy()
-const stakeResult = await walletClient.haedal.stake(1000000000)
+const stakeResult = await walletClient.haedal.stake(1000000000, { dryRun: true })
 
 // Use Volo module
 const stats = await walletClient.volo.getStats()
-const voloStakeResult = await walletClient.volo.stake(1000000000)
+const voloStakeResult = await walletClient.volo.stake(1000000000, { dryRun: true })
 ```
 
 ## Event Listening
@@ -137,4 +191,3 @@ walletClient.events.on('volo:stake-success', (data) => {
 ## Support
 
 - Issue reporting: [GitHub Issues](https://github.com/naviprotocol/naviprotocol-monorepo/issues)
-

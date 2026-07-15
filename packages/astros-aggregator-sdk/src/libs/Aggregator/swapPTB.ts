@@ -9,10 +9,15 @@
  */
 
 import { AggregatorConfig } from './config'
-import { Quote, SwapOptions } from '../../types'
+import {
+  NaviAggregatorCoinClient,
+  NaviAggregatorTransactionQueryClient,
+  Quote,
+  SingleCoinTransactionResult,
+  SwapOptions
+} from '../../types'
 import { returnMergedCoins } from '../PTB/commonFunctions'
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
-import { SuiClient } from '@mysten/sui/client'
 import { getQuoteInternal as getQuote } from './getQuote'
 import { generateRefId } from './utils'
 import { handleServiceFee, emitServiceFeeEvent } from './serviceFee'
@@ -27,11 +32,42 @@ import { buildSwapWithoutServiceFee } from './buildSwapWithoutServiceFee'
  * @returns Coin details from the blockchain
  */
 export async function getCoins(
-  client: SuiClient,
+  client: NaviAggregatorCoinClient,
   address: string,
   coinType: any = '0x2::sui::SUI'
 ) {
   const coinAddress = coinType.address ? coinType.address : coinType
+  const core = client.core as
+    | {
+        listCoins?(options: any): Promise<any>
+      }
+    | undefined
+
+  if (typeof core?.listCoins === 'function') {
+    const data: any[] = []
+    let cursor: string | null | undefined = null
+    do {
+      const response = await core.listCoins({
+        owner: address,
+        coinType: coinAddress,
+        cursor,
+        limit: 100
+      })
+      data.push(...(response.objects ?? response.data ?? []))
+      cursor = response.cursor ?? response.nextCursor ?? null
+    } while (cursor)
+    return {
+      data,
+      nextCursor: null,
+      hasNextPage: false
+    }
+  }
+
+  if (typeof client.getCoins !== 'function') {
+    throw new Error(
+      'Aggregator coin selection requires core.listCoins or an explicit legacy getCoins client'
+    )
+  }
 
   const coinDetails = await client.getCoins({
     owner: address,
@@ -59,8 +95,8 @@ export async function getCoinPTB(
   coin: string,
   amountIn: number | string | bigint,
   txb: Transaction,
-  client: SuiClient
-) {
+  client: NaviAggregatorCoinClient
+): Promise<SingleCoinTransactionResult> {
   let coinA: TransactionResult
 
   if (coin === '0x2::sui::SUI') {
@@ -79,7 +115,7 @@ export async function getCoinPTB(
     const mergedCoin = returnMergedCoins(txb, coinInfo)
     coinA = txb.splitCoins(mergedCoin, [txb.pure.u64(amountIn)])
   }
-  return coinA
+  return coinA as SingleCoinTransactionResult
 }
 
 /**
@@ -110,7 +146,7 @@ export async function buildSwapPTBFromQuote(
   ifPrint: boolean = true,
   apiKey?: string,
   swapOptions?: SwapOptions
-): Promise<TransactionResult> {
+): Promise<SingleCoinTransactionResult> {
   // Validate quote structure
   if (!quote.routes || quote.routes.length === 0) {
     throw new Error('No routes found in data')
@@ -182,7 +218,8 @@ export async function buildSwapPTBFromQuote(
         router,
         finalMinAmountOut,
         referral,
-        ifPrint
+        ifPrint,
+        swapOptions
       ),
       !!serviceFeeRouter
         ? serviceFeeRouter.from === serviceFeeRouter.target
@@ -194,7 +231,8 @@ export async function buildSwapPTBFromQuote(
               serviceFeeRouter,
               0,
               referral,
-              ifPrint
+              ifPrint,
+              swapOptions
             )
         : new Promise((resolve) => {
             resolve(null)
@@ -208,7 +246,7 @@ export async function buildSwapPTBFromQuote(
       txb.transferObjects([feeCoinOut as any], serviceFee.receiverAddress)
     }
 
-    return coinOut
+    return coinOut as SingleCoinTransactionResult
   }
 
   // Build swap without service fees
@@ -219,7 +257,8 @@ export async function buildSwapPTBFromQuote(
     quote,
     finalMinAmountOut,
     referral,
-    ifPrint
+    ifPrint,
+    swapOptions
   )
 }
 
@@ -259,7 +298,7 @@ export async function swapPTB(
     depth: 3,
     ifPrint: true
   }
-): Promise<TransactionResult> {
+): Promise<SingleCoinTransactionResult> {
   // Set default swap options
   const options: SwapOptions = {
     baseUrl: undefined,
@@ -317,13 +356,42 @@ export async function swapPTB(
  * @param client - Sui client instance
  * @returns Promise<boolean> - True if transaction was processed by Navi aggregator
  */
-export async function checkIfNAVIIntegrated(digest: string, client: SuiClient): Promise<boolean> {
+export async function checkIfNAVIIntegrated(
+  digest: string,
+  client: NaviAggregatorTransactionQueryClient
+): Promise<boolean> {
+  const core = client.core as
+    | {
+        getTransaction?(options: any): Promise<any>
+      }
+    | undefined
+  if (typeof core?.getTransaction === 'function') {
+    const response = await core.getTransaction({
+      digest,
+      include: {
+        events: true
+      }
+    })
+    const transaction = response.Transaction ?? response.FailedTransaction ?? response
+    return (
+      transaction.events?.some((event: any) =>
+        event.type.includes(`${AggregatorConfig.aggregatorContract}::slippage`)
+      ) ?? false
+    )
+  }
+
+  if (typeof client.getTransactionBlock !== 'function') {
+    throw new Error(
+      'Aggregator transaction lookup requires core.getTransaction or an explicit legacy getTransactionBlock client'
+    )
+  }
+
   const results = await client.getTransactionBlock({
     digest,
     options: { showEvents: true }
   })
   return (
-    results.events?.some((event) =>
+    results.events?.some((event: any) =>
       event.type.includes(`${AggregatorConfig.aggregatorContract}::slippage`)
     ) ?? false
   )

@@ -1,24 +1,33 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 import dotenv from 'dotenv'
 
 dotenv.config()
 
 const signer = new WatchSigner('0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e')
+const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
+const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
 
 const walletClient = new WalletClient({
   signer: signer,
   client: {
-    url: (process.env.RPC_URL as string) || getFullnodeUrl('mainnet')
+    network: 'mainnet',
+    grpc: {
+      url: grpcUrl
+    },
+    legacyJsonRpc: {
+      url: legacyJsonRpcUrl
+    }
   }
 })
 
 const voloModule = walletClient.module('volo')
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('volo module', () => {
+describe.skipIf(!runLiveTests)('volo module', () => {
   it('stake', async () => {
     const result = await voloModule.stake(1e9 * 1, {
       dryRun: true

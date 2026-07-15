@@ -8,7 +8,7 @@
  * @module LendingModule
  */
 
-import { DryRunTransactionBlockResponse, SuiTransactionBlockResponse } from '@mysten/sui/client'
+import type { NaviWalletTransactionResult } from '../../types'
 import { Module } from '../module'
 import {
   depositCoinPTB,
@@ -32,16 +32,17 @@ import {
   AccountCapOption,
   Pool,
   createAccountCapPTB,
-  getUserClaimedRewardHistory
+  getUserClaimedRewardHistory,
+  type NaviSdkServiceOptions
 } from '@naviprotocol/lending'
 import { Transaction } from '@mysten/sui/transactions'
+import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import {
   migrateBalanceToSupplyPTB,
   migrateBetweenBorrowPTB,
   migrateBetweenSupplyPTB
 } from './migrate'
 import NaviProtocol from './protocols/navi'
-import SuilendProtocol from './protocols/suilend'
 import { LendingProtocol } from './protocols'
 import { WalletClient } from '../../client'
 
@@ -53,6 +54,14 @@ export interface LendingModuleConfig {
   env: 'dev' | 'prod'
   /** Lending protocols */
   protocols: LendingProtocol[]
+  /** Enable the optional Suilend adapter. Defaults to true to preserve v1 business behavior. */
+  enableSuilend: boolean
+  /** Optional Suilend v3 gRPC client. Defaults to a client derived from the wallet Sui network. */
+  suilendGrpcClient?: SuiGrpcClient
+  /** Optional Suilend v3 gRPC endpoint. Used when suilendGrpcClient is not provided. */
+  suilendGrpcUrl?: string
+  /** Optional NAVI service endpoint overrides. */
+  services?: NaviSdkServiceOptions
 }
 
 /**
@@ -124,7 +133,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   /** Default configuration values */
   readonly defaultConfig: LendingModuleConfig = {
     env: 'prod',
-    protocols: []
+    protocols: [],
+    enableSuilend: true
   }
 
   /** Internal protocols storage */
@@ -133,6 +143,18 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   /** Get protocols (either from internal storage or config) */
   get protocols(): LendingProtocol[] {
     return this._protocols.length > 0 ? this._protocols : this.config.protocols
+  }
+
+  get naviServiceOptions() {
+    const services = this.config.services ?? this.walletClient?.clientBundle.services
+    return {
+      ...(services ? { services } : {})
+    }
+  }
+
+  install(walletClient: WalletClient): void {
+    super.install(walletClient)
+    this._protocols = []
   }
 
   async getProtocol(name: string) {
@@ -150,6 +172,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async getPools(options?: Partial<CacheOption>) {
     return await getPools({
+      ...this.naviServiceOptions,
       env: this.config.env,
       ...options
     })
@@ -164,6 +187,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async getPool(identifier: AssetIdentifier, options?: Partial<CacheOption>) {
     return await getPool(identifier, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       ...options
     })
@@ -181,13 +205,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
 
     // Get pool information
     const pool = await getPool(identifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -207,6 +232,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build deposit transaction
     await depositCoinPTB(tx, pool, mergedCoin, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       amount,
       accountCap: options?.accountCap
@@ -244,13 +270,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
 
     // Get pool information
     const pool = await getPool(identifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -263,6 +290,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build withdraw transaction
     const coin = await withdrawCoinPTB(tx, pool, amount, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       accountCap: options?.accountCap
     })
@@ -300,13 +328,14 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T; disableUpdateOracle?: boolean } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
 
     // Get pool information
     const pool = await getPool(identifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -319,6 +348,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build borrow transaction
     const coin = await borrowCoinPTB(tx, pool, amount, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       accountCap: options?.accountCap
     })
@@ -356,7 +386,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     identifier: AssetIdentifier,
     amount: number,
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -366,6 +396,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Get pool information
     const pool = await getPool(identifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -382,6 +413,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     // Build repay transaction
     await repayCoinPTB(tx, pool, mergedCoin, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       amount,
       accountCap: options?.accountCap
@@ -420,6 +452,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     const address = this.walletClient.address
 
     const healthFactor = await getHealthFactor(address, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       client: this.walletClient.client
     })
@@ -443,15 +476,17 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     collateralIdentifier: AssetIdentifier,
     liquidationAddress: string,
     options?: { dryRun: T }
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
 
     const payPool = await getPool(payIdentifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
     const collateralPool = await getPool(collateralIdentifier, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -473,6 +508,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       collateralPool,
       liquidationAddress,
       {
+        ...this.naviServiceOptions,
         env: this.config.env
       }
     )
@@ -521,6 +557,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       throw new Error('Wallet client not found')
     }
     return getUserAvailableLendingRewards(this.walletClient.address, {
+      ...this.naviServiceOptions,
       ...options,
       env: this.config.env
     })
@@ -543,6 +580,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       throw new Error('Wallet client not found')
     }
     return getUserClaimedRewardHistory(this.walletClient.address, {
+      ...this.naviServiceOptions,
       ...options
     })
   }
@@ -555,7 +593,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async claimAllRewards<T extends boolean = false>(
     options?: { dryRun: T } & Partial<AccountCapOption>
-  ): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  ): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -563,10 +601,12 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     const tx = new Transaction()
 
     const rewards = await getUserAvailableLendingRewards(this.walletClient.address, {
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
     await claimLendingRewardsPTB(tx, rewards, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       accountCap: options?.accountCap
     })
@@ -588,6 +628,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
   private async updateOraclePTB(tx: Transaction, pools?: Pool[]) {
     const feeds = await getPriceFeeds({
+      ...this.naviServiceOptions,
       env: this.config.env
     })
 
@@ -601,6 +642,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     await updateOraclePricesPTB(tx, filteredFeeds, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       updatePythPriceFeeds: true
     })
@@ -616,7 +658,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
   async updateOracle<T extends boolean = false>(options?: {
     dryRun: T
     pools?: Pool[]
-  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  }): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -644,6 +686,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       throw new Error('Wallet client not found')
     }
     return await getLendingState(this.walletClient.address, {
+      ...this.naviServiceOptions,
       env: this.config.env,
       ...options,
       client: this.walletClient.client
@@ -658,7 +701,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
    */
   async createAccountCap<T extends boolean = false>(options?: {
     dryRun: T
-  }): Promise<T extends true ? DryRunTransactionBlockResponse : SuiTransactionBlockResponse> {
+  }): Promise<NaviWalletTransactionResult<T>> {
     if (!this.walletClient) {
       throw new Error('Wallet client not found')
     }
@@ -696,10 +739,19 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const protocols = []
     protocols.push(new NaviProtocol(this.walletClient))
-    try {
-      protocols.push(await SuilendProtocol.create(this.walletClient))
-    } catch (error) {
-      console.warn('Failed to initialize SuilendProtocol:', error)
+
+    if (this.config.enableSuilend) {
+      try {
+        const { default: SuilendProtocol } = await import('./protocols/suilend')
+        protocols.push(
+          await SuilendProtocol.create(this.walletClient, {
+            grpcClient: this.config.suilendGrpcClient,
+            grpcUrl: this.config.suilendGrpcUrl
+          })
+        )
+      } catch (error) {
+        console.warn('Failed to initialize SuilendProtocol:', error)
+      }
     }
 
     this._protocols = protocols as LendingProtocol[]

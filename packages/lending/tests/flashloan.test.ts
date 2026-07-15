@@ -10,8 +10,9 @@ import { Transaction } from '@mysten/sui/transactions'
 import { parseDevInspectResult, suiClient } from '../src/utils'
 
 const testAddress = '0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe'
+const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
 
-describe('getAllFlashLoanAssets', () => {
+describe.skipIf(!runLiveTests)('getAllFlashLoanAssets', () => {
   it('prod', async () => {
     const assets = await getAllFlashLoanAssets()
     expect(assets).toBeDefined()
@@ -38,7 +39,7 @@ describe('getAllFlashLoanAssets', () => {
   })
 })
 
-describe('getFlashLoanAsset', () => {
+describe.skipIf(!runLiveTests)('getFlashLoanAsset', () => {
   it('find by coinType', async () => {
     const navx = await getFlashLoanAsset(
       '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX'
@@ -64,7 +65,7 @@ describe('getFlashLoanAsset', () => {
   })
 })
 
-describe('flashloanPTB', () => {
+describe.skipIf(!runLiveTests)('flashloanPTB', () => {
   it('success flow', async () => {
     const coinType = '0x2::sui::SUI'
     const fee = await getFlashLoanAsset(coinType)

@@ -8,15 +8,29 @@
  * @module WalletClient
  */
 
-import { SuiClient, SuiClientOptions, type ExecuteTransactionBlockParams } from '@mysten/sui/client'
 import { Signer } from '@mysten/sui/cryptography'
 import mitt, { Emitter } from 'mitt'
-import { CustomTransport } from './transport'
 import { Module, ModuleConfig } from './modules/module'
 import { modules, ModuleName, ModuleEvents } from './modules'
 import { Transaction } from '@mysten/sui/transactions'
-import { DryRunOptions } from './types'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { fromBase64 } from '@mysten/sui/utils'
+import {
+  DryRunOptions,
+  NaviTransactionExecutionOptions,
+  NaviWalletTransactionResult
+} from './types'
+import { mergeTransactionResponseOptions, normalizeTransactionResult } from './transaction-result'
+import {
+  createNaviLegacyJsonRpcClient,
+  createNaviSuiClientBundle,
+  type NaviCoreClient,
+  type NaviJsonRpcCompatClient,
+  type NaviSdkServiceOptions,
+  type NaviSuiClientBundle,
+  type NaviSuiClientOptions,
+  type NaviSuiLegacyJsonRpcOptions,
+  type NaviSuiNetwork
+} from '@naviprotocol/lending'
 
 /**
  * Extracts the configuration type from a module
@@ -38,15 +52,59 @@ export type WalletClientOptions = {
   signer: Signer
   /** Optional module-specific configurations */
   configs?: Partial<UserConfigs>
-  /** Optional Sui client configuration */
-  client?: SuiClientOptions
+  /** Sui v2 client configuration. Release paths must provide `network + grpc`. */
+  client: NaviSuiClientOptions | WalletLegacyJsonRpcClientOptions
 }
 
-/**
- * Default client options pointing to mainnet
- */
-const defaultClientOptions: SuiClientOptions = {
-  url: getFullnodeUrl('mainnet')
+export type WalletLegacyJsonRpcClientOptions = {
+  network?: NaviSuiNetwork
+  /**
+   * @deprecated JSON-RPC is a short-lived compatibility transport. New paths must use `grpc`.
+   */
+  legacyJsonRpc: NaviSuiLegacyJsonRpcOptions
+  services?: NaviSdkServiceOptions
+}
+
+function transactionIncludeOptions(options?: NaviTransactionExecutionOptions['options']) {
+  const merged = mergeTransactionResponseOptions(options)
+  return {
+    effects: merged.showEffects,
+    events: merged.showEvents,
+    balanceChanges: merged.showBalanceChanges,
+    objectTypes: merged.showObjectChanges
+  }
+}
+
+function getCoreTransactionClient(client: unknown) {
+  return (client as { core?: unknown }).core as
+    | {
+        simulateTransaction?(options: any): Promise<any>
+        executeTransaction?(options: any): Promise<any>
+      }
+    | undefined
+}
+
+function isNaviSuiClientOptions(
+  options: NaviSuiClientOptions | WalletLegacyJsonRpcClientOptions
+): options is NaviSuiClientOptions {
+  return 'grpc' in options
+}
+
+function createWalletClientBundle(
+  options: NaviSuiClientOptions | WalletLegacyJsonRpcClientOptions
+): NaviSuiClientBundle {
+  if (isNaviSuiClientOptions(options)) {
+    return createNaviSuiClientBundle(options)
+  }
+  const network = options.network ?? 'mainnet'
+  const legacyJsonRpc = createNaviLegacyJsonRpcClient(network, options.legacyJsonRpc)
+  return {
+    network,
+    coreClient: legacyJsonRpc,
+    grpc: legacyJsonRpc,
+    legacyJsonRpc,
+    services: options.services
+  }
 }
 
 /**
@@ -70,7 +128,13 @@ export class WalletClient {
   public readonly events: Emitter<ModuleEvents> = mitt()
 
   /** The Sui client instance */
-  public readonly client: SuiClient
+  public readonly client: NaviCoreClient & Partial<NaviJsonRpcCompatClient>
+
+  /** Normalized transport bundle for modules that need transport-specific clients. */
+  public readonly clientBundle: NaviSuiClientBundle
+
+  /** URL used by the default JSON-RPC client, when available. */
+  public readonly clientUrl?: string
 
   public get lending() {
     return this.modules.lending
@@ -97,14 +161,16 @@ export class WalletClient {
    * @param options - Configuration options for the wallet client
    */
   constructor(options: WalletClientOptions) {
-    // Merge default and user-provided client options
-    const clientOptions = {
-      ...defaultClientOptions,
-      ...options.client
-    }
-    clientOptions.transport = clientOptions.transport || new CustomTransport(clientOptions.url)
-    // Initialize the Sui client
-    this.client = new SuiClient(clientOptions as any)
+    this.clientBundle = createWalletClientBundle(options.client)
+    this.client = this.clientBundle.coreClient as NaviCoreClient & Partial<NaviJsonRpcCompatClient>
+    this.clientUrl =
+      'grpc' in options.client
+        ? options.client.legacyJsonRpc && 'url' in options.client.legacyJsonRpc
+          ? options.client.legacyJsonRpc.url
+          : undefined
+        : 'url' in options.client.legacyJsonRpc
+          ? options.client.legacyJsonRpc.url
+          : undefined
     this.signer = options.signer
     this.userConfigs = options.configs || {}
 
@@ -125,32 +191,79 @@ export class WalletClient {
   async signExecuteTransaction(
     options: {
       transaction: Uint8Array | Transaction
-    } & Omit<ExecuteTransactionBlockParams, 'transactionBlock' | 'signature'> &
+    } & NaviTransactionExecutionOptions &
       Partial<DryRunOptions>
-  ) {
+  ): Promise<NaviWalletTransactionResult<boolean>> {
     const { dryRun = false, ...rest } = options
 
     if (dryRun) {
+      const core = getCoreTransactionClient(this.client)
+      if (typeof core?.simulateTransaction === 'function') {
+        if (options.transaction instanceof Transaction) {
+          options.transaction.setSenderIfNotSet(this.address)
+        }
+        const result = await core.simulateTransaction({
+          transaction: options.transaction,
+          include: transactionIncludeOptions(rest.options)
+        })
+        return normalizeTransactionResult('dryRun', result)
+      }
+
+      const legacyJsonRpc = this.clientBundle.legacyJsonRpc
+      if (!legacyJsonRpc) {
+        throw new Error(
+          'WalletClient dry-run requires core.simulateTransaction or an explicit legacyJsonRpc client'
+        )
+      }
       // Handle dry run mode for transaction simulation
       let txBytes
       if (options.transaction instanceof Transaction) {
         options.transaction.setSenderIfNotSet(this.address)
         txBytes = await options.transaction.build({
-          client: this.client
+          client: legacyJsonRpc as any
         })
       } else {
         txBytes = options.transaction
       }
-      return this.client.dryRunTransactionBlock({
+      const result = await legacyJsonRpc.dryRunTransactionBlock({
         transactionBlock: txBytes
       })
+      return normalizeTransactionResult('dryRun', result)
     }
 
+    const core = getCoreTransactionClient(this.client)
+    if (typeof core?.executeTransaction === 'function') {
+      let txBytes: Uint8Array
+      if (options.transaction instanceof Transaction) {
+        options.transaction.setSenderIfNotSet(this.address)
+        txBytes = await options.transaction.build({
+          client: this.client as any
+        })
+      } else {
+        txBytes = options.transaction
+      }
+      const signed = await this.signer.signTransaction(txBytes)
+      const result = await core.executeTransaction({
+        transaction: fromBase64(signed.bytes),
+        signatures: [signed.signature],
+        include: transactionIncludeOptions(rest.options)
+      })
+      return normalizeTransactionResult('execute', result)
+    }
+
+    const legacyJsonRpc = this.clientBundle.legacyJsonRpc
+    if (!legacyJsonRpc) {
+      throw new Error(
+        'WalletClient execution requires core.executeTransaction or an explicit legacyJsonRpc client'
+      )
+    }
     // Execute the actual transaction
-    return this.client.signAndExecuteTransaction({
+    const result = await legacyJsonRpc.signAndExecuteTransaction({
       ...rest,
+      options: mergeTransactionResponseOptions(rest.options),
       signer: this.signer
-    })
+    } as any)
+    return normalizeTransactionResult('execute', result)
   }
 
   /**

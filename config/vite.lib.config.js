@@ -6,7 +6,7 @@ import dts from 'vite-plugin-dts'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 const PWD = process.cwd()
-const pkg = require(path.join(PWD, 'package.json'))
+const pkg = JSON.parse(fs.readFileSync(path.join(PWD, 'package.json'), 'utf8'))
 
 const tsEntry = path.resolve(PWD, 'src/index.ts')
 const entry = fs.existsSync(tsEntry) ? tsEntry : tsEntry.replace('.ts', '.tsx')
@@ -41,8 +41,8 @@ export default defineConfig({
     lib: {
       entry,
       name: pkg.name,
-      fileName: (format) => (format === 'cjs' ? `index.cjs.js` : `index.esm.js`),
-      formats: ['cjs', 'es']
+      fileName: () => `index.esm.js`,
+      formats: ['es']
     },
     rollupOptions: {
       external: (id) => deps.some((dep) => id.startsWith(dep)),
