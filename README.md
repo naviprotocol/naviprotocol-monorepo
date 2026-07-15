@@ -44,18 +44,17 @@ Comprehensive Wallet Client SDK that provides a unified interface for DeFi opera
 
 ## 🆙 SDK v1 vs v2
 
-This monorepo is the **Sui SDK v2** generation of the NAVI TypeScript SDKs, replacing the legacy `navi-sdk` npm package.
+The NAVI TypeScript SDKs have moved to the **Sui SDK v2** stack. Here is what changed from the v1 (1.x) line:
 
-| | v1 (`navi-sdk`) | v2 (this monorepo) |
+| | v1 (1.x) | v2 (2.x) |
 | --- | --- | --- |
-| Package | single `navi-sdk` npm package | `@naviprotocol/{lending,wallet-client,astros-aggregator-sdk,astros-bridge-sdk,astros-dca-sdk}` |
 | Sui SDK | `@mysten/sui.js` | `@mysten/sui@^2` |
 | Transaction | `TransactionBlock` | `Transaction` |
 | Client | `SuiClient` (JSON-RPC only) | `SuiGrpcClient` (recommended) / `SuiJsonRpcClient` (legacy JSON-RPC, **deprecated, removed after 2026-07-31**) / `SuiGraphQLClient` — unified behind the `ClientWithCoreApi` interface |
 | Module format | CommonJS | ESM |
 | Runtime | — | Node.js 22+ |
 
-Upgrading an existing `navi-sdk` integration? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first. Package-level migration notes (old `navi-sdk` → new packages) are kept under [NAVI SDK Migration](http://sdk.naviprotocol.io/navi-sdk-migration/lending).
+Upgrading a 1.x integration to 2.x? Read the **[Sui SDK v2 Migration guide](http://sdk.naviprotocol.io/sui-sdk-v2-migration)** first.
 
 ## 📚 Documentation
 
@@ -64,7 +63,6 @@ Upgrading an existing `navi-sdk` integration? Read the **[Sui SDK v2 Migration g
 - [Astros Bridge SDK](http://sdk.naviprotocol.io/bridge)
 - [Lending SDK](http://sdk.naviprotocol.io/lending)
 - [Wallet Client](http://sdk.naviprotocol.io/wallet-client)
-- [NAVI SDK Migration (from `navi-sdk`)](http://sdk.naviprotocol.io/navi-sdk-migration/lending)
 
 
 ### Contribution Process
@@ -96,7 +94,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 | @naviprotocol/lending | 2.x | ✅ Sui SDK v2 |
 | @naviprotocol/wallet-client | 2.x | ✅ Sui SDK v2 |
 
-Looking for the last stable v1 releases (`navi-sdk`-era)? See npm for the previously published 1.x versions of each package.
+Looking for the previous 1.x releases? They remain available on npm.
 
 ---
 
