@@ -10,6 +10,33 @@ The only thing you
 must do is (1) complete the standard Sui SDK v2 migration, and (2) construct a
 Sui v2 client and pass it into the few NAVI functions that read on-chain state.
 
+## One-shot migration with an AI agent
+
+Prefer to automate it? Paste this prompt into an AI coding agent (Claude Code,
+Cursor, etc.) at the root of your project:
+
+```text
+Migrate this codebase from NAVI SDK v1 (1.x) to NAVI SDK v2 (2.x).
+
+1. Analyze the project: detect the package manager, build/test scripts, and
+   every file importing @naviprotocol/* or @mysten/sui(.js).
+2. Read the official guides before changing anything:
+   - Sui SDK v2 migration: https://sdk.mystenlabs.com/sui/migrations/sui-2.0
+   - NAVI SDK v2 migration: https://sdk.naviprotocol.io/sui-sdk-v2-migration
+3. Apply the migration:
+   - Complete the Sui SDK v2 migration first (@mysten/sui@^2, replace
+     TransactionBlock with Transaction, Node 22 / ESM).
+   - Upgrade @naviprotocol/* packages to ^2.
+   - Construct one Sui v2 client (SuiGrpcClient recommended) and pass it into
+     the NAVI functions that need it, per the "Per-package changes" table
+     (lending read functions, new WalletClient, aggregator executeTransaction,
+     bridge walletConnection.sui.provider, DCA createDcaOrder).
+   - Update code that reads transaction results (fields are unwrapped/normalized
+     toward the v1 shape). Do NOT change NAVI function signatures otherwise.
+4. Validate: run type-check, lint, build, and the test suite; fix regressions
+   until everything passes.
+```
+
 ## Migrate to Sui SDK v2 first
 
 Follow the official **[Sui SDK v2 migration guide](https://sdk.mystenlabs.com/sui/migrations/sui-2.0)**.
