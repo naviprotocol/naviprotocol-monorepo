@@ -22,6 +22,12 @@ The essential changes it covers:
 
 Do the official migration first; the NAVI-specific steps below assume it is done.
 
+> **Note:** Sui v2 defaults transactions built with a client to expire at
+> epoch + 1 (replay protection; v1 never expired). Immediate sign-and-execute is
+> unaffected. For delayed/offline signing, keep v1 behavior with
+> `tx.setExpiration({ None: true })`.
+> See [Default transaction expiration](https://sdk.mystenlabs.com/sui/migrations/sui-2.0/sui#default-transaction-expiration).
+
 ## Install NAVI SDK v2
 
 Install the latest `2.x` of the packages you use, alongside `@mysten/sui@^2`:
