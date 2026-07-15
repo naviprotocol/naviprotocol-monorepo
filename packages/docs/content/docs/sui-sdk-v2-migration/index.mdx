@@ -116,9 +116,11 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
 
 - **On-chain read functions now require `{ client }`.** Affected:
   `getLendingState`, `getHealthFactor`, `getSimulatedHealthFactor`, `getCoins`,
-  `getUserAvailableLendingRewards`, `getUserEModeCaps`, `getBorrowFee` (address +
-  asset form), `getPythStalePriceFeedIdV2`, `updatePythPriceFeeds`. Add
-  `{ client: suiClient }` to each call.
+  `getUserAvailableLendingRewards`, `getUserEModeCaps`, `getBorrowFee`,
+  `getPythStalePriceFeedIdV2`, `updatePythPriceFeeds`. Add `{ client: suiClient }`
+  to each call. Note: `getBorrowFee` needs a client in **every** form, including
+  the no-argument global-rate call — it reads on-chain either way, and v2 has no
+  implicit default client.
 
   ```ts
   await getLendingState(address, { client: suiClient })
