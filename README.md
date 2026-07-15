@@ -90,11 +90,11 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 | Package | Version | Status |
 |---|---|---|
-| @naviprotocol/astros-aggregator-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
-| @naviprotocol/astros-bridge-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
-| @naviprotocol/astros-dca-sdk | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
-| @naviprotocol/lending | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
-| @naviprotocol/wallet-client | 2.0.0-beta.1 | 🚧 Beta (Sui SDK v2) |
+| @naviprotocol/astros-aggregator-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/astros-bridge-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/astros-dca-sdk | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/lending | 2.x | ✅ Sui SDK v2 |
+| @naviprotocol/wallet-client | 2.x | ✅ Sui SDK v2 |
 
 Looking for the last stable v1 releases (`navi-sdk`-era)? See npm for the previously published 1.x versions of each package.
 
