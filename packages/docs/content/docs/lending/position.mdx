@@ -14,23 +14,7 @@ The Position module provides a more structured and feature-rich way to manage us
 - **Structured data**: Each position is a self-contained object with all relevant information
 - **Overview statistics**: Automatic calculation of health factor, net worth, APY, etc.
 
-## Client Setup
-
-`getLendingPositions` (and the `getLendingState`/`getUserEModeCaps` calls used for comparison
-below) read on-chain state, so they require an explicit v2 gRPC/Core client — the SDK's default
-client is a placeholder that throws until you pass one. Construct a client once and reuse it:
-
-```ts
-import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
-
-const grpcClient = new SuiGrpcClient({
-  network: 'mainnet',
-  transport: new GrpcWebFetchTransport({
-    baseUrl: 'https://fullnode.mainnet.sui.io:443',
-    format: 'binary'
-  })
-})
-```
+`client` is optional — it defaults to the public mainnet fullnode; pass your own for a private endpoint.
 
 ### Position Types
 
@@ -52,18 +36,16 @@ Get user's lending positions including supply and borrow positions, with support
 import { getLendingPositions } from '@naviprotocol/lending'
 
 // Get lending positions from all markets
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 
 // Get lending positions from specific market(s)
 const mainMarketPositions = await getLendingPositions('0x...', {
-  markets: ['main'], // Optional: filter by market(s)
-  client: grpcClient
+  markets: ['main'] // Optional: filter by market(s)
 })
 
 // Get lending positions from multiple markets
 const multipleMarketsPositions = await getLendingPositions('0x...', {
-  markets: ['main', 0], // Can use string or number identifiers
-  client: grpcClient
+  markets: ['main', 0] // Can use string or number identifiers
 })
 ```
 
@@ -168,7 +150,7 @@ The `UserPositions` class provides a convenient way to manage and analyze lendin
 ```typescript
 import { UserPositions } from '@naviprotocol/lending'
 
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 const userPositions = new UserPositions(positions)
 ```
 
@@ -323,7 +305,7 @@ type PositionToken = {
 
 ```typescript
 // Using getLendingState - manual conversion needed
-const lendingState = await getLendingState('0x...', { client: grpcClient })
+const lendingState = await getLendingState('0x...')
 const supplyAmount = BigNumber(lendingState[0].supplyBalance)
   .shiftedBy(-9)
   .decimalPlaces(lendingState[0].pool.token.decimals, BigNumber.ROUND_DOWN)
@@ -333,7 +315,7 @@ const supplyAmount = BigNumber(lendingState[0].supplyBalance)
 
 ```typescript
 // Using getLendingPositions - already normalized
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 const supplyAmount = positions[0]['navi-lending-supply']?.amount // Already in token decimals
 ```
 
@@ -342,7 +324,7 @@ const supplyAmount = positions[0]['navi-lending-supply']?.amount // Already in t
 **getLendingState** requires manual calculation of USD values:
 
 ```typescript
-const lendingState = await getLendingState('0x...', { client: grpcClient })
+const lendingState = await getLendingState('0x...')
 const supplyAmount = BigNumber(lendingState[0].supplyBalance)
   .shiftedBy(-9)
   .decimalPlaces(lendingState[0].pool.token.decimals, BigNumber.ROUND_DOWN)
@@ -352,7 +334,7 @@ const valueUSD = supplyAmount.multipliedBy(lendingState[0].pool.oracle.price)
 **getLendingPositions** provides pre-calculated USD values:
 
 ```typescript
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 const valueUSD = positions[0]['navi-lending-supply']?.valueUSD // Already calculated
 ```
 
@@ -361,8 +343,8 @@ const valueUSD = positions[0]['navi-lending-supply']?.valueUSD // Already calcul
 **getLendingState** returns `emodeId` field for EMode positions, but you need to manually query EMode caps and process them:
 
 ```typescript
-const lendingState = await getLendingState('0x...', { client: grpcClient })
-const emodeCaps = await getUserEModeCaps('0x...', { client: grpcClient })
+const lendingState = await getLendingState('0x...')
+const emodeCaps = await getUserEModeCaps('0x...')
 // Need to manually match emodeId with emodeCaps and process
 const emodeStates = lendingState.filter(state => state.emodeId !== undefined)
 ```
@@ -370,7 +352,7 @@ const emodeStates = lendingState.filter(state => state.emodeId !== undefined)
 **getLendingPositions** automatically queries EMode Caps and includes EMode positions with full EMode pool information:
 
 ```typescript
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 // EMode positions are automatically included
 const emodePositions = positions.filter(p => 
   p.type === 'navi-lending-emode-supply' || 
@@ -413,7 +395,7 @@ const emodePositions = positions.filter(p =>
 **getLendingState** requires manual calculation of statistics:
 
 ```typescript
-const lendingState = await getLendingState('0x...', { client: grpcClient })
+const lendingState = await getLendingState('0x...')
 // Need to manually calculate:
 // - Total supply value
 // - Total borrow value
@@ -425,7 +407,7 @@ const lendingState = await getLendingState('0x...', { client: grpcClient })
 **UserPositions** provides automatic overview calculation:
 
 ```typescript
-const positions = await getLendingPositions('0x...', { client: grpcClient })
+const positions = await getLendingPositions('0x...')
 const userPositions = new UserPositions(positions)
 console.log(userPositions.overview.hf) // Health factor
 console.log(userPositions.overview.netVaule) // Net value

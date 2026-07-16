@@ -17,6 +17,23 @@ import {
   normalizeAggregatorTransactionResult
 } from './transaction-result'
 import { fromBase64 } from '@mysten/sui/utils'
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+/** Public mainnet gRPC endpoint used when no client is provided (v1 parity: v1 defaulted to the public mainnet fullnode). */
+const PUBLIC_MAINNET_GRPC_URL = 'https://fullnode.mainnet.sui.io:443'
+
+let defaultPublicClient: NaviAggregatorExecutionClient | undefined
+
+function getDefaultPublicClient(): NaviAggregatorExecutionClient {
+  // Fine for development and low volume; production should pass its own client.
+  if (!defaultPublicClient) {
+    defaultPublicClient = new SuiGrpcClient({
+      network: 'mainnet',
+      transport: new GrpcWebFetchTransport({ baseUrl: PUBLIC_MAINNET_GRPC_URL })
+    }) as unknown as NaviAggregatorExecutionClient
+  }
+  return defaultPublicClient
+}
 
 function getCore(client: { core?: unknown }) {
   return client.core as
@@ -62,16 +79,12 @@ export async function getQuote(
 export async function executeTransaction(
   txb: Transaction,
   signer: Signer,
-  options: {
-    client: NaviAggregatorExecutionClient
+  options?: {
+    client?: NaviAggregatorExecutionClient
   }
 ): Promise<NaviAggregatorTransactionResult> {
-  const client = options?.client
-  if (!client) {
-    throw new Error(
-      'executeTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
-    )
-  }
+  // v1 parity: client is optional and falls back to the public mainnet node.
+  const client = options?.client ?? getDefaultPublicClient()
   const txBytes = await txb.build({
     client: client as any
   })
@@ -127,16 +140,12 @@ export async function executeTransaction(
  */
 export async function dryRunSwapTransaction(
   txb: Transaction,
-  options: {
-    client: NaviAggregatorDryRunClient
+  options?: {
+    client?: NaviAggregatorDryRunClient
   }
 ): Promise<NaviAggregatorDryRunResult> {
-  const client = options?.client
-  if (!client) {
-    throw new Error(
-      'dryRunSwapTransaction requires an explicit v2 Core API client; pass legacyJsonRpc only through the deprecated client overload'
-    )
-  }
+  // v1 parity: client is optional and falls back to the public mainnet node.
+  const client = options?.client ?? (getDefaultPublicClient() as NaviAggregatorDryRunClient)
   const core = getCore(client)
   if (typeof core?.simulateTransaction === 'function') {
     const result = await core.simulateTransaction({

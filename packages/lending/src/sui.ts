@@ -278,31 +278,24 @@ export function requireNaviGraphQLClient(
   return bundle.graphql
 }
 
-function createMissingNaviSuiClient(): NaviSuiClient {
-  const message =
-    'NAVI Sui SDK requires an explicit v2 gRPC/Core client. Pass { network, grpc } or an explicit legacyJsonRpc client for deprecated compatibility.'
-  const missingCore = new Proxy(
-    {},
-    {
-      get() {
-        throw new Error(message)
-      }
-    }
-  )
-  return new Proxy(
-    { core: missingCore },
-    {
-      get(target, prop) {
-        if (prop === 'core') {
-          return target.core
-        }
-        if (prop === 'network') {
-          return 'mainnet'
-        }
-        throw new Error(message)
-      }
-    }
-  ) as NaviSuiClient
+/** Public mainnet gRPC endpoint used when no client is provided (same idea as v1's getFullnodeUrl('mainnet')). */
+export const PUBLIC_MAINNET_GRPC_URL = 'https://fullnode.mainnet.sui.io:443'
+
+let defaultPublicSuiClient: NaviSuiClient | undefined
+
+/**
+ * Default public-mainnet client, matching v1 behavior: when the caller does not
+ * pass a client, fall back to the public mainnet fullnode. Fine for development
+ * and low volume; production should pass its own client (private endpoint/auth).
+ */
+function createDefaultNaviSuiClient(): NaviSuiClient {
+  if (!defaultPublicSuiClient) {
+    defaultPublicSuiClient = new SuiGrpcClient({
+      network: 'mainnet',
+      transport: new GrpcWebFetchTransport({ baseUrl: PUBLIC_MAINNET_GRPC_URL })
+    }) as unknown as NaviSuiClient
+  }
+  return defaultPublicSuiClient
 }
 
 export function createNaviSuiClient(options: NaviSuiClientOptions): NaviSuiClientBundle
@@ -317,7 +310,7 @@ export function createNaviSuiClient(
   network: NaviSuiNetwork = 'mainnet'
 ): NaviSuiClientBundle | NaviJsonRpcCompatClient | NaviSuiClient {
   if (!optionsOrUrl) {
-    return createMissingNaviSuiClient()
+    return createDefaultNaviSuiClient()
   }
   if (typeof optionsOrUrl === 'string') {
     return createNaviLegacyJsonRpcClient(network, { url: optionsOrUrl })

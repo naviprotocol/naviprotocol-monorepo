@@ -6,9 +6,17 @@ NAVI SDK v2 runs on the Sui TypeScript SDK v2 stack
 (`@mysten/sui@^2`). This guide is for integrators upgrading an existing NAVI
 `1.x` integration to `2.x`.
 
-The only thing you
-must do is (1) complete the standard Sui SDK v2 migration, and (2) construct a
-Sui v2 client and pass it into the few NAVI functions that read on-chain state.
+Upgrading requires:
+
+1. Complete the standard Sui SDK v2 migration.
+2. If you pass a custom Sui client anywhere, construct it with gRPC instead of
+   JSON-RPC — same call positions, and whether a client is optional or required
+   is unchanged from v1 (optional calls default to the public mainnet node).
+3. If you read raw transaction-response fields, note that results are now
+   normalized DTOs close to the v1 shape — see
+   [Per-package changes](#per-package-changes).
+
+Everything else is unchanged from v1.
 
 ## One-shot migration with an AI agent
 
@@ -27,10 +35,10 @@ Migrate this codebase from NAVI SDK v1 (1.x) to NAVI SDK v2 (2.x).
    - Complete the Sui SDK v2 migration first (@mysten/sui@^2, replace
      TransactionBlock with Transaction, Node 22 / ESM).
    - Upgrade @naviprotocol/* packages to ^2.
-   - Construct one Sui v2 client (SuiGrpcClient recommended) and pass it into
-     the NAVI functions that need it, per the "Per-package changes" table
-     (lending read functions, new WalletClient, aggregator executeTransaction,
-     bridge walletConnection.sui.provider, DCA createDcaOrder).
+   - Client passing matches v1: calls that did not pass a client keep working
+     (public mainnet default). Where the code passes a client, replace the
+     legacy JSON-RPC SuiClient with a v2 SuiGrpcClient at the same position
+     (see the "Per-package changes" section of the NAVI guide).
    - Update code that reads transaction results (fields are unwrapped/normalized
      toward the v1 shape). Do NOT change NAVI function signatures otherwise.
 4. Validate: run type-check, lint, build, and the test suite; fix regressions
@@ -63,18 +71,20 @@ Install the latest `2.x` of the packages you use, alongside `@mysten/sui@^2`:
 npm install @naviprotocol/lending@^2 @mysten/sui@^2
 ```
 
-## Construct a Sui client and pass it in
+## Client construction: JSON-RPC → gRPC
 
-This is the one integration point that changed across NAVI SDK v2. NAVI functions
-that read on-chain state now require an explicit Sui v2 client — there is no
-built-in default (calling without one throws). Construct it once and reuse it.
-
-Recommended — gRPC/Core:
+Only relevant if you pass a custom client (optionality is unchanged from v1 —
+calls that omitted a client keep using the public mainnet fullnode). JSON-RPC
+is deprecated by Sui; construct a gRPC client instead. Construct it once and
+reuse it:
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
+// Old (v1)
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
+const suiClient = new SuiClient({ url: getFullnodeUrl('mainnet') })
 
-// Public endpoint — development / low volume.
+// New (v2)
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 const suiClient = new SuiGrpcClient({
   network: 'mainnet',
   baseUrl: process.env.SUI_GRPC_ENDPOINT!
@@ -104,53 +114,22 @@ const suiClient = new SuiGrpcClient({
 GraphQL (`SuiGraphQLClient` from `@mysten/sui/graphql`) is optional and only
 needed for Sui-native historical/filtered queries.
 
-Then pass the client to the NAVI functions that need it. This is the whole
-change — signatures are otherwise the same:
-
-Old (v1):
-
-```ts
-import { getLendingState } from '@naviprotocol/lending'
-
-const state = await getLendingState(address) // used a built-in default client
-```
-
-New (v2):
-
-```ts
-import { getLendingState } from '@naviprotocol/lending'
-
-const state = await getLendingState(address, { client: suiClient })
-```
-
-Every other NAVI call follows the same rule — the signature is unchanged, you
-just pass `client` at the position listed in [Per-package changes](#per-package-changes).
-
 ## Per-package changes
 
-Signatures are otherwise unchanged. Below is exactly what each package requires.
+Client optionality and call positions match v1. Below is only what changed per
+package.
 
 ### Lending
 
-- **On-chain read functions now require `{ client }`.** Affected:
-  `getLendingState`, `getHealthFactor`, `getSimulatedHealthFactor`, `getCoins`,
-  `getUserAvailableLendingRewards`, `getUserEModeCaps`, `getBorrowFee`,
-  `getPythStalePriceFeedIdV2`, `updatePythPriceFeeds`. Add `{ client: suiClient }`
-  to each call. Note: `getBorrowFee` needs a client in **every** form, including
-  the no-argument global-rate call — it reads on-chain either way, and v2 has no
-  implicit default client.
-
-  ```ts
-  await getLendingState(address, { client: suiClient })
-  ```
+- To use your own endpoint, pass `{ client: suiClient }` in the options of the
+  on-chain read functions — same position as v1.
 - PTB builders (`depositCoinPTB`, `withdrawCoinPTB`, `borrowCoinPTB`,
-  `repayDebtPTB`, `liquidatePTB`, `flashloanPTB`, …) are **unchanged** — no client
+  `repayCoinPTB`, `liquidatePTB`, `flashloanPTB`, …) are **unchanged** — no client
   needed.
 
 ### Wallet Client
 
-- **`new WalletClient({ client })` is now required** (was optional in v1). Pass a
-  client bundle:
+- To use your own endpoint, pass a client bundle:
 
   ```ts
   new WalletClient({
@@ -167,16 +146,11 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
 
 ### Astros Aggregator
 
-- **`executeTransaction(tx, signer, { client })` — `client` is now required** and
-  must be a v2 Core-capable client. The result is unwrapped/normalized toward the
-  v1 shape (same as Wallet Client above).
-
-  ```ts
-  await executeTransaction(tx, signer, { client: suiClient })
-  ```
-- `dryRunSwapTransaction(tx, { client })` — `client` is also required.
-- `getCoins` / `getCoinPTB` take a v2 client (Core `listCoins`), not a legacy
-  `SuiClient`.
+- `executeTransaction` / `dryRunSwapTransaction` results are
+  unwrapped/normalized toward the v1 shape (like Wallet Client above, minus the
+  `kind` marker; the raw response stays available on `raw`).
+- `getCoins` / `getCoinPTB` take a v2 client (Core `listCoins`) at the same
+  position as v1, not a legacy `SuiClient`.
 - `getQuote` and `buildSwapPTBFromQuote` are unchanged.
 
 ### Astros Bridge
@@ -193,13 +167,9 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
 
 ### Astros DCA
 
-- **`createDcaOrder(client, address, params)` — pass a v2 Core-capable client**
-  (Core `getCoinMetadata`), not a legacy `SuiClient`.
-
-  ```ts
-  await createDcaOrder(suiClient, address, params)
-  ```
-- `dryRunDcaTransaction(tx, { client })` — `client` is also required.
+- `createDcaOrder(client, address, params)` and `dryRunDcaTransaction(tx, { client })`
+  take a v2 Core-capable client at the same positions as v1, not a legacy
+  `SuiClient`.
 - Query / cancel functions (`getUserDcaOrders`, `getDcaOrderDetails`,
   `listDcaOrders`, `cancelDcaOrder`) are unchanged.
 
@@ -207,7 +177,5 @@ Signatures are otherwise unchanged. Below is exactly what each package requires.
 
 - [ ] Completed the official Sui SDK v2 migration (`@mysten/sui@^2`, `Transaction`, Node 22, ESM).
 - [ ] Installed NAVI SDK `@^2`.
-- [ ] Constructed a `SuiGrpcClient`.
-- [ ] Passed `{ client }` to lending on-chain read functions.
-- [ ] Passed the required `client` to `new WalletClient`, aggregator `executeTransaction`, bridge `provider`, and DCA `createDcaOrder`.
+- [ ] Replaced any custom JSON-RPC `SuiClient` with a v2 `SuiGrpcClient` (same positions as v1).
 - [ ] Adjusted any code that depended on the raw v1 transaction-response envelope.

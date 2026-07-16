@@ -20,18 +20,10 @@ The package ID of the Volo staking contract, defaults to `0x68d22cf8bdbcd11ecba1
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-  client: {
-    network: 'mainnet',
-    grpc: {
-      client: suiClient
-    }
-  },
+  signer,
   configs: {
     volo: {
       packageId: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20'
@@ -47,18 +39,10 @@ The ID of the staking pool, defaults to `0x2d914e23d82fedef1b5f56a32d5c64bdcc308
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-  client: {
-    network: 'mainnet',
-    grpc: {
-      client: suiClient
-    }
-  },
+  signer,
   configs: {
     volo: {
       poolId: '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5'
@@ -74,18 +58,10 @@ The ID of the staking pool metadata, defaults to `0x680cd26af32b2bde8d3361e804c5
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-  client: {
-    network: 'mainnet',
-    grpc: {
-      client: suiClient
-    }
-  },
+  signer,
   configs: {
     volo: {
       metadataId: '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60'
@@ -101,18 +77,10 @@ The vSUI token type, defaults to `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33b
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-  client: {
-    network: 'mainnet',
-    grpc: {
-      client: suiClient
-    }
-  },
+  signer,
   configs: {
     volo: {
       coinType: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
@@ -130,19 +98,9 @@ Get current statistics and detailed information of the Volo staking pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const stats = await walletClient.volo.getStats()
 console.log('Volo Statistics:', stats)
 ```
@@ -183,19 +141,9 @@ Stake SUI tokens to receive vSUI tokens.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.volo.stake(
   1000000000, // Staking amount (1 SUI)
   { dryRun: false } // Optional parameters
@@ -209,20 +157,10 @@ Adds staking operation to a transaction block for building complex transactions.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const tx = new Transaction()
 
 // Get SUI balance and merge coins
@@ -255,19 +193,9 @@ Unstake vSUI tokens to receive SUI tokens.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.volo.unstake(
   1000000000, // Unstaking amount (1 vSUI)
   { dryRun: false } // Optional parameters
@@ -281,20 +209,10 @@ Adds unstaking operation to a transaction block for building complex transaction
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const tx = new Transaction()
 
 // Get vSUI balance and merge coins
@@ -330,19 +248,9 @@ Event triggered when staking is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('volo:stake-success', (data) => {
   console.log('Staking successful:', {
     suiAmount: data.suiAmount
@@ -364,19 +272,9 @@ Event triggered when unstaking is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('volo:unstake-success', (data) => {
   console.log('Unstaking successful:', {
     vSuiAmount: data.vSuiAmount
