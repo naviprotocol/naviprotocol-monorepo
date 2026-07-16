@@ -144,9 +144,34 @@ export enum Dex {
  * This type contains all the information needed to execute a swap,
  * including available routes, amounts, and token details.
  */
+/**
+ * A single swap route/path returned by the aggregator. Core fields are typed for
+ * consumer hints; `info_for_ptb` and other DEX-specific fields stay open via the
+ * index signature because their shape varies per provider.
+ */
+export type SwapRoute = {
+  /** Aggregate input amount routed through this path */
+  amount_in?: string
+  /** Aggregate output amount from this path */
+  amount_out?: string
+  /** Ordered hops of this route */
+  path?: Array<{
+    id?: string
+    provider?: string
+    from?: string
+    target?: string
+    a2b?: boolean
+    type?: string
+    fee_rate?: number | string
+    info_for_ptb?: Record<string, any>
+    [key: string]: any
+  }>
+  [key: string]: any
+}
+
 export type Quote = {
   /** Available swap routes from different DEXes */
-  routes: any[]
+  routes: SwapRoute[]
   /** Input amount for the swap */
   amount_in: string
   /** Output amount from the swap */

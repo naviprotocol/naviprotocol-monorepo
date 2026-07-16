@@ -10,8 +10,23 @@
 
 import { Signer } from '@mysten/sui/cryptography'
 import { Transaction } from '@mysten/sui/transactions'
-import { SignatureWithBytes } from '@mysten/sui/cryptography'
+import type { PublicKey, SignatureScheme, SignatureWithBytes } from '@mysten/sui/cryptography'
 import type { NaviWalletExecutionClient } from './types'
+
+/**
+ * Minimal mock public key used by watch-only / web signers. It exposes the
+ * address but cannot perform real cryptography; typed as `PublicKey` for the
+ * `Signer` contract via a cast since it is intentionally incomplete.
+ */
+function createMockPublicKey(address: string): PublicKey {
+  return {
+    toSuiAddress: () => address,
+    toBytes: () => new Uint8Array(32),
+    toRawBytes: () => new Uint8Array(32),
+    flag: () => 0,
+    verify: async () => false
+  } as unknown as PublicKey
+}
 
 /**
  * Options for signing and executing transactions
@@ -56,7 +71,7 @@ export class WatchSigner extends Signer {
    * @param bytes - Transaction bytes to sign
    * @returns Promise<Uint8Array> - Empty signature (not valid)
    */
-  override async sign(bytes: Uint8Array): Promise<any> {
+  override async sign(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
     return Promise.resolve(new Uint8Array(0))
   }
 
@@ -65,31 +80,18 @@ export class WatchSigner extends Signer {
    *
    * Returns a mock public key object that provides the wallet address
    * but cannot be used for actual cryptographic operations.
-   *
-   * @returns Mock public key object
    */
-  getPublicKey(): any {
-    return {
-      /** Returns the wallet address */
-      toSuiAddress: () => this.address,
-      /** Returns empty bytes (not a real public key) */
-      toBytes: () => new Uint8Array(32),
-      /** Returns empty raw bytes (not a real public key) */
-      toRawBytes: () => new Uint8Array(32),
-      /** Public key flag (0 for mock) */
-      flag: 0,
-      /** Verification always returns false (not a real public key) */
-      verify: async () => false
-    }
+  getPublicKey(): PublicKey {
+    return createMockPublicKey(this.address)
   }
 
   /**
    * Gets the key scheme for this signer
    *
-   * @returns Key scheme string (ed25519 for compatibility)
+   * @returns Key scheme (ed25519 for compatibility)
    */
-  getKeyScheme(): any {
-    return 'ed25519'
+  getKeyScheme(): SignatureScheme {
+    return 'ED25519'
   }
 
   /**
@@ -97,12 +99,11 @@ export class WatchSigner extends Signer {
    *
    * This method is required by the Signer interface but cannot
    * actually sign and execute transactions in watch-only mode.
-   *
-   * @param options - Sign and execute options
-   * @returns Promise<any> - Empty result (not a real transaction result)
    */
-  async signAndExecuteTransaction({ transaction, client }: SignAndExecuteOptions): Promise<any> {
-    return {} as any
+  override async signAndExecuteTransaction(
+    options: SignAndExecuteOptions
+  ): ReturnType<Signer['signAndExecuteTransaction']> {
+    return {} as Awaited<ReturnType<Signer['signAndExecuteTransaction']>>
   }
 }
 
@@ -133,7 +134,7 @@ export abstract class WebSigner extends Signer {
    * @param bytes - Transaction bytes to sign
    * @returns Promise<Uint8Array> - Empty signature (not valid)
    */
-  override async sign(bytes: Uint8Array): Promise<any> {
+  override async sign(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
     return Promise.resolve(new Uint8Array(0))
   }
 
@@ -142,31 +143,18 @@ export abstract class WebSigner extends Signer {
    *
    * Returns a mock public key object that provides the wallet address
    * but cannot be used for actual cryptographic operations.
-   *
-   * @returns Mock public key object
    */
-  getPublicKey(): any {
-    return {
-      /** Returns the wallet address */
-      toSuiAddress: () => this.address,
-      /** Returns empty bytes (not a real public key) */
-      toBytes: () => new Uint8Array(32),
-      /** Returns empty raw bytes (not a real public key) */
-      toRawBytes: () => new Uint8Array(32),
-      /** Public key flag (0 for mock) */
-      flag: 0,
-      /** Verification always returns false (not a real public key) */
-      verify: async () => false
-    }
+  getPublicKey(): PublicKey {
+    return createMockPublicKey(this.address)
   }
 
   /**
    * Gets the key scheme for this signer
    *
-   * @returns Key scheme string (ed25519 for compatibility)
+   * @returns Key scheme (ed25519 for compatibility)
    */
-  getKeyScheme(): any {
-    return 'ed25519'
+  getKeyScheme(): SignatureScheme {
+    return 'ED25519'
   }
 
   abstract signPersonalMessage(bytes: Uint8Array): Promise<SignatureWithBytes>

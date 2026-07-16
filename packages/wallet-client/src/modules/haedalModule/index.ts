@@ -7,6 +7,7 @@
  * @module HaedalModule
  */
 
+import { isSuccessfulTransaction } from '../../transaction-result'
 import {
   CoinObject,
   buildNaviOpenApiUrl,
@@ -162,7 +163,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       transaction: tx,
       dryRun: options?.dryRun ?? false
     })
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('haedal:stake-success', { suiAmount })
       this.walletClient.module('balance').updatePortfolio()
     }
@@ -196,7 +197,7 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       transaction: tx,
       dryRun: options?.dryRun ?? false
     })
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('haedal:unstake-success', { haSUIAmount })
       this.walletClient.module('balance').updatePortfolio()
     }

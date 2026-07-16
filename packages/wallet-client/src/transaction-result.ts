@@ -22,6 +22,20 @@ export function mergeTransactionResponseOptions(
   }
 }
 
+/**
+ * Whether a (normalized) transaction result succeeded.
+ *
+ * Handles both shapes: v1 JSON-RPC effects `status.status === 'success'` (string)
+ * and Sui v2 Core `status.success === true` (boolean). Using only the v1 string
+ * check makes success events silently never fire on the gRPC/Core path.
+ */
+export function isSuccessfulTransaction(result: {
+  effects?: { status?: unknown } | null
+}): boolean {
+  const status = result?.effects?.status as Record<string, unknown> | undefined
+  return status?.status === 'success' || status?.success === true
+}
+
 export function normalizeTransactionResult(
   kind: 'dryRun',
   result: unknown
