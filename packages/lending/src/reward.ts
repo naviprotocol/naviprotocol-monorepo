@@ -24,7 +24,7 @@ import type {
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
-  suiClient,
+  requireSuiClient,
   camelize,
   parseDevInspectResult,
   devInspectTransaction,
@@ -52,7 +52,7 @@ async function getLendingRewardsBatch(
   }[],
   options?: Partial<SuiClientOption & EnvOption & ServiceOption>
 ): Promise<LendingReward[]> {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getLendingRewardsBatch')
 
   const pools = await getPools({
     ...options,
@@ -183,13 +183,9 @@ export async function getUserAvailableLendingRewards(
     return getMarketConfig(identity)
   })
 
-  let emodeCaps: EModeCap[] = []
-
-  try {
-    emodeCaps = await getUserEModeCaps(address, options)
-  } catch (e) {
-    console.error(e)
-  }
+  // E-Mode caps 失败不再静默吞掉:此前 catch 后用空数组继续,会静默丢失 E-Mode 相关
+  // 奖励任务(且 client 缺失等真错误被掩盖)。改为抛出,让调用方感知,而不是返回不完整结果。
+  const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 
   const tasks = markets
     .map((market) => {

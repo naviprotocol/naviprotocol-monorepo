@@ -8,7 +8,13 @@ import {
   SuiClientOption,
   EModeIdentity
 } from './types'
-import { withSingleton, withCache, parseTxValue, suiClient, devInspectTransaction } from './utils'
+import {
+  withSingleton,
+  withCache,
+  parseTxValue,
+  requireSuiClient,
+  devInspectTransaction
+} from './utils'
 import { DEFAULT_MARKET_IDENTITY, getMarketConfig } from './market'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import { Transaction } from '@mysten/sui/transactions'
@@ -104,7 +110,7 @@ export const getUserEModeCaps = withCache(
         ...options
       })
       const tx = new Transaction()
-      const client = options?.client ?? suiClient
+      const client = requireSuiClient(options?.client, 'getUserEModeCaps')
 
       tx.moveCall({
         target: `${config.emode.contract.registryPackage}::registry::find_user_emode_account_caps`,

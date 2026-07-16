@@ -29,7 +29,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo, ReserveDataInfo } from './bcs'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
-  suiClient,
+  requireSuiClient,
   parseDevInspectResult,
   devInspectTransaction,
   withSingleton,
@@ -226,7 +226,7 @@ async function getLendingStateBatch(
   >
 ): Promise<UserLendingInfo[]> {
   const tx = new Transaction()
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getLendingStateBatch')
   const pools = await getPools({
     ...options,
     markets: Object.values(MARKETS)
@@ -405,7 +405,7 @@ export async function getHealthFactor(
   address: string | AccountCap,
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<number> {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getHealthFactor')
   const tx = new Transaction()
   await getHealthFactorPTB(tx, address, options)
   const result = await devInspectTransaction(client, {
@@ -437,7 +437,7 @@ export async function getSimulatedHealthFactor(
   }[],
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<number> {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getSimulatedHealthFactor')
   const tx = new Transaction()
   let estimatedSupply = 0
   let estimatedBorrow = 0
@@ -546,7 +546,7 @@ export async function getCoins(
 ): Promise<CoinStruct[]> {
   let cursor: string | undefined | null = null
   const allCoinDatas: CoinStruct[] = []
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getCoins')
   const core = client.core as
     | {
         listBalances?(options: any): Promise<any>
@@ -663,13 +663,9 @@ export const getLendingPositions = withCache(
       return getMarketConfig(item)
     })
 
-    let emodeCaps: EModeCap[] = []
-
-    try {
-      emodeCaps = await getUserEModeCaps(address, options)
-    } catch (e) {
-      console.error(e)
-    }
+    // E-Mode caps 失败不再静默吞掉:此前 catch 后用空数组继续,会静默丢失用户的 E-Mode
+    // 仓位(且 client 缺失等真错误被掩盖)。改为抛出,让调用方感知,而不是返回不完整持仓。
+    const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 
     const tasks = markets
       .map((market) => {
@@ -894,8 +890,8 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any,
-          emodeCap: {} as any
+          pool: pool as EModePool,
+          emodeCap: {} as EModeCap
         }
       }
     } else {
@@ -909,7 +905,7 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as Pool
         }
       }
     }
@@ -931,8 +927,8 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any,
-          emodeCap: {} as any
+          pool: pool as EModePool,
+          emodeCap: {} as EModeCap
         }
       }
     } else {
@@ -946,7 +942,7 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as Pool
         }
       }
     }
@@ -968,8 +964,8 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any,
-          emodeCap: {} as any
+          pool: pool as EModePool,
+          emodeCap: {} as EModeCap
         }
       }
     } else {
@@ -983,7 +979,7 @@ export class UserPositions {
           amount: amount.toString(),
           valueUSD: BigNumber(amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as Pool
         }
       }
     }
@@ -1005,8 +1001,8 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any,
-          emodeCap: {} as any
+          pool: pool as EModePool,
+          emodeCap: {} as EModeCap
         }
       }
     } else {
@@ -1020,7 +1016,7 @@ export class UserPositions {
           amount: (-amount).toString(),
           valueUSD: BigNumber(-amount).multipliedBy(price).toString(),
           token: pool.token,
-          pool: pool as any
+          pool: pool as Pool
         }
       }
     }

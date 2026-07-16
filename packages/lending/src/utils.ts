@@ -25,6 +25,23 @@ import { getNaviSdkConfigVersion } from './services'
  */
 export const suiClient = createNaviSuiClient()
 
+/**
+ * Resolves the caller-provided Sui client, requiring it explicitly.
+ *
+ * On-chain read functions need a v2 gRPC/Core client; v2 has no implicit public
+ * default (the module-level `suiClient` is a throwing proxy). Fail fast with a
+ * clear message instead of letting the proxy throw deep inside a read.
+ */
+export function requireSuiClient<T>(client: T | undefined, fnName: string): T {
+  if (!client) {
+    throw new Error(
+      `${fnName} requires an explicit Sui v2 gRPC/Core client. Pass { client }; ` +
+        `NAVI SDK v2 no longer provides an implicit default client.`
+    )
+  }
+  return client
+}
+
 type CoreCommandOutput = {
   bcs?: Uint8Array | number[] | string | null
 }
@@ -92,27 +109,23 @@ export async function devInspectTransaction(
       }
     | undefined
 
-  if (typeof core?.simulateTransaction === 'function') {
-    const transaction = options.transaction ?? options.transactionBlock
-    if (transaction instanceof Transaction) {
-      transaction.setSenderIfNotSet(options.sender)
-    }
-    const result = await core.simulateTransaction({
-      transaction,
-      checksEnabled: false,
-      include: {
-        effects: true,
-        events: true,
-        commandResults: true
-      }
-    })
-    return normalizeCoreDevInspectResult(result)
+  if (typeof core?.simulateTransaction !== 'function') {
+    throw new Error('devInspectTransaction requires a Sui v2 Core-capable client')
   }
-
-  return client.devInspectTransactionBlock({
-    transactionBlock: options.transactionBlock ?? options.transaction,
-    sender: options.sender
+  const transaction = options.transaction ?? options.transactionBlock
+  if (transaction instanceof Transaction) {
+    transaction.setSenderIfNotSet(options.sender)
+  }
+  const result = await core.simulateTransaction({
+    transaction,
+    checksEnabled: false,
+    include: {
+      effects: true,
+      events: true,
+      commandResults: true
+    }
   })
+  return normalizeCoreDevInspectResult(result)
 }
 
 function toCoreObjectInclude(options?: Record<string, any>) {
@@ -162,15 +175,14 @@ export async function getSuiObject(
       }
     | undefined
 
-  if (typeof core?.getObject === 'function') {
-    const { object } = await core.getObject({
-      objectId: options.id,
-      include: toCoreObjectInclude(options.options)
-    })
-    return normalizeCoreObjectResponse(object)
+  if (typeof core?.getObject !== 'function') {
+    throw new Error('getSuiObject requires a Sui v2 Core-capable client')
   }
-
-  return client.getObject(options)
+  const { object } = await core.getObject({
+    objectId: options.id,
+    include: toCoreObjectInclude(options.options)
+  })
+  return normalizeCoreObjectResponse(object)
 }
 
 export async function multiGetSuiObjects(
@@ -183,15 +195,14 @@ export async function multiGetSuiObjects(
       }
     | undefined
 
-  if (typeof core?.getObjects === 'function') {
-    const { objects } = await core.getObjects({
-      objectIds: options.ids,
-      include: toCoreObjectInclude(options.options)
-    })
-    return objects.map(normalizeCoreObjectResponse)
+  if (typeof core?.getObjects !== 'function') {
+    throw new Error('multiGetSuiObjects requires a Sui v2 Core-capable client')
   }
-
-  return client.multiGetObjects(options)
+  const { objects } = await core.getObjects({
+    objectIds: options.ids,
+    include: toCoreObjectInclude(options.options)
+  })
+  return objects.map(normalizeCoreObjectResponse)
 }
 
 /**

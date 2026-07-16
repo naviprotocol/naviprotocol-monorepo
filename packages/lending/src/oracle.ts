@@ -19,7 +19,7 @@ import type {
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
-import { multiGetSuiObjects, suiClient } from './utils'
+import { multiGetSuiObjects, requireSuiClient } from './utils'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -91,7 +91,7 @@ async function getOnChainPriceInfo(
 ): Promise<PythPriceInfo[] | undefined> {
   try {
     const priceInfos: PythPriceInfo[] = []
-    const client = options?.client ?? suiClient
+    const client = requireSuiClient(options?.client, 'getPythStalePriceFeedId')
 
     const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
     const priceInfoObjects = await multiGetSuiObjects(client, {
@@ -195,7 +195,7 @@ export async function updatePythPriceFeeds(
   priceFeedIds: string[],
   options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ) {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'updatePythPriceFeeds')
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -253,13 +253,11 @@ export async function updateOraclePricesPTB(
         expiration: 30
       }))
 
-    try {
-      const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
-      if (stalePriceFeedIds.length > 0) {
-        await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
-      }
-    } catch (e) {
-      console.error(`Failed to update Pyth price feeds`)
+    // Pyth 陈旧价更新失败不再静默吞掉:此前 catch 后继续构建 tx,会用可能过期的链上价格,
+    // 且掩盖 client 缺失等真错误。改为抛出,让调用方感知(避免基于陈旧价格的借贷/清算)。
+    const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
+    if (stalePriceFeedIds.length > 0) {
+      await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
     }
   }
 

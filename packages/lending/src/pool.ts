@@ -32,7 +32,7 @@ import {
   withCache,
   withSingleton,
   parseTxValue,
-  suiClient,
+  requireSuiClient,
   requestHeaders,
   parsePoolUID,
   parseDevInspectResult,
@@ -725,7 +725,7 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
-      const client = options?.client ?? suiClient
+      const client = requireSuiClient(options?.client, 'getBorrowFee')
       if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
