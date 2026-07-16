@@ -19,6 +19,7 @@ import {
 import { Transaction } from '@mysten/sui/transactions'
 import { fromBase64 } from '@mysten/sui/utils'
 import { Module } from '../module'
+import { isSuccessfulTransaction } from '../../transaction-result'
 import type { NaviWalletTransactionResult } from '../../types'
 import BigNumber from 'bignumber.js'
 import { mergeCoinsPTB, type NaviSdkServiceOptions } from '@naviprotocol/lending'
@@ -84,11 +85,6 @@ function getCoreExecutor(client: unknown) {
         executeTransaction?(options: any): Promise<any>
       }
     | undefined
-}
-
-function isSuccessfulTransaction(result: NaviWalletTransactionResult<boolean>) {
-  const status = result.effects?.status as Record<string, unknown> | undefined
-  return status?.status === 'success' || status?.success === true
 }
 
 /**

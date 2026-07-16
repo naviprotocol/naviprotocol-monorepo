@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-16T04:33:45.499Z",
+  "generatedAt": "2026-07-16T07:59:07.900Z",
   "methods": {
     "lending.getPools": {
       "ok": true,
@@ -1416,7 +1416,7 @@
               "type": "number"
             },
             "emodeId": {
-              "type": "number"
+              "type": "undefined"
             },
             "market": {
               "type": "string"
@@ -1523,7 +1523,7 @@
           },
           "routes": {
             "type": "array",
-            "size": "2-10",
+            "size": "1",
             "element": {
               "type": "object",
               "keys": [
@@ -3701,7 +3701,62 @@
       }
     },
     "wallet-client.lending.getAvailableRewards": {
-      "ok": false
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "2-10",
+        "element": {
+          "type": "object",
+          "keys": [
+            "address",
+            "assetCoinType",
+            "assetId",
+            "emodeId",
+            "market",
+            "option",
+            "owner",
+            "rewardCoinType",
+            "ruleIds",
+            "userClaimableReward"
+          ],
+          "fields": {
+            "address": {
+              "type": "string"
+            },
+            "assetCoinType": {
+              "type": "string"
+            },
+            "assetId": {
+              "type": "number"
+            },
+            "emodeId": {
+              "type": "number"
+            },
+            "market": {
+              "type": "string"
+            },
+            "option": {
+              "type": "number"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "rewardCoinType": {
+              "type": "string"
+            },
+            "ruleIds": {
+              "type": "array",
+              "size": "1",
+              "element": {
+                "type": "string"
+              }
+            },
+            "userClaimableReward": {
+              "type": "number"
+            }
+          }
+        }
+      }
     }
   }
 }

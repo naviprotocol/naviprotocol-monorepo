@@ -94,7 +94,7 @@ async function getOnChainPriceInfo(
   // transactions build against stale on-chain prices. Only per-feed anomalies
   // are skipped below.
   const priceInfos: PythPriceInfo[] = []
-  const client = requireSuiClient(options?.client, 'getPythStalePriceFeedId')
+  const client = requireSuiClient(options?.client, 'getOnChainPriceInfo')
 
   const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
   const priceInfoObjects = await multiGetSuiObjects(client, {
@@ -383,6 +383,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       }
   >
 ) {
+  let relevantFeeds: OraclePriceFeed[] | undefined
   try {
     const allPriceFeeds = await getPriceFeeds({
       ...options
@@ -401,7 +402,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       markets
     })
 
-    const relevantFeeds = filterPriceFeeds(allPriceFeeds, {
+    relevantFeeds = filterPriceFeeds(allPriceFeeds, {
       lendingPositions,
       pools
     })
@@ -416,6 +417,21 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       throw e
     }
     console.error(e)
+    // Degraded path: a Pyth refresh failure happens before any moveCall is
+    // appended, so the tx is still clean. Retry the oracle update without the
+    // Pyth feed refresh (matches the pre-v2 behavior where Pyth failures were
+    // swallowed but update_single_price calls were still appended) instead of
+    // dropping the oracle update entirely.
+    if (relevantFeeds) {
+      try {
+        return await updateOraclePricesPTB(tx, relevantFeeds, {
+          ...options,
+          updatePythPriceFeeds: false
+        })
+      } catch (fallbackError) {
+        console.error(fallbackError)
+      }
+    }
     return tx
   }
 }

@@ -410,7 +410,7 @@ async function runWalletSmoke(summary, packages, clients, wallet, smokeMode) {
   await runStep(summary, 'wallet-client.self-transfer.simulate', async () => {
     const tx = selfTransferTx(wallet.address, amount)
     const result = await walletClient.signExecuteTransaction({ transaction: tx, dryRun: true })
-    if (result.effects?.status?.status === 'failure') {
+    if (result.effects?.status?.status === 'failure' || result.effects?.status?.success === false) {
       throw new Error(result.effects.status.error ?? 'dry-run failed')
     }
     return { amountMist: amount, events: result.events?.length ?? 0 }
@@ -420,7 +420,7 @@ async function runWalletSmoke(summary, packages, clients, wallet, smokeMode) {
     await runStep(summary, 'wallet-client.self-transfer.execute', async () => {
       const tx = selfTransferTx(wallet.address, amount)
       const result = await walletClient.signExecuteTransaction({ transaction: tx, dryRun: false })
-      if (result.effects?.status?.status === 'failure') {
+      if (result.effects?.status?.status === 'failure' || result.effects?.status?.success === false) {
         throw new Error(result.effects.status.error ?? 'execute failed')
       }
       return { amountMist: amount, digest: result.digest }
@@ -507,7 +507,7 @@ async function runAggregatorSmoke(summary, packages, clients, wallet, smokeMode)
   await runStep(summary, 'astros-aggregator.swap.simulate', async () => {
     const { tx, quote } = await buildSwapTx()
     const result = await dryRunSwapTransaction(tx, { client: clients.grpc })
-    if (result.effects?.status?.status === 'failure') {
+    if (result.effects?.status?.status === 'failure' || result.effects?.status?.success === false) {
       throw new Error(result.effects.status.error ?? 'dry-run failed')
     }
     return { amountMist: amount, amountOut: quote.amount_out, routes: quote.routes?.length ?? 0 }
@@ -517,7 +517,7 @@ async function runAggregatorSmoke(summary, packages, clients, wallet, smokeMode)
     await runStep(summary, 'astros-aggregator.swap.execute', async () => {
       const { tx, quote } = await buildSwapTx()
       const result = await executeTransaction(tx, wallet.keypair, { client: clients.grpc })
-      if (result.effects?.status?.status === 'failure') {
+      if (result.effects?.status?.status === 'failure' || result.effects?.status?.success === false) {
         throw new Error(result.effects.status.error ?? 'execute failed')
       }
       return { amountMist: amount, amountOut: quote.amount_out, digest: result.digest }
@@ -545,7 +545,7 @@ async function runDcaSmoke(summary, packages, clients, wallet, smokeMode) {
   await runStep(summary, 'astros-dca.create-order.simulate', async () => {
     const tx = await buildDcaTx()
     const result = await dryRunDcaTransaction(tx, { client: clients.grpc })
-    if (result.effects?.status?.status === 'failure') {
+    if (result.effects?.status?.status === 'failure' || result.effects?.status?.success === false) {
       throw new Error(result.effects.status.error ?? 'dry-run failed')
     }
     return { amountMist: amount, events: result.events.length }
