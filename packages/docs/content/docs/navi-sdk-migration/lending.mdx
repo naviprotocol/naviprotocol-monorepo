@@ -19,7 +19,7 @@ npm install @naviprotocol/lending
 
 The last `options` parameter of the new version interface is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
 
-- `client`: Sui SDK v2 client instance. Recommended: `SuiGrpcClient` from `@mysten/sui/grpc` (gRPC/Core). The legacy `SuiJsonRpcClient` from `@mysten/sui/jsonRpc` still works but JSON-RPC is deprecated (sunset 2026-07-31), so avoid it for new integrations. Note: on-chain read functions (e.g. `getLendingState`, `getUserAvailableLendingRewards`) require an explicit `client` — the default client throws if none is provided.
+- `client`: Sui SDK v2 client instance. Optional — it defaults to the public mainnet node (same as before); pass `{ client }` to use your own endpoint. Recommended: `SuiGrpcClient` from `@mysten/sui/grpc` (gRPC/Core). The legacy `SuiJsonRpcClient` from `@mysten/sui/jsonRpc` still works but JSON-RPC is deprecated (sunset 2026-07-31), so avoid it for new integrations.
 - `env`: Specify environment (such as `'prod'`、`'dev'`), affecting data sources and on-chain contract addresses, ensuring data isolation and compatibility in different deployment environments.
 - `cacheTime`: Custom cache time in milliseconds. By setting cache time, you can reduce duplicate requests and improve performance. For example, `cacheTime: 60000` means cache for 60 seconds.
 - `disableCache`: Whether to disable cache
@@ -73,12 +73,8 @@ account.getAllCoins(prettyPrint = true)
 
 ```typescript
 import { getCoins } from '@naviprotocol/lending'
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 
-// The client is required for on-chain reads — construct it once and reuse it in the examples below
-const client = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-await getCoins(address, { client })
+await getCoins(address)
 ```
 <br/>
 
@@ -97,8 +93,7 @@ account.getCoins(coinType = "0x2::sui::SUI")
 import { getCoins } from '@naviprotocol/lending'
 
 await getCoins(address, {
-    coinType: "0x2::sui::SUI",
-    client
+    coinType: "0x2::sui::SUI"
 })
 ```
 <br/>
@@ -122,7 +117,7 @@ const naviPortfolio = account.getNAVIPortfolio(address)
 ```typescript
 import { getLendingState } from '@naviprotocol/lending'
 
-const lendingStates = await getLendingState(address, { client })
+const lendingStates = await getLendingState(address)
 ```
 
 <Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
@@ -142,7 +137,7 @@ account.getHealthFactor(address)
 ```typescript
 import { getHealthFactor } from '@naviprotocol/lending'
 
-await getHealthFactor(address, { client })
+await getHealthFactor(address)
 ```
 <br/>
 
@@ -164,7 +159,7 @@ client.getAddressAvailableRewards(address = account.address, option = [1,])
 ```typescript
 import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-await getUserAvailableLendingRewards(address, { client })
+await getUserAvailableLendingRewards(address)
 ```
 
 <Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
@@ -454,7 +449,7 @@ claimRewardsByAssetIdPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address, { client });
+const rewards = await getUserAvailableLendingRewards(address);
 
 const filterRewards = rewards.filter((reward) => {
     return reward.assetId === assetId
@@ -487,7 +482,7 @@ claimAllRewardsPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address, { client });
+const rewards = await getUserAvailableLendingRewards(address);
 
 await claimLendingRewardsPTB(txb, rewards)
 
@@ -516,7 +511,7 @@ claimAllRewardsResupplyPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address, { client });
+const rewards = await getUserAvailableLendingRewards(address);
 
 await claimLendingRewardsPTB(txb, rewards, {
     customCoinReceive: {
@@ -548,8 +543,7 @@ import { updateOraclePricesPTB, getPriceFeeds } from '@naviprotocol/lending'
 const priceFeeds = await getPriceFeeds();
 
 await updateOraclePricesPTB(txb, priceFeeds, {
-    updatePythPriceFeeds: true,
-    client
+    updatePythPriceFeeds: true
 })
 
 ```

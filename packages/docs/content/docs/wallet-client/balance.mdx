@@ -20,18 +20,9 @@ Token balance polling interval (milliseconds), defaults to 6000ms.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    },
     configs: {
         balance: {
             coinPollingInterval: 6000
@@ -49,19 +40,9 @@ Get the current list of token objects in the wallet.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const coins = walletClient.balance.coins
 ```
 
@@ -83,19 +64,9 @@ Categorize and aggregate data based on coins. Supports querying balance for spec
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const portfolio = walletClient.balance.portfolio
 const suiBalance = portfolio.getBalance('0x2::sui::SUI')
 ```
@@ -120,19 +91,9 @@ Batch send tokens to multiple addresses.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.balance.sendCoinBatch(
   '0x2::sui::SUI', // Token type
   ['0x123...', '0x456...'], // Recipient addresses array
@@ -148,19 +109,9 @@ Transfer a single object to a specified address.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.module('balance').transferObject(
   '0x789...', // Object ID
   '0x123...', // Recipient address
@@ -175,19 +126,9 @@ Batch transfer objects to multiple addresses.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.module('balance').transferObjectBatch(
   ['0x789...', '0xabc...'], // Object IDs array
   ['0x123...', '0x456...'], // Recipient addresses array
@@ -204,19 +145,9 @@ The wallet-client SDK has built-in scheduled update logic, and all methods invol
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 await walletClient.balance.updatePortfolio()
 ```
 
@@ -229,19 +160,9 @@ Event triggered when the portfolio is updated.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('balance:portfolio-updated', () => {
   console.log('Portfolio has been updated')
 })

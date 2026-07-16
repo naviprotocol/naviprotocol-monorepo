@@ -22,18 +22,9 @@ Environment setting, defaults to 'prod'. Different environments have different c
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 const walletClient = new WalletClient({
-  client: {
-    network: 'mainnet',
-    grpc: {
-      client: suiClient
-    }
-  },
   configs: {
     lending: {
       env: 'prod',
@@ -52,19 +43,9 @@ Get information about all available lending pools.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const pools = await walletClient.lending.getPools({
   cacheTime: 60 * 1000 // Cache for 60 seconds
 })
@@ -89,19 +70,9 @@ Get information about a specific lending pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const pool = await walletClient.lending.getPool('0x2::sui::SUI', {
   cacheTime: 60 * 1000
 })
@@ -114,19 +85,9 @@ Deposit into a lending pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.module('lending').deposit(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Deposit amount
@@ -144,19 +105,9 @@ Withdraw from a lending pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.withdraw(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Withdrawal amount
@@ -175,19 +126,9 @@ Borrow from a lending pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.borrow(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Borrow amount
@@ -205,19 +146,9 @@ Repay to a lending pool.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.repay(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Repayment amount
@@ -235,19 +166,9 @@ Get the current account's health factor.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const healthFactor = await walletClient.lending.getHealthFactor()
 console.log('Health Factor:', healthFactor)
 ```
@@ -259,19 +180,9 @@ Liquidate unhealthy accounts.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.liquidate(
   'SUI', // Asset identifier for debt payment
   1000000000, // Debt payment amount
@@ -288,19 +199,9 @@ Get the user's available lending rewards.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const rewards = await walletClient.lending.getAvailableRewards({
   cacheTime: 60 * 1000
 })
@@ -323,19 +224,9 @@ Get the user's claimed reward history.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const history = await walletClient.lending.getClaimedRewardHistory({
   page: 1,
   size: 10,
@@ -372,19 +263,9 @@ Claim all available lending rewards.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.claimAllRewards({
   dryRun: false,
   accountCap: '0x123...' // Optional account capability
@@ -398,19 +279,9 @@ Update oracle prices.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.updateOracle({
   dryRun: false,
 })
@@ -423,19 +294,9 @@ Get the user's lending state.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const lendingState = await walletClient.lending.getLendingState({
   cacheTime: 60 * 1000
 })
@@ -463,19 +324,9 @@ Create an account capability for the lending protocol.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const result = await walletClient.lending.createAccountCap({
   dryRun: false
 })
@@ -488,20 +339,10 @@ Migrate assets between different supply pools.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const tx = new Transaction()
 
 await walletClient.lending.migrateBetweenSupplyPTB(
@@ -527,20 +368,10 @@ Migrate debt between different borrowing pools.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const tx = new Transaction()
 
 await walletClient.lending.migrateBetweenBorrowPTB(
@@ -565,20 +396,10 @@ Migrate wallet balance to a specified supply pool, automatically swapping if ass
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 const tx = new Transaction()
 
 await walletClient.lending.migrateBalanceToSupplyPTB(
@@ -606,19 +427,9 @@ Event triggered when deposit is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:deposit-success', (data) => {
   console.log('Deposit successful:', {
     identifier: data.identifier,
@@ -634,19 +445,9 @@ Event triggered when withdrawal is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:withdraw-success', (data) => {
   console.log('Withdrawal successful:', {
     identifier: data.identifier,
@@ -662,19 +463,9 @@ Event triggered when borrowing is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:borrow-success', (data) => {
   console.log('Borrowing successful:', {
     identifier: data.identifier,
@@ -690,19 +481,9 @@ Event triggered when repayment is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:repay-success', (data) => {
   console.log('Repayment successful:', {
     identifier: data.identifier,
@@ -718,19 +499,9 @@ Event triggered when liquidation is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:liquidate-success', (data) => {
   console.log('Liquidation successful:', {
     payIdentifier: data.payIdentifier,
@@ -748,19 +519,9 @@ Event triggered when reward claiming is successful.
 **Usage Example**
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
-const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: {
-            client: suiClient
-        }
-    }
-})
+const walletClient = new WalletClient({ signer })
 walletClient.events.on('lending:claim-rewards-success', (data) => {
   console.log('Reward claiming successful:', {
     rewards: data.rewards

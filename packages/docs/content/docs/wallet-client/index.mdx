@@ -76,20 +76,11 @@ npm install @naviprotocol/wallet-client
 ## Quick Start
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc'
-
-const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
-
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 
-
 // Create wallet client
 const walletClient = new WalletClient({
-    client: {
-        network: 'mainnet',
-        grpc: { client: suiClient }
-    },
     signer: Ed25519Keypair.fromSecretKey(privateKey),
     configs: {
       swap: {
