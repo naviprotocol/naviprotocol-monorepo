@@ -32,7 +32,7 @@ import {
   withCache,
   withSingleton,
   parseTxValue,
-  suiClient,
+  requireSuiClient,
   requestHeaders,
   parsePoolUID,
   parseDevInspectResult,
@@ -725,7 +725,7 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
-      const client = options?.client ?? suiClient
+      const client = requireSuiClient(options?.client, 'getBorrowFee')
       if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
@@ -747,8 +747,8 @@ export const getBorrowFee = withCache(
           const res = parseDevInspectResult<number[]>(result, [bcs.u64()])
           return (Number(res[0]) || 0) / 100
         } catch (error) {
-          // 用户维度借款费查询失败 → 下方回退到「全局费率」(语义变化,显式标记便于排查,
-          // 不改回退行为)。
+          // Per-user borrow-fee query failed -> fall back to the global rate below
+          // (semantic change; marked explicitly for traceability, fallback behavior unchanged).
           console.error(
             '[lending] getBorrowFee per-user query failed, falling back to global rate:',
             error

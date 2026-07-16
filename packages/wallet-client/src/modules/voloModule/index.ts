@@ -6,6 +6,7 @@
  * enabling liquid staking with potential rewards and instant unstaking capabilities.
  */
 
+import { isSuccessfulTransaction } from '../../transaction-result'
 import {
   CoinObject,
   buildNaviOpenApiUrl,
@@ -230,7 +231,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
       dryRun: options?.dryRun ?? false
     })
 
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('volo:stake-success', {
         suiAmount
       })
@@ -282,7 +283,7 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
       dryRun: options?.dryRun ?? false
     })
 
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('volo:unstake-success', {
         vSuiAmount
       })

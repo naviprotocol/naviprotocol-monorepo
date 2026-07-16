@@ -1,6 +1,30 @@
-# Sui SDK v2 Acceptance
+# Sui SDK v2 Upgrade (Acceptance Record)
 
-Last updated: 2026-06-22
+Last updated: 2026-06-22 (consolidated 2026-07-16)
+
+> **Note (2026-07-16):** This is the single historical record of the v1→v2
+> upgrade (the former plan / gRPC-adaptation design / transport-benchmark docs
+> were folded into the summary below). The one-off upgrade smoke scripts
+> referenced below (`smoke:sui-v2-transport`, `smoke:sdk-core-live`,
+> `smoke:sdk-bridge-routes`) have since been consolidated into a single ongoing
+> regression suite — `pnpm smoke:regression*` (`scripts/regression-smoke.mjs`).
+> For day-to-day regression, see
+> [`test/regression/README.md`](../test/regression/README.md), not the commands
+> quoted here (kept verbatim as the original evidence).
+
+## Upgrade Decision Summary
+
+- v2 is a full Sui SDK 2.x line — `@mysten/sui@2` public peer, Node.js 22+,
+  ESM, v2 `Transaction` and NAVI DTOs — not a compatibility shim. Business
+  semantics stay aligned with v1 unless an explicit fix is documented.
+- Transports are explicit, with no implicit public-endpoint fallback: `grpc`
+  is the release main path (reads, simulate, execute), `graphql` is optional
+  for Sui-native history/filter/join semantics, and `legacyJsonRpc` exists
+  only as a deprecated compatibility capability.
+- Transport performance was benchmarked during acceptance (tool still
+  available: `pnpm benchmark:sdk-transport`). gRPC met the main-path budget;
+  revisit the GraphQL/gRPC boundary only if gRPC regresses beyond the gate
+  (p50 > 1.3x or p95 > 2x vs JSON-RPC).
 
 ## Current Status
 

@@ -15,14 +15,18 @@ Signs and executes a transaction. protect users and protocols from losing value 
 ```typescript
 import { executeTransaction } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 
 const signer = Ed25519Keypair.fromSecretKey(privateKey)
+
+// Sui v2 gRPC/Core client, required by executeTransaction.
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const tx = new Transaction()
 
 // build swap transaction
 
-const result = await executeTransaction(tx, signer)
+const result = await executeTransaction(tx, signer, { client: suiClient })
 
 ```

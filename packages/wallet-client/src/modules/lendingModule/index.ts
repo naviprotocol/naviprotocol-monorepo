@@ -8,6 +8,7 @@
  * @module LendingModule
  */
 
+import { isSuccessfulTransaction } from '../../transaction-result'
 import type { NaviWalletTransactionResult } from '../../types'
 import { Module } from '../module'
 import {
@@ -245,7 +246,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     // Handle successful deposit
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:deposit-success', {
         identifier,
         amount
@@ -305,7 +306,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     // Handle successful withdrawal
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:withdraw-success', {
         identifier,
         amount
@@ -363,7 +364,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     // Handle successful borrow
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:borrow-success', {
         identifier,
         amount
@@ -426,7 +427,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     })
 
     // Handle successful repayment
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:repay-success', {
         identifier,
         amount
@@ -532,7 +533,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       dryRun: options?.dryRun ?? false
     })
 
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:liquidate-success', {
         payIdentifier,
         payAmount,
@@ -559,7 +560,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     return getUserAvailableLendingRewards(this.walletClient.address, {
       ...this.naviServiceOptions,
       ...options,
-      env: this.config.env
+      env: this.config.env,
+      client: this.walletClient.client
     })
   }
 
@@ -602,7 +604,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const rewards = await getUserAvailableLendingRewards(this.walletClient.address, {
       ...this.naviServiceOptions,
-      env: this.config.env
+      env: this.config.env,
+      client: this.walletClient.client
     })
 
     await claimLendingRewardsPTB(tx, rewards, {
@@ -616,7 +619,7 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
       dryRun: options?.dryRun ?? false
     })
 
-    if (!options?.dryRun && result.effects?.status?.status === 'success') {
+    if (!options?.dryRun && isSuccessfulTransaction(result)) {
       this.emit('lending:claim-rewards-success', {
         rewards
       })
@@ -644,7 +647,8 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
     await updateOraclePricesPTB(tx, filteredFeeds, {
       ...this.naviServiceOptions,
       env: this.config.env,
-      updatePythPriceFeeds: true
+      updatePythPriceFeeds: true,
+      client: this.walletClient?.client
     })
   }
 

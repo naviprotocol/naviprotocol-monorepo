@@ -24,7 +24,7 @@ import type {
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
-  suiClient,
+  requireSuiClient,
   camelize,
   parseDevInspectResult,
   devInspectTransaction,
@@ -52,7 +52,7 @@ async function getLendingRewardsBatch(
   }[],
   options?: Partial<SuiClientOption & EnvOption & ServiceOption>
 ): Promise<LendingReward[]> {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'getLendingRewardsBatch')
 
   const pools = await getPools({
     ...options,
@@ -76,11 +76,13 @@ async function getLendingRewardsBatch(
     emodeId?: number
   }[] = []
 
-  // 逐 task 独立 devInspect:此前把所有 market + EMode cap 的 moveCall 塞进同一个 PTB
-  // 只发一次 devInspect,任一子调用 abort(某 market 未接 incentive_v3 / 某 EMode
-  // accountCap 过期或不匹配)就会让整批结果被清空 → 静默返 []。改为每个 task 独立
-  // devInspect 并 try/catch 隔离:一个失败只跳过该 task,不连坐其余(等价旧 navi-sdk
-  // 逐 market 互不干扰的语义)。失败显式打日志,不再静默吞掉。
+  // Per-task independent devInspect: previously all market + EMode cap moveCalls
+  // were packed into one PTB with a single devInspect, so any sub-call abort
+  // (a market not wired for incentive_v3, or an expired/mismatched EMode
+  // accountCap) collapsed the whole batch to [] silently. Now each task runs its
+  // own devInspect with try/catch isolation: one failure only skips that task
+  // and does not take down the rest (matching the legacy navi-sdk per-market,
+  // mutually-independent semantics). Failures are logged, not silently swallowed.
   await Promise.all(
     tasks.map(async (task) => {
       try {
@@ -107,7 +109,7 @@ async function getLendingRewardsBatch(
 
         const item = result?.results?.[0]
         if (!item) {
-          // 该 task 无返回(abort/空):跳过,不影响其余 task。
+          // No result for this task (abort/empty): skip it, does not affect others.
           return
         }
 
@@ -152,7 +154,7 @@ async function getLendingRewardsBatch(
           }
         }
       } catch (e) {
-        // 单 task 失败不连坐整批;显式记录而非静默吞掉。
+        // A single task failure must not take down the whole batch; log it explicitly rather than swallow.
         console.error(
           `[lending] getLendingRewardsBatch task failed (market=${task.market}, address=${task.address}):`,
           e
@@ -183,13 +185,11 @@ export async function getUserAvailableLendingRewards(
     return getMarketConfig(identity)
   })
 
-  let emodeCaps: EModeCap[] = []
-
-  try {
-    emodeCaps = await getUserEModeCaps(address, options)
-  } catch (e) {
-    console.error(e)
-  }
+  // Do not silently swallow E-Mode cap failures: the previous catch fell back to
+  // an empty array, silently dropping E-Mode-related reward tasks (and masking
+  // real errors like a missing client). Throw so callers are aware instead of
+  // returning incomplete results.
+  const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 
   const tasks = markets
     .map((market) => {

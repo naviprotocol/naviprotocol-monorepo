@@ -19,7 +19,7 @@ import type {
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
-import { multiGetSuiObjects, suiClient } from './utils'
+import { multiGetSuiObjects, requireSuiClient } from './utils'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -88,60 +88,59 @@ export async function getPythStalePriceFeedId(priceIds: string[]): Promise<strin
 async function getOnChainPriceInfo(
   pythInfos: PythInfo[],
   options?: Partial<SuiClientOption>
-): Promise<PythPriceInfo[] | undefined> {
-  try {
-    const priceInfos: PythPriceInfo[] = []
-    const client = options?.client ?? suiClient
+): Promise<PythPriceInfo[]> {
+  // Whole-read failures (missing client, RPC errors) propagate to the caller:
+  // swallowing them here would silently skip the Pyth staleness update and let
+  // transactions build against stale on-chain prices. Only per-feed anomalies
+  // are skipped below.
+  const priceInfos: PythPriceInfo[] = []
+  const client = requireSuiClient(options?.client, 'getOnChainPriceInfo')
 
-    const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
-    const priceInfoObjects = await multiGetSuiObjects(client, {
-      ids: Array.from(new Set(priceInfoObjectIds)),
-      options: { showContent: true }
-    })
-    for (const obj of priceInfoObjects) {
-      const data = obj.data
-      if (!data || !data.content || data.content.dataType !== 'moveObject') {
-        console.warn(`fetched object ${data?.objectId} datatype should be moveObject`)
-        continue
-      }
-
-      const pythInfo = pythInfos.find((v) => v.priceInfoObject == data.objectId)
-      if (!pythInfo) {
-        console.warn(`unable to find pyth info from array, priceInfoObject: ${data.objectId}`)
-        continue
-      }
-
-      // The Sui v2 client returns nested Move structs directly, without the
-      // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
-      // Read the flattened shape and skip (not throw) on an unexpected object so
-      // a single malformed feed can't abort the whole batch and silently leave
-      // every on-chain price un-refreshed.
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      const priceStruct = data.content.fields?.price_info?.price_feed?.price
-      const priceValue = priceStruct?.price
-      if (!priceValue) {
-        console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
-        continue
-      }
-      const { magnitude, negative } = priceValue
-      const conf = priceStruct.conf
-      const timestamp = priceStruct.timestamp
-
-      priceInfos.push({
-        priceFeedId: pythInfo.priceFeedId,
-        priceInfoObject: pythInfo.priceInfoObject,
-        price: negative ? '-' + magnitude : magnitude,
-        conf,
-        publishTime: Number(timestamp),
-        expiration: pythInfo.expiration
-      })
+  const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
+  const priceInfoObjects = await multiGetSuiObjects(client, {
+    ids: Array.from(new Set(priceInfoObjectIds)),
+    options: { showContent: true }
+  })
+  for (const obj of priceInfoObjects) {
+    const data = obj.data
+    if (!data || !data.content || data.content.dataType !== 'moveObject') {
+      console.warn(`fetched object ${data?.objectId} datatype should be moveObject`)
+      continue
     }
-    return priceInfos
-  } catch (err) {
-    console.error(err, `Polling Sui on-chain price for ${pythInfos} failed.`)
-    return undefined
+
+    const pythInfo = pythInfos.find((v) => v.priceInfoObject == data.objectId)
+    if (!pythInfo) {
+      console.warn(`unable to find pyth info from array, priceInfoObject: ${data.objectId}`)
+      continue
+    }
+
+    // The Sui v2 client returns nested Move structs directly, without the
+    // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
+    // Read the flattened shape and skip (not throw) on an unexpected object so
+    // a single malformed feed can't abort the whole batch and silently leave
+    // every on-chain price un-refreshed.
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    const priceStruct = data.content.fields?.price_info?.price_feed?.price
+    const priceValue = priceStruct?.price
+    if (!priceValue) {
+      console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
+      continue
+    }
+    const { magnitude, negative } = priceValue
+    const conf = priceStruct.conf
+    const timestamp = priceStruct.timestamp
+
+    priceInfos.push({
+      priceFeedId: pythInfo.priceFeedId,
+      priceInfoObject: pythInfo.priceInfoObject,
+      price: negative ? '-' + magnitude : magnitude,
+      conf,
+      publishTime: Number(timestamp),
+      expiration: pythInfo.expiration
+    })
   }
+  return priceInfos
 }
 
 export async function getPythStalePriceFeedIdV2(
@@ -195,7 +194,7 @@ export async function updatePythPriceFeeds(
   priceFeedIds: string[],
   options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ) {
-  const client = options?.client ?? suiClient
+  const client = requireSuiClient(options?.client, 'updatePythPriceFeeds')
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -253,13 +252,13 @@ export async function updateOraclePricesPTB(
         expiration: 30
       }))
 
-    try {
-      const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
-      if (stalePriceFeedIds.length > 0) {
-        await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
-      }
-    } catch (e) {
-      console.error(`Failed to update Pyth price feeds`)
+    // Do not silently swallow Pyth stale-price update failures: the previous
+    // catch kept building the tx with possibly stale on-chain prices and masked
+    // real errors (e.g. a missing client). Throw so callers are aware (avoids
+    // lending/liquidation based on stale prices).
+    const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
+    if (stalePriceFeedIds.length > 0) {
+      await updatePythPriceFeeds(tx, stalePriceFeedIds, options)
     }
   }
 
@@ -384,6 +383,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       }
   >
 ) {
+  let relevantFeeds: OraclePriceFeed[] | undefined
   try {
     const allPriceFeeds = await getPriceFeeds({
       ...options
@@ -402,7 +402,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       markets
     })
 
-    const relevantFeeds = filterPriceFeeds(allPriceFeeds, {
+    relevantFeeds = filterPriceFeeds(allPriceFeeds, {
       lendingPositions,
       pools
     })
@@ -417,6 +417,21 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       throw e
     }
     console.error(e)
+    // Degraded path: a Pyth refresh failure happens before any moveCall is
+    // appended, so the tx is still clean. Retry the oracle update without the
+    // Pyth feed refresh (matches the pre-v2 behavior where Pyth failures were
+    // swallowed but update_single_price calls were still appended) instead of
+    // dropping the oracle update entirely.
+    if (relevantFeeds) {
+      try {
+        return await updateOraclePricesPTB(tx, relevantFeeds, {
+          ...options,
+          updatePythPriceFeeds: false
+        })
+      } catch (fallbackError) {
+        console.error(fallbackError)
+      }
+    }
     return tx
   }
 }

@@ -53,7 +53,38 @@ export async function getCoins(
         cursor,
         limit: 100
       })
-      data.push(...(response.objects ?? response.data ?? []))
+      const objects = response.objects ?? response.data ?? []
+      // gRPC listCoins returns native fields (objectId / type=`Coin<T>` / owner),
+      // whereas the v1 JSON-RPC getCoins returned a CoinStruct (coinObjectId /
+      // coinType=T). Normalize back to the v1 shape so consumers (e.g. callers
+      // reading coinObjectId) do not get undefined under v2 — keep behavior
+      // consistent across the migration.
+      for (const o of objects) {
+        // Already a CoinStruct (legacy branch / already mapped): keep as-is.
+        if (o && typeof o === 'object' && 'coinObjectId' in o) {
+          data.push(o)
+          continue
+        }
+        const rawType: string | undefined = o?.type
+        // type looks like `0x…2::coin::Coin<INNER>` (gRPC may use a normalized full address); take INNER as coinType
+        const coinTypeMatch =
+          typeof rawType === 'string' ? rawType.match(/::coin::Coin<(.+)>$/) : null
+        const coinObjectId = o?.objectId ?? o?.coinObjectId
+        const balance = o?.balance
+        // Drop incomplete entries (same semantics as lending's normalizeCoreCoin):
+        // an object without an id or balance cannot be selected/merged safely.
+        if (!coinObjectId || balance === undefined || balance === null) {
+          continue
+        }
+        data.push({
+          coinType: coinTypeMatch ? coinTypeMatch[1] : coinAddress,
+          coinObjectId,
+          version: o?.version,
+          digest: o?.digest,
+          balance,
+          previousTransaction: o?.previousTransaction ?? o?.previous_transaction
+        })
+      }
       cursor = response.cursor ?? response.nextCursor ?? null
     } while (cursor)
     return {

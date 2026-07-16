@@ -25,6 +25,23 @@ import { getNaviSdkConfigVersion } from './services'
  */
 export const suiClient = createNaviSuiClient()
 
+/**
+ * Resolves the caller-provided Sui client, requiring it explicitly.
+ *
+ * On-chain read functions need a v2 gRPC/Core client; v2 has no implicit public
+ * default (the module-level `suiClient` is a throwing proxy). Fail fast with a
+ * clear message instead of letting the proxy throw deep inside a read.
+ */
+export function requireSuiClient<T>(client: T | undefined, fnName: string): T {
+  if (!client) {
+    throw new Error(
+      `${fnName} requires an explicit Sui v2 gRPC/Core client. Pass { client }; ` +
+        `NAVI SDK v2 no longer provides an implicit default client.`
+    )
+  }
+  return client
+}
+
 type CoreCommandOutput = {
   bcs?: Uint8Array | number[] | string | null
 }
@@ -57,9 +74,11 @@ function normalizeCoreDevInspectResult(result: any): DevInspectResults {
     tx.status?.errors?.[0]
 
   if (error) {
-    // 只上报、不改控制流:Core simulateTransaction 的 abort/错误此前被算出却从不暴露,
-    // 使 reward/positions 等批次在某链上状态下静默返空(见 reward.ts 已修的批次连坐)。
-    // 显式 warn 便于定位;是否据此中断由各调用方决定(此处不 throw 以免改变既有行为)。
+    // Report only, do not alter control flow: the Core simulateTransaction
+    // abort/error was previously computed but never surfaced, letting reward/
+    // positions batches silently return empty on some on-chain states. Warn so
+    // it is traceable; callers decide whether to abort (we do not throw here to
+    // avoid changing existing behavior).
     console.warn('[lending] devInspect(core simulate) returned error:', error)
   }
 
@@ -92,27 +111,23 @@ export async function devInspectTransaction(
       }
     | undefined
 
-  if (typeof core?.simulateTransaction === 'function') {
-    const transaction = options.transaction ?? options.transactionBlock
-    if (transaction instanceof Transaction) {
-      transaction.setSenderIfNotSet(options.sender)
-    }
-    const result = await core.simulateTransaction({
-      transaction,
-      checksEnabled: false,
-      include: {
-        effects: true,
-        events: true,
-        commandResults: true
-      }
-    })
-    return normalizeCoreDevInspectResult(result)
+  if (typeof core?.simulateTransaction !== 'function') {
+    throw new Error('devInspectTransaction requires a Sui v2 Core-capable client')
   }
-
-  return client.devInspectTransactionBlock({
-    transactionBlock: options.transactionBlock ?? options.transaction,
-    sender: options.sender
+  const transaction = options.transaction ?? options.transactionBlock
+  if (transaction instanceof Transaction) {
+    transaction.setSenderIfNotSet(options.sender)
+  }
+  const result = await core.simulateTransaction({
+    transaction,
+    checksEnabled: false,
+    include: {
+      effects: true,
+      events: true,
+      commandResults: true
+    }
   })
+  return normalizeCoreDevInspectResult(result)
 }
 
 function toCoreObjectInclude(options?: Record<string, any>) {
@@ -162,15 +177,14 @@ export async function getSuiObject(
       }
     | undefined
 
-  if (typeof core?.getObject === 'function') {
-    const { object } = await core.getObject({
-      objectId: options.id,
-      include: toCoreObjectInclude(options.options)
-    })
-    return normalizeCoreObjectResponse(object)
+  if (typeof core?.getObject !== 'function') {
+    throw new Error('getSuiObject requires a Sui v2 Core-capable client')
   }
-
-  return client.getObject(options)
+  const { object } = await core.getObject({
+    objectId: options.id,
+    include: toCoreObjectInclude(options.options)
+  })
+  return normalizeCoreObjectResponse(object)
 }
 
 export async function multiGetSuiObjects(
@@ -183,15 +197,14 @@ export async function multiGetSuiObjects(
       }
     | undefined
 
-  if (typeof core?.getObjects === 'function') {
-    const { objects } = await core.getObjects({
-      objectIds: options.ids,
-      include: toCoreObjectInclude(options.options)
-    })
-    return objects.map(normalizeCoreObjectResponse)
+  if (typeof core?.getObjects !== 'function') {
+    throw new Error('multiGetSuiObjects requires a Sui v2 Core-capable client')
   }
-
-  return client.multiGetObjects(options)
+  const { objects } = await core.getObjects({
+    objectIds: options.ids,
+    include: toCoreObjectInclude(options.options)
+  })
+  return objects.map(normalizeCoreObjectResponse)
 }
 
 /**
