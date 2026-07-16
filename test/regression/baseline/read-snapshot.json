@@ -1,0 +1,3707 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-16T04:33:45.499Z",
+  "methods": {
+    "lending.getPools": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "availableBorrow",
+            "balance",
+            "borrowCapCeiling",
+            "borrowIncentiveApyInfo",
+            "borrowRate6H",
+            "borrowRateFactors",
+            "borrowedAmount",
+            "coinType",
+            "contract",
+            "currentBorrowIndex",
+            "currentBorrowRate",
+            "currentSupplyIndex",
+            "currentSupplyRate",
+            "emodes",
+            "id",
+            "isDeprecated",
+            "isIsolated",
+            "isLayerZero",
+            "isSuiBridge",
+            "isWormhole",
+            "lastUpdateTimestamp",
+            "leftBorrowAmount",
+            "leftSupply",
+            "liquidationFactor",
+            "ltv",
+            "ltvValue",
+            "market",
+            "minimumAmount",
+            "oracle",
+            "oracleId",
+            "poolBorrowAmount",
+            "poolBorrowCapAmount",
+            "poolBorrowCapValue",
+            "poolBorrowValue",
+            "poolSupplyAmount",
+            "poolSupplyCapAmount",
+            "poolSupplyCapValue",
+            "poolSupplyValue",
+            "status",
+            "suiCoinType",
+            "supplyCapCeiling",
+            "supplyIncentiveApyInfo",
+            "tags",
+            "token",
+            "totalBorrow",
+            "totalSupply",
+            "totalSupplyAmount",
+            "treasuryBalance",
+            "treasuryFactor",
+            "uniqueId",
+            "validBorrowAmount",
+            "var"
+          ],
+          "fields": {
+            "availableBorrow": {
+              "type": "string"
+            },
+            "balance": {
+              "type": "string"
+            },
+            "borrowCapCeiling": {
+              "type": "string"
+            },
+            "borrowIncentiveApyInfo": {
+              "type": "object",
+              "keys": [
+                "apy",
+                "boostedApr",
+                "rewardCoin",
+                "stakingYieldApy",
+                "treasuryApy",
+                "underlyingApy",
+                "vaultApr",
+                "voloApy"
+              ],
+              "fields": {
+                "apy": {
+                  "type": "string"
+                },
+                "boostedApr": {
+                  "type": "string"
+                },
+                "rewardCoin": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "stakingYieldApy": {
+                  "type": "string"
+                },
+                "treasuryApy": {
+                  "type": "string"
+                },
+                "underlyingApy": {
+                  "type": "string"
+                },
+                "vaultApr": {
+                  "type": "string"
+                },
+                "voloApy": {
+                  "type": "string"
+                }
+              }
+            },
+            "borrowRate6H": {
+              "type": "number"
+            },
+            "borrowRateFactors": {
+              "type": "object",
+              "keys": [
+                "fields"
+              ],
+              "fields": {
+                "fields": {
+                  "type": "object",
+                  "keys": [
+                    "baseRate",
+                    "jumpRateMultiplier",
+                    "multiplier",
+                    "optimalUtilization",
+                    "reserveFactor"
+                  ],
+                  "fields": {
+                    "baseRate": {
+                      "type": "string"
+                    },
+                    "jumpRateMultiplier": {
+                      "type": "string"
+                    },
+                    "multiplier": {
+                      "type": "string"
+                    },
+                    "optimalUtilization": {
+                      "type": "string"
+                    },
+                    "reserveFactor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "borrowedAmount": {
+              "type": "string"
+            },
+            "coinType": {
+              "type": "string"
+            },
+            "contract": {
+              "type": "object",
+              "keys": [
+                "pool",
+                "reserveId"
+              ],
+              "fields": {
+                "pool": {
+                  "type": "string"
+                },
+                "reserveId": {
+                  "type": "string"
+                }
+              }
+            },
+            "currentBorrowIndex": {
+              "type": "string"
+            },
+            "currentBorrowRate": {
+              "type": "string"
+            },
+            "currentSupplyIndex": {
+              "type": "string"
+            },
+            "currentSupplyRate": {
+              "type": "string"
+            },
+            "emodes": {
+              "type": "array",
+              "size": "2-10",
+              "element": {
+                "type": "object",
+                "keys": [
+                  "assets",
+                  "emodeId",
+                  "isActive",
+                  "marketId",
+                  "minSDKVersion",
+                  "uniqueId"
+                ],
+                "fields": {
+                  "assets": {
+                    "type": "array",
+                    "size": "2-10",
+                    "element": {
+                      "type": "object",
+                      "keys": [
+                        "assetId",
+                        "bonus",
+                        "isCollateral",
+                        "isDebt",
+                        "lt",
+                        "ltv"
+                      ],
+                      "fields": {
+                        "assetId": {
+                          "type": "number"
+                        },
+                        "bonus": {
+                          "type": "number"
+                        },
+                        "isCollateral": {
+                          "type": "boolean"
+                        },
+                        "isDebt": {
+                          "type": "boolean"
+                        },
+                        "lt": {
+                          "type": "number"
+                        },
+                        "ltv": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  },
+                  "emodeId": {
+                    "type": "number"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "marketId": {
+                    "type": "number"
+                  },
+                  "minSDKVersion": {
+                    "type": "string"
+                  },
+                  "uniqueId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "id": {
+              "type": "number"
+            },
+            "isDeprecated": {
+              "type": "boolean"
+            },
+            "isIsolated": {
+              "type": "boolean"
+            },
+            "isLayerZero": {
+              "type": "boolean"
+            },
+            "isSuiBridge": {
+              "type": "boolean"
+            },
+            "isWormhole": {
+              "type": "boolean"
+            },
+            "lastUpdateTimestamp": {
+              "type": "string"
+            },
+            "leftBorrowAmount": {
+              "type": "string"
+            },
+            "leftSupply": {
+              "type": "string"
+            },
+            "liquidationFactor": {
+              "type": "object",
+              "keys": [
+                "bonus",
+                "ratio",
+                "threshold"
+              ],
+              "fields": {
+                "bonus": {
+                  "type": "string"
+                },
+                "ratio": {
+                  "type": "string"
+                },
+                "threshold": {
+                  "type": "string"
+                }
+              }
+            },
+            "ltv": {
+              "type": "string"
+            },
+            "ltvValue": {
+              "type": "number"
+            },
+            "market": {
+              "type": "string"
+            },
+            "minimumAmount": {
+              "type": "string"
+            },
+            "oracle": {
+              "type": "object",
+              "keys": [
+                "coinType",
+                "decimal",
+                "oracleId",
+                "price",
+                "valid",
+                "value"
+              ],
+              "fields": {
+                "coinType": {
+                  "type": "string"
+                },
+                "decimal": {
+                  "type": "number"
+                },
+                "oracleId": {
+                  "type": "number"
+                },
+                "price": {
+                  "type": "string"
+                },
+                "valid": {
+                  "type": "boolean"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "oracleId": {
+              "type": "number"
+            },
+            "poolBorrowAmount": {
+              "type": "string"
+            },
+            "poolBorrowCapAmount": {
+              "type": "string"
+            },
+            "poolBorrowCapValue": {
+              "type": "string"
+            },
+            "poolBorrowValue": {
+              "type": "string"
+            },
+            "poolSupplyAmount": {
+              "type": "string"
+            },
+            "poolSupplyCapAmount": {
+              "type": "string"
+            },
+            "poolSupplyCapValue": {
+              "type": "string"
+            },
+            "poolSupplyValue": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "suiCoinType": {
+              "type": "string"
+            },
+            "supplyCapCeiling": {
+              "type": "string"
+            },
+            "supplyIncentiveApyInfo": {
+              "type": "object",
+              "keys": [
+                "apy",
+                "boostedApr",
+                "rewardCoin",
+                "stakingYieldApy",
+                "treasuryApy",
+                "underlyingApy",
+                "vaultApr",
+                "voloApy"
+              ],
+              "fields": {
+                "apy": {
+                  "type": "string"
+                },
+                "boostedApr": {
+                  "type": "string"
+                },
+                "rewardCoin": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "stakingYieldApy": {
+                  "type": "string"
+                },
+                "treasuryApy": {
+                  "type": "string"
+                },
+                "underlyingApy": {
+                  "type": "string"
+                },
+                "vaultApr": {
+                  "type": "string"
+                },
+                "voloApy": {
+                  "type": "string"
+                }
+              }
+            },
+            "tags": {
+              "type": "array",
+              "size": "1",
+              "element": {
+                "type": "string"
+              }
+            },
+            "token": {
+              "type": "object",
+              "keys": [
+                "coinType",
+                "decimals",
+                "logoUri",
+                "price",
+                "symbol"
+              ],
+              "fields": {
+                "coinType": {
+                  "type": "string"
+                },
+                "decimals": {
+                  "type": "number"
+                },
+                "logoUri": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "symbol": {
+                  "type": "string"
+                }
+              }
+            },
+            "totalBorrow": {
+              "type": "string"
+            },
+            "totalSupply": {
+              "type": "string"
+            },
+            "totalSupplyAmount": {
+              "type": "string"
+            },
+            "treasuryBalance": {
+              "type": "string"
+            },
+            "treasuryFactor": {
+              "type": "string"
+            },
+            "uniqueId": {
+              "type": "string"
+            },
+            "validBorrowAmount": {
+              "type": "string"
+            },
+            "var": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "lending.getStats": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "averageUtilization",
+          "borrowFee",
+          "borrowFeeAddress",
+          "flashLoanFee",
+          "interactionUserAmount",
+          "maxApy",
+          "totalBorrowUsd",
+          "tvl"
+        ],
+        "fields": {
+          "averageUtilization": {
+            "type": "number"
+          },
+          "borrowFee": {
+            "type": "number"
+          },
+          "borrowFeeAddress": {
+            "type": "string"
+          },
+          "flashLoanFee": {
+            "type": "object",
+            "keys": [
+              "AUSD",
+              "BLUE",
+              "BUCK",
+              "CETUS",
+              "DEEP",
+              "FDUSD",
+              "HAEDAL",
+              "IKA",
+              "LBTC",
+              "NAVX",
+              "NS",
+              "SOL",
+              "SUI",
+              "Sui",
+              "USDC",
+              "USDY",
+              "WAL",
+              "WBTC",
+              "WETH",
+              "haSUI",
+              "haSui",
+              "stBTC",
+              "stSUI",
+              "suiETH",
+              "suiUSDT",
+              "vSUI",
+              "vSui",
+              "wBTC",
+              "wUSDC",
+              "wUSDT",
+              "xBTC"
+            ],
+            "fields": {
+              "AUSD": {
+                "type": "number"
+              },
+              "BLUE": {
+                "type": "number"
+              },
+              "BUCK": {
+                "type": "number"
+              },
+              "CETUS": {
+                "type": "number"
+              },
+              "DEEP": {
+                "type": "number"
+              },
+              "FDUSD": {
+                "type": "number"
+              },
+              "HAEDAL": {
+                "type": "number"
+              },
+              "IKA": {
+                "type": "number"
+              },
+              "LBTC": {
+                "type": "number"
+              },
+              "NAVX": {
+                "type": "number"
+              },
+              "NS": {
+                "type": "number"
+              },
+              "SOL": {
+                "type": "number"
+              },
+              "SUI": {
+                "type": "number"
+              },
+              "Sui": {
+                "type": "number"
+              },
+              "USDC": {
+                "type": "number"
+              },
+              "USDY": {
+                "type": "number"
+              },
+              "WAL": {
+                "type": "number"
+              },
+              "WBTC": {
+                "type": "number"
+              },
+              "WETH": {
+                "type": "number"
+              },
+              "haSUI": {
+                "type": "number"
+              },
+              "haSui": {
+                "type": "number"
+              },
+              "stBTC": {
+                "type": "number"
+              },
+              "stSUI": {
+                "type": "number"
+              },
+              "suiETH": {
+                "type": "number"
+              },
+              "suiUSDT": {
+                "type": "number"
+              },
+              "vSUI": {
+                "type": "number"
+              },
+              "vSui": {
+                "type": "number"
+              },
+              "wBTC": {
+                "type": "number"
+              },
+              "wUSDC": {
+                "type": "number"
+              },
+              "wUSDT": {
+                "type": "number"
+              },
+              "xBTC": {
+                "type": "number"
+              }
+            }
+          },
+          "interactionUserAmount": {
+            "type": "number"
+          },
+          "maxApy": {
+            "type": "number"
+          },
+          "totalBorrowUsd": {
+            "type": "number"
+          },
+          "tvl": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "lending.getFees": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "borrowInterestFee",
+          "flashloanAndLiquidationFee",
+          "totalValue",
+          "v3BorrowFee"
+        ],
+        "fields": {
+          "borrowInterestFee": {
+            "type": "object",
+            "keys": [
+              "details",
+              "totalValue"
+            ],
+            "fields": {
+              "details": {
+                "type": "array",
+                "size": "10+",
+                "element": {
+                  "type": "object",
+                  "keys": [
+                    "coinId",
+                    "coinSymbol",
+                    "coinType",
+                    "currentAmount",
+                    "currentValue",
+                    "price",
+                    "reserveObjectId"
+                  ],
+                  "fields": {
+                    "coinId": {
+                      "type": "string"
+                    },
+                    "coinSymbol": {
+                      "type": "string"
+                    },
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "currentAmount": {
+                      "type": "number"
+                    },
+                    "currentValue": {
+                      "type": "number"
+                    },
+                    "price": {
+                      "type": "number"
+                    },
+                    "reserveObjectId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "totalValue": {
+                "type": "number"
+              }
+            }
+          },
+          "flashloanAndLiquidationFee": {
+            "type": "object",
+            "keys": [
+              "details",
+              "totalValue"
+            ],
+            "fields": {
+              "details": {
+                "type": "array",
+                "size": "10+",
+                "element": {
+                  "type": "object",
+                  "keys": [
+                    "coinSymbol",
+                    "coinType",
+                    "currentAmount",
+                    "currentValue",
+                    "price",
+                    "treasuryObjectId"
+                  ],
+                  "fields": {
+                    "coinSymbol": {
+                      "type": "string"
+                    },
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "currentAmount": {
+                      "type": "number"
+                    },
+                    "currentValue": {
+                      "type": "number"
+                    },
+                    "price": {
+                      "type": "number"
+                    },
+                    "treasuryObjectId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "totalValue": {
+                "type": "number"
+              }
+            }
+          },
+          "totalValue": {
+            "type": "number"
+          },
+          "v3BorrowFee": {
+            "type": "object",
+            "keys": [
+              "details",
+              "totalValue"
+            ],
+            "fields": {
+              "details": {
+                "type": "array",
+                "size": "10+",
+                "element": {
+                  "type": "object",
+                  "keys": [
+                    "coinId",
+                    "coinSymbol",
+                    "coinType",
+                    "currentAmount",
+                    "currentValue",
+                    "feeObjectId",
+                    "price"
+                  ],
+                  "fields": {
+                    "coinId": {
+                      "type": "string"
+                    },
+                    "coinSymbol": {
+                      "type": "string"
+                    },
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "currentAmount": {
+                      "type": "number"
+                    },
+                    "currentValue": {
+                      "type": "number"
+                    },
+                    "feeObjectId": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "totalValue": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "lending.getPriceFeeds": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "assetId",
+            "coinType",
+            "feedId",
+            "oracleId",
+            "priceDecimal",
+            "pythPriceFeedId",
+            "pythPriceInfoObject",
+            "supraPairId"
+          ],
+          "fields": {
+            "assetId": {
+              "type": "number"
+            },
+            "coinType": {
+              "type": "string"
+            },
+            "feedId": {
+              "type": "string"
+            },
+            "oracleId": {
+              "type": "number"
+            },
+            "priceDecimal": {
+              "type": "number"
+            },
+            "pythPriceFeedId": {
+              "type": "string"
+            },
+            "pythPriceInfoObject": {
+              "type": "string"
+            },
+            "supraPairId": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "lending.getBorrowFee.global": {
+      "ok": true,
+      "shape": {
+        "type": "number"
+      }
+    },
+    "lending.getLendingState": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "assetId",
+            "borrowBalance",
+            "emodeId",
+            "market",
+            "pool",
+            "supplyBalance"
+          ],
+          "fields": {
+            "assetId": {
+              "type": "number"
+            },
+            "borrowBalance": {
+              "type": "string"
+            },
+            "emodeId": {
+              "type": "undefined"
+            },
+            "market": {
+              "type": "string"
+            },
+            "pool": {
+              "type": "object",
+              "keys": [
+                "availableBorrow",
+                "balance",
+                "borrowCapCeiling",
+                "borrowIncentiveApyInfo",
+                "borrowRate6H",
+                "borrowRateFactors",
+                "borrowedAmount",
+                "coinType",
+                "contract",
+                "currentBorrowIndex",
+                "currentBorrowRate",
+                "currentSupplyIndex",
+                "currentSupplyRate",
+                "emodes",
+                "id",
+                "isDeprecated",
+                "isIsolated",
+                "isLayerZero",
+                "isSuiBridge",
+                "isWormhole",
+                "lastUpdateTimestamp",
+                "leftBorrowAmount",
+                "leftSupply",
+                "liquidationFactor",
+                "ltv",
+                "ltvValue",
+                "market",
+                "minimumAmount",
+                "oracle",
+                "oracleId",
+                "poolBorrowAmount",
+                "poolBorrowCapAmount",
+                "poolBorrowCapValue",
+                "poolBorrowValue",
+                "poolSupplyAmount",
+                "poolSupplyCapAmount",
+                "poolSupplyCapValue",
+                "poolSupplyValue",
+                "status",
+                "suiCoinType",
+                "supplyCapCeiling",
+                "supplyIncentiveApyInfo",
+                "tags",
+                "token",
+                "totalBorrow",
+                "totalSupply",
+                "totalSupplyAmount",
+                "treasuryBalance",
+                "treasuryFactor",
+                "uniqueId",
+                "validBorrowAmount",
+                "var"
+              ],
+              "fields": {
+                "availableBorrow": {
+                  "type": "string"
+                },
+                "balance": {
+                  "type": "string"
+                },
+                "borrowCapCeiling": {
+                  "type": "string"
+                },
+                "borrowIncentiveApyInfo": {
+                  "type": "object",
+                  "keys": [
+                    "apy",
+                    "boostedApr",
+                    "rewardCoin",
+                    "stakingYieldApy",
+                    "treasuryApy",
+                    "underlyingApy",
+                    "vaultApr",
+                    "voloApy"
+                  ],
+                  "fields": {
+                    "apy": {
+                      "type": "string"
+                    },
+                    "boostedApr": {
+                      "type": "string"
+                    },
+                    "rewardCoin": {
+                      "type": "array",
+                      "size": "0",
+                      "element": null
+                    },
+                    "stakingYieldApy": {
+                      "type": "string"
+                    },
+                    "treasuryApy": {
+                      "type": "string"
+                    },
+                    "underlyingApy": {
+                      "type": "string"
+                    },
+                    "vaultApr": {
+                      "type": "string"
+                    },
+                    "voloApy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "borrowRate6H": {
+                  "type": "number"
+                },
+                "borrowRateFactors": {
+                  "type": "object",
+                  "keys": [
+                    "fields"
+                  ],
+                  "fields": {
+                    "fields": {
+                      "type": "object",
+                      "keys": [
+                        "baseRate",
+                        "jumpRateMultiplier",
+                        "multiplier",
+                        "optimalUtilization",
+                        "reserveFactor"
+                      ],
+                      "fields": {
+                        "baseRate": {
+                          "type": "string"
+                        },
+                        "jumpRateMultiplier": {
+                          "type": "string"
+                        },
+                        "multiplier": {
+                          "type": "string"
+                        },
+                        "optimalUtilization": {
+                          "type": "string"
+                        },
+                        "reserveFactor": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "borrowedAmount": {
+                  "type": "string"
+                },
+                "coinType": {
+                  "type": "string"
+                },
+                "contract": {
+                  "type": "object",
+                  "keys": [
+                    "pool",
+                    "reserveId"
+                  ],
+                  "fields": {
+                    "pool": {
+                      "type": "string"
+                    },
+                    "reserveId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "currentBorrowIndex": {
+                  "type": "string"
+                },
+                "currentBorrowRate": {
+                  "type": "string"
+                },
+                "currentSupplyIndex": {
+                  "type": "string"
+                },
+                "currentSupplyRate": {
+                  "type": "string"
+                },
+                "emodes": {
+                  "type": "array",
+                  "size": "0",
+                  "element": null
+                },
+                "id": {
+                  "type": "number"
+                },
+                "isDeprecated": {
+                  "type": "boolean"
+                },
+                "isIsolated": {
+                  "type": "boolean"
+                },
+                "isLayerZero": {
+                  "type": "boolean"
+                },
+                "isSuiBridge": {
+                  "type": "boolean"
+                },
+                "isWormhole": {
+                  "type": "boolean"
+                },
+                "lastUpdateTimestamp": {
+                  "type": "string"
+                },
+                "leftBorrowAmount": {
+                  "type": "string"
+                },
+                "leftSupply": {
+                  "type": "string"
+                },
+                "liquidationFactor": {
+                  "type": "object",
+                  "keys": [
+                    "bonus",
+                    "ratio",
+                    "threshold"
+                  ],
+                  "fields": {
+                    "bonus": {
+                      "type": "string"
+                    },
+                    "ratio": {
+                      "type": "string"
+                    },
+                    "threshold": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "ltv": {
+                  "type": "string"
+                },
+                "ltvValue": {
+                  "type": "number"
+                },
+                "market": {
+                  "type": "string"
+                },
+                "minimumAmount": {
+                  "type": "string"
+                },
+                "oracle": {
+                  "type": "object",
+                  "keys": [
+                    "coinType",
+                    "decimal",
+                    "oracleId",
+                    "price",
+                    "valid",
+                    "value"
+                  ],
+                  "fields": {
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "decimal": {
+                      "type": "number"
+                    },
+                    "oracleId": {
+                      "type": "number"
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "oracleId": {
+                  "type": "number"
+                },
+                "poolBorrowAmount": {
+                  "type": "string"
+                },
+                "poolBorrowCapAmount": {
+                  "type": "string"
+                },
+                "poolBorrowCapValue": {
+                  "type": "string"
+                },
+                "poolBorrowValue": {
+                  "type": "string"
+                },
+                "poolSupplyAmount": {
+                  "type": "string"
+                },
+                "poolSupplyCapAmount": {
+                  "type": "string"
+                },
+                "poolSupplyCapValue": {
+                  "type": "string"
+                },
+                "poolSupplyValue": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "suiCoinType": {
+                  "type": "string"
+                },
+                "supplyCapCeiling": {
+                  "type": "string"
+                },
+                "supplyIncentiveApyInfo": {
+                  "type": "object",
+                  "keys": [
+                    "apy",
+                    "boostedApr",
+                    "rewardCoin",
+                    "stakingYieldApy",
+                    "treasuryApy",
+                    "underlyingApy",
+                    "vaultApr",
+                    "voloApy"
+                  ],
+                  "fields": {
+                    "apy": {
+                      "type": "string"
+                    },
+                    "boostedApr": {
+                      "type": "string"
+                    },
+                    "rewardCoin": {
+                      "type": "array",
+                      "size": "0",
+                      "element": null
+                    },
+                    "stakingYieldApy": {
+                      "type": "string"
+                    },
+                    "treasuryApy": {
+                      "type": "string"
+                    },
+                    "underlyingApy": {
+                      "type": "string"
+                    },
+                    "vaultApr": {
+                      "type": "string"
+                    },
+                    "voloApy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "token": {
+                  "type": "object",
+                  "keys": [
+                    "coinType",
+                    "decimals",
+                    "logoUri",
+                    "price",
+                    "symbol"
+                  ],
+                  "fields": {
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "decimals": {
+                      "type": "number"
+                    },
+                    "logoUri": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "number"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "totalBorrow": {
+                  "type": "string"
+                },
+                "totalSupply": {
+                  "type": "string"
+                },
+                "totalSupplyAmount": {
+                  "type": "string"
+                },
+                "treasuryBalance": {
+                  "type": "string"
+                },
+                "treasuryFactor": {
+                  "type": "string"
+                },
+                "uniqueId": {
+                  "type": "string"
+                },
+                "validBorrowAmount": {
+                  "type": "string"
+                },
+                "var": {
+                  "type": "string"
+                }
+              }
+            },
+            "supplyBalance": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "lending.getHealthFactor": {
+      "ok": true,
+      "shape": {
+        "type": "number"
+      }
+    },
+    "lending.getSimulatedHealthFactor": {
+      "ok": true,
+      "shape": {
+        "type": "number"
+      }
+    },
+    "lending.getCoins": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "2-10",
+        "element": {
+          "type": "object",
+          "keys": [
+            "balance",
+            "coinObjectId",
+            "coinType",
+            "digest",
+            "objectId",
+            "owner",
+            "type",
+            "version"
+          ],
+          "fields": {
+            "balance": {
+              "type": "string"
+            },
+            "coinObjectId": {
+              "type": "string"
+            },
+            "coinType": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "object",
+              "keys": [
+                "$kind",
+                "AddressOwner"
+              ],
+              "fields": {
+                "$kind": {
+                  "type": "string"
+                },
+                "AddressOwner": {
+                  "type": "string"
+                }
+              }
+            },
+            "type": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "lending.getUserAvailableLendingRewards": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "2-10",
+        "element": {
+          "type": "object",
+          "keys": [
+            "address",
+            "assetCoinType",
+            "assetId",
+            "emodeId",
+            "market",
+            "option",
+            "owner",
+            "rewardCoinType",
+            "ruleIds",
+            "userClaimableReward"
+          ],
+          "fields": {
+            "address": {
+              "type": "string"
+            },
+            "assetCoinType": {
+              "type": "string"
+            },
+            "assetId": {
+              "type": "number"
+            },
+            "emodeId": {
+              "type": "number"
+            },
+            "market": {
+              "type": "string"
+            },
+            "option": {
+              "type": "number"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "rewardCoinType": {
+              "type": "string"
+            },
+            "ruleIds": {
+              "type": "array",
+              "size": "1",
+              "element": {
+                "type": "string"
+              }
+            },
+            "userClaimableReward": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "lending.getUserEModeCaps": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "1",
+        "element": {
+          "type": "object",
+          "keys": [
+            "accountCap",
+            "emodeId",
+            "marketId"
+          ],
+          "fields": {
+            "accountCap": {
+              "type": "string"
+            },
+            "emodeId": {
+              "type": "number"
+            },
+            "marketId": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "aggregator.getQuote": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "amount_in",
+          "amount_out",
+          "from",
+          "from_token",
+          "high_price_impact",
+          "is_accurate",
+          "routes",
+          "target",
+          "to_token",
+          "trace_id"
+        ],
+        "fields": {
+          "amount_in": {
+            "type": "number"
+          },
+          "amount_out": {
+            "type": "number"
+          },
+          "from": {
+            "type": "string"
+          },
+          "from_token": {
+            "type": "object",
+            "keys": [
+              "address",
+              "decimals",
+              "price"
+            ],
+            "fields": {
+              "address": {
+                "type": "string"
+              },
+              "decimals": {
+                "type": "number"
+              },
+              "price": {
+                "type": "number"
+              }
+            }
+          },
+          "high_price_impact": {
+            "type": "boolean"
+          },
+          "is_accurate": {
+            "type": "boolean"
+          },
+          "routes": {
+            "type": "array",
+            "size": "2-10",
+            "element": {
+              "type": "object",
+              "keys": [
+                "amount_in",
+                "amount_out",
+                "initial_price",
+                "path"
+              ],
+              "fields": {
+                "amount_in": {
+                  "type": "number"
+                },
+                "amount_out": {
+                  "type": "number"
+                },
+                "initial_price": {
+                  "type": "number"
+                },
+                "path": {
+                  "type": "array",
+                  "size": "2-10",
+                  "element": {
+                    "type": "object",
+                    "keys": [
+                      "a2b",
+                      "amount_in",
+                      "amount_out",
+                      "direction",
+                      "extended_details",
+                      "fee_rate",
+                      "from",
+                      "id",
+                      "info_for_ptb",
+                      "lot_size",
+                      "provider",
+                      "target",
+                      "type"
+                    ],
+                    "fields": {
+                      "a2b": {
+                        "type": "boolean"
+                      },
+                      "amount_in": {
+                        "type": "number"
+                      },
+                      "amount_out": {
+                        "type": "number"
+                      },
+                      "direction": {
+                        "type": "boolean"
+                      },
+                      "extended_details": {
+                        "type": "object",
+                        "keys": [
+                          "after_sqrt_price"
+                        ],
+                        "fields": {
+                          "after_sqrt_price": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "fee_rate": {
+                        "type": "number"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "info_for_ptb": {
+                        "type": "object",
+                        "keys": [
+                          "functionName",
+                          "moduleName",
+                          "packageId",
+                          "typeArguments"
+                        ],
+                        "fields": {
+                          "functionName": {
+                            "type": "string"
+                          },
+                          "moduleName": {
+                            "type": "string"
+                          },
+                          "packageId": {
+                            "type": "string"
+                          },
+                          "typeArguments": {
+                            "type": "array",
+                            "size": "2-10",
+                            "element": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "lot_size": {
+                        "type": "number"
+                      },
+                      "provider": {
+                        "type": "string"
+                      },
+                      "target": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "target": {
+            "type": "string"
+          },
+          "to_token": {
+            "type": "object",
+            "keys": [
+              "address",
+              "decimals",
+              "price"
+            ],
+            "fields": {
+              "address": {
+                "type": "string"
+              },
+              "decimals": {
+                "type": "number"
+              },
+              "price": {
+                "type": "number"
+              }
+            }
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "aggregator.getCoins": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "data",
+          "hasNextPage",
+          "nextCursor"
+        ],
+        "fields": {
+          "data": {
+            "type": "array",
+            "size": "2-10",
+            "element": {
+              "type": "object",
+              "keys": [
+                "balance",
+                "coinObjectId",
+                "coinType",
+                "digest",
+                "previousTransaction",
+                "version"
+              ],
+              "fields": {
+                "balance": {
+                  "type": "string"
+                },
+                "coinObjectId": {
+                  "type": "string"
+                },
+                "coinType": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                },
+                "previousTransaction": {
+                  "type": "undefined"
+                },
+                "version": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "dca.getUserDcaOrders": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "data",
+          "pagination"
+        ],
+        "fields": {
+          "data": {
+            "type": "array",
+            "size": "2-10",
+            "element": {
+              "type": "object",
+              "keys": [
+                "cancelTxDigest",
+                "cliff",
+                "createTxDigest",
+                "createdAt",
+                "depositedAmount",
+                "fills",
+                "fromCoinLogoURI",
+                "fromCoinSymbol",
+                "fromCoinType",
+                "gap",
+                "id",
+                "orderNum",
+                "originalAmountPerCycle",
+                "priceInPerOut",
+                "priceOutPerIn",
+                "progress",
+                "receiptId",
+                "status",
+                "toCoinLogoURI",
+                "toCoinSymbol",
+                "toCoinType",
+                "updatedAt",
+                "user"
+              ],
+              "fields": {
+                "cancelTxDigest": {
+                  "type": "null"
+                },
+                "cliff": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "createTxDigest": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "depositedAmount": {
+                  "type": "string"
+                },
+                "fills": {
+                  "type": "array",
+                  "size": "2-10",
+                  "element": {
+                    "type": "object",
+                    "keys": [
+                      "amountIn",
+                      "amountOut",
+                      "createdAt",
+                      "cycleNumber",
+                      "priceInPerOut",
+                      "priceOutPerIn",
+                      "protocolFeeCharged",
+                      "status",
+                      "txDigest"
+                    ],
+                    "fields": {
+                      "amountIn": {
+                        "type": "string"
+                      },
+                      "amountOut": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "cycleNumber": {
+                        "type": "number"
+                      },
+                      "priceInPerOut": {
+                        "type": "null"
+                      },
+                      "priceOutPerIn": {
+                        "type": "null"
+                      },
+                      "protocolFeeCharged": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "txDigest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "fromCoinLogoURI": {
+                  "type": "string"
+                },
+                "fromCoinSymbol": {
+                  "type": "string"
+                },
+                "fromCoinType": {
+                  "type": "string"
+                },
+                "gap": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "id": {
+                  "type": "string"
+                },
+                "orderNum": {
+                  "type": "number"
+                },
+                "originalAmountPerCycle": {
+                  "type": "string"
+                },
+                "priceInPerOut": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "priceOutPerIn": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "progress": {
+                  "type": "object",
+                  "keys": [
+                    "depositedInput",
+                    "percentage",
+                    "succeededInput"
+                  ],
+                  "fields": {
+                    "depositedInput": {
+                      "type": "string"
+                    },
+                    "percentage": {
+                      "type": "number"
+                    },
+                    "succeededInput": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "receiptId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "toCoinLogoURI": {
+                  "type": "string"
+                },
+                "toCoinSymbol": {
+                  "type": "string"
+                },
+                "toCoinType": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "keys": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "fields": {
+              "page": {
+                "type": "number"
+              },
+              "pageSize": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "dca.listDcaOrders": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "active",
+          "canceled",
+          "completed"
+        ],
+        "fields": {
+          "active": {
+            "type": "array",
+            "size": "2-10",
+            "element": {
+              "type": "object",
+              "keys": [
+                "cancelTxDigest",
+                "cliff",
+                "createTxDigest",
+                "createdAt",
+                "depositedAmount",
+                "fills",
+                "fromCoinLogoURI",
+                "fromCoinSymbol",
+                "fromCoinType",
+                "gap",
+                "id",
+                "orderNum",
+                "originalAmountPerCycle",
+                "priceInPerOut",
+                "priceOutPerIn",
+                "progress",
+                "receiptId",
+                "status",
+                "toCoinLogoURI",
+                "toCoinSymbol",
+                "toCoinType",
+                "updatedAt",
+                "user"
+              ],
+              "fields": {
+                "cancelTxDigest": {
+                  "type": "null"
+                },
+                "cliff": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "createTxDigest": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "depositedAmount": {
+                  "type": "string"
+                },
+                "fills": {
+                  "type": "array",
+                  "size": "10+",
+                  "element": {
+                    "type": "object",
+                    "keys": [
+                      "amountIn",
+                      "amountOut",
+                      "createdAt",
+                      "cycleNumber",
+                      "priceInPerOut",
+                      "priceOutPerIn",
+                      "protocolFeeCharged",
+                      "status",
+                      "txDigest"
+                    ],
+                    "fields": {
+                      "amountIn": {
+                        "type": "string"
+                      },
+                      "amountOut": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "cycleNumber": {
+                        "type": "number"
+                      },
+                      "priceInPerOut": {
+                        "type": "null"
+                      },
+                      "priceOutPerIn": {
+                        "type": "null"
+                      },
+                      "protocolFeeCharged": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "txDigest": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                },
+                "fromCoinLogoURI": {
+                  "type": "string"
+                },
+                "fromCoinSymbol": {
+                  "type": "string"
+                },
+                "fromCoinType": {
+                  "type": "string"
+                },
+                "gap": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "id": {
+                  "type": "string"
+                },
+                "orderNum": {
+                  "type": "number"
+                },
+                "originalAmountPerCycle": {
+                  "type": "string"
+                },
+                "priceInPerOut": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "priceOutPerIn": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "progress": {
+                  "type": "object",
+                  "keys": [
+                    "depositedInput",
+                    "percentage",
+                    "succeededInput"
+                  ],
+                  "fields": {
+                    "depositedInput": {
+                      "type": "string"
+                    },
+                    "percentage": {
+                      "type": "number"
+                    },
+                    "succeededInput": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "receiptId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "toCoinLogoURI": {
+                  "type": "string"
+                },
+                "toCoinSymbol": {
+                  "type": "string"
+                },
+                "toCoinType": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "canceled": {
+            "type": "array",
+            "size": "10+",
+            "element": {
+              "type": "object",
+              "keys": [
+                "cancelTxDigest",
+                "cliff",
+                "createTxDigest",
+                "createdAt",
+                "depositedAmount",
+                "fills",
+                "fromCoinLogoURI",
+                "fromCoinSymbol",
+                "fromCoinType",
+                "gap",
+                "id",
+                "orderNum",
+                "originalAmountPerCycle",
+                "priceInPerOut",
+                "priceOutPerIn",
+                "progress",
+                "receiptId",
+                "status",
+                "toCoinLogoURI",
+                "toCoinSymbol",
+                "toCoinType",
+                "updatedAt",
+                "user"
+              ],
+              "fields": {
+                "cancelTxDigest": {
+                  "type": "string"
+                },
+                "cliff": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "createTxDigest": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "depositedAmount": {
+                  "type": "string"
+                },
+                "fills": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "object",
+                    "keys": [
+                      "amountIn",
+                      "amountOut",
+                      "createdAt",
+                      "cycleNumber",
+                      "priceInPerOut",
+                      "priceOutPerIn",
+                      "protocolFeeCharged",
+                      "status",
+                      "txDigest"
+                    ],
+                    "fields": {
+                      "amountIn": {
+                        "type": "string"
+                      },
+                      "amountOut": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "cycleNumber": {
+                        "type": "number"
+                      },
+                      "priceInPerOut": {
+                        "type": "null"
+                      },
+                      "priceOutPerIn": {
+                        "type": "null"
+                      },
+                      "protocolFeeCharged": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "txDigest": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                },
+                "fromCoinLogoURI": {
+                  "type": "string"
+                },
+                "fromCoinSymbol": {
+                  "type": "string"
+                },
+                "fromCoinType": {
+                  "type": "string"
+                },
+                "gap": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "id": {
+                  "type": "string"
+                },
+                "orderNum": {
+                  "type": "number"
+                },
+                "originalAmountPerCycle": {
+                  "type": "string"
+                },
+                "priceInPerOut": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "priceOutPerIn": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "progress": {
+                  "type": "object",
+                  "keys": [
+                    "depositedInput",
+                    "percentage",
+                    "succeededInput"
+                  ],
+                  "fields": {
+                    "depositedInput": {
+                      "type": "string"
+                    },
+                    "percentage": {
+                      "type": "number"
+                    },
+                    "succeededInput": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "receiptId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "toCoinLogoURI": {
+                  "type": "string"
+                },
+                "toCoinSymbol": {
+                  "type": "string"
+                },
+                "toCoinType": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "completed": {
+            "type": "array",
+            "size": "10+",
+            "element": {
+              "type": "object",
+              "keys": [
+                "cancelTxDigest",
+                "cliff",
+                "createTxDigest",
+                "createdAt",
+                "depositedAmount",
+                "fills",
+                "fromCoinLogoURI",
+                "fromCoinSymbol",
+                "fromCoinType",
+                "gap",
+                "id",
+                "orderNum",
+                "originalAmountPerCycle",
+                "priceInPerOut",
+                "priceOutPerIn",
+                "progress",
+                "receiptId",
+                "status",
+                "toCoinLogoURI",
+                "toCoinSymbol",
+                "toCoinType",
+                "updatedAt",
+                "user"
+              ],
+              "fields": {
+                "cancelTxDigest": {
+                  "type": "null"
+                },
+                "cliff": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "createTxDigest": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "depositedAmount": {
+                  "type": "string"
+                },
+                "fills": {
+                  "type": "array",
+                  "size": "2-10",
+                  "element": {
+                    "type": "object",
+                    "keys": [
+                      "amountIn",
+                      "amountOut",
+                      "createdAt",
+                      "cycleNumber",
+                      "priceInPerOut",
+                      "priceOutPerIn",
+                      "protocolFeeCharged",
+                      "status",
+                      "txDigest"
+                    ],
+                    "fields": {
+                      "amountIn": {
+                        "type": "string"
+                      },
+                      "amountOut": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "cycleNumber": {
+                        "type": "number"
+                      },
+                      "priceInPerOut": {
+                        "type": "null"
+                      },
+                      "priceOutPerIn": {
+                        "type": "null"
+                      },
+                      "protocolFeeCharged": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "txDigest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "fromCoinLogoURI": {
+                  "type": "string"
+                },
+                "fromCoinSymbol": {
+                  "type": "string"
+                },
+                "fromCoinType": {
+                  "type": "string"
+                },
+                "gap": {
+                  "type": "object",
+                  "keys": [
+                    "unit",
+                    "value"
+                  ],
+                  "fields": {
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "id": {
+                  "type": "string"
+                },
+                "orderNum": {
+                  "type": "number"
+                },
+                "originalAmountPerCycle": {
+                  "type": "string"
+                },
+                "priceInPerOut": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "priceOutPerIn": {
+                  "type": "object",
+                  "keys": [],
+                  "fields": {}
+                },
+                "progress": {
+                  "type": "object",
+                  "keys": [
+                    "depositedInput",
+                    "percentage",
+                    "succeededInput"
+                  ],
+                  "fields": {
+                    "depositedInput": {
+                      "type": "string"
+                    },
+                    "percentage": {
+                      "type": "number"
+                    },
+                    "succeededInput": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "receiptId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "toCoinLogoURI": {
+                  "type": "string"
+                },
+                "toCoinSymbol": {
+                  "type": "string"
+                },
+                "toCoinType": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "dca.getDcaConfig": {
+      "ok": true,
+      "shape": {
+        "type": "object",
+        "keys": [
+          "dcaContract",
+          "dcaGlobalConfig",
+          "dcaRegistry"
+        ],
+        "fields": {
+          "dcaContract": {
+            "type": "string"
+          },
+          "dcaGlobalConfig": {
+            "type": "string"
+          },
+          "dcaRegistry": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "bridge.getSupportChains": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "2-10",
+        "element": {
+          "type": "object",
+          "keys": [
+            "blockExplorers",
+            "iconUrl",
+            "id",
+            "name",
+            "nativeCurrency",
+            "rpcUrls",
+            "wChainId"
+          ],
+          "fields": {
+            "blockExplorers": {
+              "type": "object",
+              "keys": [
+                "default"
+              ],
+              "fields": {
+                "default": {
+                  "type": "object",
+                  "keys": [
+                    "name",
+                    "url"
+                  ],
+                  "fields": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "iconUrl": {
+              "type": "string"
+            },
+            "id": {
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nativeCurrency": {
+              "type": "object",
+              "keys": [
+                "address",
+                "chain",
+                "decimals",
+                "logoURI",
+                "name",
+                "symbol"
+              ],
+              "fields": {
+                "address": {
+                  "type": "string"
+                },
+                "chain": {
+                  "type": "string"
+                },
+                "decimals": {
+                  "type": "number"
+                },
+                "logoURI": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "symbol": {
+                  "type": "string"
+                }
+              }
+            },
+            "rpcUrls": {
+              "type": "object",
+              "keys": [
+                "default"
+              ],
+              "fields": {
+                "default": {
+                  "type": "string"
+                }
+              }
+            },
+            "wChainId": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "bridge.getSupportTokens": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "address",
+            "addressInbrowser",
+            "category",
+            "chainId",
+            "chainName",
+            "decimals",
+            "isSuggest",
+            "isVerify",
+            "logoURI",
+            "name",
+            "symbol"
+          ],
+          "fields": {
+            "address": {
+              "type": "string"
+            },
+            "addressInbrowser": {
+              "type": "string"
+            },
+            "category": {
+              "type": "array",
+              "size": "0",
+              "element": null
+            },
+            "chainId": {
+              "type": "number"
+            },
+            "chainName": {
+              "type": "string"
+            },
+            "decimals": {
+              "type": "number"
+            },
+            "isSuggest": {
+              "type": "boolean"
+            },
+            "isVerify": {
+              "type": "boolean"
+            },
+            "logoURI": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "bridge.searchSupportTokens": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "1",
+        "element": {
+          "type": "object",
+          "keys": [
+            "address",
+            "addressInbrowser",
+            "category",
+            "chainId",
+            "chainName",
+            "decimals",
+            "isSuggest",
+            "isVerify",
+            "logoURI",
+            "name",
+            "symbol"
+          ],
+          "fields": {
+            "address": {
+              "type": "string"
+            },
+            "addressInbrowser": {
+              "type": "string"
+            },
+            "category": {
+              "type": "array",
+              "size": "0",
+              "element": null
+            },
+            "chainId": {
+              "type": "number"
+            },
+            "chainName": {
+              "type": "string"
+            },
+            "decimals": {
+              "type": "number"
+            },
+            "isSuggest": {
+              "type": "boolean"
+            },
+            "isVerify": {
+              "type": "boolean"
+            },
+            "logoURI": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "wallet-client.lending.getPools": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "availableBorrow",
+            "balance",
+            "borrowCapCeiling",
+            "borrowIncentiveApyInfo",
+            "borrowRate6H",
+            "borrowRateFactors",
+            "borrowedAmount",
+            "coinType",
+            "contract",
+            "currentBorrowIndex",
+            "currentBorrowRate",
+            "currentSupplyIndex",
+            "currentSupplyRate",
+            "emodes",
+            "id",
+            "isDeprecated",
+            "isIsolated",
+            "isLayerZero",
+            "isSuiBridge",
+            "isWormhole",
+            "lastUpdateTimestamp",
+            "leftBorrowAmount",
+            "leftSupply",
+            "liquidationFactor",
+            "ltv",
+            "ltvValue",
+            "market",
+            "minimumAmount",
+            "oracle",
+            "oracleId",
+            "poolBorrowAmount",
+            "poolBorrowCapAmount",
+            "poolBorrowCapValue",
+            "poolBorrowValue",
+            "poolSupplyAmount",
+            "poolSupplyCapAmount",
+            "poolSupplyCapValue",
+            "poolSupplyValue",
+            "status",
+            "suiCoinType",
+            "supplyCapCeiling",
+            "supplyIncentiveApyInfo",
+            "tags",
+            "token",
+            "totalBorrow",
+            "totalSupply",
+            "totalSupplyAmount",
+            "treasuryBalance",
+            "treasuryFactor",
+            "uniqueId",
+            "validBorrowAmount",
+            "var"
+          ],
+          "fields": {
+            "availableBorrow": {
+              "type": "string"
+            },
+            "balance": {
+              "type": "string"
+            },
+            "borrowCapCeiling": {
+              "type": "string"
+            },
+            "borrowIncentiveApyInfo": {
+              "type": "object",
+              "keys": [
+                "apy",
+                "boostedApr",
+                "rewardCoin",
+                "stakingYieldApy",
+                "treasuryApy",
+                "underlyingApy",
+                "vaultApr",
+                "voloApy"
+              ],
+              "fields": {
+                "apy": {
+                  "type": "string"
+                },
+                "boostedApr": {
+                  "type": "string"
+                },
+                "rewardCoin": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "stakingYieldApy": {
+                  "type": "string"
+                },
+                "treasuryApy": {
+                  "type": "string"
+                },
+                "underlyingApy": {
+                  "type": "string"
+                },
+                "vaultApr": {
+                  "type": "string"
+                },
+                "voloApy": {
+                  "type": "string"
+                }
+              }
+            },
+            "borrowRate6H": {
+              "type": "number"
+            },
+            "borrowRateFactors": {
+              "type": "object",
+              "keys": [
+                "fields"
+              ],
+              "fields": {
+                "fields": {
+                  "type": "object",
+                  "keys": [
+                    "baseRate",
+                    "jumpRateMultiplier",
+                    "multiplier",
+                    "optimalUtilization",
+                    "reserveFactor"
+                  ],
+                  "fields": {
+                    "baseRate": {
+                      "type": "string"
+                    },
+                    "jumpRateMultiplier": {
+                      "type": "string"
+                    },
+                    "multiplier": {
+                      "type": "string"
+                    },
+                    "optimalUtilization": {
+                      "type": "string"
+                    },
+                    "reserveFactor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "borrowedAmount": {
+              "type": "string"
+            },
+            "coinType": {
+              "type": "string"
+            },
+            "contract": {
+              "type": "object",
+              "keys": [
+                "pool",
+                "reserveId"
+              ],
+              "fields": {
+                "pool": {
+                  "type": "string"
+                },
+                "reserveId": {
+                  "type": "string"
+                }
+              }
+            },
+            "currentBorrowIndex": {
+              "type": "string"
+            },
+            "currentBorrowRate": {
+              "type": "string"
+            },
+            "currentSupplyIndex": {
+              "type": "string"
+            },
+            "currentSupplyRate": {
+              "type": "string"
+            },
+            "emodes": {
+              "type": "array",
+              "size": "2-10",
+              "element": {
+                "type": "object",
+                "keys": [
+                  "assets",
+                  "emodeId",
+                  "isActive",
+                  "marketId",
+                  "minSDKVersion",
+                  "uniqueId"
+                ],
+                "fields": {
+                  "assets": {
+                    "type": "array",
+                    "size": "2-10",
+                    "element": {
+                      "type": "object",
+                      "keys": [
+                        "assetId",
+                        "bonus",
+                        "isCollateral",
+                        "isDebt",
+                        "lt",
+                        "ltv"
+                      ],
+                      "fields": {
+                        "assetId": {
+                          "type": "number"
+                        },
+                        "bonus": {
+                          "type": "number"
+                        },
+                        "isCollateral": {
+                          "type": "boolean"
+                        },
+                        "isDebt": {
+                          "type": "boolean"
+                        },
+                        "lt": {
+                          "type": "number"
+                        },
+                        "ltv": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  },
+                  "emodeId": {
+                    "type": "number"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "marketId": {
+                    "type": "number"
+                  },
+                  "minSDKVersion": {
+                    "type": "string"
+                  },
+                  "uniqueId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "id": {
+              "type": "number"
+            },
+            "isDeprecated": {
+              "type": "boolean"
+            },
+            "isIsolated": {
+              "type": "boolean"
+            },
+            "isLayerZero": {
+              "type": "boolean"
+            },
+            "isSuiBridge": {
+              "type": "boolean"
+            },
+            "isWormhole": {
+              "type": "boolean"
+            },
+            "lastUpdateTimestamp": {
+              "type": "string"
+            },
+            "leftBorrowAmount": {
+              "type": "string"
+            },
+            "leftSupply": {
+              "type": "string"
+            },
+            "liquidationFactor": {
+              "type": "object",
+              "keys": [
+                "bonus",
+                "ratio",
+                "threshold"
+              ],
+              "fields": {
+                "bonus": {
+                  "type": "string"
+                },
+                "ratio": {
+                  "type": "string"
+                },
+                "threshold": {
+                  "type": "string"
+                }
+              }
+            },
+            "ltv": {
+              "type": "string"
+            },
+            "ltvValue": {
+              "type": "number"
+            },
+            "market": {
+              "type": "string"
+            },
+            "minimumAmount": {
+              "type": "string"
+            },
+            "oracle": {
+              "type": "object",
+              "keys": [
+                "coinType",
+                "decimal",
+                "oracleId",
+                "price",
+                "valid",
+                "value"
+              ],
+              "fields": {
+                "coinType": {
+                  "type": "string"
+                },
+                "decimal": {
+                  "type": "number"
+                },
+                "oracleId": {
+                  "type": "number"
+                },
+                "price": {
+                  "type": "string"
+                },
+                "valid": {
+                  "type": "boolean"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "oracleId": {
+              "type": "number"
+            },
+            "poolBorrowAmount": {
+              "type": "string"
+            },
+            "poolBorrowCapAmount": {
+              "type": "string"
+            },
+            "poolBorrowCapValue": {
+              "type": "string"
+            },
+            "poolBorrowValue": {
+              "type": "string"
+            },
+            "poolSupplyAmount": {
+              "type": "string"
+            },
+            "poolSupplyCapAmount": {
+              "type": "string"
+            },
+            "poolSupplyCapValue": {
+              "type": "string"
+            },
+            "poolSupplyValue": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "suiCoinType": {
+              "type": "string"
+            },
+            "supplyCapCeiling": {
+              "type": "string"
+            },
+            "supplyIncentiveApyInfo": {
+              "type": "object",
+              "keys": [
+                "apy",
+                "boostedApr",
+                "rewardCoin",
+                "stakingYieldApy",
+                "treasuryApy",
+                "underlyingApy",
+                "vaultApr",
+                "voloApy"
+              ],
+              "fields": {
+                "apy": {
+                  "type": "string"
+                },
+                "boostedApr": {
+                  "type": "string"
+                },
+                "rewardCoin": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "stakingYieldApy": {
+                  "type": "string"
+                },
+                "treasuryApy": {
+                  "type": "string"
+                },
+                "underlyingApy": {
+                  "type": "string"
+                },
+                "vaultApr": {
+                  "type": "string"
+                },
+                "voloApy": {
+                  "type": "string"
+                }
+              }
+            },
+            "tags": {
+              "type": "array",
+              "size": "1",
+              "element": {
+                "type": "string"
+              }
+            },
+            "token": {
+              "type": "object",
+              "keys": [
+                "coinType",
+                "decimals",
+                "logoUri",
+                "price",
+                "symbol"
+              ],
+              "fields": {
+                "coinType": {
+                  "type": "string"
+                },
+                "decimals": {
+                  "type": "number"
+                },
+                "logoUri": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "symbol": {
+                  "type": "string"
+                }
+              }
+            },
+            "totalBorrow": {
+              "type": "string"
+            },
+            "totalSupply": {
+              "type": "string"
+            },
+            "totalSupplyAmount": {
+              "type": "string"
+            },
+            "treasuryBalance": {
+              "type": "string"
+            },
+            "treasuryFactor": {
+              "type": "string"
+            },
+            "uniqueId": {
+              "type": "string"
+            },
+            "validBorrowAmount": {
+              "type": "string"
+            },
+            "var": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "wallet-client.lending.getLendingState": {
+      "ok": true,
+      "shape": {
+        "type": "array",
+        "size": "10+",
+        "element": {
+          "type": "object",
+          "keys": [
+            "assetId",
+            "borrowBalance",
+            "emodeId",
+            "market",
+            "pool",
+            "supplyBalance"
+          ],
+          "fields": {
+            "assetId": {
+              "type": "number"
+            },
+            "borrowBalance": {
+              "type": "string"
+            },
+            "emodeId": {
+              "type": "undefined"
+            },
+            "market": {
+              "type": "string"
+            },
+            "pool": {
+              "type": "object",
+              "keys": [
+                "availableBorrow",
+                "balance",
+                "borrowCapCeiling",
+                "borrowIncentiveApyInfo",
+                "borrowRate6H",
+                "borrowRateFactors",
+                "borrowedAmount",
+                "coinType",
+                "contract",
+                "currentBorrowIndex",
+                "currentBorrowRate",
+                "currentSupplyIndex",
+                "currentSupplyRate",
+                "emodes",
+                "id",
+                "isDeprecated",
+                "isIsolated",
+                "isLayerZero",
+                "isSuiBridge",
+                "isWormhole",
+                "lastUpdateTimestamp",
+                "leftBorrowAmount",
+                "leftSupply",
+                "liquidationFactor",
+                "ltv",
+                "ltvValue",
+                "market",
+                "minimumAmount",
+                "oracle",
+                "oracleId",
+                "poolBorrowAmount",
+                "poolBorrowCapAmount",
+                "poolBorrowCapValue",
+                "poolBorrowValue",
+                "poolSupplyAmount",
+                "poolSupplyCapAmount",
+                "poolSupplyCapValue",
+                "poolSupplyValue",
+                "status",
+                "suiCoinType",
+                "supplyCapCeiling",
+                "supplyIncentiveApyInfo",
+                "tags",
+                "token",
+                "totalBorrow",
+                "totalSupply",
+                "totalSupplyAmount",
+                "treasuryBalance",
+                "treasuryFactor",
+                "uniqueId",
+                "validBorrowAmount",
+                "var"
+              ],
+              "fields": {
+                "availableBorrow": {
+                  "type": "string"
+                },
+                "balance": {
+                  "type": "string"
+                },
+                "borrowCapCeiling": {
+                  "type": "string"
+                },
+                "borrowIncentiveApyInfo": {
+                  "type": "object",
+                  "keys": [
+                    "apy",
+                    "boostedApr",
+                    "rewardCoin",
+                    "stakingYieldApy",
+                    "treasuryApy",
+                    "underlyingApy",
+                    "vaultApr",
+                    "voloApy"
+                  ],
+                  "fields": {
+                    "apy": {
+                      "type": "string"
+                    },
+                    "boostedApr": {
+                      "type": "string"
+                    },
+                    "rewardCoin": {
+                      "type": "array",
+                      "size": "0",
+                      "element": null
+                    },
+                    "stakingYieldApy": {
+                      "type": "string"
+                    },
+                    "treasuryApy": {
+                      "type": "string"
+                    },
+                    "underlyingApy": {
+                      "type": "string"
+                    },
+                    "vaultApr": {
+                      "type": "string"
+                    },
+                    "voloApy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "borrowRate6H": {
+                  "type": "number"
+                },
+                "borrowRateFactors": {
+                  "type": "object",
+                  "keys": [
+                    "fields"
+                  ],
+                  "fields": {
+                    "fields": {
+                      "type": "object",
+                      "keys": [
+                        "baseRate",
+                        "jumpRateMultiplier",
+                        "multiplier",
+                        "optimalUtilization",
+                        "reserveFactor"
+                      ],
+                      "fields": {
+                        "baseRate": {
+                          "type": "string"
+                        },
+                        "jumpRateMultiplier": {
+                          "type": "string"
+                        },
+                        "multiplier": {
+                          "type": "string"
+                        },
+                        "optimalUtilization": {
+                          "type": "string"
+                        },
+                        "reserveFactor": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "borrowedAmount": {
+                  "type": "string"
+                },
+                "coinType": {
+                  "type": "string"
+                },
+                "contract": {
+                  "type": "object",
+                  "keys": [
+                    "pool",
+                    "reserveId"
+                  ],
+                  "fields": {
+                    "pool": {
+                      "type": "string"
+                    },
+                    "reserveId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "currentBorrowIndex": {
+                  "type": "string"
+                },
+                "currentBorrowRate": {
+                  "type": "string"
+                },
+                "currentSupplyIndex": {
+                  "type": "string"
+                },
+                "currentSupplyRate": {
+                  "type": "string"
+                },
+                "emodes": {
+                  "type": "array",
+                  "size": "0",
+                  "element": null
+                },
+                "id": {
+                  "type": "number"
+                },
+                "isDeprecated": {
+                  "type": "boolean"
+                },
+                "isIsolated": {
+                  "type": "boolean"
+                },
+                "isLayerZero": {
+                  "type": "boolean"
+                },
+                "isSuiBridge": {
+                  "type": "boolean"
+                },
+                "isWormhole": {
+                  "type": "boolean"
+                },
+                "lastUpdateTimestamp": {
+                  "type": "string"
+                },
+                "leftBorrowAmount": {
+                  "type": "string"
+                },
+                "leftSupply": {
+                  "type": "string"
+                },
+                "liquidationFactor": {
+                  "type": "object",
+                  "keys": [
+                    "bonus",
+                    "ratio",
+                    "threshold"
+                  ],
+                  "fields": {
+                    "bonus": {
+                      "type": "string"
+                    },
+                    "ratio": {
+                      "type": "string"
+                    },
+                    "threshold": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "ltv": {
+                  "type": "string"
+                },
+                "ltvValue": {
+                  "type": "number"
+                },
+                "market": {
+                  "type": "string"
+                },
+                "minimumAmount": {
+                  "type": "string"
+                },
+                "oracle": {
+                  "type": "object",
+                  "keys": [
+                    "coinType",
+                    "decimal",
+                    "oracleId",
+                    "price",
+                    "valid",
+                    "value"
+                  ],
+                  "fields": {
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "decimal": {
+                      "type": "number"
+                    },
+                    "oracleId": {
+                      "type": "number"
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "oracleId": {
+                  "type": "number"
+                },
+                "poolBorrowAmount": {
+                  "type": "string"
+                },
+                "poolBorrowCapAmount": {
+                  "type": "string"
+                },
+                "poolBorrowCapValue": {
+                  "type": "string"
+                },
+                "poolBorrowValue": {
+                  "type": "string"
+                },
+                "poolSupplyAmount": {
+                  "type": "string"
+                },
+                "poolSupplyCapAmount": {
+                  "type": "string"
+                },
+                "poolSupplyCapValue": {
+                  "type": "string"
+                },
+                "poolSupplyValue": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "suiCoinType": {
+                  "type": "string"
+                },
+                "supplyCapCeiling": {
+                  "type": "string"
+                },
+                "supplyIncentiveApyInfo": {
+                  "type": "object",
+                  "keys": [
+                    "apy",
+                    "boostedApr",
+                    "rewardCoin",
+                    "stakingYieldApy",
+                    "treasuryApy",
+                    "underlyingApy",
+                    "vaultApr",
+                    "voloApy"
+                  ],
+                  "fields": {
+                    "apy": {
+                      "type": "string"
+                    },
+                    "boostedApr": {
+                      "type": "string"
+                    },
+                    "rewardCoin": {
+                      "type": "array",
+                      "size": "0",
+                      "element": null
+                    },
+                    "stakingYieldApy": {
+                      "type": "string"
+                    },
+                    "treasuryApy": {
+                      "type": "string"
+                    },
+                    "underlyingApy": {
+                      "type": "string"
+                    },
+                    "vaultApr": {
+                      "type": "string"
+                    },
+                    "voloApy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "size": "1",
+                  "element": {
+                    "type": "string"
+                  }
+                },
+                "token": {
+                  "type": "object",
+                  "keys": [
+                    "coinType",
+                    "decimals",
+                    "logoUri",
+                    "price",
+                    "symbol"
+                  ],
+                  "fields": {
+                    "coinType": {
+                      "type": "string"
+                    },
+                    "decimals": {
+                      "type": "number"
+                    },
+                    "logoUri": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "number"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "totalBorrow": {
+                  "type": "string"
+                },
+                "totalSupply": {
+                  "type": "string"
+                },
+                "totalSupplyAmount": {
+                  "type": "string"
+                },
+                "treasuryBalance": {
+                  "type": "string"
+                },
+                "treasuryFactor": {
+                  "type": "string"
+                },
+                "uniqueId": {
+                  "type": "string"
+                },
+                "validBorrowAmount": {
+                  "type": "string"
+                },
+                "var": {
+                  "type": "string"
+                }
+              }
+            },
+            "supplyBalance": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "wallet-client.lending.getAvailableRewards": {
+      "ok": false
+    }
+  }
+}
