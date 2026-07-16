@@ -20,13 +20,16 @@ Token balance polling interval (milliseconds), defaults to 6000ms.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     },
     configs: {
@@ -46,13 +49,16 @@ Get the current list of token objects in the wallet.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -77,13 +83,16 @@ Categorize and aggregate data based on coins. Supports querying balance for spec
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -111,13 +120,16 @@ Batch send tokens to multiple addresses.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -136,13 +148,16 @@ Transfer a single object to a specified address.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -160,13 +175,16 @@ Batch transfer objects to multiple addresses.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -186,13 +204,16 @@ The wallet-client SDK has built-in scheduled update logic, and all methods invol
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -208,13 +229,16 @@ Event triggered when the portfolio is updated.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })

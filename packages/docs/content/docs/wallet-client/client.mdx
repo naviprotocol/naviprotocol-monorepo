@@ -18,13 +18,15 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 Create a wallet client using a private key to perform all blockchain operations:
 
 ```typescript
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
+
 // Create wallet client from private key
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
-        grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443' // Custom gRPC URL
-        }
+        grpc: { client: suiClient }
     },
     signer: Ed25519Keypair.fromSecretKey(privateKey)
 })
@@ -33,18 +35,27 @@ const walletClient = new WalletClient({
 console.log('Wallet address:', walletClient.address)
 ```
 
+<Callout>
+  `grpc` also accepts a convenience endpoint form — `grpc: { url, headers? }` — and the SDK
+  constructs the `SuiGrpcClient` internally. Passing a constructed client (shown above) is
+  recommended so auth metadata and transport stay under your control and one instance is reused
+  across the SDK.
+</Callout>
+
 ### Watch-Only Wallet
 
 Use a watch-only wallet to view wallet information but cannot execute transactions:
 
 ```typescript
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
+
 // Create watch-only wallet client
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
-        grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
-        }
+        grpc: { client: suiClient }
     },
     signer: new WatchSigner('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe')
 })
@@ -63,6 +74,10 @@ const pools = await walletClient.lending.getPools()
 Create an adapter for browser environment (PC, Mobile) extension wallets:
 
 ```typescript
+import { SuiGrpcClient } from '@mysten/sui/grpc'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
+
 // Browser extension wallet adapter
 class WebSignerAdapter extends WebSigner {
     constructor(address: string) {
@@ -91,9 +106,7 @@ class WebSignerAdapter extends WebSigner {
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
-        grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
-        }
+        grpc: { client: suiClient }
     },
     signer: new WebSignerAdapter('0x...')
 })

@@ -20,13 +20,16 @@ The package ID of the Volo staking contract, defaults to `0x68d22cf8bdbcd11ecba1
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -44,13 +47,16 @@ The ID of the staking pool, defaults to `0x2d914e23d82fedef1b5f56a32d5c64bdcc308
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -68,13 +74,16 @@ The ID of the staking pool metadata, defaults to `0x680cd26af32b2bde8d3361e804c5
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -92,13 +101,16 @@ The vSUI token type, defaults to `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33b
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -118,13 +130,16 @@ Get current statistics and detailed information of the Volo staking pool.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -168,13 +183,16 @@ Stake SUI tokens to receive vSUI tokens.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -191,14 +209,17 @@ Adds staking operation to a transaction block for building complex transactions.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -234,13 +255,16 @@ Unstake vSUI tokens to receive SUI tokens.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -257,14 +281,17 @@ Adds unstaking operation to a transaction block for building complex transaction
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -303,13 +330,16 @@ Event triggered when staking is successful.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -334,13 +364,16 @@ Event triggered when unstaking is successful.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })

@@ -20,13 +20,16 @@ API key for aggregator access.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -44,13 +47,16 @@ Base URL for the aggregator API, defaults to `https://open-aggregator-api.navipr
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -68,14 +74,17 @@ List of DEXes used for routing.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Dex } from '@naviprotocol/astros-aggregator-sdk'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -93,13 +102,16 @@ Maximum routing depth for finding optimal paths, defaults to 3.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -117,13 +129,16 @@ Service fee configuration.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
@@ -146,13 +161,16 @@ Execute a token swap operation.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -172,13 +190,16 @@ Get referral ID (if API key is configured).
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -192,13 +213,16 @@ Get the current swap configuration options.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -227,13 +251,16 @@ Get a quote for a swap operation from the aggregator.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -283,14 +310,17 @@ Build a swap transaction from a quote with slippage protection.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -325,13 +355,16 @@ Event triggered when a swap is successfully completed.
 **Usage Example**
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const walletClient = new WalletClient({
     client: {
         network: 'mainnet',
         grpc: {
-            url: 'https://fullnode.mainnet.sui.io:443'
+            client: suiClient
         }
     }
 })
@@ -361,15 +394,18 @@ walletClient.events.on('swap:swap-success', (data) => {
 ## Complete Usage Example
 
 ```ts
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Dex } from '@naviprotocol/astros-aggregator-sdk'
+
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 // Create wallet client
 const walletClient = new WalletClient({
   client: {
     network: 'mainnet',
     grpc: {
-      url: 'https://fullnode.mainnet.sui.io:443'
+      client: suiClient
     }
   },
   configs: {
