@@ -80,6 +80,23 @@ const suiClient = new SuiGrpcClient({
 })
 ```
 
+For a private endpoint that requires auth, pass the header as gRPC metadata:
+
+```ts
+import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
+
+const suiClient = new SuiGrpcClient({
+  network: 'mainnet',
+  transport: new GrpcWebFetchTransport({
+    baseUrl: process.env.SUI_GRPC_ENDPOINT!,
+    meta: { 'x-token': process.env.SUI_GRPC_TOKEN! }
+  })
+})
+```
+
+(When using the `WalletClient` client bundle, the convenience form
+`grpc: { url, headers? }` carries the same headers for you.)
+
 GraphQL (`SuiGraphQLClient` from `@mysten/sui/graphql`) is optional and only
 needed for Sui-native historical/filtered queries.
 
