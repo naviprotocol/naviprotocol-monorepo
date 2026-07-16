@@ -88,60 +88,59 @@ export async function getPythStalePriceFeedId(priceIds: string[]): Promise<strin
 async function getOnChainPriceInfo(
   pythInfos: PythInfo[],
   options?: Partial<SuiClientOption>
-): Promise<PythPriceInfo[] | undefined> {
-  try {
-    const priceInfos: PythPriceInfo[] = []
-    const client = requireSuiClient(options?.client, 'getPythStalePriceFeedId')
+): Promise<PythPriceInfo[]> {
+  // Whole-read failures (missing client, RPC errors) propagate to the caller:
+  // swallowing them here would silently skip the Pyth staleness update and let
+  // transactions build against stale on-chain prices. Only per-feed anomalies
+  // are skipped below.
+  const priceInfos: PythPriceInfo[] = []
+  const client = requireSuiClient(options?.client, 'getPythStalePriceFeedId')
 
-    const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
-    const priceInfoObjects = await multiGetSuiObjects(client, {
-      ids: Array.from(new Set(priceInfoObjectIds)),
-      options: { showContent: true }
-    })
-    for (const obj of priceInfoObjects) {
-      const data = obj.data
-      if (!data || !data.content || data.content.dataType !== 'moveObject') {
-        console.warn(`fetched object ${data?.objectId} datatype should be moveObject`)
-        continue
-      }
-
-      const pythInfo = pythInfos.find((v) => v.priceInfoObject == data.objectId)
-      if (!pythInfo) {
-        console.warn(`unable to find pyth info from array, priceInfoObject: ${data.objectId}`)
-        continue
-      }
-
-      // The Sui v2 client returns nested Move structs directly, without the
-      // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
-      // Read the flattened shape and skip (not throw) on an unexpected object so
-      // a single malformed feed can't abort the whole batch and silently leave
-      // every on-chain price un-refreshed.
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      const priceStruct = data.content.fields?.price_info?.price_feed?.price
-      const priceValue = priceStruct?.price
-      if (!priceValue) {
-        console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
-        continue
-      }
-      const { magnitude, negative } = priceValue
-      const conf = priceStruct.conf
-      const timestamp = priceStruct.timestamp
-
-      priceInfos.push({
-        priceFeedId: pythInfo.priceFeedId,
-        priceInfoObject: pythInfo.priceInfoObject,
-        price: negative ? '-' + magnitude : magnitude,
-        conf,
-        publishTime: Number(timestamp),
-        expiration: pythInfo.expiration
-      })
+  const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
+  const priceInfoObjects = await multiGetSuiObjects(client, {
+    ids: Array.from(new Set(priceInfoObjectIds)),
+    options: { showContent: true }
+  })
+  for (const obj of priceInfoObjects) {
+    const data = obj.data
+    if (!data || !data.content || data.content.dataType !== 'moveObject') {
+      console.warn(`fetched object ${data?.objectId} datatype should be moveObject`)
+      continue
     }
-    return priceInfos
-  } catch (err) {
-    console.error(err, `Polling Sui on-chain price for ${pythInfos} failed.`)
-    return undefined
+
+    const pythInfo = pythInfos.find((v) => v.priceInfoObject == data.objectId)
+    if (!pythInfo) {
+      console.warn(`unable to find pyth info from array, priceInfoObject: ${data.objectId}`)
+      continue
+    }
+
+    // The Sui v2 client returns nested Move structs directly, without the
+    // per-level `.fields` wrapper the legacy JSON-RPC object shape carried.
+    // Read the flattened shape and skip (not throw) on an unexpected object so
+    // a single malformed feed can't abort the whole batch and silently leave
+    // every on-chain price un-refreshed.
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    const priceStruct = data.content.fields?.price_info?.price_feed?.price
+    const priceValue = priceStruct?.price
+    if (!priceValue) {
+      console.warn(`unexpected pyth price struct, priceInfoObject: ${data.objectId}`)
+      continue
+    }
+    const { magnitude, negative } = priceValue
+    const conf = priceStruct.conf
+    const timestamp = priceStruct.timestamp
+
+    priceInfos.push({
+      priceFeedId: pythInfo.priceFeedId,
+      priceInfoObject: pythInfo.priceInfoObject,
+      price: negative ? '-' + magnitude : magnitude,
+      conf,
+      publishTime: Number(timestamp),
+      expiration: pythInfo.expiration
+    })
   }
+  return priceInfos
 }
 
 export async function getPythStalePriceFeedIdV2(
