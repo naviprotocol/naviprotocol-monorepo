@@ -23,6 +23,12 @@ API key for aggregator access.
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       apiKey: 'your-api-key'
@@ -41,6 +47,12 @@ Base URL for the aggregator API, defaults to `https://open-aggregator-api.navipr
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       baseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes'
@@ -60,6 +72,12 @@ import { WalletClient } from '@naviprotocol/wallet-client'
 import { Dex } from '@naviprotocol/astros-aggregator-sdk'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       dexList: [Dex.CETUS, Dex.TURBOS, Dex.AFTERMATH]
@@ -78,6 +96,12 @@ Maximum routing depth for finding optimal paths, defaults to 3.
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       depth: 3
@@ -96,6 +120,12 @@ Service fee configuration.
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       serviceFee: {
@@ -118,7 +148,14 @@ Execute a token swap operation.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.swap.swap(
   '0x2::sui::SUI', // Source token type
   '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
@@ -137,7 +174,14 @@ Get referral ID (if API key is configured).
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const referralId = walletClient.swap.referral
 ```
 
@@ -150,7 +194,14 @@ Get the current swap configuration options.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const options = walletClient.swap.swapOptions
 console.log('Current swap options:', options)
 ```
@@ -178,7 +229,14 @@ Get a quote for a swap operation from the aggregator.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const quote = await walletClient.swap.getQuote(
   '0x2::sui::SUI', // Source token type
   '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // Target token type
@@ -228,7 +286,14 @@ Build a swap transaction from a quote with slippage protection.
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 // Get quote first
@@ -262,7 +327,14 @@ Event triggered when a swap is successfully completed.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('swap:swap-success', (data) => {
   console.log('Swap successful:', {
     fromCoinType: data.fromCoinType,
@@ -294,6 +366,12 @@ import { Dex } from '@naviprotocol/astros-aggregator-sdk'
 
 // Create wallet client
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     swap: {
       apiKey: 'your-api-key',

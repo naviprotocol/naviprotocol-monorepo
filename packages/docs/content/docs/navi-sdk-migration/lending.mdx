@@ -73,8 +73,12 @@ account.getAllCoins(prettyPrint = true)
 
 ```typescript
 import { getCoins } from '@naviprotocol/lending'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 
-await getCoins(address)
+// The client is required for on-chain reads — construct it once and reuse it in the examples below
+const client = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
+
+await getCoins(address, { client })
 ```
 <br/>
 
@@ -93,7 +97,8 @@ account.getCoins(coinType = "0x2::sui::SUI")
 import { getCoins } from '@naviprotocol/lending'
 
 await getCoins(address, {
-    coinType: "0x2::sui::SUI"
+    coinType: "0x2::sui::SUI",
+    client
 })
 ```
 <br/>
@@ -117,7 +122,7 @@ const naviPortfolio = account.getNAVIPortfolio(address)
 ```typescript
 import { getLendingState } from '@naviprotocol/lending'
 
-const lendingStates = await getLendingState(address)
+const lendingStates = await getLendingState(address, { client })
 ```
 
 <Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
@@ -137,7 +142,7 @@ account.getHealthFactor(address)
 ```typescript
 import { getHealthFactor } from '@naviprotocol/lending'
 
-await getHealthFactor(address)
+await getHealthFactor(address, { client })
 ```
 <br/>
 
@@ -159,7 +164,7 @@ client.getAddressAvailableRewards(address = account.address, option = [1,])
 ```typescript
 import { getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-await getUserAvailableLendingRewards(address)
+await getUserAvailableLendingRewards(address, { client })
 ```
 
 <Callout>The data structures returned by old and new interfaces are different, please adjust accordingly</Callout>
@@ -449,7 +454,7 @@ claimRewardsByAssetIdPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address);
+const rewards = await getUserAvailableLendingRewards(address, { client });
 
 const filterRewards = rewards.filter((reward) => {
     return reward.assetId === assetId
@@ -482,7 +487,7 @@ claimAllRewardsPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address);
+const rewards = await getUserAvailableLendingRewards(address, { client });
 
 await claimLendingRewardsPTB(txb, rewards)
 
@@ -511,7 +516,7 @@ claimAllRewardsResupplyPTB(
 ```typescript
 import { claimLendingRewardsPTB, getUserAvailableLendingRewards } from '@naviprotocol/lending'
 
-const rewards = await getUserAvailableLendingRewards(address);
+const rewards = await getUserAvailableLendingRewards(address, { client });
 
 await claimLendingRewardsPTB(txb, rewards, {
     customCoinReceive: {
@@ -543,7 +548,8 @@ import { updateOraclePricesPTB, getPriceFeeds } from '@naviprotocol/lending'
 const priceFeeds = await getPriceFeeds();
 
 await updateOraclePricesPTB(txb, priceFeeds, {
-    updatePythPriceFeeds: true
+    updatePythPriceFeeds: true,
+    client
 })
 
 ```

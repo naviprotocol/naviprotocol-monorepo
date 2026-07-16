@@ -23,6 +23,12 @@ Token balance polling interval (milliseconds), defaults to 6000ms.
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    },
     configs: {
         balance: {
             coinPollingInterval: 6000
@@ -42,7 +48,14 @@ Get the current list of token objects in the wallet.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const coins = walletClient.balance.coins
 ```
 
@@ -66,7 +79,14 @@ Categorize and aggregate data based on coins. Supports querying balance for spec
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const portfolio = walletClient.balance.portfolio
 const suiBalance = portfolio.getBalance('0x2::sui::SUI')
 ```
@@ -93,7 +113,14 @@ Batch send tokens to multiple addresses.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.balance.sendCoinBatch(
   '0x2::sui::SUI', // Token type
   ['0x123...', '0x456...'], // Recipient addresses array
@@ -111,7 +138,14 @@ Transfer a single object to a specified address.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.module('balance').transferObject(
   '0x789...', // Object ID
   '0x123...', // Recipient address
@@ -128,7 +162,14 @@ Batch transfer objects to multiple addresses.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.module('balance').transferObjectBatch(
   ['0x789...', '0xabc...'], // Object IDs array
   ['0x123...', '0x456...'], // Recipient addresses array
@@ -147,7 +188,14 @@ The wallet-client SDK has built-in scheduled update logic, and all methods invol
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 await walletClient.balance.updatePortfolio()
 ```
 
@@ -162,7 +210,14 @@ Event triggered when the portfolio is updated.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('balance:portfolio-updated', () => {
   console.log('Portfolio has been updated')
 })

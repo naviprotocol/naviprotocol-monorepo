@@ -25,6 +25,12 @@ Environment setting, defaults to 'prod'. Different environments have different c
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     lending: {
       env: 'prod',
@@ -45,7 +51,14 @@ Get information about all available lending pools.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const pools = await walletClient.lending.getPools({
   cacheTime: 60 * 1000 // Cache for 60 seconds
 })
@@ -72,7 +85,14 @@ Get information about a specific lending pool.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const pool = await walletClient.lending.getPool('0x2::sui::SUI', {
   cacheTime: 60 * 1000
 })
@@ -87,7 +107,14 @@ Deposit into a lending pool.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.module('lending').deposit(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Deposit amount
@@ -107,7 +134,14 @@ Withdraw from a lending pool.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.withdraw(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Withdrawal amount
@@ -128,7 +162,14 @@ Borrow from a lending pool.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.borrow(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Borrow amount
@@ -148,7 +189,14 @@ Repay to a lending pool.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.repay(
   '0x2::sui::SUI', // Asset identifier
   1000000000, // Repayment amount
@@ -168,7 +216,14 @@ Get the current account's health factor.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const healthFactor = await walletClient.lending.getHealthFactor()
 console.log('Health Factor:', healthFactor)
 ```
@@ -182,7 +237,14 @@ Liquidate unhealthy accounts.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.liquidate(
   'SUI', // Asset identifier for debt payment
   1000000000, // Debt payment amount
@@ -201,7 +263,14 @@ Get the user's available lending rewards.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const rewards = await walletClient.lending.getAvailableRewards({
   cacheTime: 60 * 1000
 })
@@ -226,7 +295,14 @@ Get the user's claimed reward history.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const history = await walletClient.lending.getClaimedRewardHistory({
   page: 1,
   size: 10,
@@ -265,7 +341,14 @@ Claim all available lending rewards.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.claimAllRewards({
   dryRun: false,
   accountCap: '0x123...' // Optional account capability
@@ -281,7 +364,14 @@ Update oracle prices.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.updateOracle({
   dryRun: false,
 })
@@ -296,7 +386,14 @@ Get the user's lending state.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const lendingState = await walletClient.lending.getLendingState({
   cacheTime: 60 * 1000
 })
@@ -326,7 +423,14 @@ Create an account capability for the lending protocol.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.lending.createAccountCap({
   dryRun: false
 })
@@ -342,7 +446,14 @@ Migrate assets between different supply pools.
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 await walletClient.lending.migrateBetweenSupplyPTB(
@@ -371,7 +482,14 @@ Migrate debt between different borrowing pools.
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 await walletClient.lending.migrateBetweenBorrowPTB(
@@ -399,7 +517,14 @@ Migrate wallet balance to a specified supply pool, automatically swapping if ass
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 await walletClient.lending.migrateBalanceToSupplyPTB(
@@ -429,7 +554,14 @@ Event triggered when deposit is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:deposit-success', (data) => {
   console.log('Deposit successful:', {
     identifier: data.identifier,
@@ -447,7 +579,14 @@ Event triggered when withdrawal is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:withdraw-success', (data) => {
   console.log('Withdrawal successful:', {
     identifier: data.identifier,
@@ -465,7 +604,14 @@ Event triggered when borrowing is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:borrow-success', (data) => {
   console.log('Borrowing successful:', {
     identifier: data.identifier,
@@ -483,7 +629,14 @@ Event triggered when repayment is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:repay-success', (data) => {
   console.log('Repayment successful:', {
     identifier: data.identifier,
@@ -501,7 +654,14 @@ Event triggered when liquidation is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:liquidate-success', (data) => {
   console.log('Liquidation successful:', {
     payIdentifier: data.payIdentifier,
@@ -521,7 +681,14 @@ Event triggered when reward claiming is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('lending:claim-rewards-success', (data) => {
   console.log('Reward claiming successful:', {
     rewards: data.rewards

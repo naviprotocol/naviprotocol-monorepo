@@ -22,6 +22,12 @@ The package ID of the Haedal contract, defaults to `0x19e6ea7f5ced4f090e20da794c
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     haedal: {
       packageId: '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c'
@@ -45,7 +51,14 @@ Get the current APY for Haedal staking.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const apy = await walletClient.haedal.getApy()
 console.log('Current APY:', apy)
 ```
@@ -65,7 +78,14 @@ Stake SUI to receive haSUI.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.haedal.stake(
   1000000000, // Staking amount (1 SUI)
   { dryRun: false } // Optional parameters
@@ -82,7 +102,14 @@ Adds staking operation to a transaction block for building complex transactions.
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 // Get SUI balance and merge coins
@@ -119,7 +146,14 @@ Unstake haSUI to receive SUI.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const result = await walletClient.haedal.unstake(
   1000000000, // Unstaking amount (1 haSUI)
   { dryRun: false } // Optional parameters
@@ -136,7 +170,14 @@ Adds unstaking operation to a transaction block for building complex transaction
 import { WalletClient } from '@naviprotocol/wallet-client'
 import { Transaction } from '@mysten/sui/transactions'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 const tx = new Transaction()
 
 // Get haSUI balance and merge coins
@@ -171,6 +212,12 @@ const result = await walletClient.signExecuteTransaction({
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     haedal: {
       configId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca'
@@ -189,6 +236,12 @@ The haSUI token type, defaults to `0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  client: {
+    network: 'mainnet',
+    grpc: {
+      url: 'https://fullnode.mainnet.sui.io:443'
+    }
+  },
   configs: {
     haedal: {
       coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'
@@ -208,7 +261,14 @@ Event triggered when staking is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('haedal:stake-success', (data) => {
   console.log('Staking successful:', {
     suiAmount: data.suiAmount
@@ -233,7 +293,14 @@ Event triggered when unstaking is successful.
 ```ts
 import { WalletClient } from '@naviprotocol/wallet-client'
 
-const walletClient = new WalletClient()
+const walletClient = new WalletClient({
+    client: {
+        network: 'mainnet',
+        grpc: {
+            url: 'https://fullnode.mainnet.sui.io:443'
+        }
+    }
+})
 walletClient.events.on('haedal:unstake-success', (data) => {
   console.log('Unstaking successful:', {
     haSUIAmount: data.haSUIAmount

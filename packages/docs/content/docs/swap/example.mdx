@@ -13,10 +13,14 @@ import {
   executeTransaction
 } from '@naviprotocol/astros-aggregator-sdk'
 import { Transaction } from '@mysten/sui/transactions'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 
 const signer = Ed25519Keypair.fromSecretKey(privateKey)
+
+// Sui v2 gRPC/Core client, required by executeTransaction.
+const suiClient = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_ENDPOINT! })
 
 const userAddress = signer.address;
 
@@ -61,6 +65,6 @@ const coinOut = await buildSwapPTBFromQuote(
 
 await txb.transferObjects([coinOut], userAddress);
 
-await executeTransaction(tx, signer)
+await executeTransaction(tx, signer, { client: suiClient })
 
 ```
