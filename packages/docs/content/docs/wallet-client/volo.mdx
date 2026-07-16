@@ -23,6 +23,7 @@ The package ID of the Volo staking contract, defaults to `0x68d22cf8bdbcd11ecba1
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     volo: {
       packageId: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20'
@@ -41,6 +42,7 @@ The ID of the staking pool, defaults to `0x2d914e23d82fedef1b5f56a32d5c64bdcc308
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     volo: {
       poolId: '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5'
@@ -59,6 +61,7 @@ The ID of the staking pool metadata, defaults to `0x680cd26af32b2bde8d3361e804c5
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     volo: {
       metadataId: '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60'
@@ -77,6 +80,7 @@ The vSUI token type, defaults to `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33b
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     volo: {
       coinType: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'

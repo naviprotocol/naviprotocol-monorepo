@@ -25,6 +25,7 @@ Environment setting, defaults to 'prod'. Different environments have different c
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     lending: {
       env: 'prod',

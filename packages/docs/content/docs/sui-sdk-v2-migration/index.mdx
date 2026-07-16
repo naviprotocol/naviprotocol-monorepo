@@ -124,7 +124,7 @@ package.
 - To use your own endpoint, pass `{ client: suiClient }` in the options of the
   on-chain read functions — same position as v1.
 - PTB builders (`depositCoinPTB`, `withdrawCoinPTB`, `borrowCoinPTB`,
-  `repayDebtPTB`, `liquidatePTB`, `flashloanPTB`, …) are **unchanged** — no client
+  `repayCoinPTB`, `liquidatePTB`, `flashloanPTB`, …) are **unchanged** — no client
   needed.
 
 ### Wallet Client
@@ -147,7 +147,8 @@ package.
 ### Astros Aggregator
 
 - `executeTransaction` / `dryRunSwapTransaction` results are
-  unwrapped/normalized toward the v1 shape (same as Wallet Client above).
+  unwrapped/normalized toward the v1 shape (like Wallet Client above, minus the
+  `kind` marker; the raw response stays available on `raw`).
 - `getCoins` / `getCoinPTB` take a v2 client (Core `listCoins`) at the same
   position as v1, not a legacy `SuiClient`.
 - `getQuote` and `buildSwapPTBFromQuote` are unchanged.

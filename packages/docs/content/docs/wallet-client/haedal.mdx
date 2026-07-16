@@ -22,6 +22,7 @@ The package ID of the Haedal contract, defaults to `0x19e6ea7f5ced4f090e20da794c
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     haedal: {
       packageId: '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c'
@@ -171,6 +172,7 @@ const result = await walletClient.signExecuteTransaction({
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     haedal: {
       configId: '0x47b224762220393057ebf4f70501b6e657c3e56684737568439a04f80849b2ca'
@@ -189,6 +191,7 @@ The haSUI token type, defaults to `0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+  signer,
   configs: {
     haedal: {
       coinType: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI'

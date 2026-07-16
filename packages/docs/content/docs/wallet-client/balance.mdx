@@ -23,6 +23,7 @@ Token balance polling interval (milliseconds), defaults to 6000ms.
 import { WalletClient } from '@naviprotocol/wallet-client'
 
 const walletClient = new WalletClient({
+    signer,
     configs: {
         balance: {
             coinPollingInterval: 6000

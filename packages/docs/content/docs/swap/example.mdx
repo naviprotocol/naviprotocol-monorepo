@@ -18,7 +18,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 
 const signer = Ed25519Keypair.fromSecretKey(privateKey)
 
-const userAddress = signer.address;
+const userAddress = signer.toSuiAddress();
 
 const tx = new Transaction()
 
@@ -59,7 +59,7 @@ const coinOut = await buildSwapPTBFromQuote(
   swapOptions
 )
 
-await txb.transferObjects([coinOut], userAddress);
+await tx.transferObjects([coinOut], userAddress);
 
 await executeTransaction(tx, signer)
 
