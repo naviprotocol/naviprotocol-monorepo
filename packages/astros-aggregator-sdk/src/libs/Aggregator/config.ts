@@ -37,8 +37,12 @@ export const AggregatorConfig = {
   turbosPackageId: '0xa5a0c25c79e428eba04fb98b3fb2a34db45ab26d4c8faf0d7e39d66a63891e64',
 
   // Kriya DEX configuration (V2 and V3)
+  // kriyaV3Version is the shared version registry object (unchanged across upgrades).
+  // kriyaV3PackageId must track kriya's on-chain latest package; trade::flash_swap
+  // version-gates via version::assert_supported_version (abort 69) when stale.
+  // Bumped v2 (0xbd8d…) → v4 (0x0d7305a7…), the current on-chain version.
   kriyaV3Version: '0xf5145a7ac345ca8736cf8c76047d00d6d378f30e81be6f6eb557184d9de93c78',
-  kriyaV3PackageId: '0xbd8d4489782042c6fafad4de4bc6a5e0b84a43c6c00647ffd7062d1e2bb7549e',
+  kriyaV3PackageId: '0x0d7305a7475ed54adc905365bd081939a81926636b4c438cf2f75f4924b8d960',
   kriyaV2PackageId: '0xa0eba10b173538c8fecca1dff298e488402cc9ff374f8a12ca7758eebe830b66',
 
   // System clock address
