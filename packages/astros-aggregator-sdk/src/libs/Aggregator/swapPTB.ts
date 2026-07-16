@@ -53,7 +53,29 @@ export async function getCoins(
         cursor,
         limit: 100
       })
-      data.push(...(response.objects ?? response.data ?? []))
+      const objects = response.objects ?? response.data ?? []
+      // gRPC listCoins 返回原生字段(objectId / type=`Coin<T>` / owner),而 v1 JSON-RPC
+      // getCoins 返回 CoinStruct(coinObjectId / coinType=T)。归一化回 v1 形状,避免
+      // 消费方(如 coinObjectId 的调用)在 v2 下拿到 undefined —— 保持迁移前后一致。
+      for (const o of objects) {
+        // 已是 CoinStruct(legacy 分支/已映射)则原样保留
+        if (o && typeof o === 'object' && 'coinObjectId' in o) {
+          data.push(o)
+          continue
+        }
+        const rawType: string | undefined = o?.type
+        // type 形如 `0x…2::coin::Coin<INNER>`(gRPC 可能是归一化全长地址),取 INNER 作 coinType
+        const coinTypeMatch =
+          typeof rawType === 'string' ? rawType.match(/::coin::Coin<(.+)>$/) : null
+        data.push({
+          coinType: coinTypeMatch ? coinTypeMatch[1] : coinAddress,
+          coinObjectId: o?.objectId ?? o?.coinObjectId,
+          version: o?.version,
+          digest: o?.digest,
+          balance: o?.balance,
+          previousTransaction: o?.previousTransaction ?? o?.previous_transaction
+        })
+      }
       cursor = response.cursor ?? response.nextCursor ?? null
     } while (cursor)
     return {
