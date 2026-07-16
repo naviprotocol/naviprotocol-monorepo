@@ -2,6 +2,14 @@
 
 Last updated: 2026-06-22
 
+> **Note (2026-07-16):** This document is the historical acceptance record of the
+> v1→v2 upgrade. The one-off upgrade smoke scripts referenced below
+> (`smoke:sui-v2-transport`, `smoke:sdk-core-live`, `smoke:sdk-bridge-routes`)
+> have since been consolidated into a single ongoing regression suite —
+> `pnpm smoke:regression*` (`scripts/regression-smoke.mjs`). For day-to-day
+> regression, see [`test/regression/README.md`](../../test/regression/README.md),
+> not the commands quoted here (kept verbatim as the original evidence).
+
 ## Current Status
 
 The SDK package migration is SDK-level acceptance ready for review. The release

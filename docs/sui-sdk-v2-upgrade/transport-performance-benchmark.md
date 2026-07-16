@@ -1,5 +1,11 @@
 # Sui SDK v2 transport 性能对比
 
+> **Note (2026-07-16):** the benchmark tool `scripts/sdk-transport-benchmark.mjs`
+> (`pnpm benchmark:sdk-transport`) is still maintained and can be re-run at any
+> time. The result tables below are a historical snapshot from the v1→v2 upgrade
+> acceptance (2026-06-22). Functional regression lives separately in
+> [`test/regression/README.md`](../../test/regression/README.md).
+
 ## 结论
 
 当前 GraphQL 使用边界是正确的，不需要调整：

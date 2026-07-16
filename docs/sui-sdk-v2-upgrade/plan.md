@@ -40,13 +40,13 @@ The SDK v2 beta scope covers:
 
 ## Related Design Documents
 
-- [NAVI SDK v2 gRPC / GraphQL 适配技术设计](./grpc-adaptation-technical-design.md)
+- [NAVI SDK v2 gRPC / GraphQL adaptation technical design](./grpc-adaptation-technical-design.md)
 - [Sui SDK v2 Acceptance](./acceptance.md)
 
 ## Current Implementation Status
 
 The SDK-side migration is acceptance-ready as of 2026-06-22. The five release
-packages use `@mysten/sui@2.19.0` as their dev dependency and keep
+packages use `@mysten/sui@2.20.2` as their dev dependency and keep
 `@mysten/sui >=2.0.0` as the public peer contract. Main read, simulate, execute,
 and route-build paths are normalized through Sui v2 gRPC/Core clients. GraphQL
 is an optional capability for Sui-native history/filter/join semantics.
@@ -150,7 +150,7 @@ as a named advanced capability.
 
 ## Integrator Guidance
 
-| Integrator                       | Target接入方式                                                                                                                                      | Notes                                                                                                                                    |
+| Integrator                       | Target integration path                                                                                                                                      | Notes                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `navi-open-api`                  | Construct `grpc`, `graphql`, and `legacyJsonRpc` separately from `SUI_GRPC_ENDPOINT` / `SUI_GRPC_TOKEN`, `SUI_GRAPHQL_URL`, and `SUI_JSON_RPC_URL`. | Validate each transport independently. Do not pass a JSON-RPC URL into `SuiGrpcClient`.                                                  |
 | `copilot/apps/lending`           | Keep wallet UI on dapp-kit where needed; use open-api or explicit `grpc`/`graphql` for NAVI SDK v2 paths.                                           | Browser apps must not expose private gRPC tokens. Existing direct GraphQL reads should move to configured `NEXT_PUBLIC_SUI_GRAPHQL_URL`. |

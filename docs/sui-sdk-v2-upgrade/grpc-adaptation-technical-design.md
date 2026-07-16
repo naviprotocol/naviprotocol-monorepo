@@ -6,7 +6,7 @@ Last updated: 2026-06-22
 
 本文是 gRPC / GraphQL 迁移的设计和执行计划，包含 2026-06-18 执行前的差距描述。
 截至 2026-06-22，SDK 包侧迁移已按本文方向完成并进入 acceptance review：五个发布包
-dev dependency 使用 `@mysten/sui@2.19.0`，public peer contract 保持
+dev dependency 使用 `@mysten/sui@2.20.2`，public peer contract 保持
 `@mysten/sui >=2.0.0`；主路径使用显式 gRPC/Core client，GraphQL 作为可选历史/过滤/
 join 能力，剩余 JSON-RPC 只允许显式 `legacyJsonRpc` 或已记录的第三方 adapter 边界。
 
@@ -860,7 +860,7 @@ pnpm test:sdk-v2-boundaries
 脚本，不能用静态边界扫描替代 live endpoint 验证。示例：
 
 ```bash
-SUI_GRPC_ENDPOINT=... SUI_GRPC_TOKEN=... SUI_GRAPHQL_URL=... SUI_JSON_RPC_URL=... node scripts/sui-v2-transport-smoke.mjs
+SUI_GRPC_ENDPOINT=... SUI_GRPC_TOKEN=... SUI_GRAPHQL_URL=... SUI_JSON_RPC_URL=... node scripts/regression-smoke.mjs --only=transport  # formerly sui-v2-transport-smoke.mjs
 ```
 
 smoke 覆盖：
@@ -874,7 +874,7 @@ smoke 覆盖：
 - provider 鉴权：Ankr 等需要 metadata 的 gRPC 使用注入 client 或明确 headers/metadata，
   不把 JSON-RPC URL 传给 gRPC。
 - open-api preview：至少一个 lending open-api 读路径使用
-  `https://navi-open-api-git-feat-sui-sdk-v2-navi-fd9a1df6.vercel.app/api` 或等价 preview
+  当时的 feat/sui-sdk-v2 preview(历史 URL,已失效)或等价 preview
   API root，并通过请求日志/测试 mock 证明没有打 production `open-api.naviprotocol.io`。
 
 真实 execute 只在核心路径需要链上确认时运行，且必须满足：
