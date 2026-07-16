@@ -361,9 +361,10 @@ export class SuiPythClient {
     if (result?.fields) {
       const fields = result.fields as any
       if ('upgrade_cap' in fields) {
-        // Sui v2 Core(gRPC)返回扁平 json:upgrade_cap.package;legacy JSON-RPC 为
-        // 嵌套:upgrade_cap.fields.package。两种都兼容,否则 Core 路径取不到 packageId
-        // → getPythPackageId/getWormholePackageId 抛错 → Pyth 价格推送整体失败。
+        // Sui v2 Core (gRPC) returns flat json (upgrade_cap.package) while legacy
+        // JSON-RPC nests it (upgrade_cap.fields.package). Support both; otherwise
+        // the Core path cannot resolve the packageId and getPythPackageId /
+        // getWormholePackageId throw, breaking Pyth price feed updates entirely.
         const upgradeCap = fields.upgrade_cap
         const packageId = upgradeCap?.package ?? upgradeCap?.fields?.package
         if (packageId) {

@@ -253,8 +253,10 @@ export async function updateOraclePricesPTB(
         expiration: 30
       }))
 
-    // Pyth 陈旧价更新失败不再静默吞掉:此前 catch 后继续构建 tx,会用可能过期的链上价格,
-    // 且掩盖 client 缺失等真错误。改为抛出,让调用方感知(避免基于陈旧价格的借贷/清算)。
+    // Do not silently swallow Pyth stale-price update failures: the previous
+    // catch kept building the tx with possibly stale on-chain prices and masked
+    // real errors (e.g. a missing client). Throw so callers are aware (avoids
+    // lending/liquidation based on stale prices).
     const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
     if (stalePriceFeedIds.length > 0) {
       await updatePythPriceFeeds(tx, stalePriceFeedIds, options)

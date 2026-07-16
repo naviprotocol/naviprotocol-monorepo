@@ -663,8 +663,10 @@ export const getLendingPositions = withCache(
       return getMarketConfig(item)
     })
 
-    // E-Mode caps 失败不再静默吞掉:此前 catch 后用空数组继续,会静默丢失用户的 E-Mode
-    // 仓位(且 client 缺失等真错误被掩盖)。改为抛出,让调用方感知,而不是返回不完整持仓。
+    // Do not silently swallow E-Mode cap failures: the previous catch fell back
+    // to an empty array, silently dropping the user's E-Mode positions (and
+    // masking real errors like a missing client). Throw so callers are aware
+    // instead of returning incomplete positions.
     const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 
     const tasks = markets

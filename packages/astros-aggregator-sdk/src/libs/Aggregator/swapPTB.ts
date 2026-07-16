@@ -54,17 +54,19 @@ export async function getCoins(
         limit: 100
       })
       const objects = response.objects ?? response.data ?? []
-      // gRPC listCoins 返回原生字段(objectId / type=`Coin<T>` / owner),而 v1 JSON-RPC
-      // getCoins 返回 CoinStruct(coinObjectId / coinType=T)。归一化回 v1 形状,避免
-      // 消费方(如 coinObjectId 的调用)在 v2 下拿到 undefined —— 保持迁移前后一致。
+      // gRPC listCoins returns native fields (objectId / type=`Coin<T>` / owner),
+      // whereas the v1 JSON-RPC getCoins returned a CoinStruct (coinObjectId /
+      // coinType=T). Normalize back to the v1 shape so consumers (e.g. callers
+      // reading coinObjectId) do not get undefined under v2 — keep behavior
+      // consistent across the migration.
       for (const o of objects) {
-        // 已是 CoinStruct(legacy 分支/已映射)则原样保留
+        // Already a CoinStruct (legacy branch / already mapped): keep as-is.
         if (o && typeof o === 'object' && 'coinObjectId' in o) {
           data.push(o)
           continue
         }
         const rawType: string | undefined = o?.type
-        // type 形如 `0x…2::coin::Coin<INNER>`(gRPC 可能是归一化全长地址),取 INNER 作 coinType
+        // type looks like `0x…2::coin::Coin<INNER>` (gRPC may use a normalized full address); take INNER as coinType
         const coinTypeMatch =
           typeof rawType === 'string' ? rawType.match(/::coin::Coin<(.+)>$/) : null
         data.push({
