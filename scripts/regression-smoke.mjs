@@ -633,6 +633,17 @@ async function simulateBridgeRoute({ bridge, clients, wallet, routeConfig }) {
   }
   assertBridgeRouteMatches({ route, routeConfig, fromToken, toToken })
 
+  // Honor the route's buildClientMode: a route configured for legacyJsonRpc must
+  // actually build through the legacy client, otherwise the matrix would pass on
+  // gRPC while production still requires the legacy build client.
+  const routeBuildClient =
+    routeConfig.buildClientMode === 'legacyJsonRpc' ? clients.legacyJsonRpc : undefined
+  if (routeConfig.buildClientMode === 'legacyJsonRpc' && !routeBuildClient) {
+    throw new Error(
+      `${routeConfig.label}: SUI_JSON_RPC_URL is required for legacyJsonRpc buildClient`
+    )
+  }
+
   const captured = { bytesLength: 0, signatures: 0 }
   let lastExecutionResult
   const dryProvider = {
@@ -667,8 +678,9 @@ async function simulateBridgeRoute({ bridge, clients, wallet, routeConfig }) {
   const result = await bridge.swap(route, wallet.address, destination, {
     sui: {
       provider: dryProvider,
+      ...(routeBuildClient ? { buildClient: routeBuildClient } : {}),
       signTransaction: async ({ transaction }) => {
-        const txBytes = await transaction.build({ client: clients.grpc })
+        const txBytes = await transaction.build({ client: routeBuildClient ?? clients.grpc })
         return wallet.keypair.signTransaction(txBytes)
       }
     }

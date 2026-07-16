@@ -69,12 +69,19 @@ export async function getCoins(
         // type looks like `0x…2::coin::Coin<INNER>` (gRPC may use a normalized full address); take INNER as coinType
         const coinTypeMatch =
           typeof rawType === 'string' ? rawType.match(/::coin::Coin<(.+)>$/) : null
+        const coinObjectId = o?.objectId ?? o?.coinObjectId
+        const balance = o?.balance
+        // Drop incomplete entries (same semantics as lending's normalizeCoreCoin):
+        // an object without an id or balance cannot be selected/merged safely.
+        if (!coinObjectId || balance === undefined || balance === null) {
+          continue
+        }
         data.push({
           coinType: coinTypeMatch ? coinTypeMatch[1] : coinAddress,
-          coinObjectId: o?.objectId ?? o?.coinObjectId,
+          coinObjectId,
           version: o?.version,
           digest: o?.digest,
-          balance: o?.balance,
+          balance,
           previousTransaction: o?.previousTransaction ?? o?.previous_transaction
         })
       }
