@@ -19,7 +19,7 @@ import type {
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
-import { multiGetSuiObjects, requireSuiClient } from './utils'
+import { multiGetSuiObjects, suiClient } from './utils'
 import { getLendingPositions } from './account'
 
 type PythInfo = {
@@ -89,12 +89,12 @@ async function getOnChainPriceInfo(
   pythInfos: PythInfo[],
   options?: Partial<SuiClientOption>
 ): Promise<PythPriceInfo[]> {
-  // Whole-read failures (missing client, RPC errors) propagate to the caller:
+  // Whole-read failures (endpoint/RPC errors) propagate to the caller:
   // swallowing them here would silently skip the Pyth staleness update and let
   // transactions build against stale on-chain prices. Only per-feed anomalies
   // are skipped below.
   const priceInfos: PythPriceInfo[] = []
-  const client = requireSuiClient(options?.client, 'getOnChainPriceInfo')
+  const client = options?.client ?? suiClient
 
   const priceInfoObjectIds = pythInfos.map((k) => k.priceInfoObject)
   const priceInfoObjects = await multiGetSuiObjects(client, {
@@ -194,7 +194,7 @@ export async function updatePythPriceFeeds(
   priceFeedIds: string[],
   options?: Partial<SuiClientOption & EnvOption & MarketOption>
 ) {
-  const client = requireSuiClient(options?.client, 'updatePythPriceFeeds')
+  const client = options?.client ?? suiClient
   const config = await getConfig({
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
@@ -254,7 +254,7 @@ export async function updateOraclePricesPTB(
 
     // Do not silently swallow Pyth stale-price update failures: the previous
     // catch kept building the tx with possibly stale on-chain prices and masked
-    // real errors (e.g. a missing client). Throw so callers are aware (avoids
+    // real endpoint/RPC errors. Throw so callers are aware (avoids
     // lending/liquidation based on stale prices).
     const stalePriceFeedIds = await getPythStalePriceFeedIdV2(pythInfos, options)
     if (stalePriceFeedIds.length > 0) {

@@ -24,14 +24,14 @@ import type {
 import { Transaction } from '@mysten/sui/transactions'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
-  requireSuiClient,
   camelize,
   parseDevInspectResult,
   devInspectTransaction,
   normalizeCoinType,
   withSingleton,
   parseTxValue,
-  requestHeaders
+  requestHeaders,
+  suiClient
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import { getPriceFeeds } from './oracle'
@@ -52,7 +52,7 @@ async function getLendingRewardsBatch(
   }[],
   options?: Partial<SuiClientOption & EnvOption & ServiceOption>
 ): Promise<LendingReward[]> {
-  const client = requireSuiClient(options?.client, 'getLendingRewardsBatch')
+  const client = options?.client ?? suiClient
 
   const pools = await getPools({
     ...options,
@@ -187,7 +187,7 @@ export async function getUserAvailableLendingRewards(
 
   // Do not silently swallow E-Mode cap failures: the previous catch fell back to
   // an empty array, silently dropping E-Mode-related reward tasks (and masking
-  // real errors like a missing client). Throw so callers are aware instead of
+  // real endpoint/RPC errors). Throw so callers are aware instead of
   // returning incomplete results.
   const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 

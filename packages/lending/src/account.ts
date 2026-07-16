@@ -29,7 +29,6 @@ import { Transaction } from '@mysten/sui/transactions'
 import { UserStateInfo, ReserveDataInfo } from './bcs'
 import { getConfig, DEFAULT_CACHE_TIME } from './config'
 import {
-  requireSuiClient,
   parseDevInspectResult,
   devInspectTransaction,
   withSingleton,
@@ -42,7 +41,8 @@ import {
   requestHeaders,
   poolToEModePool,
   getPoolsMap,
-  uuid
+  uuid,
+  suiClient
 } from './utils'
 import { bcs } from '@mysten/sui/bcs'
 import type { CoinStruct, PaginatedCoins } from '@mysten/sui/jsonRpc'
@@ -226,7 +226,7 @@ async function getLendingStateBatch(
   >
 ): Promise<UserLendingInfo[]> {
   const tx = new Transaction()
-  const client = requireSuiClient(options?.client, 'getLendingStateBatch')
+  const client = options?.client ?? suiClient
   const pools = await getPools({
     ...options,
     markets: Object.values(MARKETS)
@@ -405,7 +405,7 @@ export async function getHealthFactor(
   address: string | AccountCap,
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<number> {
-  const client = requireSuiClient(options?.client, 'getHealthFactor')
+  const client = options?.client ?? suiClient
   const tx = new Transaction()
   await getHealthFactorPTB(tx, address, options)
   const result = await devInspectTransaction(client, {
@@ -437,7 +437,7 @@ export async function getSimulatedHealthFactor(
   }[],
   options?: Partial<SuiClientOption & EnvOption>
 ): Promise<number> {
-  const client = requireSuiClient(options?.client, 'getSimulatedHealthFactor')
+  const client = options?.client ?? suiClient
   const tx = new Transaction()
   let estimatedSupply = 0
   let estimatedBorrow = 0
@@ -546,7 +546,7 @@ export async function getCoins(
 ): Promise<CoinStruct[]> {
   let cursor: string | undefined | null = null
   const allCoinDatas: CoinStruct[] = []
-  const client = requireSuiClient(options?.client, 'getCoins')
+  const client = options?.client ?? suiClient
   const core = client.core as
     | {
         listBalances?(options: any): Promise<any>
@@ -665,7 +665,7 @@ export const getLendingPositions = withCache(
 
     // Do not silently swallow E-Mode cap failures: the previous catch fell back
     // to an empty array, silently dropping the user's E-Mode positions (and
-    // masking real errors like a missing client). Throw so callers are aware
+    // masking real endpoint/RPC errors). Throw so callers are aware
     // instead of returning incomplete positions.
     const emodeCaps: EModeCap[] = await getUserEModeCaps(address, options)
 

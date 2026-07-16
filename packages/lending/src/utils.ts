@@ -21,26 +21,11 @@ import { SuiPriceServiceConnection } from './pyth'
 import { getNaviSdkConfigVersion } from './services'
 
 /**
- * Default Sui client instance configured for mainnet
+ * Default Sui client for callers that do not pass one, matching v1 behavior:
+ * a public mainnet fullnode (gRPC). Fine for development and low volume;
+ * production should pass its own client (private endpoint / auth headers).
  */
 export const suiClient = createNaviSuiClient()
-
-/**
- * Resolves the caller-provided Sui client, requiring it explicitly.
- *
- * On-chain read functions need a v2 gRPC/Core client; v2 has no implicit public
- * default (the module-level `suiClient` is a throwing proxy). Fail fast with a
- * clear message instead of letting the proxy throw deep inside a read.
- */
-export function requireSuiClient<T>(client: T | undefined, fnName: string): T {
-  if (!client) {
-    throw new Error(
-      `${fnName} requires an explicit Sui v2 gRPC/Core client. Pass { client }; ` +
-        `NAVI SDK v2 no longer provides an implicit default client.`
-    )
-  }
-  return client
-}
 
 type CoreCommandOutput = {
   bcs?: Uint8Array | number[] | string | null

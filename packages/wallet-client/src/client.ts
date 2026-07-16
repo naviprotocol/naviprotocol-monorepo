@@ -29,7 +29,8 @@ import {
   type NaviSuiClientBundle,
   type NaviSuiClientOptions,
   type NaviSuiLegacyJsonRpcOptions,
-  type NaviSuiNetwork
+  type NaviSuiNetwork,
+  PUBLIC_MAINNET_GRPC_URL
 } from '@naviprotocol/lending'
 
 /**
@@ -52,8 +53,12 @@ export type WalletClientOptions = {
   signer: Signer
   /** Optional module-specific configurations */
   configs?: Partial<UserConfigs>
-  /** Sui v2 client configuration. Release paths must provide `network + grpc`. */
-  client: NaviSuiClientOptions | WalletLegacyJsonRpcClientOptions
+  /**
+   * Sui v2 client configuration. Optional (v1 parity): when omitted, a public
+   * mainnet gRPC client is used — fine for development and low volume;
+   * production should pass its own client (private endpoint / auth headers).
+   */
+  client?: NaviSuiClientOptions | WalletLegacyJsonRpcClientOptions
 }
 
 export type WalletLegacyJsonRpcClientOptions = {
@@ -161,15 +166,20 @@ export class WalletClient {
    * @param options - Configuration options for the wallet client
    */
   constructor(options: WalletClientOptions) {
-    this.clientBundle = createWalletClientBundle(options.client)
+    // v1 parity: default to the public mainnet node when no client is given.
+    const clientOptions = options.client ?? {
+      network: 'mainnet' as const,
+      grpc: { url: PUBLIC_MAINNET_GRPC_URL }
+    }
+    this.clientBundle = createWalletClientBundle(clientOptions)
     this.client = this.clientBundle.coreClient as NaviCoreClient & Partial<NaviJsonRpcCompatClient>
     this.clientUrl =
-      'grpc' in options.client
-        ? options.client.legacyJsonRpc && 'url' in options.client.legacyJsonRpc
-          ? options.client.legacyJsonRpc.url
+      'grpc' in clientOptions
+        ? clientOptions.legacyJsonRpc && 'url' in clientOptions.legacyJsonRpc
+          ? clientOptions.legacyJsonRpc.url
           : undefined
-        : 'url' in options.client.legacyJsonRpc
-          ? options.client.legacyJsonRpc.url
+        : 'url' in clientOptions.legacyJsonRpc
+          ? clientOptions.legacyJsonRpc.url
           : undefined
     this.signer = options.signer
     this.userConfigs = options.configs || {}

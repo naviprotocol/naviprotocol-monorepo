@@ -32,12 +32,12 @@ import {
   withCache,
   withSingleton,
   parseTxValue,
-  requireSuiClient,
   requestHeaders,
   parsePoolUID,
   parseDevInspectResult,
   devInspectTransaction,
-  getSuiObject
+  getSuiObject,
+  suiClient
 } from './utils'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 import { Transaction } from '@mysten/sui/transactions'
@@ -725,7 +725,7 @@ export const getBorrowFee = withCache(
       const config = await getConfig({
         ...options
       })
-      const client = requireSuiClient(options?.client, 'getBorrowFee')
+      const client = options?.client ?? suiClient
       if (options?.address && typeof options?.asset !== 'undefined') {
         try {
           const pool = await getPool(options.asset, options)
