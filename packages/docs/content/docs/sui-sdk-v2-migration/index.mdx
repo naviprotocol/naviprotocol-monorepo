@@ -69,18 +69,21 @@ This is the one integration point that changed across NAVI SDK v2. NAVI function
 that read on-chain state now require an explicit Sui v2 client — there is no
 built-in default (calling without one throws). Construct it once and reuse it.
 
-Recommended — gRPC/Core (use a private endpoint in production):
+Recommended — gRPC/Core:
 
 ```ts
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 
+// Public endpoint — development / low volume.
 const suiClient = new SuiGrpcClient({
   network: 'mainnet',
   baseUrl: process.env.SUI_GRPC_ENDPOINT!
 })
 ```
 
-For a private endpoint that requires auth, pass the header as gRPC metadata:
+In production, use a private endpoint and pass its auth header as gRPC
+metadata. The transport must be explicit — `meta` placed directly in the
+`SuiGrpcClient` options is silently ignored:
 
 ```ts
 import { GrpcWebFetchTransport, SuiGrpcClient } from '@mysten/sui/grpc'
@@ -89,6 +92,7 @@ const suiClient = new SuiGrpcClient({
   network: 'mainnet',
   transport: new GrpcWebFetchTransport({
     baseUrl: process.env.SUI_GRPC_ENDPOINT!,
+    format: 'binary', // optional; more compact than the default 'text'
     meta: { 'x-token': process.env.SUI_GRPC_TOKEN! }
   })
 })
@@ -121,9 +125,6 @@ const state = await getLendingState(address, { client: suiClient })
 
 Every other NAVI call follows the same rule — the signature is unchanged, you
 just pass `client` at the position listed in [Per-package changes](#per-package-changes).
-
-Public Sui endpoints are for low-volume development only; use private provider
-endpoints for production.
 
 ## Per-package changes
 
