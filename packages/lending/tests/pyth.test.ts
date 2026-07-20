@@ -284,13 +284,28 @@ describe('SuiPythClient', () => {
               }
             }
 
+            throw new Error(`unexpected dynamic object field parent ${parentId}`)
+          }
+        ),
+        getDynamicField: vi.fn(
+          async ({
+            parentId,
+            name
+          }: {
+            parentId: string
+            name: { type: string; bcs: Uint8Array }
+          }) => {
             if (parentId === priceTableId) {
               expect(name.type).toBe(`${pythPackageId}::price_identifier::PriceIdentifier`)
+              expect(Array.from(name.bcs)).toEqual([
+                0x20,
+                ...Array.from(Uint8Array.from({ length: 32 }, () => 0xbb))
+              ])
               return {
-                object: {
-                  objectId: priceInfoObjectId,
-                  json: {
-                    value: priceInfoObjectId
+                dynamicField: {
+                  value: {
+                    type: `${normalizedSystemPackage}::object::ID`,
+                    bcs: Uint8Array.from({ length: 32 }, () => 0x66)
                   }
                 }
               }
@@ -317,5 +332,11 @@ describe('SuiPythClient', () => {
       objectId: wormholeStateId,
       include: { json: true }
     })
+    // The state's `price_info` entry is a dynamic object field, but the price
+    // table entries are plain dynamic fields: fetching them through
+    // getDynamicObjectField derives a Wrapper<PriceIdentifier> child id that
+    // does not exist on chain.
+    expect(provider.core.getDynamicObjectField).toHaveBeenCalledTimes(1)
+    expect(provider.core.getDynamicField).toHaveBeenCalledTimes(1)
   })
 })
