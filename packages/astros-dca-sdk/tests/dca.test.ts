@@ -381,4 +381,74 @@ describe('DCA PTB builders', () => {
     expect(result.effects?.status?.status).toBe('success')
     expect(result.events).toEqual([{ type: 'core::dca' }])
   })
+
+  it('withdraws the shortfall from address balance when coin objects are insufficient', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '1000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '1000', addressBalance: '4000' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(client.core.getBalance).toHaveBeenCalledWith({
+      owner: userAddress,
+      coinType: '0x2::test::COIN'
+    })
+    // coin objects (1000) fall short of 3000 -> redeem 2000 from the address balance
+    expect(data).toContain('redeem_funds')
+    expect(data).toContain('FundsWithdrawal')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('throws Insufficient balance using the combined total when address balance is also short', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '1000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '1500', coinBalance: '1000', addressBalance: '500' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await expect(
+      getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+    ).rejects.toThrow('Insufficient balance: need 3000, have 1500')
+  })
+
+  it('does not touch address balance when coin objects already cover the amount', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '5000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '5000', addressBalance: '0' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
 })

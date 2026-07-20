@@ -1,6 +1,7 @@
 import './fetch'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Transaction } from '@mysten/sui/transactions'
+import BigNumber from 'bignumber.js'
 
 vi.mock('@naviprotocol/astros-aggregator-sdk', () => ({
   buildSwapPTBFromQuote: vi.fn(async (_address: string, tx: Transaction) => tx.gas),
@@ -66,7 +67,9 @@ function createSwapClient(options: Partial<ConstructorParameters<typeof WalletCl
     configurable: true,
     value: {
       getBalance: vi.fn(() => ({
-        coins: []
+        coins: [],
+        amount: BigNumber(0),
+        addressBalance: BigNumber(0)
       }))
     }
   })

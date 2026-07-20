@@ -9,7 +9,7 @@
  */
 
 import { Module } from '../module'
-import { getCoins, mergeCoinsPTB, withSingleton } from '@naviprotocol/lending'
+import { getCoins, mergeCoinsPTB, withSingleton, listAddressBalances } from '@naviprotocol/lending'
 import type { CoinStruct } from '@mysten/sui/jsonRpc'
 import type { WalletClient } from '../../client'
 import { UserPortfolio } from './portfolio'
@@ -130,10 +130,10 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     // Wait for latest portfolio update
     await this.waitForUpdate()
 
-    // Check if sufficient balance is available
+    // Check if sufficient balance is available (coin objects + address balance)
     const coinBalance = this.portfolio.getBalance(coinType)
     const totalAmount = amounts.reduce((acc, curr) => acc.plus(curr), BigNumber(0))
-    if (coinBalance.amount.lt(totalAmount)) {
+    if (coinBalance.amount.plus(coinBalance.addressBalance).lt(totalAmount)) {
       throw new Error('Insufficient balance')
     }
 
@@ -144,7 +144,9 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
 
     if (normalizeStructTag(coinType) !== normalizeStructTag('0x2::sui::SUI')) {
       mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
-        balance: totalAmount.toNumber()
+        balance: totalAmount.toNumber(),
+        addressBalance: coinBalance.addressBalance.toFixed(0),
+        coinType
       })
     }
 
@@ -240,12 +242,58 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
       client: this.walletClient.client
     })
 
+    // Also fetch funds held at the address level (v2 address balances). Coin
+    // objects only cover `Coin<T>` objects, so this map lets sufficiency checks
+    // and coin selection see the full spendable total.
+    const addressBalances = await this.getAddressBalanceMap()
+
     // Update portfolio with new coin data
-    this._portfolio = new UserPortfolio(this._coins)
+    this._portfolio = new UserPortfolio(this._coins, addressBalances)
 
     // Emit portfolio update event
     this.emit('balance:portfolio-updated', {})
   })
+
+  /**
+   * Builds a map of coin type to address-level balance (v2 address balances).
+   *
+   * Feature-detects the v2 Core balance API on the injected client; when it is
+   * unavailable (legacy JSON-RPC only), returns an empty map so the portfolio
+   * falls back to coin-object-only behavior.
+   *
+   * @returns Map of normalized coin type to address balance (atomic units)
+   */
+  private async getAddressBalanceMap(): Promise<{ [key in string]?: string }> {
+    const map: { [key in string]?: string } = {}
+    if (!this.walletClient) {
+      return map
+    }
+    const core = (this.walletClient.client as { core?: Record<string, unknown> }).core
+    if (typeof core?.listBalances !== 'function' || typeof core?.getBalance !== 'function') {
+      return map
+    }
+    try {
+      let cursor: string | null | undefined = null
+      do {
+        const { balances, nextCursor } = await listAddressBalances(this.walletClient.client, {
+          owner: this.walletClient.address,
+          cursor,
+          limit: 100
+        })
+        for (const balance of balances) {
+          // Only track coin types that actually hold funds at the address level
+          // to avoid creating empty portfolio entries.
+          if (balance.addressBalance && balance.addressBalance !== '0') {
+            map[balance.coinType] = balance.addressBalance
+          }
+        }
+        cursor = nextCursor
+      } while (cursor)
+    } catch (error) {
+      console.error(error)
+    }
+    return map
+  }
 
   /** Current coin objects from the wallet */
   private _coins: CoinStruct[] = []

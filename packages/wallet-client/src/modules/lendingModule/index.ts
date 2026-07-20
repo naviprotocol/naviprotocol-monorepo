@@ -228,7 +228,9 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
       balance: amount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: coinBalance.addressBalance.toFixed(0),
+      coinType: pool.suiCoinType
     })
 
     // Build deposit transaction
@@ -409,7 +411,9 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
       balance: amount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: coinBalance.addressBalance.toFixed(0),
+      coinType: pool.suiCoinType
     })
 
     // Build repay transaction
@@ -499,7 +503,9 @@ export class LendingModule extends Module<LendingModuleConfig, Events> {
 
     const mergedCoin = mergeCoinsPTB(tx, payCoinBalance.coins, {
       balance: payAmount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: payCoinBalance.addressBalance.toFixed(0),
+      coinType: payPool.suiCoinType
     })
 
     const [collateralBalance, remainDebtBalance] = await liquidatePTB(

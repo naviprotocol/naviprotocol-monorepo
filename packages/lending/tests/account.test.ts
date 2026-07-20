@@ -307,6 +307,76 @@ describe('mergeCoinsPTB', () => {
     )
   })
 
+  it('withdraws entirely from the address balance when there are no coin objects', () => {
+    const tx = new Transaction()
+    const result = mergeCoinsPTB(tx, [], {
+      balance: 100,
+      addressBalance: '100',
+      coinType: '0x2::test::COIN'
+    })
+    const data = JSON.stringify(tx.getData())
+    expect(result).toBeDefined()
+    // No coin objects at all: the whole amount is redeemed from the address balance.
+    expect(data).toContain('redeem_funds')
+    expect(data).toContain('FundsWithdrawal')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('withdraws the shortfall from the address balance when coin objects fall short', () => {
+    const tx = new Transaction()
+    // objects = 30, need = 100 -> redeem 70 from the address balance, then merge + split
+    const result = mergeCoinsPTB(tx, fakeCoins, {
+      balance: 100,
+      addressBalance: '70',
+      coinType: '0x1'
+    })
+    const data = JSON.stringify(tx.getData())
+    expect(result).toBeDefined()
+    expect(data).toContain('redeem_funds')
+    expect(data).toContain('MergeCoins')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('does not touch the address balance when coin objects already cover the amount', () => {
+    const tx = new Transaction()
+    mergeCoinsPTB(tx, fakeCoins, { balance: 20, addressBalance: '1000', coinType: '0x1' })
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('throws using the combined total when the address balance is also short', () => {
+    const tx = new Transaction()
+    // objects 30 + addressBalance 20 = 50 < 100
+    expect(() =>
+      mergeCoinsPTB(tx, fakeCoins, { balance: 100, addressBalance: '20', coinType: '0x1' })
+    ).toThrow('Balance is less than the specified balance: 50 < 100')
+  })
+
+  it('does not count the address balance on the SUI gas-coin path', () => {
+    const tx = new Transaction()
+    const suiCoins = [
+      {
+        coinObjectId: '0x1',
+        balance: '10',
+        coinType: '0x2::sui::SUI',
+        digest: '0x1',
+        previousTransaction: '0x1',
+        version: ''
+      }
+    ]
+    // SUI + useGasCoin cannot spend address balance, so it must not count toward
+    // sufficiency: 10 coin objects < 100 required -> throw (no silent bad tx).
+    expect(() =>
+      mergeCoinsPTB(tx, suiCoins, {
+        balance: 100,
+        useGasCoin: true,
+        addressBalance: '1000',
+        coinType: '0x2::sui::SUI'
+      })
+    ).toThrow('Balance is less than the specified balance: 10 < 100')
+  })
+
   it.skipIf(!runLiveTests)('merge vsui coins', async () => {
     const coinType =
       '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'

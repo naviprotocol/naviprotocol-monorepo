@@ -30,11 +30,24 @@ export class UserPortfolio {
    * Creates a new user portfolio
    *
    * @param coins - Array of coin objects or existing portfolio to copy from
+   * @param addressBalances - Optional map of normalized coin type to funds held
+   *   directly at the address level (v2 address balances). Coin objects only
+   *   account for `Coin<T>` objects, so this carries the balance that lives at
+   *   the address and is not represented by any object. Defaults to empty,
+   *   which preserves legacy coin-object-only behavior.
    */
-  constructor(coins?: CoinStruct[] | UserPortfolio) {
+  constructor(
+    coins?: CoinStruct[] | UserPortfolio,
+    addressBalances?: { [key in string]?: BigNumber.Value }
+  ) {
     if (coins instanceof UserPortfolio) {
       // Copy from existing portfolio
       this.balances = JSON.parse(JSON.stringify(coins.balances))
+      // JSON round-trips BigNumber to string, so rehydrate BigNumber fields.
+      Object.values(this.balances).forEach((balance) => {
+        balance.amount = BigNumber(balance.amount)
+        balance.addressBalance = BigNumber(balance.addressBalance ?? 0)
+      })
     } else {
       // Build portfolio from coin objects
       const balances: { [key in string]: UserCoinBalance } = {}
@@ -52,6 +65,7 @@ export class UserPortfolio {
           existPofolio = {
             coinType: normalizedCoinType,
             amount: BigNumber(0),
+            addressBalance: BigNumber(0),
             coins: []
           }
           balances[normalizedCoinType] = existPofolio
@@ -61,6 +75,28 @@ export class UserPortfolio {
         existPofolio.coins.push(item)
         existPofolio.amount = existPofolio.amount.plus(item.balance)
       })
+
+      // Merge in address-level balances (v2). A coin type may have an address
+      // balance without any coin objects, so create entries as needed.
+      if (addressBalances) {
+        Object.entries(addressBalances).forEach(([coinType, value]) => {
+          if (value === undefined || value === null) {
+            return
+          }
+          const normalizedCoinType = normalizeStructTag(coinType)
+          let existPofolio = balances[normalizedCoinType]
+          if (!existPofolio) {
+            existPofolio = {
+              coinType: normalizedCoinType,
+              amount: BigNumber(0),
+              addressBalance: BigNumber(0),
+              coins: []
+            }
+            balances[normalizedCoinType] = existPofolio
+          }
+          existPofolio.addressBalance = BigNumber(value)
+        })
+      }
 
       this.balances = balances
     }
@@ -74,7 +110,28 @@ export class UserPortfolio {
    */
   getBalance(coinType: string): UserCoinBalance {
     coinType = normalizeStructTag(coinType)
-    return this.balances[coinType] || { coinType, amount: BigNumber(0), coins: [] }
+    return (
+      this.balances[coinType] || {
+        coinType,
+        amount: BigNumber(0),
+        addressBalance: BigNumber(0),
+        coins: []
+      }
+    )
+  }
+
+  /**
+   * Gets the combined total balance for a coin type: the sum of coin objects
+   * (`amount`) plus funds held at the address level (`addressBalance`). Use
+   * this for sufficiency checks; use `.amount` when you specifically need the
+   * coin-object-only sum.
+   *
+   * @param coinType - The coin type to query
+   * @returns BigNumber representing the combined total balance
+   */
+  combinedBalanceOf(coinType: string) {
+    const balance = this.getBalance(coinType)
+    return balance.amount.plus(balance.addressBalance ?? 0)
   }
 
   /**
@@ -125,8 +182,14 @@ export class UserPortfolio {
 export type UserCoinBalance = {
   /** Normalized coin type string */
   coinType: string
-  /** Total balance amount across all coins of this type */
+  /** Total balance across all coin objects (`Coin<T>`) of this type */
   amount: BigNumber
+  /**
+   * Funds held directly at the address level (v2 address balances) for this
+   * coin type. Not represented by any coin object. Defaults to `0`. The
+   * combined spendable total is `amount + addressBalance`.
+   */
+  addressBalance: BigNumber
   /** Array of individual coin objects */
   coins: CoinStruct[]
 }

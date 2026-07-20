@@ -155,7 +155,9 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
     const suiBalance = this.walletClient.module('balance').portfolio.getBalance('0x2::sui::SUI')
     const mergedCoin = mergeCoinsPTB(tx, suiBalance.coins, {
       balance: suiAmount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: suiBalance.addressBalance.toFixed(0),
+      coinType: '0x2::sui::SUI'
     })
     const haSUICoin = await this.stakePTB(tx, mergedCoin)
     tx.transferObjects([haSUICoin], this.walletClient.address)
@@ -189,7 +191,9 @@ export class HaedalModule extends Module<HaedalModuleConfig, Events> {
       .module('balance')
       .portfolio.getBalance(this.config.coinType)
     const mergedCoin = mergeCoinsPTB(tx, haSuiBalance.coins, {
-      balance: haSUIAmount
+      balance: haSUIAmount,
+      addressBalance: haSuiBalance.addressBalance.toFixed(0),
+      coinType: this.config.coinType
     })
     const suiCoin = await this.unstakePTB(tx, mergedCoin)
     tx.transferObjects([suiCoin], this.walletClient.address)

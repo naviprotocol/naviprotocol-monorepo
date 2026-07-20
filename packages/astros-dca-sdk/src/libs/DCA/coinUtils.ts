@@ -74,6 +74,38 @@ function getCoinObjectId(coin: { coinObjectId?: string; objectId?: string }) {
 }
 
 /**
+ * Read a coin's combined balance via the v2 Core `getBalance`.
+ *
+ * On Sui, a fungible balance is `coinBalance` (sum of `Coin<T>` objects) plus
+ * `addressBalance` (funds held directly at the address, arriving via
+ * `send_funds()`). `listCoins`/`getCoins` only see coin objects, so sufficiency
+ * checks based on them under-count once address balances are in play. This reads
+ * the authoritative combined total so callers can source the shortfall from the
+ * address balance.
+ *
+ * Returns `null` when the injected client exposes no `core.getBalance`
+ * (legacy path) — callers then fall back to coin-object-only behavior.
+ */
+async function getCombinedBalance(
+  client: NaviDcaCoinClient,
+  owner: string,
+  coinType: string
+): Promise<{ total: bigint; addressBalance: bigint } | null> {
+  const core = client.core as { getBalance?(options: any): Promise<any> } | undefined
+  if (typeof core?.getBalance !== 'function') {
+    return null
+  }
+  const response: any = await core.getBalance({ owner, coinType })
+  const balance = response?.balance ?? response
+  if (!balance) {
+    return null
+  }
+  const total = BigInt(balance.balance ?? balance.totalBalance ?? 0)
+  const addressBalance = BigInt(balance.addressBalance ?? 0)
+  return { total, addressBalance }
+}
+
+/**
  * Merge coins and return a merged coin object in PTB
  * @param tx - Transaction to build
  * @param coinInfo - Coin data from getCoins
@@ -125,22 +157,63 @@ export async function getCoinForDca(
   } else {
     // Handle other token types
     const coinInfo = await getCoins(client, address, coinType)
+    const objects = coinInfo.data ?? []
+    const objectsBalance = objects.reduce((sum, coin) => sum + BigInt(coin.balance ?? 0), 0n)
+    const need = BigInt(amount)
 
-    // Check if user has enough balance
-    if (!coinInfo.data || coinInfo.data.length === 0) {
+    // Address balances (v2): part of the balance can live at the address level
+    // (not as Coin<T> objects). `getCoins` only sees coin objects, so validate
+    // against the combined balance and, when the objects fall short, withdraw
+    // the remainder from the address balance via `0x2::coin::redeem_funds`.
+    const combined = await getCombinedBalance(client, address, coinType)
+    const addressBalance = combined ? combined.addressBalance : 0n
+    // Combined spendable = owned coin objects + address balance. Sizing both the
+    // sufficiency check and the shortfall from the same `objectsBalance` keeps the
+    // redeemed amount from ever exceeding the available address balance.
+    const total = objectsBalance + addressBalance
+
+    if (total < need) {
+      throw new Error(`Insufficient balance: need ${need}, have ${total}`)
+    }
+
+    // Base coin + merge list: all owned Coin<T> objects (largest first), plus a
+    // coin redeemed from the address balance to cover any shortfall.
+    const sorted = [...objects].sort((a: any, b: any) =>
+      Number(BigInt(b.balance ?? 0) - BigInt(a.balance ?? 0))
+    )
+    let baseCoin: any
+    const mergeList: any[] = []
+    for (const coin of sorted) {
+      const obj = tx.object(getCoinObjectId(coin))
+      if (baseCoin === undefined) {
+        baseCoin = obj
+      } else {
+        mergeList.push(obj)
+      }
+    }
+
+    const shortfall = objectsBalance >= need ? 0n : need - objectsBalance
+    if (shortfall > 0n) {
+      const withdrawnCoin = tx.moveCall({
+        target: '0x2::coin::redeem_funds',
+        typeArguments: [coinType],
+        arguments: [tx.withdrawal({ amount: shortfall, type: coinType })]
+      })
+      if (baseCoin === undefined) {
+        baseCoin = withdrawnCoin
+      } else {
+        mergeList.push(withdrawnCoin)
+      }
+    }
+
+    if (baseCoin === undefined) {
       throw new Error(`No ${coinType} coins found for address ${address}`)
     }
-
-    const totalBalance = coinInfo.data.reduce((sum, coin) => sum + BigInt(coin.balance), 0n)
-
-    if (totalBalance < BigInt(amount)) {
-      throw new Error(`Insufficient balance: need ${amount}, have ${totalBalance}`)
+    if (mergeList.length > 0) {
+      tx.mergeCoins(baseCoin, mergeList)
     }
 
-    // Merge all coins
-    const mergedCoin = returnMergedCoins(tx, coinInfo)
-
     // Split the required amount
-    return tx.splitCoins(mergedCoin, [tx.pure.u64(amount)])
+    return tx.splitCoins(baseCoin, [tx.pure.u64(amount)])
   }
 }
