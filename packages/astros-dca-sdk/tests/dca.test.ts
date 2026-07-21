@@ -475,4 +475,21 @@ describe('DCA PTB builders', () => {
     expect(data).not.toContain('redeem_funds')
     expect(data).toContain('SplitCoins')
   })
+
+  it('treats the fully-expanded SUI type as gas (no coin fetch, no redeem)', async () => {
+    const listCoins = vi.fn()
+    const getBalance = vi.fn()
+    const client = { core: { listCoins, getBalance } }
+    const tx = new Transaction()
+    const fullSui = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+
+    await getCoinForDca(client as any, tx, userAddress, fullSui, 100)
+
+    // Normalized SUI must take the gas path — never fetch coins or redeem.
+    expect(listCoins).not.toHaveBeenCalled()
+    expect(getBalance).not.toHaveBeenCalled()
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
 })

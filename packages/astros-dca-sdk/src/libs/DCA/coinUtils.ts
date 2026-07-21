@@ -4,7 +4,10 @@
  */
 
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+import { normalizeStructTag } from '@mysten/sui/utils'
 import type { NaviDcaCoinClient, NaviDcaPaginatedCoins } from './client'
+
+const SUI_COIN_TYPE = normalizeStructTag('0x2::sui::SUI')
 
 /**
  * Get coins for a specific address and coin type
@@ -142,8 +145,10 @@ export async function getCoinForDca(
   coinType: string,
   amount: string | number | bigint
 ): Promise<TransactionResult> {
-  if (coinType === '0x2::sui::SUI') {
-    // Handle SUI gas coin - split from gas
+  if (normalizeStructTag(coinType) === SUI_COIN_TYPE) {
+    // Handle SUI gas coin - split from gas. Normalize so every SUI form (short
+    // `0x2::sui::SUI` or the fully-expanded address) takes the gas path and
+    // never redeems from address balance.
     return tx.splitCoins(tx.gas, [tx.pure.u64(amount)])
   } else {
     // Handle other token types

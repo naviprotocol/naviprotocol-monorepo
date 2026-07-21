@@ -17,6 +17,7 @@ import {
   SwapOptions
 } from '../../types'
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+import { normalizeStructTag } from '@mysten/sui/utils'
 import { getQuoteInternal as getQuote } from './getQuote'
 import { generateRefId } from './utils'
 import { handleServiceFee, emitServiceFeeEvent } from './serviceFee'
@@ -188,8 +189,10 @@ export async function getCoinPTB(
 ): Promise<SingleCoinTransactionResult> {
   let coinA: TransactionResult
 
-  if (coin === '0x2::sui::SUI') {
-    // Handle SUI gas coin
+  if (normalizeStructTag(coin) === normalizeStructTag('0x2::sui::SUI')) {
+    // Handle SUI gas coin. Normalize so every SUI form (short `0x2::sui::SUI` or
+    // the fully-expanded address) takes the gas path and never redeems from
+    // address balance.
     coinA = txb.splitCoins(txb.gas, [txb.pure.u64(amountIn)])
   } else {
     // Handle other token types
