@@ -137,12 +137,23 @@ async function getCombinedBalance(
     return null
   }
   const response: any = await core.getBalance({ owner, coinType })
-  const balance = response?.balance ?? response
+  // Core getBalance may return `{ balance: {...} }` or a flat object. Only take a
+  // nested object as the balance; if `balance` is a scalar (the numeric total on
+  // the flat shape) fall back to the response itself, so addressBalance is read
+  // from the right place instead of collapsing to 0. Also accept the
+  // `fundsInAddressBalance` alias (matching lending's normalizeAddressBalance).
+  const nested = response?.balance
+  const balance =
+    nested && typeof nested === 'object'
+      ? nested
+      : response && typeof response === 'object'
+        ? response
+        : null
   if (!balance) {
     return null
   }
   const total = BigInt(balance.balance ?? balance.totalBalance ?? 0)
-  const addressBalance = BigInt(balance.addressBalance ?? 0)
+  const addressBalance = BigInt(balance.addressBalance ?? balance.fundsInAddressBalance ?? 0)
   return { total, addressBalance }
 }
 

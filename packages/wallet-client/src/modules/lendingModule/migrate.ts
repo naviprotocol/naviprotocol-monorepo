@@ -359,21 +359,25 @@ export async function migrateBalanceToSupplyPTB(
 
   const portfolio = new UserPortfolio(coins, { [coinType]: addressBalance })
   const balance = portfolio.getBalance(coinType)
-  const combinedBalance = balance.amount.plus(balance.addressBalance)
+  // SUI is supplied via the gas coin (useGasCoin below), which cannot draw from
+  // the address balance, so its spendable total counts coin objects only; other
+  // coins can redeem the address balance through mergeCoinsPTB.
+  const isSui = normalizeStructTag(coinType) === normalizeStructTag('0x2::sui::SUI')
+  const spendableBalance = isSui ? balance.amount : portfolio.combinedBalanceOf(coinType)
 
-  if (combinedBalance.eq(0)) {
+  if (spendableBalance.eq(0)) {
     throw new Error(`No balance of ${coinType}`)
   }
 
   console.log('migrateBalanceToSupplyPTB', {
-    balance: combinedBalance.toNumber()
+    balance: spendableBalance.toNumber()
   })
 
-  if (options?.amount && combinedBalance.lt(options.amount)) {
+  if (options?.amount && spendableBalance.lt(options.amount)) {
     throw new Error('Amount is greater than balance')
   }
 
-  const formAmount = options?.amount ?? combinedBalance.toNumber()
+  const formAmount = options?.amount ?? spendableBalance.toNumber()
 
   const slippage = options?.slippage ?? 0.005
 

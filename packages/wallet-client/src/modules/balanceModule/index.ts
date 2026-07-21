@@ -130,10 +130,15 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     // Wait for latest portfolio update
     await this.waitForUpdate()
 
-    // Check if sufficient balance is available (coin objects + address balance)
+    // Check if sufficient balance is available. SUI is funded from the gas coin
+    // below (address balance is not spendable on that path), so its sufficiency
+    // counts coin objects only; other coins can redeem the address balance via
+    // mergeCoinsPTB, so they count the combined total.
     const coinBalance = this.portfolio.getBalance(coinType)
+    const isSui = normalizeStructTag(coinType) === normalizeStructTag('0x2::sui::SUI')
+    const spendable = isSui ? coinBalance.amount : this.portfolio.combinedBalanceOf(coinType)
     const totalAmount = amounts.reduce((acc, curr) => acc.plus(curr), BigNumber(0))
-    if (coinBalance.amount.plus(coinBalance.addressBalance).lt(totalAmount)) {
+    if (spendable.lt(totalAmount)) {
       throw new Error('Insufficient balance')
     }
 
@@ -142,7 +147,7 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
 
     let mergedCoin: any = tx.gas
 
-    if (normalizeStructTag(coinType) !== normalizeStructTag('0x2::sui::SUI')) {
+    if (!isSui) {
       mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
         balance: totalAmount.toNumber(),
         addressBalance: coinBalance.addressBalance.toFixed(0),
