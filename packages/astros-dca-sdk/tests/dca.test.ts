@@ -492,4 +492,25 @@ describe('DCA PTB builders', () => {
     expect(data).not.toContain('redeem_funds')
     expect(data).toContain('SplitCoins')
   })
+
+  it('returns the redeemed coin directly for an address-only balance (no dangling split)', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({ objects: [], cursor: null, hasNextPage: false })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '0', addressBalance: '5000' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    // No coin objects: redeem exactly the amount from the address balance and
+    // return that coin directly. Splitting it would leave a zero-balance Coin
+    // result unused (Coin has no drop ability) -> PTB failure.
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).toContain('redeem_funds')
+    expect(data).not.toContain('SplitCoins')
+  })
 })

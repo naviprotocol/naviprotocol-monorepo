@@ -321,10 +321,12 @@ describe('mergeCoinsPTB', () => {
     })
     const data = JSON.stringify(tx.getData())
     expect(result).toBeDefined()
-    // No coin objects at all: the whole amount is redeemed from the address balance.
+    // No coin objects at all: the whole amount is redeemed from the address
+    // balance, and the redeemed coin (exactly the amount) is returned directly
+    // — NOT split — so no zero-balance Coin result is left dangling.
     expect(data).toContain('redeem_funds')
     expect(data).toContain('FundsWithdrawal')
-    expect(data).toContain('SplitCoins')
+    expect(data).not.toContain('SplitCoins')
   })
 
   it('withdraws the shortfall from the address balance when coin objects fall short', () => {

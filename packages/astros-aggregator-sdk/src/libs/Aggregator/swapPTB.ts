@@ -234,6 +234,7 @@ export async function getCoinPTB(
     }
 
     const shortfall = objectsBalance >= need ? 0n : need - objectsBalance
+    let baseIsRedeemed = false
     if (shortfall > 0n) {
       const withdrawnCoin = txb.moveCall({
         target: '0x2::coin::redeem_funds',
@@ -242,6 +243,7 @@ export async function getCoinPTB(
       })
       if (baseCoin === undefined) {
         baseCoin = withdrawnCoin
+        baseIsRedeemed = true
       } else {
         mergeList.push(withdrawnCoin)
       }
@@ -254,7 +256,17 @@ export async function getCoinPTB(
       txb.mergeCoins(baseCoin, mergeList)
     }
 
-    coinA = txb.splitCoins(baseCoin, [txb.pure.u64(amountIn)])
+    // Pure address-balance case: the base is the redeemed coin (no owned coin
+    // objects), and shortfall === amountIn, so it already holds exactly the
+    // amount. Return it directly — splitting the full amount would leave a
+    // zero-balance redeemed Coin result unused, and Coin has no `drop` ability,
+    // so the PTB would fail. (Mixed object + address paths split from an owned
+    // object base, whose leftover stays in place and is fine.)
+    if (baseIsRedeemed) {
+      coinA = baseCoin
+    } else {
+      coinA = txb.splitCoins(baseCoin, [txb.pure.u64(amountIn)])
+    }
   }
   return coinA as SingleCoinTransactionResult
 }

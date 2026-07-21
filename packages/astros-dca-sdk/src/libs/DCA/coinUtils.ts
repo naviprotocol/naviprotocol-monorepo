@@ -189,6 +189,7 @@ export async function getCoinForDca(
     }
 
     const shortfall = objectsBalance >= need ? 0n : need - objectsBalance
+    let baseIsRedeemed = false
     if (shortfall > 0n) {
       const withdrawnCoin = tx.moveCall({
         target: '0x2::coin::redeem_funds',
@@ -197,6 +198,7 @@ export async function getCoinForDca(
       })
       if (baseCoin === undefined) {
         baseCoin = withdrawnCoin
+        baseIsRedeemed = true
       } else {
         mergeList.push(withdrawnCoin)
       }
@@ -207,6 +209,16 @@ export async function getCoinForDca(
     }
     if (mergeList.length > 0) {
       tx.mergeCoins(baseCoin, mergeList)
+    }
+
+    // Pure address-balance case: the base is the redeemed coin (no owned coin
+    // objects), and shortfall === need, so it already holds exactly `amount`.
+    // Return it directly — splitting the full amount would leave a zero-balance
+    // redeemed Coin result unused, and Coin has no `drop` ability, so the PTB
+    // would fail at dry-run/execution. (Mixed object + address paths split from
+    // an owned object base, whose leftover stays in place and is fine.)
+    if (baseIsRedeemed) {
+      return baseCoin
     }
 
     // Split the required amount

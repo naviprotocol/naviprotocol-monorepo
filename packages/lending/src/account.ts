@@ -233,6 +233,16 @@ export function mergeCoinsPTB(
     tx.mergeCoins(baseCoin, restCoins)
   }
 
+  // Pure address-balance case: the base is the redeemed coin (no owned coin
+  // objects), and shortfall === splitBalance, so it already holds exactly the
+  // requested amount. Return it directly — splitting the full amount would leave
+  // a zero-balance redeemed Coin result unused, and Coin has no `drop` ability,
+  // so the PTB would fail. (Mixed object + address paths split from an owned
+  // object base, whose leftover stays in place and is fine.)
+  if (mergeList.length === 0) {
+    return baseCoin
+  }
+
   return needSplit ? tx.splitCoins(baseCoin, [tx.pure.u64(splitBalance)]) : baseCoin
 }
 
