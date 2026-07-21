@@ -1,5 +1,12 @@
 # @naviprotocol/wallet-client
 
+## 2.0.4
+
+### Patch Changes
+
+- Updated dependencies [2ae3e35]
+  - @naviprotocol/lending@2.0.4
+
 ## 2.0.1
 
 ### Patch Changes
