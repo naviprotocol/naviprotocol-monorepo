@@ -451,4 +451,28 @@ describe('DCA PTB builders', () => {
     expect(data).not.toContain('redeem_funds')
     expect(data).toContain('SplitCoins')
   })
+
+  it('falls back to coin objects when getBalance throws (transient RPC error)', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '5000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => {
+          throw new Error('transient rpc error')
+        })
+      }
+    }
+    const tx = new Transaction()
+
+    // getBalance failure must not abort selection when coin objects already
+    // cover the amount — fall back to coin-object-only.
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
 })

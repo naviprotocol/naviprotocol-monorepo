@@ -136,7 +136,15 @@ async function getCombinedBalance(
   if (typeof core?.getBalance !== 'function') {
     return null
   }
-  const response: any = await core.getBalance({ owner, coinType })
+  let response: any
+  try {
+    response = await core.getBalance({ owner, coinType })
+  } catch {
+    // Transient getBalance failure: fall back to coin-object-only selection
+    // instead of aborting the build (matches wallet-client's address-balance
+    // fetch, which catches and falls back).
+    return null
+  }
   // Core getBalance may return `{ balance: {...} }` or a flat object. Only take a
   // nested object as the balance; if `balance` is a scalar (the numeric total on
   // the flat shape) fall back to the response itself, so addressBalance is read
