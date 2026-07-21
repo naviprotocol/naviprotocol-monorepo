@@ -117,34 +117,6 @@ async function getCombinedBalance(
 }
 
 /**
- * Merge coins and return a merged coin object in PTB
- * @param tx - Transaction to build
- * @param coinInfo - Coin data from getCoins
- * @returns Merged coin object that can be used in subsequent operations
- */
-export function returnMergedCoins(tx: Transaction, coinInfo: any) {
-  if (!coinInfo.data || coinInfo.data.length === 0) {
-    throw new Error('No coins available')
-  }
-
-  // Sort by balance descending to use the largest coin as base
-  const sortedCoins = [...coinInfo.data].sort(
-    (a: any, b: any) => Number(b.balance) - Number(a.balance)
-  )
-
-  // Merge all coins into the largest one if there are multiple coins
-  if (sortedCoins.length >= 2) {
-    const baseObj = getCoinObjectId(sortedCoins[0])
-    const allList = sortedCoins.slice(1).map(getCoinObjectId)
-    tx.mergeCoins(baseObj, allList)
-  }
-
-  // Return the merged coin object
-  const mergedCoinObject = tx.object(getCoinObjectId(sortedCoins[0]))
-  return mergedCoinObject
-}
-
-/**
  * Get and prepare coin for DCA order creation
  * Automatically fetches coins, merges them, and splits the required amount
  *

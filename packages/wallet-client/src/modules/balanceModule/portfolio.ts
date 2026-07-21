@@ -166,10 +166,11 @@ export class UserPortfolio {
    * @returns New UserPortfolio instance with copied data
    */
   clone() {
-    const newBalances = JSON.parse(JSON.stringify(this.balances))
-    const userPortfolio = new UserPortfolio()
-    userPortfolio.balances = newBalances
-    return userPortfolio
+    // Reuse the copy constructor, which deep-copies and rehydrates the
+    // BigNumber fields (amount / addressBalance). Assigning JSON-parsed
+    // balances directly would leave them as plain strings and break `.plus` /
+    // `.toFixed` on the clone.
+    return new UserPortfolio(this)
   }
 }
 
