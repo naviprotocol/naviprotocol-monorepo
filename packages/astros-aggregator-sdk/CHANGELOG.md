@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.4
+
+### Patch Changes
+
+- fix address-balance coin selection
+
 ## 2.0.1
 
 ### Patch Changes
