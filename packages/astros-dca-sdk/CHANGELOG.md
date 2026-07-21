@@ -1,5 +1,11 @@
 # @naviprotocol/astros-dca-sdk
 
+## 2.0.1
+
+### Patch Changes
+
+- fix address-balance coin selection
+
 ## 2.0.0-beta.1
 
 ### Patch Changes

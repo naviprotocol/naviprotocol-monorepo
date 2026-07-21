@@ -87,6 +87,13 @@ function normalizeCoreCoin(coin: any, fallbackCoinType?: string): CoinStruct | n
  * @param options - Optional parameters for balance splitting and gas coin usage
  *   - `balance` - If provided, splits this amount from the resulting coin object
  *   - `useGasCoin` - If true, uses the gas coin for the operation
+ *   - `addressBalance` - Funds held directly at the address level (v2 address
+ *     balances) for this coin type. `coins` only carries `Coin<T>` objects, so
+ *     when they fall short of `balance` this covers the remainder. Defaults to
+ *     `0`, which preserves the legacy coin-object-only behavior exactly.
+ *   - `coinType` - Coin type used to withdraw the shortfall from the address
+ *     balance via `0x2::coin::redeem_funds`. Required for the address-balance
+ *     path; ignored when the owned coin objects already cover `balance`.
  * @returns Transaction result representing the merged coin
  */
 export function mergeCoinsPTB(
@@ -99,18 +106,26 @@ export function mergeCoinsPTB(
   options?: {
     balance?: number
     useGasCoin?: boolean
+    addressBalance?: string | number | bigint
+    coinType?: string
   }
 ) {
   const needSplit = typeof options?.balance === 'number'
   const splitBalance = needSplit ? options.balance! : 0
+  const addressBalance = BigInt(options?.addressBalance ?? 0)
   let mergedBalance = 0
   const mergeList: string[] = []
   let coinType = ''
+  // Full sum of the passed coin objects (used for the combined sufficiency
+  // check and to size the address-balance shortfall). Kept separate from
+  // `mergedBalance`, which can stop early once `splitBalance` is reached.
+  let objectsBalance = 0n
 
   // Sort coins by balance (highest first) and collect valid coins
   coins
     .sort((a, b) => Number(b.balance) - Number(a.balance))
     .forEach((coin) => {
+      objectsBalance += BigInt(coin.balance)
       if (needSplit && mergedBalance >= splitBalance) {
         return
       }
@@ -127,25 +142,108 @@ export function mergeCoinsPTB(
       mergeList.push(coin.coinObjectId)
     })
 
-  if (mergeList.length === 0) {
+  // Coin type driving the SUI/gas decision and the address-balance withdrawal.
+  // When there are no coin objects the local `coinType` (derived from
+  // `coins[i].coinType`) is empty, so fall back to the caller-supplied
+  // `options.coinType` — required for the address-only case, and it also avoids
+  // passing an empty string into `normalizeCoinType` (which would throw).
+  const redeemCoinType = options?.coinType
+  const effectiveType = coinType || redeemCoinType || ''
+  // Tolerant SUI check: an unparseable/placeholder coin type is simply "not SUI"
+  // and must not throw before the balance guards (which run below), matching the
+  // original ordering.
+  const isSuiType = (type: string) => {
+    if (!type) {
+      return false
+    }
+    try {
+      return normalizeCoinType(type) === normalizeCoinType('0x2::sui::SUI')
+    } catch {
+      return false
+    }
+  }
+  const isSuiGas = isSuiType(effectiveType) && !!options?.useGasCoin
+
+  // Address balance is only actually spendable when we can redeem it: on the
+  // non-gas path AND with a coinType to withdraw against. The SUI gas-coin path
+  // cannot draw from it, and without a coinType there is no redeem_funds call —
+  // so in those cases it must not count toward the sufficiency check (otherwise
+  // the combined total would pass and we'd split against coin objects that are
+  // still short).
+  const need = BigInt(splitBalance)
+  const canUseAddressBalance = !isSuiGas && !!redeemCoinType
+  const usableAddressBalance = canUseAddressBalance ? addressBalance : 0n
+  const combined = objectsBalance + usableAddressBalance
+  // Shortfall the address balance must cover. Only meaningful when splitting.
+  // `combined >= need` (checked below) guarantees `shortfall <= usableAddressBalance`.
+  const shortfall = !needSplit || objectsBalance >= need ? 0n : need - objectsBalance
+  const canRedeem = canUseAddressBalance && shortfall > 0n && usableAddressBalance >= shortfall
+
+  // Insufficiency first: when splitting and the (usable) combined total is short,
+  // report the balance shortfall — including the address-only case (no coin
+  // objects but some address balance) — rather than the misleading empty-wallet
+  // "No coins to merge".
+  if (needSplit && combined < need) {
+    throw new Error(`Balance is less than the specified balance: ${combined} < ${need}`)
+  }
+  // Genuinely nothing to work with: no coin objects and no address-balance
+  // shortfall to redeem. Preserves the legacy "No coins to merge" behavior.
+  if (mergeList.length === 0 && !canRedeem) {
     throw new Error('No coins to merge')
   }
-  if (needSplit && mergedBalance < splitBalance) {
-    throw new Error(
-      `Balance is less than the specified balance: ${mergedBalance} < ${splitBalance}`
-    )
-  }
 
-  // Handle SUI gas coin specially
-  if (normalizeCoinType(coinType) === normalizeCoinType('0x2::sui::SUI') && options?.useGasCoin) {
+  // Handle SUI gas coin specially. SUI stays on the gas-split path and is never
+  // routed through redeem_funds.
+  if (isSuiGas) {
     return needSplit ? tx.splitCoins(tx.gas, [tx.pure.u64(splitBalance)]) : tx.gas
   }
 
-  // Merge coins and optionally split
+  // Legacy coin-object-only path: the owned objects already cover the request
+  // (or no address balance is in play). Behavior is byte-for-byte unchanged.
+  if (!canRedeem) {
+    mergeList.length === 1
+      ? tx.object(mergeList[0])
+      : tx.mergeCoins(mergeList[0], mergeList.slice(1))
 
-  mergeList.length === 1 ? tx.object(mergeList[0]) : tx.mergeCoins(mergeList[0], mergeList.slice(1))
+    return needSplit ? tx.splitCoins(mergeList[0], [tx.pure.u64(splitBalance)]) : mergeList[0]
+  }
 
-  return needSplit ? tx.splitCoins(mergeList[0], [tx.pure.u64(splitBalance)]) : mergeList[0]
+  // Address-balance path: withdraw the shortfall from the address balance and
+  // merge it with the owned coin objects (largest first). When there are no
+  // coin objects at all, the redeemed coin becomes the base.
+  const redeemedCoin = tx.moveCall({
+    target: '0x2::coin::redeem_funds',
+    typeArguments: [redeemCoinType!],
+    arguments: [tx.withdrawal({ amount: shortfall, type: redeemCoinType! })]
+  })
+
+  let baseCoin: any
+  const restCoins: any[] = []
+  if (mergeList.length > 0) {
+    baseCoin = tx.object(mergeList[0])
+    for (const id of mergeList.slice(1)) {
+      restCoins.push(tx.object(id))
+    }
+    restCoins.push(redeemedCoin)
+  } else {
+    baseCoin = redeemedCoin
+  }
+
+  if (restCoins.length > 0) {
+    tx.mergeCoins(baseCoin, restCoins)
+  }
+
+  // Pure address-balance case: the base is the redeemed coin (no owned coin
+  // objects), and shortfall === splitBalance, so it already holds exactly the
+  // requested amount. Return it directly — splitting the full amount would leave
+  // a zero-balance redeemed Coin result unused, and Coin has no `drop` ability,
+  // so the PTB would fail. (Mixed object + address paths split from an owned
+  // object base, whose leftover stays in place and is fine.)
+  if (mergeList.length === 0) {
+    return baseCoin
+  }
+
+  return needSplit ? tx.splitCoins(baseCoin, [tx.pure.u64(splitBalance)]) : baseCoin
 }
 
 /**

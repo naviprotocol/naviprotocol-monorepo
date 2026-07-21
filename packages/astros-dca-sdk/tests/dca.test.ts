@@ -381,4 +381,136 @@ describe('DCA PTB builders', () => {
     expect(result.effects?.status?.status).toBe('success')
     expect(result.events).toEqual([{ type: 'core::dca' }])
   })
+
+  it('withdraws the shortfall from address balance when coin objects are insufficient', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '1000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '1000', addressBalance: '4000' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(client.core.getBalance).toHaveBeenCalledWith({
+      owner: userAddress,
+      coinType: '0x2::test::COIN'
+    })
+    // coin objects (1000) fall short of 3000 -> redeem 2000 from the address balance
+    expect(data).toContain('redeem_funds')
+    expect(data).toContain('FundsWithdrawal')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('throws Insufficient balance using the combined total when address balance is also short', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '1000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '1500', coinBalance: '1000', addressBalance: '500' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await expect(
+      getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+    ).rejects.toThrow('Insufficient balance: need 3000, have 1500')
+  })
+
+  it('does not touch address balance when coin objects already cover the amount', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '5000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '5000', addressBalance: '0' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('falls back to coin objects when getBalance throws (transient RPC error)', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({
+          objects: [{ objectId, balance: '5000' }],
+          cursor: null,
+          hasNextPage: false
+        })),
+        getBalance: vi.fn(async () => {
+          throw new Error('transient rpc error')
+        })
+      }
+    }
+    const tx = new Transaction()
+
+    // getBalance failure must not abort selection when coin objects already
+    // cover the amount — fall back to coin-object-only.
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('treats the fully-expanded SUI type as gas (no coin fetch, no redeem)', async () => {
+    const listCoins = vi.fn()
+    const getBalance = vi.fn()
+    const client = { core: { listCoins, getBalance } }
+    const tx = new Transaction()
+    const fullSui = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+
+    await getCoinForDca(client as any, tx, userAddress, fullSui, 100)
+
+    // Normalized SUI must take the gas path — never fetch coins or redeem.
+    expect(listCoins).not.toHaveBeenCalled()
+    expect(getBalance).not.toHaveBeenCalled()
+    const data = JSON.stringify(tx.getData())
+    expect(data).not.toContain('redeem_funds')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('returns the redeemed coin directly for an address-only balance (no dangling split)', async () => {
+    const client = {
+      core: {
+        listCoins: vi.fn(async () => ({ objects: [], cursor: null, hasNextPage: false })),
+        getBalance: vi.fn(async () => ({
+          balance: { balance: '5000', coinBalance: '0', addressBalance: '5000' }
+        }))
+      }
+    }
+    const tx = new Transaction()
+
+    // No coin objects: redeem exactly the amount from the address balance and
+    // return that coin directly. Splitting it would leave a zero-balance Coin
+    // result unused (Coin has no drop ability) -> PTB failure.
+    await getCoinForDca(client as any, tx, userAddress, '0x2::test::COIN', 3000)
+
+    const data = JSON.stringify(tx.getData())
+    expect(data).toContain('redeem_funds')
+    expect(data).not.toContain('SplitCoins')
+  })
 })

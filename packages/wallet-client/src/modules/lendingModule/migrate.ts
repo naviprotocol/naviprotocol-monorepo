@@ -8,7 +8,8 @@ import {
   borrowCoinPTB,
   mergeCoinsPTB,
   updateOraclePricesPTB,
-  getCoins
+  getCoins,
+  getAddressBalance
 } from '@naviprotocol/lending'
 import { buildSwapPTBFromQuote } from '@naviprotocol/astros-aggregator-sdk'
 import type { LendingModule } from '.'
@@ -339,28 +340,52 @@ export async function migrateBalanceToSupplyPTB(
     coinType
   })
   const toPool = await this.getPool(to)
-  const portfolio = new UserPortfolio(coins)
-  const balance = portfolio.getBalance(coinType)
 
-  if (balance.amount.eq(0)) {
+  // Include v2 address-level funds for this coin type when the core client
+  // supports it; otherwise fall back to coin-object-only balances.
+  let addressBalance = '0'
+  const core = (this.walletClient.client as { core?: Record<string, unknown> }).core
+  if (typeof core?.getBalance === 'function') {
+    try {
+      const balanceInfo = await getAddressBalance(this.walletClient.client, {
+        owner: this.walletClient.address,
+        coinType
+      })
+      addressBalance = balanceInfo.addressBalance
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const portfolio = new UserPortfolio(coins, { [coinType]: addressBalance })
+  const balance = portfolio.getBalance(coinType)
+  // SUI is supplied via the gas coin (useGasCoin below), which cannot draw from
+  // the address balance, so its spendable total counts coin objects only; other
+  // coins can redeem the address balance through mergeCoinsPTB.
+  const isSui = normalizeStructTag(coinType) === normalizeStructTag('0x2::sui::SUI')
+  const spendableBalance = isSui ? balance.amount : portfolio.combinedBalanceOf(coinType)
+
+  if (spendableBalance.eq(0)) {
     throw new Error(`No balance of ${coinType}`)
   }
 
   console.log('migrateBalanceToSupplyPTB', {
-    balance: balance.amount.toNumber()
+    balance: spendableBalance.toNumber()
   })
 
-  if (options?.amount && balance.amount.lt(options.amount)) {
+  if (options?.amount && spendableBalance.lt(options.amount)) {
     throw new Error('Amount is greater than balance')
   }
 
-  const formAmount = options?.amount ?? balance.amount.toNumber()
+  const formAmount = options?.amount ?? spendableBalance.toNumber()
 
   const slippage = options?.slippage ?? 0.005
 
   let depositCoin = await mergeCoinsPTB(tx, balance.coins, {
     balance: formAmount,
-    useGasCoin: true
+    useGasCoin: true,
+    addressBalance: balance.addressBalance.toFixed(0),
+    coinType
   })
 
   if (normalizeStructTag(coinType) !== normalizeStructTag(toPool.suiCoinType)) {

@@ -219,7 +219,9 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
 
     const mergedCoin = mergeCoinsPTB(tx, suiBalance.coins, {
       balance: suiAmount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: suiBalance.addressBalance.toFixed(0),
+      coinType: '0x2::sui::SUI'
     })
 
     const vSuiCoin = await this.stakePTB(tx, mergedCoin)
@@ -271,7 +273,9 @@ export class VoloModule extends Module<VoloModuleConfig, Events> {
       .portfolio.getBalance(this.config.coinType)
 
     const mergedCoin = mergeCoinsPTB(tx, vSuiBalance.coins, {
-      balance: vSuiAmount
+      balance: vSuiAmount,
+      addressBalance: vSuiBalance.addressBalance.toFixed(0),
+      coinType: this.config.coinType
     })
 
     const suiCoin = await this.unstakePTB(tx, mergedCoin)

@@ -207,10 +207,12 @@ export class SwapModule extends Module<SwapModuleConfig, Events> {
     // Build transaction
     const tx = new Transaction()
 
-    // Merge coins for the swap input
+    // Merge coins for the swap input (coin objects + address balance)
     const fromCoin = mergeCoinsPTB(tx, fromCoinBalance.coins, {
       balance: fromAmount,
-      useGasCoin: true
+      useGasCoin: true,
+      addressBalance: fromCoinBalance.addressBalance.toFixed(0),
+      coinType: fromCoinType
     })
 
     // Get quote from aggregator

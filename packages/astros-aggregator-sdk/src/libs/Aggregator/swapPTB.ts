@@ -16,8 +16,8 @@ import {
   SingleCoinTransactionResult,
   SwapOptions
 } from '../../types'
-import { returnMergedCoins } from '../PTB/commonFunctions'
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+import { normalizeStructTag } from '@mysten/sui/utils'
 import { getQuoteInternal as getQuote } from './getQuote'
 import { generateRefId } from './utils'
 import { handleServiceFee, emitServiceFeeEvent } from './serviceFee'
@@ -107,6 +107,65 @@ export async function getCoins(
   return coinDetails
 }
 
+function getCoinObjectId(coin: { coinObjectId?: string; objectId?: string }) {
+  const objectId = coin.coinObjectId ?? coin.objectId
+  if (!objectId) {
+    throw new Error('Coin object is missing coinObjectId/objectId')
+  }
+  return objectId
+}
+
+/**
+ * Read a coin's combined balance via the v2 Core `getBalance`.
+ *
+ * On Sui, a fungible balance is `coinBalance` (sum of `Coin<T>` objects) plus
+ * `addressBalance` (funds held directly at the address, arriving via
+ * `send_funds()`). `listCoins`/`getCoins` only see coin objects, so sufficiency
+ * checks based on them under-count once address balances are in play. This reads
+ * the authoritative combined total so callers can source the shortfall from the
+ * address balance.
+ *
+ * Returns `null` when the injected client exposes no `core.getBalance`
+ * (legacy path) — callers then fall back to coin-object-only behavior.
+ */
+async function getCombinedBalance(
+  client: NaviAggregatorCoinClient,
+  owner: string,
+  coinType: string
+): Promise<{ total: bigint; addressBalance: bigint } | null> {
+  const core = client.core as { getBalance?(options: any): Promise<any> } | undefined
+  if (typeof core?.getBalance !== 'function') {
+    return null
+  }
+  let response: any
+  try {
+    response = await core.getBalance({ owner, coinType })
+  } catch {
+    // Transient getBalance failure: fall back to coin-object-only selection
+    // instead of aborting the build (matches wallet-client's address-balance
+    // fetch, which catches and falls back).
+    return null
+  }
+  // Core getBalance may return `{ balance: {...} }` or a flat object. Only take a
+  // nested object as the balance; if `balance` is a scalar (the numeric total on
+  // the flat shape) fall back to the response itself, so addressBalance is read
+  // from the right place instead of collapsing to 0. Also accept the
+  // `fundsInAddressBalance` alias (matching lending's normalizeAddressBalance).
+  const nested = response?.balance
+  const balance =
+    nested && typeof nested === 'object'
+      ? nested
+      : response && typeof response === 'object'
+        ? response
+        : null
+  if (!balance) {
+    return null
+  }
+  const total = BigInt(balance.balance ?? balance.totalBalance ?? 0)
+  const addressBalance = BigInt(balance.addressBalance ?? balance.fundsInAddressBalance ?? 0)
+  return { total, addressBalance }
+}
+
 /**
  * Gets coin objects for transaction building
  *
@@ -130,21 +189,84 @@ export async function getCoinPTB(
 ): Promise<SingleCoinTransactionResult> {
   let coinA: TransactionResult
 
-  if (coin === '0x2::sui::SUI') {
-    // Handle SUI gas coin
+  if (normalizeStructTag(coin) === normalizeStructTag('0x2::sui::SUI')) {
+    // Handle SUI gas coin. Normalize so every SUI form (short `0x2::sui::SUI` or
+    // the fully-expanded address) takes the gas path and never redeems from
+    // address balance.
     coinA = txb.splitCoins(txb.gas, [txb.pure.u64(amountIn)])
   } else {
     // Handle other token types
     const coinInfo = await getCoins(client, address, coin)
+    const objects = coinInfo.data ?? []
+    const objectsBalance = objects.reduce((sum: bigint, c: any) => sum + BigInt(c.balance ?? 0), 0n)
+    const need = BigInt(amountIn)
+
+    // Address balances (v2): part of the balance can live at the address level
+    // (not as Coin<T> objects). `getCoins` only sees coin objects, so validate
+    // against the combined balance and, when the objects fall short, withdraw
+    // the remainder from the address balance via `0x2::coin::redeem_funds`.
+    const combined = await getCombinedBalance(client, address, coin)
+    const addressBalance = combined ? combined.addressBalance : 0n
+    // Combined spendable = owned coin objects + address balance. Sizing both the
+    // sufficiency check and the shortfall from the same `objectsBalance` keeps the
+    // redeemed amount from ever exceeding the available address balance.
+    const total = objectsBalance + addressBalance
 
     // Check if user has enough balance for tokenA
-    if (!coinInfo.data[0]) {
-      throw new Error('Insufficient balance for this coin')
+    if (total < need) {
+      throw new Error(`Insufficient balance: need ${need}, have ${total}`)
     }
 
-    // Merge coins if necessary, to cover the amount needed
-    const mergedCoin = returnMergedCoins(txb, coinInfo)
-    coinA = txb.splitCoins(mergedCoin, [txb.pure.u64(amountIn)])
+    // Base coin + merge list: all owned Coin<T> objects (largest first), plus a
+    // coin redeemed from the address balance to cover any shortfall.
+    const sorted = [...objects].sort((a: any, b: any) =>
+      Number(BigInt(b.balance ?? 0) - BigInt(a.balance ?? 0))
+    )
+    let baseCoin: any
+    const mergeList: any[] = []
+    for (const c of sorted) {
+      const obj = txb.object(getCoinObjectId(c))
+      if (baseCoin === undefined) {
+        baseCoin = obj
+      } else {
+        mergeList.push(obj)
+      }
+    }
+
+    const shortfall = objectsBalance >= need ? 0n : need - objectsBalance
+    let baseIsRedeemed = false
+    if (shortfall > 0n) {
+      const withdrawnCoin = txb.moveCall({
+        target: '0x2::coin::redeem_funds',
+        typeArguments: [coin],
+        arguments: [txb.withdrawal({ amount: shortfall, type: coin })]
+      })
+      if (baseCoin === undefined) {
+        baseCoin = withdrawnCoin
+        baseIsRedeemed = true
+      } else {
+        mergeList.push(withdrawnCoin)
+      }
+    }
+
+    if (baseCoin === undefined) {
+      throw new Error('Insufficient balance for this coin')
+    }
+    if (mergeList.length > 0) {
+      txb.mergeCoins(baseCoin, mergeList)
+    }
+
+    // Pure address-balance case: the base is the redeemed coin (no owned coin
+    // objects), and shortfall === amountIn, so it already holds exactly the
+    // amount. Return it directly — splitting the full amount would leave a
+    // zero-balance redeemed Coin result unused, and Coin has no `drop` ability,
+    // so the PTB would fail. (Mixed object + address paths split from an owned
+    // object base, whose leftover stays in place and is fine.)
+    if (baseIsRedeemed) {
+      coinA = baseCoin
+    } else {
+      coinA = txb.splitCoins(baseCoin, [txb.pure.u64(amountIn)])
+    }
   }
   return coinA as SingleCoinTransactionResult
 }

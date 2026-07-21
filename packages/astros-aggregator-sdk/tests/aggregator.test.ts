@@ -225,6 +225,50 @@ describe('swap test', () => {
     expect(commands[1]).toHaveProperty('SplitCoins')
   })
 
+  it('withdraws the shortfall from address balance when coin objects are insufficient', async () => {
+    const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const txb = createTransaction(userAddress)
+    const listCoins = vi.fn(async () => ({
+      objects: [{ objectId: `0x${'a'.repeat(64)}`, balance: '1000', coinType: coins.deep.address }],
+      cursor: null,
+      hasNextPage: false
+    }))
+    const getBalance = vi.fn(async () => ({
+      balance: { balance: '5000', coinBalance: '1000', addressBalance: '4000' }
+    }))
+
+    const coin = await getCoinPTB(userAddress, coins.deep.address, 3000n, txb, {
+      core: { listCoins, getBalance }
+    } as any)
+    const data = JSON.stringify(txb.getData())
+
+    expect(coin).toBeDefined()
+    expect(getBalance).toHaveBeenCalledWith({ owner: userAddress, coinType: coins.deep.address })
+    // coin objects (1000) fall short of 3000 -> redeem 2000 from the address balance
+    expect(data).toContain('redeem_funds')
+    expect(data).toContain('FundsWithdrawal')
+    expect(data).toContain('SplitCoins')
+  })
+
+  it('reports the combined total when even the address balance is short', async () => {
+    const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const txb = createTransaction(userAddress)
+    const listCoins = vi.fn(async () => ({
+      objects: [{ objectId: `0x${'a'.repeat(64)}`, balance: '1000', coinType: coins.deep.address }],
+      cursor: null,
+      hasNextPage: false
+    }))
+    const getBalance = vi.fn(async () => ({
+      balance: { balance: '1500', coinBalance: '1000', addressBalance: '500' }
+    }))
+
+    await expect(
+      getCoinPTB(userAddress, coins.deep.address, 3000n, txb, {
+        core: { listCoins, getBalance }
+      } as any)
+    ).rejects.toThrow('have 1500')
+  })
+
   it('normalizes executeTransaction into a NAVI DTO even when shio auction fails', async () => {
     const { executeTransaction } = await import('../src/astros-sdk')
     const txb = createTransaction(coins.sui.holder)
