@@ -145,22 +145,35 @@ export class BalanceModule extends Module<BalanceModuleConfig, Events> {
     // Build transaction
     const tx = new Transaction()
 
-    let mergedCoin: any = tx.gas
-
-    if (!isSui) {
-      mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
+    if (isSui) {
+      // SUI: split each share from the gas coin; the leftover stays on the gas
+      // coin, so there is no dangling zero-balance result.
+      const shares = tx.splitCoins(tx.gas, amounts)
+      recipients.forEach((address, index) => {
+        tx.transferObjects([shares[index]], address)
+      })
+    } else {
+      // Non-SUI: mergeCoinsPTB returns a coin holding EXACTLY totalAmount. It may
+      // be a redeem_funds result (address balance) with no owned object to
+      // absorb leftover, so a plain splitCoins of every share would leave the
+      // source at zero balance and unused (Coin has no `drop` ability → PTB
+      // fails). Instead split the first n-1 shares and transfer the source coin
+      // itself as the last share, fully consuming it.
+      const mergedCoin = mergeCoinsPTB(tx, coinBalance.coins, {
         balance: totalAmount.toNumber(),
         addressBalance: coinBalance.addressBalance.toFixed(0),
         coinType
       })
+      if (recipients.length === 1) {
+        tx.transferObjects([mergedCoin], recipients[0])
+      } else {
+        const headShares = tx.splitCoins(mergedCoin, amounts.slice(0, -1))
+        recipients.slice(0, -1).forEach((address, index) => {
+          tx.transferObjects([headShares[index]], address)
+        })
+        tx.transferObjects([mergedCoin], recipients[recipients.length - 1])
+      }
     }
-
-    const coins = tx.splitCoins(mergedCoin, amounts)
-
-    // Transfer coins to recipients
-    recipients.forEach((address, index) => {
-      tx.transferObjects([coins[index]], address)
-    })
 
     // Execute transaction
     const result = await this.walletClient.signExecuteTransaction({
