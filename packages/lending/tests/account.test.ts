@@ -280,8 +280,13 @@ describe('mergeCoinsPTB', () => {
   ]
   it('no coins to merge', () => {
     const tx = new Transaction()
+    // No coins and no split target -> nothing to merge.
     expect(() => mergeCoinsPTB(tx, [])).toThrow('No coins to merge')
-    expect(() => mergeCoinsPTB(tx, [], { balance: 100 })).toThrow('No coins to merge')
+    // When a split IS requested, an empty / zero-balance wallet is an
+    // insufficiency, not an empty-merge — report the balance shortfall.
+    expect(() => mergeCoinsPTB(tx, [], { balance: 100 })).toThrow(
+      'Balance is less than the specified balance: 0 < 100'
+    )
     expect(() =>
       mergeCoinsPTB(
         tx,
@@ -297,7 +302,7 @@ describe('mergeCoinsPTB', () => {
         ],
         { balance: 100 }
       )
-    ).toThrow('No coins to merge')
+    ).toThrow('Balance is less than the specified balance: 0 < 100')
   })
 
   it('Balance is less than the specified balance', () => {
@@ -375,6 +380,24 @@ describe('mergeCoinsPTB', () => {
         coinType: '0x2::sui::SUI'
       })
     ).toThrow('Balance is less than the specified balance: 10 < 100')
+  })
+
+  it('does not count address balance toward sufficiency when coinType is omitted', () => {
+    const tx = new Transaction()
+    // objects = 30, addressBalance = 1000 but no coinType -> cannot redeem, so
+    // address balance must not count: combined = 30 < 100 -> throw (no bad tx).
+    expect(() => mergeCoinsPTB(tx, fakeCoins, { balance: 100, addressBalance: '1000' })).toThrow(
+      'Balance is less than the specified balance: 30 < 100'
+    )
+  })
+
+  it('reports insufficiency (not "No coins to merge") for an address-only shortfall', () => {
+    const tx = new Transaction()
+    // no coin objects, addressBalance 20 < need 100, coinType provided ->
+    // combined 20 < 100 -> insufficiency message, not the empty-wallet error.
+    expect(() =>
+      mergeCoinsPTB(tx, [], { balance: 100, addressBalance: '20', coinType: '0x1' })
+    ).toThrow('Balance is less than the specified balance: 20 < 100')
   })
 
   it.skipIf(!runLiveTests)('merge vsui coins', async () => {

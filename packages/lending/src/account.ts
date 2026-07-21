@@ -164,24 +164,32 @@ export function mergeCoinsPTB(
   }
   const isSuiGas = isSuiType(effectiveType) && !!options?.useGasCoin
 
-  // Address balances are only spendable via redeem_funds on the non-gas path;
-  // the SUI gas-coin path cannot draw from them, so they don't count there.
+  // Address balance is only actually spendable when we can redeem it: on the
+  // non-gas path AND with a coinType to withdraw against. The SUI gas-coin path
+  // cannot draw from it, and without a coinType there is no redeem_funds call —
+  // so in those cases it must not count toward the sufficiency check (otherwise
+  // the combined total would pass and we'd split against coin objects that are
+  // still short).
   const need = BigInt(splitBalance)
-  const usableAddressBalance = isSuiGas ? 0n : addressBalance
+  const canUseAddressBalance = !isSuiGas && !!redeemCoinType
+  const usableAddressBalance = canUseAddressBalance ? addressBalance : 0n
   const combined = objectsBalance + usableAddressBalance
   // Shortfall the address balance must cover. Only meaningful when splitting.
   // `combined >= need` (checked below) guarantees `shortfall <= usableAddressBalance`.
   const shortfall = !needSplit || objectsBalance >= need ? 0n : need - objectsBalance
-  const canRedeem =
-    !isSuiGas && !!redeemCoinType && shortfall > 0n && usableAddressBalance >= shortfall
+  const canRedeem = canUseAddressBalance && shortfall > 0n && usableAddressBalance >= shortfall
 
+  // Insufficiency first: when splitting and the (usable) combined total is short,
+  // report the balance shortfall — including the address-only case (no coin
+  // objects but some address balance) — rather than the misleading empty-wallet
+  // "No coins to merge".
+  if (needSplit && combined < need) {
+    throw new Error(`Balance is less than the specified balance: ${combined} < ${need}`)
+  }
   // Genuinely nothing to work with: no coin objects and no address-balance
   // shortfall to redeem. Preserves the legacy "No coins to merge" behavior.
   if (mergeList.length === 0 && !canRedeem) {
     throw new Error('No coins to merge')
-  }
-  if (needSplit && combined < need) {
-    throw new Error(`Balance is less than the specified balance: ${combined} < ${need}`)
   }
 
   // Handle SUI gas coin specially. SUI stays on the gas-split path and is never
