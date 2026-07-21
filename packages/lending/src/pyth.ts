@@ -55,6 +55,9 @@ type SuiPythCoreProvider = {
   }): Promise<{
     object?: { objectId: string; type?: string; json?: Record<string, unknown> | null }
   }>
+  getDynamicField(options: { parentId: string; name: CoreDynamicFieldName }): Promise<{
+    dynamicField?: { value?: { type?: string; bcs?: Uint8Array } }
+  }>
 }
 
 const MAX_ARGUMENT_SIZE = 16 * 1024
@@ -248,7 +251,8 @@ export class SuiPythClient {
     if (
       core &&
       typeof core.getObject === 'function' &&
-      typeof core.getDynamicObjectField === 'function'
+      typeof core.getDynamicObjectField === 'function' &&
+      typeof core.getDynamicField === 'function'
     ) {
       return core as SuiPythCoreProvider
     }
@@ -465,22 +469,38 @@ export class SuiPythClient {
     const normalizedFeedId = normalizePriceId(feedId)
     if (!this.priceFeedObjectIdCache.has(normalizedFeedId)) {
       const { id: tableId, fieldType } = await this.getPriceTableInfo()
-      const fieldName = this.getCoreProvider()
-        ? toDynamicFieldName(
-            `${fieldType}::price_identifier::PriceIdentifier`,
-            encodePriceIdentifier(hexToBytes(normalizedFeedId))
-          )
-        : {
-            type: `${fieldType}::price_identifier::PriceIdentifier`,
-            value: {
-              bytes: Array.from(hexToBytes(normalizedFeedId))
-            }
-          }
-      const result = await this.getDynamicMoveObjectJson(tableId, fieldName)
-      if (!result?.fields) {
-        this.priceFeedObjectIdCache.set(normalizedFeedId, undefined)
+      const nameType = `${fieldType}::price_identifier::PriceIdentifier`
+
+      const core = this.getCoreProvider()
+      if (core) {
+        // Pyth's price table stores entries as plain dynamic fields
+        // (0x2::dynamic_field::Field<PriceIdentifier, ID>). getDynamicObjectField
+        // must not be used here: it derives the child id from
+        // Wrapper<PriceIdentifier> and resolves to an object that does not exist
+        // on chain, aborting every Pyth price feed update.
+        const { dynamicField } = await core.getDynamicField({
+          parentId: tableId,
+          name: toDynamicFieldName(nameType, encodePriceIdentifier(hexToBytes(normalizedFeedId)))
+        })
+        const valueBcs = dynamicField?.value?.bcs
+        this.priceFeedObjectIdCache.set(
+          normalizedFeedId,
+          valueBcs && valueBcs.length === 32
+            ? bcs.Address.parse(Uint8Array.from(valueBcs))
+            : undefined
+        )
       } else {
-        this.priceFeedObjectIdCache.set(normalizedFeedId, (result.fields as any).value)
+        const result = await this.getDynamicMoveObjectJson(tableId, {
+          type: nameType,
+          value: {
+            bytes: Array.from(hexToBytes(normalizedFeedId))
+          }
+        })
+        if (!result?.fields) {
+          this.priceFeedObjectIdCache.set(normalizedFeedId, undefined)
+        } else {
+          this.priceFeedObjectIdCache.set(normalizedFeedId, (result.fields as any).value)
+        }
       }
     }
     return this.priceFeedObjectIdCache.get(normalizedFeedId)
