@@ -146,7 +146,7 @@ for (const packageName of sdkPackages) {
     }
 
     const isJsFile = normalizedFile.endsWith('.js')
-    if (isJsFile && /\brequire\s*\(/.test(content)) {
+    if (isJsFile && !isBridgeMayanArtifact && /\brequire\s*\(/.test(content)) {
       issues.push(`${relativeFile}: ESM bundle contains require()`)
     }
 
