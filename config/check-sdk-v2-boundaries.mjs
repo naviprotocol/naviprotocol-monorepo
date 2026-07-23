@@ -66,7 +66,7 @@ function listFiles(dir) {
 
 function assertRequiredDistFiles(packageName, distFiles) {
   const normalizedFiles = new Set(distFiles.map(toPosixPath))
-  for (const requiredFile of ['index.esm.js', 'index.d.ts']) {
+  for (const requiredFile of ['index.js', 'index.d.ts']) {
     if (!normalizedFiles.has(requiredFile)) {
       issues.push(`${packageName}: dist/${requiredFile} is missing; run build before boundary scan`)
     }
@@ -128,7 +128,7 @@ for (const packageName of sdkPackages) {
     const relativeFile = path.relative(repoRoot, absoluteFile)
     const content = fs.readFileSync(absoluteFile, 'utf8')
     const isDeclaration = normalizedFile.endsWith('.d.ts')
-    const isRootBundle = normalizedFile === 'index.esm.js'
+    const isRootBundle = normalizedFile === 'index.js'
     const isBridgeMayanArtifact =
       packageName === 'astros-bridge-sdk' &&
       (normalizedFile.startsWith('mayan-') || normalizedFile.startsWith('providers/mayan'))

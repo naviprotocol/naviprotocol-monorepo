@@ -129,7 +129,7 @@ function requireEnv(name) {
 }
 
 function importPackage(packageName) {
-  const url = new URL(`../packages/${packageName}/dist/index.esm.js`, import.meta.url)
+  const url = new URL(`../packages/${packageName}/dist/index.js`, import.meta.url)
   return import(url)
 }
 
