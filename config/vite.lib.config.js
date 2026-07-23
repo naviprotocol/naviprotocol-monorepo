@@ -89,11 +89,26 @@ function generateMissingBarrelJs(distDir) {
           // Parse the .d.ts to extract re-exports and generate matching JS
           const dtsContent = fs.readFileSync(filePath, 'utf8')
           const exports = []
-          const reExportRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g
+
+          // Match: export * from '...'
+          const starReExportRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g
           let match
-          while ((match = reExportRegex.exec(dtsContent)) !== null) {
+          while ((match = starReExportRegex.exec(dtsContent)) !== null) {
             exports.push(`export * from '${match[1]}';`)
           }
+
+          // Match: export { foo, bar } from '...'
+          const namedReExportRegex = /export\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g
+          while ((match = namedReExportRegex.exec(dtsContent)) !== null) {
+            const names = match[1]
+              .split(',')
+              .map((n) => n.trim())
+              .filter((n) => n && !n.startsWith('type '))
+            if (names.length > 0) {
+              exports.push(`export { ${names.join(', ')} } from '${match[2]}';`)
+            }
+          }
+
           if (exports.length > 0) {
             fs.writeFileSync(jsFile, exports.join('\n') + '\n')
           }

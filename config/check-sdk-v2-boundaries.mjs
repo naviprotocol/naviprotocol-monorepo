@@ -131,7 +131,7 @@ for (const packageName of sdkPackages) {
     const isRootBundle = normalizedFile === 'index.js'
     const isBridgeMayanArtifact =
       packageName === 'astros-bridge-sdk' &&
-      (normalizedFile.startsWith('mayan-') || normalizedFile.startsWith('providers/mayan'))
+      (normalizedFile.startsWith('mayan') || normalizedFile.startsWith('providers/mayan'))
     const isWalletSuilendArtifact =
       packageName === 'wallet-client' &&
       (normalizedFile.startsWith('suilend-') ||
@@ -145,8 +145,9 @@ for (const packageName of sdkPackages) {
       }
     }
 
-    if (isRootBundle && /\brequire\s*\(/.test(content)) {
-      issues.push(`${relativeFile}: root ESM bundle contains require()`)
+    const isJsFile = normalizedFile.endsWith('.js')
+    if (isJsFile && /\brequire\s*\(/.test(content)) {
+      issues.push(`${relativeFile}: ESM bundle contains require()`)
     }
 
     if (!isBridgeMayanArtifact && content.includes('@mayanfinance')) {
