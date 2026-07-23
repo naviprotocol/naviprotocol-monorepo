@@ -41,9 +41,16 @@ export type PythPriceInfo = {
  * Pyth Network connection for price feed data
  * Connects to the Hermes endpoint for real-time price updates
  */
-const suiPythConnection = new SuiPriceServiceConnection('https://hermes.pyth.network', {
-  timeout: 10000
-})
+const pythConnections = new Map<string, SuiPriceServiceConnection>()
+const getPythConnection = (endpoint?: string) => {
+  const url = endpoint ?? 'https://hermes.pyth.network'
+  let conn = pythConnections.get(url)
+  if (!conn) {
+    conn = new SuiPriceServiceConnection(url, { timeout: 10000 })
+    pythConnections.set(url, conn)
+  }
+  return conn
+}
 
 /**
  * Get stale price feed IDs from Pyth Network
@@ -55,10 +62,16 @@ const suiPythConnection = new SuiPriceServiceConnection('https://hermes.pyth.net
  * @returns Array of stale price feed IDs that need updating
  * @throws Error if failed to fetch price feed data
  */
-export async function getPythStalePriceFeedId(priceIds: string[]): Promise<string[]> {
+export async function getPythStalePriceFeedId(
+  priceIds: string[],
+  options?: Partial<EnvOption & MarketOption>
+): Promise<string[]> {
   try {
     const returnData: string[] = []
-    const latestPriceFeeds = await suiPythConnection.getLatestPriceFeeds(priceIds)
+    const config = await getConfig({ ...options, cacheTime: DEFAULT_CACHE_TIME })
+    const latestPriceFeeds = await getPythConnection(
+      config.oracle.hermesEndpoint
+    ).getLatestPriceFeeds(priceIds)
     if (!latestPriceFeeds) return returnData
 
     const currentTimestamp = Math.floor(new Date().valueOf() / 1000)
@@ -200,7 +213,9 @@ export async function updatePythPriceFeeds(
     cacheTime: DEFAULT_CACHE_TIME
   })
   try {
-    const priceUpdateData = await suiPythConnection.getPriceFeedsUpdateData(priceFeedIds)
+    const priceUpdateData = await getPythConnection(
+      config.oracle.hermesEndpoint
+    ).getPriceFeedsUpdateData(priceFeedIds)
     const suiPythClient = new SuiPythClient(
       client as any,
       config.oracle.pythStateId,
@@ -265,7 +280,7 @@ export async function updateOraclePricesPTB(
   // Update individual price feeds in the oracle contract
   for (const priceFeed of priceFeeds) {
     tx.moveCall({
-      target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
+      target: `${config.oracle.packageId}::oracle_pro::${config.oracle.updateFunction ?? 'update_single_price_v2'}`,
       arguments: [
         tx.object('0x6'), // Clock object
         tx.object(config.oracle.oracleConfig), // Oracle configuration
