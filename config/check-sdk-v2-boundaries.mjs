@@ -128,7 +128,6 @@ for (const packageName of sdkPackages) {
     const relativeFile = path.relative(repoRoot, absoluteFile)
     const content = fs.readFileSync(absoluteFile, 'utf8')
     const isDeclaration = normalizedFile.endsWith('.d.ts')
-    const isRootBundle = normalizedFile === 'index.js'
     const isBridgeMayanArtifact =
       packageName === 'astros-bridge-sdk' &&
       (normalizedFile.startsWith('mayan') || normalizedFile.startsWith('providers/mayan'))
