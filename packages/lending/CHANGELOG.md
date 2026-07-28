@@ -1,5 +1,11 @@
 # @naviprotocol/lending
 
+## 2.0.7
+
+### Patch Changes
+
+- Fix NodeNext-compatible ESM output and package entry points.
+
 ## 2.0.6
 
 ### Patch Changes
