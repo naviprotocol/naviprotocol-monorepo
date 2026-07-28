@@ -1,5 +1,14 @@
 # @naviprotocol/wallet-client
 
+## 2.0.7
+
+### Patch Changes
+
+- Fix NodeNext-compatible ESM output and package entry points.
+- Updated dependencies
+  - @naviprotocol/astros-aggregator-sdk@2.0.5
+  - @naviprotocol/lending@2.0.7
+
 ## 2.0.6
 
 ### Patch Changes

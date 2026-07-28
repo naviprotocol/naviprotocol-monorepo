@@ -1,5 +1,11 @@
 # @naviprotocol/astros-bridge-sdk
 
+## 2.0.1
+
+### Patch Changes
+
+- Fix NodeNext-compatible ESM output and package entry points.
+
 ## 2.0.0-beta.1
 
 ### Patch Changes

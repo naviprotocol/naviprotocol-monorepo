@@ -1,5 +1,11 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.5
+
+### Patch Changes
+
+- Fix NodeNext-compatible ESM output and package entry points.
+
 ## 2.0.4
 
 ### Patch Changes
