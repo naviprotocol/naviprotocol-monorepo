@@ -502,6 +502,10 @@ export type LendingConfig = {
   oracle: {
     /** Package ID */
     packageId: string
+    /** Oracle price-update entry function (defaults to update_single_price_v2; upgraded envs use update_single_price_v3) */
+    updateFunction?: string
+    /** Hermes endpoint for this env (defaults to legacy hermes.pyth.network; upgraded envs use the open-api proxy) */
+    hermesEndpoint?: string
     /** Price oracle contract address */
     priceOracle: string
     /** Oracle admin capability ID */
