@@ -27,7 +27,13 @@ export default defineConfig({
     rollupOptions: {
       ...baseConfig.build?.rollupOptions,
       external: bridgeExternal,
-      plugins: [...(baseConfig.build?.rollupOptions?.plugins || [])]
+      plugins: [...(baseConfig.build?.rollupOptions?.plugins || [])],
+      output: {
+        // Disable preserveModules to keep lazy-loading chunks for Mayan SDK
+        preserveModules: false,
+        entryFileNames: 'index.js',
+        chunkFileNames: '[name].js'
+      }
     }
   }
 })
