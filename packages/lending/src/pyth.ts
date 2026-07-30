@@ -1,7 +1,7 @@
 import type { NaviSuiClient } from './sui'
-import { Transaction } from '@mysten/sui/transactions'
+import { coinWithBalance, Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
-import { SUI_CLOCK_OBJECT_ID } from '@mysten/sui/utils'
+import { SUI_CLOCK_OBJECT_ID, SUI_TYPE_ARG } from '@mysten/sui/utils'
 
 type HermesPrice = {
   price: string
@@ -31,6 +31,8 @@ type PriceFeed = {
     publishTime: number
   }
 }
+
+export type PythFeeSource = 'gasCoin' | 'senderBalance'
 
 type CoreDynamicFieldName = {
   type: string
@@ -338,14 +340,30 @@ export class SuiPythClient {
     }
   }
 
-  async updatePriceFeeds(tx: Transaction, updates: Uint8Array[], feedIds: string[]) {
+  async updatePriceFeeds(
+    tx: Transaction,
+    updates: Uint8Array[],
+    feedIds: string[],
+    options?: { pythFeeSource?: PythFeeSource }
+  ) {
     const packageId = await this.getPythPackageId()
     const priceUpdatesHotPotato = await this.verifyVaasAndGetHotPotato(tx, updates, packageId)
     const baseUpdateFee = await this.getBaseUpdateFee()
-    const coins = tx.splitCoins(
-      tx.gas,
-      feedIds.map(() => tx.pure.u64(baseUpdateFee))
-    )
+    const coins =
+      options?.pythFeeSource === 'senderBalance'
+        ? feedIds.map(() =>
+            tx.add(
+              coinWithBalance({
+                type: SUI_TYPE_ARG,
+                balance: baseUpdateFee,
+                useGasCoin: false
+              })
+            )
+          )
+        : tx.splitCoins(
+            tx.gas,
+            feedIds.map(() => tx.pure.u64(baseUpdateFee))
+          )
     return this.executePriceFeedUpdates(tx, packageId, feedIds, priceUpdatesHotPotato, coins)
   }
 
