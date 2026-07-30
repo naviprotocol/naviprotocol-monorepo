@@ -1,5 +1,11 @@
 # @naviprotocol/lending
 
+## 2.0.8
+
+### Patch Changes
+
+- support sender-funded Pyth fees
+
 ## 2.0.7
 
 ### Patch Changes
