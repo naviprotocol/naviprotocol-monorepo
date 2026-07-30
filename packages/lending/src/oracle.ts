@@ -15,9 +15,10 @@ import type {
   SuiClientOption,
   MarketOption,
   LendingPosition,
-  ServiceOption
+  ServiceOption,
+  TransactionObjectArgument
 } from './types'
-import { SuiPriceServiceConnection, SuiPythClient, type PythFeeSource } from './pyth'
+import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
 import { multiGetSuiObjects, suiClient } from './utils'
 import { getLendingPositions } from './account'
@@ -209,7 +210,7 @@ export async function updatePythPriceFeeds(
     SuiClientOption &
       EnvOption &
       MarketOption & {
-        pythFeeSource?: PythFeeSource
+        pythFeeCoin?: TransactionObjectArgument
       }
   >
 ) {
@@ -229,7 +230,7 @@ export async function updatePythPriceFeeds(
     )
 
     return await suiPythClient.updatePriceFeeds(tx as any, priceUpdateData, priceFeedIds, {
-      pythFeeSource: options?.pythFeeSource
+      feeCoin: options?.pythFeeCoin
     })
   } catch (error) {
     throw new Error(`failed to update pyth price feeds, msg: ${(error as Error).message}`)
@@ -257,11 +258,8 @@ export async function updateOraclePricesPTB(
       ServiceOption &
       MarketOption & {
         updatePythPriceFeeds?: boolean
-        /**
-         * Selects the SUI source for Pyth update fees. Defaults to `gasCoin`.
-         * Use `senderBalance` when the transaction kind must not consume its gas coin.
-         */
-        pythFeeSource?: PythFeeSource
+        /** Optional user-owned SUI coin used for Pyth update fees. Defaults to `tx.gas`. */
+        pythFeeCoin?: TransactionObjectArgument
       }
   >
 ): Promise<Transaction> {
@@ -394,7 +392,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       SuiClientOption &
       MarketOption & {
         throws?: boolean
-        pythFeeSource?: PythFeeSource
+        pythFeeCoin?: TransactionObjectArgument
       }
   >
 ) {
