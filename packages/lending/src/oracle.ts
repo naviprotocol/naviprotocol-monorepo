@@ -15,7 +15,8 @@ import type {
   SuiClientOption,
   MarketOption,
   LendingPosition,
-  ServiceOption
+  ServiceOption,
+  TransactionObjectArgument
 } from './types'
 import { SuiPriceServiceConnection, SuiPythClient } from './pyth'
 import { Transaction } from '@mysten/sui/transactions'
@@ -205,7 +206,13 @@ export async function getPythStalePriceFeedIdV2(
 export async function updatePythPriceFeeds(
   tx: Transaction,
   priceFeedIds: string[],
-  options?: Partial<SuiClientOption & EnvOption & MarketOption>
+  options?: Partial<
+    SuiClientOption &
+      EnvOption &
+      MarketOption & {
+        pythFeeCoin?: TransactionObjectArgument
+      }
+  >
 ) {
   const client = options?.client ?? suiClient
   const config = await getConfig({
@@ -222,7 +229,9 @@ export async function updatePythPriceFeeds(
       config.oracle.wormholeStateId
     )
 
-    return await suiPythClient.updatePriceFeeds(tx as any, priceUpdateData, priceFeedIds)
+    return await suiPythClient.updatePriceFeeds(tx as any, priceUpdateData, priceFeedIds, {
+      feeCoin: options?.pythFeeCoin
+    })
   } catch (error) {
     throw new Error(`failed to update pyth price feeds, msg: ${(error as Error).message}`)
   }
@@ -249,6 +258,8 @@ export async function updateOraclePricesPTB(
       ServiceOption &
       MarketOption & {
         updatePythPriceFeeds?: boolean
+        /** Optional user-owned SUI coin used for Pyth update fees. Defaults to `tx.gas`. */
+        pythFeeCoin?: TransactionObjectArgument
       }
   >
 ): Promise<Transaction> {
@@ -381,6 +392,7 @@ export async function updateOraclePriceBeforeUserOperationPTB(
       SuiClientOption &
       MarketOption & {
         throws?: boolean
+        pythFeeCoin?: TransactionObjectArgument
       }
   >
 ) {

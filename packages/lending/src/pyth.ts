@@ -1,4 +1,5 @@
 import type { NaviSuiClient } from './sui'
+import type { TransactionObjectArgument } from '@mysten/sui/transactions'
 import { Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
 import { SUI_CLOCK_OBJECT_ID } from '@mysten/sui/utils'
@@ -338,12 +339,17 @@ export class SuiPythClient {
     }
   }
 
-  async updatePriceFeeds(tx: Transaction, updates: Uint8Array[], feedIds: string[]) {
+  async updatePriceFeeds(
+    tx: Transaction,
+    updates: Uint8Array[],
+    feedIds: string[],
+    options?: { feeCoin?: TransactionObjectArgument }
+  ) {
     const packageId = await this.getPythPackageId()
     const priceUpdatesHotPotato = await this.verifyVaasAndGetHotPotato(tx, updates, packageId)
     const baseUpdateFee = await this.getBaseUpdateFee()
     const coins = tx.splitCoins(
-      tx.gas,
+      options?.feeCoin ?? tx.gas,
       feedIds.map(() => tx.pure.u64(baseUpdateFee))
     )
     return this.executePriceFeedUpdates(tx, packageId, feedIds, priceUpdatesHotPotato, coins)
