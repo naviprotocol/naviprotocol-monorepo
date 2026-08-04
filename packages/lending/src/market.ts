@@ -33,6 +33,38 @@ export const MARKETS = {
     id: 3,
     key: 'sui-eco',
     name: 'Sui Eco Market'
+  },
+  // single-pair isolated markets, live on mainnet 2026-08-03. Keys must match the
+  // open-api MarketKey union — getConfig()/getPools() pass them through as ?market=.
+  'sui-usdc': {
+    id: 4,
+    key: 'sui-usdc',
+    name: 'SUI/USDC Market'
+  },
+  'wbtc-usdc': {
+    id: 5,
+    key: 'wbtc-usdc',
+    name: 'LZWBTC/USDC Market'
+  },
+  'xbtc-usdc': {
+    id: 6,
+    key: 'xbtc-usdc',
+    name: 'xBTC/USDC Market'
+  },
+  'vsui-usdc': {
+    id: 7,
+    key: 'vsui-usdc',
+    name: 'vSUI/USDC Market'
+  },
+  'vsui-sui': {
+    id: 8,
+    key: 'vsui-sui',
+    name: 'vSUI/SUI Market'
+  },
+  'hasui-sui': {
+    id: 9,
+    key: 'hasui-sui',
+    name: 'haSUI/SUI Market'
   }
 }
 
