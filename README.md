@@ -45,6 +45,16 @@ Lending SDK that provides complete lending functionality.
 - 📊 Price Oracle Integration
 - 🏆 Reward System
 
+### [@naviprotocol/vault](./packages/vault/)
+Vault SDK for NAVI's single-asset yield vaults, which deploy deposits across NAVI lending markets.
+
+**Key Features:**
+- 🏦 Deposit, Withdraw, Full Exit
+- 📈 Simulation-Based Pricing and Share Valuation
+- 🎁 Reward Harvest and Claim
+- 🧭 On-Chain Layout Discovery
+- 🚨 Abort Classification (vault, lending and oracle codes)
+
 ### [@naviprotocol/wallet-client](./packages/wallet-client/)
 Comprehensive Wallet Client SDK that provides a unified interface for DeFi operations.
 
