@@ -1,5 +1,11 @@
 # @naviprotocol/lending
 
+## 2.0.9
+
+### Patch Changes
+
+- new lending market: sui-eco, sui-usdc, wbtc-usdc, xbtc-usdc, vsui-usdc, vsui-sui, hasui-sui
+
 ## 2.0.8
 
 ### Patch Changes
