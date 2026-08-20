@@ -3,24 +3,68 @@ import type {
   TransactionObjectArgument,
   TransactionResult
 } from '@mysten/sui/transactions'
-import { operationNotSupported } from '../errors'
+import { operationNotSupported, VaultSdkError } from '../errors'
 import type { VaultModuleContext } from '../module-context'
+import { createProtocolRegistry } from '../protocols'
+import type { ProtocolRegistry } from '../protocols'
 import type { HumanAmount, IntegerString } from '../types'
-import type { VaultIdentifier } from '../vaults'
+import type { Vault, VaultIdentifier } from '../vaults'
 import type { DepositPTBOptions, WithdrawPTBOptions } from './options'
-import type { GetPositionsOptions, UserModule, VaultUserPosition, WithdrawTarget, GetPendingRequestsOptions, PendingRequest } from './types'
+import type {
+  GetPendingRequestsOptions,
+  GetPositionsOptions,
+  PendingRequest,
+  UserModule,
+  VaultReward,
+  VaultUserPosition,
+  WithdrawTarget
+} from './types'
+
+/**
+ * Resolves a `VaultIdentifier` to the `Vault` the PTB builders need.
+ *
+ * A vault id alone is not enough: the builders read `contractConfig`, so an id has to be
+ * looked up through `vaults.getVault`. Until that is implemented, callers pass a resolved
+ * `Vault`.
+ */
+async function resolveVault(context: VaultModuleContext, vault: VaultIdentifier): Promise<Vault> {
+  if (typeof vault !== 'string') return vault
+  void context
+  throw new VaultSdkError(
+    'VAULT_CONFIG_INVALID',
+    `Cannot resolve vault "${vault}": vaults.getVault is not implemented yet. ` +
+      `Pass a resolved Vault object instead of an id.`
+  )
+}
 
 class DefaultUserModule implements UserModule {
+  readonly #context: VaultModuleContext
+  readonly #protocols: ProtocolRegistry
+
+  constructor(context: VaultModuleContext) {
+    this.#context = context
+    this.#protocols = createProtocolRegistry(context)
+  }
+
   async getPositions(owner: string, options?: GetPositionsOptions): Promise<VaultUserPosition[]> {
     void owner
     void options
     return operationNotSupported('user.getPositions')
   }
 
-  async getPendingRequests(owner: string, options?: GetPendingRequestsOptions): Promise<PendingRequest[]> {
+  async getPendingRequests(
+    owner: string,
+    options?: GetPendingRequestsOptions
+  ): Promise<PendingRequest[]> {
     void owner
     void options
     return operationNotSupported('user.getPendingRequests')
+  }
+
+  async getRewards(vault: VaultIdentifier, owner: string): Promise<VaultReward[]> {
+    void vault
+    void owner
+    return operationNotSupported('user.getRewards')
   }
 
   async depositPTB(
@@ -30,12 +74,13 @@ class DefaultUserModule implements UserModule {
     amount: HumanAmount,
     options?: DepositPTBOptions
   ): Promise<TransactionResult> {
-    void tx
-    void vault
-    void owner
-    void amount
-    void options
-    return operationNotSupported('user.depositPTB')
+    const resolved = await resolveVault(this.#context, vault)
+    switch (resolved.protocol) {
+      case 'navi-lending':
+        return this.#protocols['navi-lending'].depositPTB(tx, resolved, owner, amount, options)
+      case 'volo-vault':
+        return this.#protocols['volo-vault'].depositPTB(tx, resolved, owner, amount, options)
+    }
   }
 
   async withdrawPTB(
@@ -45,56 +90,98 @@ class DefaultUserModule implements UserModule {
     target: WithdrawTarget,
     options?: WithdrawPTBOptions
   ): Promise<TransactionResult> {
-    void tx
-    void vault
-    void owner
-    void target
-    void options
-    return operationNotSupported('user.withdrawPTB')
+    const resolved = await resolveVault(this.#context, vault)
+    switch (resolved.protocol) {
+      case 'navi-lending':
+        return this.#protocols['navi-lending'].withdrawPTB(tx, resolved, owner, target, options)
+      case 'volo-vault':
+        return this.#protocols['volo-vault'].withdrawPTB(tx, resolved, owner, target, options)
+    }
   }
 
   async cancelDepositPTB(
     tx: Transaction,
     vault: VaultIdentifier,
     owner: string,
-    request: PendingRequest
+    requestId: IntegerString,
+    receipt: string | TransactionObjectArgument
   ): Promise<TransactionResult> {
-    void tx
-    void vault
-    void owner
-    void request
-    return operationNotSupported('user.cancelDepositPTB')
+    const resolved = await resolveVault(this.#context, vault)
+    switch (resolved.protocol) {
+      case 'navi-lending':
+        return this.#protocols['navi-lending'].cancelDepositPTB(
+          tx,
+          resolved,
+          owner,
+          requestId,
+          receipt
+        )
+      case 'volo-vault':
+        return this.#protocols['volo-vault'].cancelDepositPTB(
+          tx,
+          resolved,
+          owner,
+          requestId,
+          receipt
+        )
+    }
   }
 
   async cancelWithdrawPTB(
     tx: Transaction,
     vault: VaultIdentifier,
     owner: string,
-    request: PendingRequest
+    requestId: IntegerString,
+    receipt: string | TransactionObjectArgument
   ): Promise<TransactionResult> {
-    void tx
-    void vault
-    void owner
-    void request
-    return operationNotSupported('user.cancelWithdrawPTB')
+    const resolved = await resolveVault(this.#context, vault)
+    switch (resolved.protocol) {
+      case 'navi-lending':
+        return this.#protocols['navi-lending'].cancelWithdrawPTB(
+          tx,
+          resolved,
+          owner,
+          requestId,
+          receipt
+        )
+      case 'volo-vault':
+        return this.#protocols['volo-vault'].cancelWithdrawPTB(
+          tx,
+          resolved,
+          owner,
+          requestId,
+          receipt
+        )
+    }
   }
 
   async claimRewardsPTB(
     tx: Transaction,
     vault: VaultIdentifier,
-    owner: string
+    owner: string,
+    rewards: VaultReward[]
   ): Promise<TransactionResult> {
-    void tx
-    void vault
-    void owner
-    return operationNotSupported('user.claimRewardsPTB')
+    const resolved = await resolveVault(this.#context, vault)
+    switch (resolved.protocol) {
+      case 'navi-lending':
+        return this.#protocols['navi-lending'].claimRewardsPTB(tx, resolved, owner, rewards)
+      case 'volo-vault':
+        return this.#protocols['volo-vault'].claimRewardsPTB(tx, resolved, owner, rewards)
+    }
   }
 }
 
 export function createUserModule(context: VaultModuleContext): UserModule {
-  void context
-  return new DefaultUserModule()
+  return new DefaultUserModule(context)
 }
 
 export type { DepositPTBOptions, WithdrawPTBOptions } from './options'
-export type { GetPositionsOptions, UserModule, VaultUserPosition, WithdrawTarget } from './types'
+export type {
+  GetPendingRequestsOptions,
+  GetPositionsOptions,
+  PendingRequest,
+  UserModule,
+  VaultReward,
+  VaultUserPosition,
+  WithdrawTarget
+} from './types'

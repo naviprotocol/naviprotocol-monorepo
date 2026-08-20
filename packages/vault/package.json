@@ -46,15 +46,24 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "verify": "run-p prettier lint",
     "verify:fix": "run-p prettier:fix lint:fix",
+    "test": "vitest --config ./vite.config.unit.js",
     "test:types": "pnpm build:lib && tsc --noEmit -p tsconfig.type-tests.json",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typedoc": "typedoc"
   },
   "devDependencies": {
     "@mysten/sui": "2.20.2",
     "@types/node": "22.7.5",
-    "typescript": "5.8.3"
+    "tsconfig-paths": "4.2.0",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
   },
   "peerDependencies": {
     "@mysten/sui": ">=2.0.0"
+  },
+  "dependencies": {
+    "@naviprotocol/astros-aggregator-sdk": "workspace:^",
+    "@naviprotocol/lending": "workspace:^"
   }
 }

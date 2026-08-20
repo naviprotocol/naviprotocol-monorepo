@@ -6,9 +6,16 @@ import type {
 import { operationNotSupported } from '../errors'
 import type { HumanAmount, IntegerString, VaultProtocol } from '../types'
 import type { Vault } from '../vaults'
-import type { DepositPTBOptions, WithdrawPTBOptions, WithdrawTarget } from '../user'
+import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../user'
 import type { ProtocolPTB } from './types'
 
+/**
+ * A `ProtocolPTB` whose every operation throws.
+ *
+ * Used as the base for a protocol that is not implemented yet, and to fill in the
+ * operations a protocol genuinely does not have — `cancelDeposit` on an `instant` vault,
+ * for instance, where there is no pending request to cancel.
+ */
 export function createUnsupportedProtocolPTB<TVault extends Vault>(
   protocol: VaultProtocol
 ): ProtocolPTB<TVault> {
@@ -76,11 +83,13 @@ export function createUnsupportedProtocolPTB<TVault extends Vault>(
     async claimRewardsPTB(
       tx: Transaction,
       vault: TVault,
-      owner: string
+      owner: string,
+      rewards: VaultReward[]
     ): Promise<TransactionResult> {
       void tx
       void vault
       void owner
+      void rewards
       return operationNotSupported(`protocols.${protocol}.claimRewardsPTB`)
     }
   }

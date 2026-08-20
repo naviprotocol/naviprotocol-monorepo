@@ -5,8 +5,19 @@ import type {
 } from '@mysten/sui/transactions'
 import type { HumanAmount, IntegerString } from '../types'
 import type { NAVILendingVault, Vault, VoloVault } from '../vaults'
-import type { DepositPTBOptions, WithdrawPTBOptions, WithdrawTarget } from '../user'
+import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../user'
 
+/**
+ * Per-protocol PTB construction.
+ *
+ * These are thin wrappers over the contract entrypoints. `sdk.user` resolves a
+ * `VaultIdentifier` and dispatches here on `vault.protocol`; operations one protocol does
+ * not have throw `OPERATION_NOT_SUPPORTED` rather than being absent from the type.
+ *
+ * Implementations are built with {@link createProtocolRegistry} so they can reach the
+ * client through `VaultModuleContext` — receipt resolution and coin selection both read
+ * chain state.
+ */
 export interface ProtocolPTB<TVault extends Vault> {
   depositPTB(
     tx: Transaction,
@@ -40,7 +51,12 @@ export interface ProtocolPTB<TVault extends Vault> {
     receipt: string | TransactionObjectArgument
   ): Promise<TransactionResult>
 
-  claimRewardsPTB(tx: Transaction, vault: TVault, owner: string): Promise<TransactionResult>
+  claimRewardsPTB(
+    tx: Transaction,
+    vault: TVault,
+    owner: string,
+    rewards: VaultReward[]
+  ): Promise<TransactionResult>
 }
 
 export interface ProtocolRegistry {

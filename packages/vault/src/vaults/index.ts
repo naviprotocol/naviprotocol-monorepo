@@ -21,15 +21,25 @@ export function createVaultsModule(context: VaultModuleContext): VaultsModule {
 }
 
 export type {
+  BaseVault,
+  BaseVaultContractConfig,
   GetVaultOptions,
   GetVaultsOptions,
+  NAVILendingContractConfig,
+  NAVILendingMarket,
+  NAVILendingRewardRule,
+  NAVILendingRewardRuleType,
+  NAVILendingVault,
+  ReceiptBasedVaultContractConfig,
   Vault,
   VaultAsset,
   VaultAssets,
-  VaultContractConfig,
+  VaultContractConfigMap,
   VaultDetailApiResponse,
   VaultIdentifier,
   VaultListApiResponse,
+  VaultOperatorMode,
   VaultsModule,
+  VoloVault,
   VoloVaultContractConfig
 } from './types'

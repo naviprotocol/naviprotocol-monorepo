@@ -4,6 +4,7 @@ import {
   type NAVILendingVault,
   type ProtocolRegistry,
   type Vault,
+  type VaultReward,
   type VaultSdk,
   type VaultSuiClient,
   type VoloVault
@@ -20,7 +21,10 @@ const filteredVaults: Promise<Vault[]> = sdk.vaults.getVaults({
   app: ['navi', 'volo']
 })
 const selectedVault: Promise<Vault | null> = sdk.vaults.getVault('vault-id')
-const claimResult: Promise<TransactionResult> = sdk.user.claimRewardsPTB(tx, vault, '0x1')
+declare const rewards: VaultReward[]
+const claimResult: Promise<TransactionResult> = sdk.user.claimRewardsPTB(tx, vault, '0x1', rewards)
+const vaultRewards: Promise<VaultReward[]> = sdk.user.getRewards(vault, '0x1')
+void vaultRewards
 const positions = sdk.user.getPositions('0x1', { app: ['navi', 'astros'] })
 
 void depositResult
@@ -28,7 +32,9 @@ void filteredVaults
 void selectedVault
 void claimResult
 void positions
+void vault.id
 void vault.assets.base.coinType
+void vault.operatorMode
 void vault.contractConfig.env
 void vault.app
 
@@ -90,5 +96,11 @@ void sdk.vaults.getVaults({ disableCache: true })
 // @ts-expect-error Cancel operations do not accept protocol-specific options.
 void sdk.user.cancelDepositPTB(tx, vault, '0x1', '1', 'receipt-id', {})
 
-// @ts-expect-error Reward coin selection is resolved from the Vault contract config.
+// @ts-expect-error Rewards are selected by filtering getRewards output, not by coin type.
 void sdk.user.claimRewardsPTB(tx, vault, '0x1', '0x2::coin::COIN')
+
+// @ts-expect-error Slippage is not part of the common withdraw path.
+void sdk.user.withdrawPTB(tx, vault, '0x1', { kind: 'all' }, { maxShares: '1' })
+
+// @ts-expect-error Deposit exposes no slippage bound either.
+void sdk.user.depositPTB(tx, vault, '0x1', '1.0', { slippageBps: 30 })
