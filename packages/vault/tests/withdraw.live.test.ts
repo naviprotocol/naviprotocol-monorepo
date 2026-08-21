@@ -15,7 +15,7 @@ import { Transaction } from '@mysten/sui/transactions'
 import { createNaviSuiClient, getConfig } from '@naviprotocol/lending'
 import { describe, expect, it } from 'vitest'
 import { createProtocolRegistry, readReceiptBalances } from '../src'
-import { suiHighYield } from './fixtures'
+import { offlineTransport, suiHighYield } from './fixtures'
 import { buildOrSkip } from './live'
 
 const runLiveTests = process.env.NAVI_LIVE_TESTS === '1'
@@ -28,7 +28,12 @@ function client() {
 }
 
 function registry() {
-  return createProtocolRegistry({ client: client(), env: 'prod', options: {} })
+  return createProtocolRegistry({
+    client: client(),
+    env: 'prod',
+    options: {},
+    transport: offlineTransport()
+  })
 }
 
 type MoveCall = { module: string; function: string; arguments: unknown[] }

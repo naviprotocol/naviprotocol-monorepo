@@ -10,6 +10,8 @@ import type { ProtocolRegistry } from '../protocols'
 import type { IntegerString } from '../types'
 import type { Vault, VaultIdentifier } from '../vaults'
 import type { DepositPTBOptions, WithdrawPTBOptions } from './options'
+import { getPositions } from './positions'
+import { getPendingRequests } from './requests'
 import type {
   GetPendingRequestsOptions,
   GetPositionsOptions,
@@ -47,18 +49,14 @@ class DefaultUserModule implements UserModule {
   }
 
   async getPositions(owner: string, options?: GetPositionsOptions): Promise<VaultUserPosition[]> {
-    void owner
-    void options
-    return operationNotSupported('user.getPositions')
+    return getPositions(this.#context, owner, options)
   }
 
   async getPendingRequests(
     owner: string,
     options?: GetPendingRequestsOptions
   ): Promise<PendingRequest[]> {
-    void owner
-    void options
-    return operationNotSupported('user.getPendingRequests')
+    return getPendingRequests(this.#context, owner, options)
   }
 
   async getRewards(vault: VaultIdentifier, owner: string): Promise<VaultReward[]> {
@@ -179,9 +177,11 @@ export type { DepositPTBOptions, WithdrawPTBOptions } from './options'
 export type {
   GetPendingRequestsOptions,
   GetPositionsOptions,
+  NAVIPositionDetail,
   PendingRequest,
   UserModule,
   VaultReward,
   VaultUserPosition,
+  VoloPositionDetail,
   WithdrawTarget
 } from './types'

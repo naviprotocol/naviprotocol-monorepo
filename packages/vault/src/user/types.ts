@@ -23,6 +23,39 @@ export interface VaultUserPosition {
   /** Value of those shares in the vault's principal coin. */
   amount: number
   amountUsd?: number
+  /** The vault's APR at the time of the read, as a fraction. */
+  apr: number
+  /** Yield earned since the position opened, in the principal coin. */
+  yieldLifetimeAmount: number
+  yieldLifetimeUsd: number
+  /**
+   * Price of the principal coin in USD. Reported as `coinPrice` by NAVI and `tokenPrice` by
+   * Volo — the same value under two names, so it belongs to the common part.
+   */
+  coinPrice?: number
+  /** Reported only by NAVI's service. */
+  navi?: NAVIPositionDetail
+  /** Reported only by Volo's service. */
+  volo?: VoloPositionDetail
+}
+
+export interface NAVIPositionDetail {
+  coinType?: string
+  coinSymbol?: string
+  coinDecimals?: number
+  coinIconUrl?: string
+  claimableRewardsUsd?: number
+  yieldBreakdown?: {
+    realizedUsd?: number
+    unrealizedUsd?: number
+    claimedUsd?: number
+    claimableUsd?: number
+  }
+}
+
+export interface VoloPositionDetail {
+  /** Queued deposit not yet executed by an operator, in the principal coin. */
+  pendingDeposit?: number
 }
 
 export interface GetPositionsOptions {

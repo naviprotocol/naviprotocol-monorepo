@@ -1,4 +1,4 @@
-import type { NAVILendingVault, VaultReward, VoloVault } from '../src'
+import type { NAVILendingVault, VaultReward, VaultTransport, VoloVault } from '../src'
 
 const CALL_TARGET = '0x13e1e0ddcf3a76cde006d530e98a0f985c446013cfedeae6dd067a2f1ea88ff5'
 export const CERT = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
@@ -205,6 +205,18 @@ export function voloWbtcMainnet(): VoloVault {
         receiptParentObjectId: '0x72da674ce792a5222eda32ffb4d9a8798f91766196fc44c206fc59dc5c60504c',
         rewardManagerObjectId: '0xf5c28be9086c576dc18c66a6791984c07136131f031ad14b3576890327af4d73'
       }
+    }
+  }
+}
+
+/**
+ * A transport that refuses to be used. The PTB builders read the chain, never the API, so
+ * any request from one of them is a regression rather than a missing stub.
+ */
+export function offlineTransport(): VaultTransport {
+  return {
+    get() {
+      throw new Error('PTB builders must not call the API')
     }
   }
 }

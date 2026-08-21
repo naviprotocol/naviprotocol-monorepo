@@ -1,13 +1,22 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { describe, expect, it } from 'vitest'
 import { createProtocolRegistry, VaultSdkError } from '../src'
-import { CERT, OWNER, RECEIPT, clientWithReceipts, voloReward, voloStable } from './fixtures'
+import {
+  CERT,
+  OWNER,
+  RECEIPT,
+  clientWithReceipts,
+  offlineTransport,
+  voloReward,
+  voloStable
+} from './fixtures'
 
 function registry(receipts: string[] = []) {
   return createProtocolRegistry({
     client: clientWithReceipts(receipts, {}, voloStable().id),
     env: 'prod',
-    options: {}
+    options: {},
+    transport: offlineTransport()
   })['volo-vault']
 }
 

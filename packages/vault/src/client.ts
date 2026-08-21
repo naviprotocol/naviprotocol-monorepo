@@ -1,4 +1,5 @@
 import type { VaultModuleContext } from './module-context'
+import { createVaultTransport } from './transport'
 import type { CreateVaultSdkOptions, VaultEnv, VaultSdk, VaultSuiClient } from './types'
 import { createUserModule } from './user'
 import { createVaultsModule } from './vaults'
@@ -11,7 +12,8 @@ export function createVaultSdk(
   const context: VaultModuleContext = {
     client,
     env,
-    options
+    options,
+    transport: createVaultTransport(options)
   }
 
   return {

@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { createProtocolRegistry, VaultSdkError } from '../src'
 import {
   CERT,
-  certReward,
-  clientWithReceipts,
   OWNER,
   RECEIPT,
+  certReward,
+  clientWithReceipts,
+  offlineTransport,
   suiHighYield,
   suiPrime
 } from './fixtures'
@@ -22,7 +23,8 @@ function registry(
   return createProtocolRegistry({
     client: clientWithReceipts(receipts, balances, vaultId),
     env: 'prod',
-    options: {}
+    options: {},
+    transport: offlineTransport()
   })
 }
 
@@ -103,7 +105,12 @@ describe('depositPTB', () => {
         }
       }
     } as never
-    const protocols = createProtocolRegistry({ client: exploding, env: 'prod', options: {} })
+    const protocols = createProtocolRegistry({
+      client: exploding,
+      env: 'prod',
+      options: {},
+      transport: offlineTransport()
+    })
     const tx = new Transaction()
     await protocols['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000', {
       receipt: RECEIPT

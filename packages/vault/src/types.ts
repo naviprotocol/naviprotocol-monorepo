@@ -1,3 +1,4 @@
+import type { VaultEndpoints } from './transport'
 import type { UserModule } from './user'
 import type { VaultsModule } from './vaults'
 
@@ -28,9 +29,15 @@ export type VaultSuiClient = {
 }
 
 export interface CreateVaultSdkOptions {
-  apiUrl?: string
+  /**
+   * Per-service base URL and headers. Both default to production, so this is only for
+   * pointing at a staging deployment or adding auth headers.
+   */
+  endpoints?: VaultEndpoints
+  /** Headers added to every request, before a service's own. */
   headers?: Record<string, string>
   fetch?: typeof globalThis.fetch
+  /** Response cache lifetime in milliseconds. Defaults to 30s. */
   vaultCacheTime?: number
 }
 
