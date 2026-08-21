@@ -29,6 +29,13 @@ export interface BaseVaultContractConfig {
   package: string
 }
 
+/**
+ * A market the vault has registered.
+ *
+ * Only the two fields the lending side cannot know: which markets this vault uses, and
+ * which one it routes deposits to. `Storage`, `IncentiveV2`, `IncentiveV3` and the pool are
+ * resolved from `@naviprotocol/lending` by `code`.
+ */
 export interface NAVILendingMarket {
   /** NAVI's market key, as served by `/api/navi/markets` — `main`, `sui-eco`, `vsui-sui`. */
   code: string
@@ -41,10 +48,6 @@ export interface NAVILendingMarket {
    * (10022) — the contract asserts the pool it is handed is the current default.
    */
   isDefault: boolean
-  poolObjectId: string
-  storageObjectId: string
-  incentiveV2ObjectId: string
-  incentiveV3ObjectId: string
 }
 
 /**
@@ -57,11 +60,10 @@ export type NAVILendingRewardRuleType = 'market' | 'vault-native'
 /**
  * A reward rule as configured.
  *
- * The two fields below `rewardCoinType` are optional because `vault-native` rules have no
- * market and no fund; for `market` rules both are required to build `collect_reward`,
- * whose signature is `(vault, clock, storage, incentive_v3, reward_fund, rule_index)`.
- * Its `storage` and `incentive_v3` come from the market {@link naviPoolId} names — the
- * contract asserts exactly that, so they are not configured separately.
+ * `naviPoolId` is optional because `vault-native` rules have no market; for `market` rules
+ * it is required. `collect_reward`'s signature is
+ * `(vault, clock, storage, incentive_v3, reward_fund, rule_index)`, and all three objects
+ * are the ones the market it names carries — the contract asserts exactly that.
  */
 export interface NAVILendingRewardRule {
   /**
@@ -75,14 +77,13 @@ export interface NAVILendingRewardRule {
   /** Inactive rules are not harvested and not counted, but remain claimable. */
   active: boolean
   rewardCoinType: string
-  /** Pool address of the market this rule harvests from, and the key into `markets`. */
-  naviPoolId?: string
   /**
-   * `RewardFund<RewardCoinType>` object. It belongs to NAVI's `incentive_v3`, is not
-   * discoverable from vault state, and is per market — the same reward coin has a
-   * different fund in each one — so it has to be configured per rule.
+   * Pool address of the market this rule harvests from.
+   *
+   * Identifies which of the vault's markets the rule belongs to, which is what resolves the
+   * `Storage`, `IncentiveV3` and `RewardFund` the harvest takes.
    */
-  rewardFundObjectId?: string
+  naviPoolId?: string
 }
 
 export interface NAVILendingContractConfig extends BaseVaultContractConfig {

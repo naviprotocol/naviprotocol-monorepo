@@ -9,7 +9,7 @@ import { parseBaseUnits } from '../../amount'
 import { VaultSdkError, operationNotSupported } from '../../errors'
 import type { VaultModuleContext } from '../../module-context'
 import type { IntegerString } from '../../types'
-import type { NAVILendingContractConfig, NAVILendingMarket, NAVILendingVault } from '../../vaults'
+import type { NAVILendingContractConfig, NAVILendingVault } from '../../vaults'
 import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../../user'
 import type { ProtocolPTB } from '../types'
 import { listReceipts, prepareExactCoin } from '../shared/chain'
@@ -19,6 +19,8 @@ import {
   SUI_SYSTEM_STATE_OBJECT_ID
 } from '../shared/constants'
 import { planWithdrawal, readReceiptBalances, U64_MAX as MAX_AMOUNT } from './allocate'
+import { defaultMarket, marketCodes, resolveMarkets } from './markets'
+import type { ResolvedMarket } from './markets'
 
 const MODULE = 'navi_vault'
 
@@ -50,24 +52,6 @@ function receiptRef(vault: NAVILendingVault) {
   }
 }
 
-function marketCodes(vault: NAVILendingVault): string {
-  const { markets } = vault.contractConfig.naviLending
-  return markets.length > 0 ? markets.map((market) => market.code).join(', ') : '(none)'
-}
-
-function defaultMarket(vault: NAVILendingVault): NAVILendingMarket {
-  const market = vault.contractConfig.naviLending.markets.find((candidate) => candidate.isDefault)
-  if (!market) {
-    throw new VaultSdkError(
-      'VAULT_CONFIG_INVALID',
-      `None of vault ${vault.id}'s markets (${marketCodes(vault)}) is flagged default. ` +
-        `Deposits route only to the default market, and withdrawing from any other one is ` +
-        `penalised.`
-    )
-  }
-  return market
-}
-
 /** A reward rule with everything `collect_reward` needs resolved. */
 type HarvestableRule = {
   ruleIndex: number
@@ -90,30 +74,27 @@ type HarvestableRule = {
  * ever be that market's. Configuring them a second time on the rule would add nothing but
  * a way for the copies to disagree.
  */
-function harvestableRules(vault: NAVILendingVault): HarvestableRule[] {
-  const { markets, rewardRules } = vault.contractConfig.naviLending
-  return rewardRules
+function harvestableRules(vault: NAVILendingVault, markets: ResolvedMarket[]): HarvestableRule[] {
+  return vault.contractConfig.naviLending.rewardRules
     .filter((rule) => rule.active && rule.type === 'market')
     .map((rule) => {
-      const { rewardFundObjectId, naviPoolId } = rule
-      if (!rewardFundObjectId || !naviPoolId) {
-        throw new VaultSdkError(
-          'VAULT_CONFIG_INVALID',
-          `Reward rule ${rule.ruleIndex} (${rule.rewardCoinType}) on vault ${vault.id} is an ` +
-            `active market rule but is missing its pool or its RewardFund. RewardFund objects ` +
-            `live on the lending side, differ per market, and are not discoverable from vault ` +
-            `state, so they must be configured — otherwise every deposit and withdrawal on ` +
-            `this vault aborts.`
-        )
-      }
-      const market = markets.find((candidate) => candidate.poolObjectId === naviPoolId)
+      const market = markets.find((candidate) => candidate.poolObjectId === rule.naviPoolId)
       if (!market) {
         throw new VaultSdkError(
           'VAULT_CONFIG_INVALID',
-          `Reward rule ${rule.ruleIndex} on vault ${vault.id} harvests from pool ${naviPoolId}, ` +
-            `which is none of the configured markets (${marketCodes(vault)}). The contract ` +
-            `resolves the rule's Storage and incentive_v3 from that market, so the harvest ` +
-            `cannot be built.`
+          `Reward rule ${rule.ruleIndex} on vault ${vault.id} harvests from pool ` +
+            `${rule.naviPoolId}, which is none of the configured markets ` +
+            `(${marketCodes(markets)}). The contract resolves the rule's Storage and ` +
+            `incentive_v3 from that market, so the harvest cannot be built.`
+        )
+      }
+      const rewardFundObjectId = market.rewardFunds[rule.rewardCoinType]
+      if (!rewardFundObjectId) {
+        throw new VaultSdkError(
+          'VAULT_CONFIG_INVALID',
+          `Market "${market.code}" publishes no RewardFund for ${rule.rewardCoinType}, which ` +
+            `reward rule ${rule.ruleIndex} on vault ${vault.id} harvests. Without it every ` +
+            `deposit and withdrawal on this vault aborts.`
         )
       }
       return {
@@ -127,9 +108,13 @@ function harvestableRules(vault: NAVILendingVault): HarvestableRule[] {
 }
 
 /** One `sync_market_balance` per registered market, Disabled ones included. */
-function appendMarketSync(tx: Transaction, vault: NAVILendingVault): void {
+function appendMarketSync(
+  tx: Transaction,
+  vault: NAVILendingVault,
+  markets: ResolvedMarket[]
+): void {
   const config = vault.contractConfig
-  for (const market of config.naviLending.markets) {
+  for (const market of markets) {
     tx.moveCall({
       target: target(config, 'sync_market_balance'),
       typeArguments: [vault.assets.base.coinType],
@@ -174,9 +159,13 @@ function appendRewardHarvest(
  * transaction. That makes one deposit `M + R + 1` Move calls, and omitting any of them
  * aborts `E_MARKET_NOT_READ` (10006) or `E_REWARDS_NOT_COLLECTED` (10007).
  */
-function appendFreshnessPrologue(tx: Transaction, vault: NAVILendingVault): void {
-  appendMarketSync(tx, vault)
-  appendRewardHarvest(tx, vault, harvestableRules(vault))
+function appendFreshnessPrologue(
+  tx: Transaction,
+  vault: NAVILendingVault,
+  markets: ResolvedMarket[]
+): void {
+  appendMarketSync(tx, vault, markets)
+  appendRewardHarvest(tx, vault, harvestableRules(vault, markets))
 }
 
 async function resolveDepositReceipt(
@@ -250,13 +239,14 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       options?: DepositPTBOptions
     ): Promise<TransactionResult> {
       const config = vault.contractConfig
-      const market = defaultMarket(vault)
+      const markets = await resolveMarkets(vault, toLendingOptions(context))
+      const market = defaultMarket(vault, markets)
       const baseUnits = parseBaseUnits(amount)
       if (baseUnits <= 0n) {
         throw new VaultSdkError('INVALID_AMOUNT', 'Deposit amount must be greater than zero.')
       }
 
-      appendFreshnessPrologue(tx, vault)
+      appendFreshnessPrologue(tx, vault, markets)
 
       const receipt = await resolveDepositReceipt(context, tx, vault, owner, options)
       const receiptType = `${ORIGINAL_PACKAGE_ID[vault.protocol]}::${MODULE}::Receipt`
@@ -312,7 +302,8 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       options?: WithdrawPTBOptions
     ): Promise<TransactionResult> {
       const config = vault.contractConfig
-      const market = defaultMarket(vault)
+      const markets = await resolveMarkets(vault, toLendingOptions(context))
+      const market = defaultMarket(vault, markets)
       const amount = resolveWithdrawAmount(vault, target_)
 
       // One plan, possibly spanning several receipts. Each is an independent position, so
@@ -332,7 +323,7 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
 
       // Prologue once for the whole block, not once per receipt.
       await appendOraclePrologue(context, tx, vault)
-      appendFreshnessPrologue(tx, vault)
+      appendFreshnessPrologue(tx, vault, markets)
 
       // `PriceOracle` is a lending-wide object, identical across markets, and already
       // published by the config service this builder reads the oracle entrypoint from.
@@ -420,7 +411,8 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
 
       const config = vault.contractConfig
       const wanted = new Set(rewards.map((reward) => normalizeCoinType(reward.rewardCoinType)))
-      const matching = harvestableRules(vault).filter((rule) =>
+      const markets = await resolveMarkets(vault, toLendingOptions(context))
+      const matching = harvestableRules(vault, markets).filter((rule) =>
         wanted.has(normalizeCoinType(rule.rewardCoinType))
       )
       appendRewardHarvest(tx, vault, matching)

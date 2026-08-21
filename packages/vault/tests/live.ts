@@ -9,9 +9,17 @@
 const TRANSPORT_ERROR =
   /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket disconnected|socket hang up|fetch failed|network|No swap route/i
 
+/**
+ * Walks the cause chain, not just the top message: everything that reaches the API is
+ * wrapped in a `VaultSdkError`, so the transport signature only ever appears on a cause.
+ */
 export function isTransportError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error)
-  return TRANSPORT_ERROR.test(message)
+  for (let current: unknown = error, depth = 0; current && depth < 8; depth += 1) {
+    const message = current instanceof Error ? current.message : String(current)
+    if (TRANSPORT_ERROR.test(message)) return true
+    current = current instanceof Error ? current.cause : undefined
+  }
+  return false
 }
 
 /**

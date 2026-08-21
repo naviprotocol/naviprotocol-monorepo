@@ -22,33 +22,15 @@ export function suiHighYield(): NAVILendingVault {
         markets: [
           {
             code: 'main',
-            isDefault: true,
-            poolObjectId: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5',
-            storageObjectId: '0xbb4e2f4b6205c2e2a2db47aeb4f830796ec7c005f88537ee775986639bc442fe',
-            incentiveV2ObjectId:
-              '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
-            incentiveV3ObjectId:
-              '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80'
+            isDefault: true
           },
           {
             code: 'sui-eco',
-            isDefault: false,
-            poolObjectId: '0xc1dfd32ec30a1ba16e8c1d32a284718ac8f41765722f27fe7fb9d0b38a570ae0',
-            storageObjectId: '0xdf18372bc9c588b96c7553bc811467a9166ed9be472b40cb45c226175377c558',
-            incentiveV2ObjectId:
-              '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
-            incentiveV3ObjectId:
-              '0x5ddc7f50eff9396f3f401a6194dda7b64c2ffc64fd581d119c44ae0587119309'
+            isDefault: false
           },
           {
             code: 'vsui-sui',
-            isDefault: false,
-            poolObjectId: '0x3f2d878005dd9d5caf56467bc0c55f93bb5a3c83a5c7fb057032a0abf1bad4bf',
-            storageObjectId: '0xafb982de1a436b1cc8a14ecd2d787762599b65d3a6b75b84b10939b1e17d9381',
-            incentiveV2ObjectId:
-              '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
-            incentiveV3ObjectId:
-              '0x5a1d3333b37d206033bb49859d306e546cc8d9b81a0c854d899752227a91a2de'
+            isDefault: false
           }
         ],
         rewardRules: [
@@ -57,8 +39,7 @@ export function suiHighYield(): NAVILendingVault {
             type: 'market',
             active: true,
             rewardCoinType: CERT,
-            naviPoolId: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5',
-            rewardFundObjectId: '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c'
+            naviPoolId: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5'
           }
         ]
       }

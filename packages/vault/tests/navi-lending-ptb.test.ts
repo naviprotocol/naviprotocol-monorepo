@@ -1,5 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
 import { createProtocolRegistry, VaultSdkError } from '../src'
 import {
   CERT,
@@ -12,6 +13,53 @@ import {
   suiPrime
 } from './fixtures'
 
+/**
+ * Lending-side objects, as `/api/navi/config` and `/api/navi/pools` serve them for the three
+ * markets SUI High Yield uses. Mocked so these stay offline: the builders resolve them
+ * through `@naviprotocol/lending` at build time, and the live suite covers the real calls.
+ */
+const LENDING = {
+  main: {
+    storage: '0xbb4e2f4b6205c2e2a2db47aeb4f830796ec7c005f88537ee775986639bc442fe',
+    incentiveV2: '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
+    incentiveV3: '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80',
+    pool: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5',
+    rewardFunds: {
+      '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT':
+        '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c'
+    }
+  },
+  'sui-eco': {
+    storage: '0xdf18372bc9c588b96c7553bc811467a9166ed9be472b40cb45c226175377c558',
+    incentiveV2: '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
+    incentiveV3: '0x5ddc7f50eff9396f3f401a6194dda7b64c2ffc64fd581d119c44ae0587119309',
+    pool: '0xc1dfd32ec30a1ba16e8c1d32a284718ac8f41765722f27fe7fb9d0b38a570ae0',
+    rewardFunds: {}
+  },
+  'vsui-sui': {
+    storage: '0xafb982de1a436b1cc8a14ecd2d787762599b65d3a6b75b84b10939b1e17d9381',
+    incentiveV2: '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
+    incentiveV3: '0x5a1d3333b37d206033bb49859d306e546cc8d9b81a0c854d899752227a91a2de',
+    pool: '0x3f2d878005dd9d5caf56467bc0c55f93bb5a3c83a5c7fb057032a0abf1bad4bf',
+    rewardFunds: {}
+  }
+} as const
+
+vi.mock('@naviprotocol/lending', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@naviprotocol/lending')>()
+  const of = (market: string) => {
+    const entry = LENDING[market as keyof typeof LENDING]
+    if (!entry) throw new Error(`Market not found`)
+    return entry
+  }
+  return {
+    ...actual,
+    getConfig: async (options?: { market?: string }) => of(options?.market ?? 'main'),
+    getPool: async (_coinType: string, options?: { market?: string }) => ({
+      contract: { pool: of(options?.market ?? 'main').pool }
+    })
+  }
+})
 /** The NAVI Vault contract's original published package, as read back from chain. */
 const NAVI_ORIGINAL_PACKAGE = '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c'
 
@@ -134,22 +182,39 @@ describe('depositPTB', () => {
     ).rejects.toThrow(/smallest/)
   })
 
-  it("resolves the harvest's Storage and incentive_v3 from the market the rule names", async () => {
-    // The contract asserts they are that market's, so they are joined on naviPoolId rather
-    // than configured a second time on the rule.
-    const vault = suiHighYield()
-    const market = vault.contractConfig.naviLending.markets.find(
-      (m) => m.poolObjectId === vault.contractConfig.naviLending.rewardRules[0]!.naviPoolId
-    )!
+  it("resolves the harvest's objects from the market the rule names", async () => {
+    // The rule carries only naviPoolId; Storage, incentive_v3 and the RewardFund all come
+    // from the market that pool belongs to, which is what the contract asserts.
     const tx = new Transaction()
-    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '100000000')
+    await registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000')
 
     const harvest = moveCalls(tx).find((call) => call.function === 'collect_reward')!
     // (vault, clock, storage, incentive_v3, reward_fund, rule_index)
     expect(harvest.arguments).toHaveLength(6)
-    const [, , storage, incentiveV3] = harvest.arguments.map((argument) => objectIdOf(tx, argument))
-    expect(storage).toBe(market.storageObjectId)
-    expect(incentiveV3).toBe(market.incentiveV3ObjectId)
+    const [, , storage, incentiveV3, rewardFund] = harvest.arguments.map((argument) =>
+      objectIdOf(tx, argument)
+    )
+    expect(storage).toBe(LENDING.main.storage)
+    expect(incentiveV3).toBe(LENDING.main.incentiveV3)
+    expect(rewardFund).toBe(LENDING.main.rewardFunds[CERT])
+  })
+
+  it('names the market when its code is not one lending serves', async () => {
+    const vault = suiHighYield()
+    const broken = {
+      ...vault,
+      contractConfig: {
+        ...vault.contractConfig,
+        naviLending: {
+          ...vault.contractConfig.naviLending,
+          markets: [{ code: 'not-a-market', isDefault: true }]
+        }
+      }
+    }
+    const tx = new Transaction()
+    await expect(
+      registry()['navi-lending'].depositPTB(tx, broken, OWNER, '100000000')
+    ).rejects.toThrow(/not-a-market/)
   })
 
   it('fails when a rule harvests from a pool the vault does not configure', async () => {
@@ -175,7 +240,9 @@ describe('depositPTB', () => {
     ).rejects.toThrow(/none of the configured markets \(main, sui-eco, vsui-sui\)/)
   })
 
-  it('fails loudly when an active market rule has no reward fund configured', async () => {
+  it("fails loudly when the rule's market publishes no RewardFund for its coin", async () => {
+    // sui-eco publishes no RewardFund for CERT, so a rule pointing there cannot be
+    // harvested — and an unharvested active rule aborts every deposit and withdrawal.
     const vault = suiHighYield()
     const broken = {
       ...vault,
@@ -184,7 +251,10 @@ describe('depositPTB', () => {
         naviLending: {
           ...vault.contractConfig.naviLending,
           rewardRules: [
-            { ...vault.contractConfig.naviLending.rewardRules[0]!, rewardFundObjectId: undefined }
+            {
+              ...vault.contractConfig.naviLending.rewardRules[0]!,
+              naviPoolId: LENDING['sui-eco'].pool
+            }
           ]
         }
       }
@@ -192,7 +262,7 @@ describe('depositPTB', () => {
     const tx = new Transaction()
     await expect(
       registry()['navi-lending'].depositPTB(tx, broken, OWNER, '100000000')
-    ).rejects.toThrow(/RewardFund/)
+    ).rejects.toThrow(/publishes no RewardFund/)
   })
 })
 
