@@ -16,7 +16,7 @@ declare const vault: Vault
 const sdk: VaultSdk = createVaultSdk(client, 'prod')
 const tx = new Transaction()
 
-const depositResult: Promise<TransactionResult> = sdk.user.depositPTB(tx, vault, '0x1', '1.25')
+const depositResult: Promise<TransactionResult> = sdk.user.depositPTB(tx, vault, '0x1', '1250000')
 const filteredVaults: Promise<Vault[]> = sdk.vaults.getVaults({
   app: ['navi', 'volo']
 })
@@ -35,13 +35,12 @@ void positions
 void vault.id
 void vault.assets.base.coinType
 void vault.operatorMode
-void vault.contractConfig.env
 void vault.app
 
 if (vault.protocol === 'navi-lending') {
   const lendingVault: NAVILendingVault = vault
-  const defaultMarketCode: string = lendingVault.contractConfig.naviLending.defaultMarketCode
-  void defaultMarketCode
+  const isDefault: boolean = lendingVault.contractConfig.naviLending.markets[0]!.isDefault
+  void isDefault
 
   // @ts-expect-error NAVI Lending config cannot expose Volo contract fields.
   void lendingVault.contractConfig.volo
@@ -49,8 +48,11 @@ if (vault.protocol === 'navi-lending') {
 
 if (vault.protocol === 'volo-vault') {
   const voloVault: VoloVault = vault
-  const vaultCode: string = voloVault.contractConfig.volo.vaultCode
-  void vaultCode
+  const receiptParent: string | undefined = voloVault.contractConfig.volo.receiptParentObjectId
+  void receiptParent
+  // Required, not optional: user_entry::deposit takes it as its second argument.
+  const rewardManager: string = voloVault.contractConfig.volo.rewardManagerObjectId
+  void rewardManager
 
   // @ts-expect-error Volo config cannot expose Lending contract fields.
   void voloVault.contractConfig.naviLending

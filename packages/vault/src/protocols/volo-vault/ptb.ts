@@ -3,16 +3,16 @@ import type {
   TransactionObjectArgument,
   TransactionResult
 } from '@mysten/sui/transactions'
-import { toBaseUnits } from '../../amount'
+import { parseBaseUnits } from '../../amount'
 import { VaultSdkError } from '../../errors'
 import type { VaultModuleContext } from '../../module-context'
-import type { HumanAmount, IntegerString } from '../../types'
+import type { IntegerString } from '../../types'
 import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../../user'
 import type { VoloVaultContractConfig, VoloVault } from '../../vaults'
 import type { ProtocolPTB } from '../types'
 import { listReceipts, prepareExactCoin } from '../shared/chain'
+import { CLOCK_OBJECT_ID, ORIGINAL_PACKAGE_ID } from '../shared/constants'
 import { pickReceiptWithMostShares } from './receipt-info'
-import { swapToPrincipalPTB } from './swap'
 
 const USER_ENTRY = 'user_entry'
 const REWARD_MANAGER = 'reward_manager'
@@ -32,50 +32,10 @@ function target(
   return `${config.package}::${module}::${fn}`
 }
 
-function rewardManager(vault: VoloVault): string {
-  const objectId = vault.contractConfig.volo.rewardManagerObjectId
-  if (!objectId) {
-    throw new VaultSdkError(
-      'VAULT_CONFIG_INVALID',
-      `Vault ${vault.id} does not configure a RewardManager. Volo's deposit and reward ` +
-        `claim both take it, so neither can be built without it.`
-    )
-  }
-  return objectId
-}
-
 function normalizeCoinType(coinType: string): string {
   const [address, ...rest] = coinType.split('::')
   const hex = (address ?? '').startsWith('0x') ? (address ?? '').slice(2) : (address ?? '')
   return [`0x${hex.toLowerCase().padStart(64, '0')}`, ...rest].join('::')
-}
-
-/**
- * Resolves the deposit coin type against the vault's accepted assets.
- *
- * Volo vaults may accept a configured set of non-principal coins; those are swapped into
- * the principal before depositing, the same way the Volo backend does it.
- */
-function resolveDepositCoinType(
-  vault: VoloVault,
-  requested?: string
-): { coinType: string; needsSwap: boolean } {
-  const base = normalizeCoinType(vault.assets.base.coinType)
-  if (requested === undefined || normalizeCoinType(requested) === base) {
-    return { coinType: vault.assets.base.coinType, needsSwap: false }
-  }
-
-  const accepted = vault.assets.deposits.find(
-    (asset) => normalizeCoinType(asset.coinType) === normalizeCoinType(requested)
-  )
-  if (!accepted) {
-    throw new VaultSdkError(
-      'UNSUPPORTED_DEPOSIT_ASSET',
-      `Vault ${vault.id} does not accept ${requested}. Accepted: ` +
-        `${vault.assets.deposits.map((asset) => asset.coinType).join(', ')}.`
-    )
-  }
-  return { coinType: accepted.coinType, needsSwap: true }
 }
 
 /**
@@ -128,7 +88,7 @@ async function resolveReceipt(
   const receipts = await listReceipts(
     context.client,
     {
-      initialPackageId: vault.contractConfig.initialPackageId,
+      originalPackageId: ORIGINAL_PACKAGE_ID[vault.protocol],
       module: 'receipt',
       vaultId: vault.id
     },
@@ -156,25 +116,20 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
       tx: Transaction,
       vault: VoloVault,
       owner: string,
-      amount: HumanAmount,
+      amount: IntegerString,
       options?: DepositPTBOptions
     ): Promise<TransactionResult> {
       // Validate configuration and arguments before any I/O: a missing RewardManager or a
       // malformed amount should not cost a round trip to discover.
       const config = vault.contractConfig
-      const manager = rewardManager(vault)
-      const { coinType, needsSwap } = resolveDepositCoinType(vault, options?.coinType)
-      const asset =
-        vault.assets.deposits.find(
-          (candidate) => normalizeCoinType(candidate.coinType) === normalizeCoinType(coinType)
-        ) ?? vault.assets.base
-      const baseUnits = toBaseUnits(amount, asset.decimals)
+      const manager = config.volo.rewardManagerObjectId
+      const baseUnits = parseBaseUnits(amount)
       if (baseUnits <= 0n) {
         throw new VaultSdkError('INVALID_AMOUNT', 'Deposit amount must be greater than zero.')
       }
 
       const receipt = await resolveReceipt(context, tx, vault, owner, 'deposit', options?.receipt)
-      const receiptType = `${config.initialPackageId}::receipt::Receipt`
+      const receiptType = `${ORIGINAL_PACKAGE_ID[vault.protocol]}::receipt::Receipt`
       const receiptOption = receipt
         ? tx.moveCall({
             target: '0x1::option::some',
@@ -183,22 +138,14 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           })
         : tx.moveCall({ target: '0x1::option::none', typeArguments: [receiptType] })
 
-      const funding =
+      const coin =
         options?.coin ??
         (await prepareExactCoin(tx, context.client, {
           owner,
-          coinType,
+          coinType: vault.assets.base.coinType,
           amount: baseUnits,
           useGasCoin: options?.useGasCoin
         }))
-
-      // A swap's output is only known at execution time, so the deposit takes a
-      // `coin::value` handle rather than a literal amount.
-      const swapped = needsSwap
-        ? await swapToPrincipalPTB(tx, vault, owner, coinType, funding, baseUnits)
-        : undefined
-      const coin = swapped?.coin ?? funding
-      const depositAmount = swapped?.amount ?? tx.pure.u64(baseUnits)
 
       return tx.moveCall({
         target: target(config, USER_ENTRY, 'deposit'),
@@ -207,10 +154,10 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           tx.object(vault.id),
           tx.object(manager),
           coin,
-          depositAmount,
+          tx.pure.u64(baseUnits),
           tx.pure.u256(NO_BOUND),
           receiptOption,
-          tx.object(config.clockObjectId)
+          tx.object(CLOCK_OBJECT_ID)
         ]
       })
     },
@@ -242,29 +189,6 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
         )
       }
 
-      // The contract refuses to withdraw while a deposit request is still queued
-      // (`assert_normal`), so the cancel has to precede it inside the same block — which
-      // is what the backend's requestWithdrawAfterCancelDeposit path does.
-      if (options?.cancelPendingDeposit) {
-        if (options.pendingDepositRequestId === undefined) {
-          throw new VaultSdkError(
-            'REQUEST_NOT_FOUND',
-            `cancelPendingDeposit needs pendingDepositRequestId. Take it from ` +
-              `user.getPendingRequests().`
-          )
-        }
-        tx.moveCall({
-          target: target(config, USER_ENTRY, 'cancel_deposit'),
-          typeArguments: [vault.assets.base.coinType],
-          arguments: [
-            tx.object(vault.id),
-            receipt,
-            tx.pure.u64(BigInt(options.pendingDepositRequestId)),
-            tx.object(config.clockObjectId)
-          ]
-        })
-      }
-
       return tx.moveCall({
         target: target(config, USER_ENTRY, 'withdraw'),
         typeArguments: [vault.assets.base.coinType],
@@ -273,7 +197,7 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           tx.pure.u256(shares),
           tx.pure.u64(NO_BOUND),
           receipt,
-          tx.object(config.clockObjectId)
+          tx.object(CLOCK_OBJECT_ID)
         ]
       })
     },
@@ -295,7 +219,7 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           tx.object(vault.id),
           typeof receipt === 'string' ? tx.object(receipt) : receipt,
           tx.pure.u64(BigInt(requestId)),
-          tx.object(config.clockObjectId)
+          tx.object(CLOCK_OBJECT_ID)
         ]
       })
     },
@@ -317,7 +241,7 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           tx.object(vault.id),
           typeof receipt === 'string' ? tx.object(receipt) : receipt,
           tx.pure.u64(BigInt(requestId)),
-          tx.object(config.clockObjectId)
+          tx.object(CLOCK_OBJECT_ID)
         ]
       })
     },
@@ -338,7 +262,7 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
       }
 
       const config = vault.contractConfig
-      const manager = rewardManager(vault)
+      const manager = config.volo.rewardManagerObjectId
 
       // Same as NAVI: one Coin per claim, so each coin type's outputs are merged into one.
       // Returning just the last would leave the rest unconsumed and the block invalid.
@@ -350,7 +274,7 @@ export function createVoloVaultPTB(context: VaultModuleContext): ProtocolPTB<Vol
           arguments: [
             tx.object(manager),
             tx.object(vault.id),
-            tx.object(config.clockObjectId),
+            tx.object(CLOCK_OBJECT_ID),
             tx.object(reward.receiptId)
           ]
         })

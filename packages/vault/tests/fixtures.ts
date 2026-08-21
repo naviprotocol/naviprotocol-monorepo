@@ -1,7 +1,6 @@
 import type { NAVILendingVault, VaultReward, VoloVault } from '../src'
 
 const CALL_TARGET = '0x13e1e0ddcf3a76cde006d530e98a0f985c446013cfedeae6dd067a2f1ea88ff5'
-const TYPE_PACKAGE = '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c'
 export const CERT = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT'
 
 /**
@@ -15,38 +14,27 @@ export function suiHighYield(): NAVILendingVault {
     protocol: 'navi-lending',
     operatorMode: 'instant',
     assets: {
-      base: { coinType: '0x2::sui::SUI', decimals: 9 },
-      deposits: [{ coinType: '0x2::sui::SUI', decimals: 9 }]
+      base: { coinType: '0x2::sui::SUI' }
     },
     contractConfig: {
-      env: 'prod',
-      schemaVersion: 1,
       package: CALL_TARGET,
-      initialPackageId: TYPE_PACKAGE,
-      clockObjectId: '0x6',
       naviLending: {
-        timelockObjectId: '0x04523a8d1f1a3019f9b8f5e61984544d5dfc467ec0e91d64f228a17e30737264',
-        oraclePackageId: '0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea',
-        oracleConfigObjectId: '0x1afe1cb83634f581606cc73c4487ddd8cc39a944b951283af23f7d69d5589478',
-        priceOracleObjectId: '0x1568865ed9a0b5ec414220e8f79b3d04c77acc82358f6e5ae4635687392ffbef',
-        suiSystemStateObjectId: '0x5',
-        defaultMarketCode: 'main',
         markets: [
           {
             code: 'main',
+            isDefault: true,
             poolObjectId: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5',
             storageObjectId: '0xbb4e2f4b6205c2e2a2db47aeb4f830796ec7c005f88537ee775986639bc442fe',
-            assetId: 0,
             incentiveV2ObjectId:
               '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
             incentiveV3ObjectId:
               '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80'
           },
           {
-            code: 'suieco',
+            code: 'sui-eco',
+            isDefault: false,
             poolObjectId: '0xc1dfd32ec30a1ba16e8c1d32a284718ac8f41765722f27fe7fb9d0b38a570ae0',
             storageObjectId: '0xdf18372bc9c588b96c7553bc811467a9166ed9be472b40cb45c226175377c558',
-            assetId: 0,
             incentiveV2ObjectId:
               '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
             incentiveV3ObjectId:
@@ -54,9 +42,9 @@ export function suiHighYield(): NAVILendingVault {
           },
           {
             code: 'vsui-sui',
+            isDefault: false,
             poolObjectId: '0x3f2d878005dd9d5caf56467bc0c55f93bb5a3c83a5c7fb057032a0abf1bad4bf',
             storageObjectId: '0xafb982de1a436b1cc8a14ecd2d787762599b65d3a6b75b84b10939b1e17d9381',
-            assetId: 1,
             incentiveV2ObjectId:
               '0xf87a8acb8b81d14307894d12595541a73f19933f88e1326d5be349c7a6f7559c',
             incentiveV3ObjectId:
@@ -70,12 +58,7 @@ export function suiHighYield(): NAVILendingVault {
             active: true,
             rewardCoinType: CERT,
             naviPoolId: '0x96df0fce3c471489f4debaaa762cf960b3d97820bd1f3f025ff8190730e958c5',
-            incentiveRuleId: '0xd483f186fa678d5f93912f5960f97f29796c12902245b79b9b7a87a4ca407e5a',
-            rewardFundObjectId:
-              '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c',
-            storageObjectId: '0xbb4e2f4b6205c2e2a2db47aeb4f830796ec7c005f88537ee775986639bc442fe',
-            incentiveV3ObjectId:
-              '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80'
+            rewardFundObjectId: '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c'
           }
         ]
       }
@@ -93,8 +76,9 @@ export function suiPrime(): NAVILendingVault {
       ...vault.contractConfig,
       naviLending: {
         ...vault.contractConfig.naviLending,
-        defaultMarketCode: 'vsui-sui',
-        markets: vault.contractConfig.naviLending.markets.slice(1),
+        markets: vault.contractConfig.naviLending.markets
+          .slice(1)
+          .map((market) => ({ ...market, isDefault: market.code === 'vsui-sui' })),
         rewardRules: []
       }
     }
@@ -168,14 +152,9 @@ function receiptContent(objectId: string, vaultId: string): Uint8Array {
 }
 
 const VOLO_CALL_TARGET = `0x${'e'.repeat(64)}`
-const VOLO_TYPE_PACKAGE = `0x${'f'.repeat(64)}`
 export const USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
-export const USDT = '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT'
 
-/**
- * A Volo vault shaped like the production "Stable MMT" entries: USDC principal, with USDT
- * additionally accepted as a non-principal deposit asset.
- */
+/** A Volo vault shaped like the production "Stable MMT" entries: USDC principal. */
 export function voloStable(): VoloVault {
   return {
     id: `0x${'1'.repeat(64)}`,
@@ -183,24 +162,13 @@ export function voloStable(): VoloVault {
     protocol: 'volo-vault',
     operatorMode: 'eventual',
     assets: {
-      base: { coinType: USDC, decimals: 6 },
-      deposits: [
-        { coinType: USDC, decimals: 6 },
-        { coinType: USDT, decimals: 6 }
-      ]
+      base: { coinType: USDC }
     },
     contractConfig: {
-      env: 'prod',
-      schemaVersion: 1,
       package: VOLO_CALL_TARGET,
-      initialPackageId: VOLO_TYPE_PACKAGE,
-      clockObjectId: '0x6',
       volo: {
-        vaultCode: 'stable-mmt-1',
         rewardManagerObjectId: `0x${'2'.repeat(64)}`,
-        receiptParentObjectId: `0x${'3'.repeat(64)}`,
-        configObjectId: `0x${'4'.repeat(64)}`,
-        stakingObjectId: `0x${'5'.repeat(64)}`
+        receiptParentObjectId: `0x${'3'.repeat(64)}`
       }
     }
   }
@@ -213,5 +181,30 @@ export function voloReward(receiptId = RECEIPT): VaultReward {
     receiptId,
     rewardCoinType: CERT,
     claimable: '1000'
+  }
+}
+
+const WBTC = '0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC'
+
+/**
+ * The live Volo wBTC vault, for tests that hit mainnet.
+ *
+ * `package` is the current call target (UpgradeCap version 11) and `receiptParentObjectId`
+ * is the vault's own `receipts` Table, both read back from chain.
+ */
+export function voloWbtcMainnet(): VoloVault {
+  return {
+    id: '0x6e53ffe5b77a85ff609b0813955866ec98a072e4aaf628108e717143ec907bd8',
+    app: 'volo',
+    protocol: 'volo-vault',
+    operatorMode: 'eventual',
+    assets: { base: { coinType: WBTC } },
+    contractConfig: {
+      package: '0xfba9e78742d8f3edeb405561b954846ce3e60cab64dac00e600d50bb4923be0f',
+      volo: {
+        receiptParentObjectId: '0x72da674ce792a5222eda32ffb4d9a8798f91766196fc44c206fc59dc5c60504c',
+        rewardManagerObjectId: '0xf5c28be9086c576dc18c66a6791984c07136131f031ad14b3576890327af4d73'
+      }
+    }
   }
 }

@@ -12,7 +12,7 @@
  * than assuming a regression.
  */
 import { Transaction } from '@mysten/sui/transactions'
-import { createNaviSuiClient } from '@naviprotocol/lending'
+import { createNaviSuiClient, getConfig } from '@naviprotocol/lending'
 import { describe, expect, it } from 'vitest'
 import { createProtocolRegistry, readReceiptBalances } from '../src'
 import { suiHighYield } from './fixtures'
@@ -32,6 +32,14 @@ function registry() {
 }
 
 type MoveCall = { module: string; function: string; arguments: unknown[] }
+
+/** Resolves a command argument back to the object id it was built from. */
+function objectIdOf(tx: Transaction, argument: unknown): string | undefined {
+  const index = (argument as { Input?: number }).Input
+  if (index === undefined) return undefined
+  const input = tx.getData().inputs[index] as { UnresolvedObject?: { objectId: string } }
+  return input?.UnresolvedObject?.objectId
+}
 
 function moveCalls(tx: Transaction): MoveCall[] {
   return (tx.getData().commands as { MoveCall?: MoveCall }[])
@@ -56,7 +64,7 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
         built,
         suiHighYield(),
         HOLDER,
-        { kind: 'amount', amount: '0.01' },
+        { kind: 'amount', amount: '10000000' },
         { receipt: HOLDER_RECEIPT }
       )
       return built
@@ -83,7 +91,7 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
         built,
         suiHighYield(),
         HOLDER,
-        { kind: 'amount', amount: '0.01' },
+        { kind: 'amount', amount: '10000000' },
         { receipt: HOLDER_RECEIPT }
       )
       return built
@@ -95,12 +103,37 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
     expect(withdraw.arguments).toHaveLength(12)
   }, 120_000)
 
+  it("passes lending's own PriceOracle object", async () => {
+    // Not configured per vault: it is a lending-wide object taken from the same config
+    // service the oracle entrypoint comes from. Nothing else would catch a wrong id — the
+    // builders never execute, so a bad object only shows up as an abort on chain.
+    const tx = await buildOrSkip('withdrawPTB', async () => {
+      const built = new Transaction()
+      built.setSender(HOLDER)
+      await registry()['navi-lending'].withdrawPTB(
+        built,
+        suiHighYield(),
+        HOLDER,
+        { kind: 'amount', amount: '10000000' },
+        { receipt: HOLDER_RECEIPT }
+      )
+      return built
+    })
+    if (!tx) return
+
+    const withdraw = moveCalls(tx).find((call) => call.function === 'withdraw')!
+    // (vault, receipt, clock, oracle, ...)
+    const oracle = objectIdOf(tx, withdraw.arguments[3])
+    const { priceOracle } = await getConfig()
+    expect(oracle).toBe(priceOracle)
+  }, 120_000)
+
   it('plans the allocation from live balances when no receipt is named', async () => {
     const tx = new Transaction()
     tx.setSender(HOLDER)
     await registry()['navi-lending'].withdrawPTB(tx, suiHighYield(), HOLDER, {
       kind: 'amount',
-      amount: '0.01'
+      amount: '10000000'
     })
 
     // The holder is funded, so one receipt covers this and only one withdraw is emitted.

@@ -4,7 +4,7 @@ import type {
   TransactionResult
 } from '@mysten/sui/transactions'
 import { operationNotSupported } from '../errors'
-import type { HumanAmount, IntegerString, VaultProtocol } from '../types'
+import type { IntegerString, VaultProtocol } from '../types'
 import type { Vault } from '../vaults'
 import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../user'
 import type { ProtocolPTB } from './types'
@@ -24,7 +24,7 @@ export function createUnsupportedProtocolPTB<TVault extends Vault>(
       tx: Transaction,
       vault: TVault,
       owner: string,
-      amount: HumanAmount,
+      amount: IntegerString,
       options?: DepositPTBOptions
     ): Promise<TransactionResult> {
       void tx

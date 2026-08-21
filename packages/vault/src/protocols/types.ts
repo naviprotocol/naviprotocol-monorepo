@@ -3,7 +3,7 @@ import type {
   TransactionObjectArgument,
   TransactionResult
 } from '@mysten/sui/transactions'
-import type { HumanAmount, IntegerString } from '../types'
+import type { IntegerString } from '../types'
 import type { NAVILendingVault, Vault, VoloVault } from '../vaults'
 import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../user'
 
@@ -23,7 +23,7 @@ export interface ProtocolPTB<TVault extends Vault> {
     tx: Transaction,
     vault: TVault,
     owner: string,
-    amount: HumanAmount,
+    amount: IntegerString,
     options?: DepositPTBOptions
   ): Promise<TransactionResult>
 

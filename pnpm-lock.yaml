@@ -349,9 +349,6 @@ importers:
 
   packages/vault:
     dependencies:
-      '@naviprotocol/astros-aggregator-sdk':
-        specifier: workspace:^
-        version: link:../astros-aggregator-sdk
       '@naviprotocol/lending':
         specifier: workspace:^
         version: link:../lending
@@ -3696,6 +3693,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-tree@3.1.0:
     resolution: {integrity: sha512-0eW44TGN5SQXU1mWSkKwFstI/22X2bG1nYzZTYMAWjylYURhse752YgbE4Cx46AC+bAvI+/dYTPRk1LqSUnu6w==}

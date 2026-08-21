@@ -3,15 +3,25 @@ import type {
   TransactionObjectArgument,
   TransactionResult
 } from '@mysten/sui/transactions'
-import type { HumanAmount, IntegerString, VaultApp } from '../types'
+import type { IntegerString, VaultApp } from '../types'
 import type { VaultIdentifier } from '../vaults'
 import type { DepositPTBOptions, WithdrawPTBOptions } from './options'
 
+/**
+ * A holder's position in one vault, as the backend reports it.
+ *
+ * Display values. They arrive as JSON numbers, so they are not exact past
+ * `Number.MAX_SAFE_INTEGER` and are typed as numbers rather than as integer strings that
+ * would imply otherwise. Anything that has to be exact — the share count a Volo withdrawal
+ * burns, the amount a NAVI withdrawal redeems — is read on chain instead.
+ */
 export interface VaultUserPosition {
   vaultId: string
   owner: string
-  shares: IntegerString
-  amount: HumanAmount
+  /** Share balance, in the vault's share unit. */
+  shares: number
+  /** Value of those shares in the vault's principal coin. */
+  amount: number
   amountUsd?: number
 }
 
@@ -36,7 +46,7 @@ export interface VaultReward {
 }
 
 export type WithdrawTarget =
-  | { kind: 'amount'; amount: HumanAmount }
+  | { kind: 'amount'; amount: IntegerString }
   | { kind: 'shares'; shares: IntegerString | TransactionResult }
   | { kind: 'all' }
 
@@ -69,7 +79,7 @@ export interface UserModule {
     tx: Transaction,
     vault: VaultIdentifier,
     owner: string,
-    amount: HumanAmount,
+    amount: IntegerString,
     options?: DepositPTBOptions
   ): Promise<TransactionResult>
 

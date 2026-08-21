@@ -7,11 +7,11 @@ import { ReceiptStruct } from './bcs'
  * Locates a protocol's receipt type.
  *
  * The type filter must use the ORIGINAL package id: the current call target matches
- * nothing and reports no error. The module differs per protocol —
- * `navi_vault::Receipt` versus `volo_vault::receipt::Receipt`.
+ * nothing and reports no error. The module differs per protocol — NAVI declares `Receipt`
+ * in `navi_vault`, Volo in `receipt`.
  */
 export type ReceiptTypeRef = {
-  initialPackageId: string
+  originalPackageId: string
   module: string
   vaultId: string
 }
@@ -88,7 +88,7 @@ export async function listReceipts(
     )
   }
 
-  const receiptType = `${receipt.initialPackageId}::${receipt.module}::Receipt`
+  const receiptType = `${receipt.originalPackageId}::${receipt.module}::Receipt`
   const vaultAddress = normalizeAddress(receipt.vaultId)
   const found: string[] = []
   let cursor: string | null | undefined

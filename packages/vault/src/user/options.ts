@@ -1,17 +1,6 @@
 import type { TransactionObjectArgument } from '@mysten/sui/transactions'
-import type { IntegerString } from '../types'
 
 export interface DepositPTBOptions {
-  /**
-   * Coin type to fund the deposit with. Must be one of the vault's
-   * `assets.deposits`; defaults to `assets.base.coinType`.
-   *
-   * NAVI Lending accepts only the principal coin — its `deposit` is generic over the
-   * vault's own `CoinType` — and rejects anything else with `UNSUPPORTED_DEPOSIT_ASSET`.
-   * Volo accepts a configured set of non-principal coins and swaps them into the
-   * principal first.
-   */
-  coinType?: string
   coin?: TransactionObjectArgument
   useGasCoin?: boolean
   /**
@@ -24,18 +13,6 @@ export interface DepositPTBOptions {
 }
 
 export interface WithdrawPTBOptions {
-  /**
-   * Volo only: cancel the owner's pending deposit request before withdrawing. Required
-   * when the vault still holds one for them — the contract refuses to withdraw otherwise.
-   *
-   * Needs {@link pendingDepositRequestId} alongside it.
-   */
-  cancelPendingDeposit?: boolean
-  /**
-   * Request id of the pending deposit to cancel. Comes from
-   * `user.getPendingRequests()`.
-   */
-  pendingDepositRequestId?: IntegerString
   /**
    * Position to withdraw from.
    *

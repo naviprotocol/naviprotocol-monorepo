@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { fromBaseUnits, toBaseUnits, VaultSdkError } from '../src'
+import { fromBaseUnits, parseBaseUnits, toBaseUnits, VaultSdkError } from '../src'
+
+describe('parseBaseUnits', () => {
+  it('takes a smallest-unit integer as is', () => {
+    expect(parseBaseUnits('10000000')).toBe(10_000_000n)
+    expect(parseBaseUnits('0')).toBe(0n)
+    // Past 2^53, where a JSON number would already have rounded.
+    expect(parseBaseUnits('11926458395425305')).toBe(11_926_458_395_425_305n)
+  })
+
+  it.each(['0.1', '1e6', '-1', '', ' ', 'abc'])('rejects %o', (bad) => {
+    expect(() => parseBaseUnits(bad)).toThrow(VaultSdkError)
+  })
+
+  it('points a decimal amount at toBaseUnits', () => {
+    expect(() => parseBaseUnits('0.1')).toThrow(/smallest/)
+  })
+})
 
 describe('toBaseUnits', () => {
   it('scales exactly, without floating point', () => {

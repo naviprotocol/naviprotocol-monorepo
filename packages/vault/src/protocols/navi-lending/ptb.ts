@@ -3,16 +3,21 @@ import type {
   TransactionObjectArgument,
   TransactionResult
 } from '@mysten/sui/transactions'
-import { getPriceFeeds, updateOraclePricesPTB } from '@naviprotocol/lending'
+import { getConfig, getPriceFeeds, updateOraclePricesPTB } from '@naviprotocol/lending'
 import type { NaviSuiClient } from '@naviprotocol/lending'
-import { toBaseUnits } from '../../amount'
+import { parseBaseUnits } from '../../amount'
 import { VaultSdkError, operationNotSupported } from '../../errors'
 import type { VaultModuleContext } from '../../module-context'
-import type { HumanAmount, IntegerString } from '../../types'
+import type { IntegerString } from '../../types'
 import type { NAVILendingContractConfig, NAVILendingMarket, NAVILendingVault } from '../../vaults'
 import type { DepositPTBOptions, VaultReward, WithdrawPTBOptions, WithdrawTarget } from '../../user'
 import type { ProtocolPTB } from '../types'
 import { listReceipts, prepareExactCoin } from '../shared/chain'
+import {
+  CLOCK_OBJECT_ID,
+  ORIGINAL_PACKAGE_ID,
+  SUI_SYSTEM_STATE_OBJECT_ID
+} from '../shared/constants'
 import { planWithdrawal, readReceiptBalances, U64_MAX as MAX_AMOUNT } from './allocate'
 
 const MODULE = 'navi_vault'
@@ -39,20 +44,25 @@ function normalizeCoinType(coinType: string): string {
 
 function receiptRef(vault: NAVILendingVault) {
   return {
-    initialPackageId: vault.contractConfig.initialPackageId,
+    originalPackageId: ORIGINAL_PACKAGE_ID[vault.protocol],
     module: MODULE,
     vaultId: vault.id
   }
 }
 
+function marketCodes(vault: NAVILendingVault): string {
+  const { markets } = vault.contractConfig.naviLending
+  return markets.length > 0 ? markets.map((market) => market.code).join(', ') : '(none)'
+}
+
 function defaultMarket(vault: NAVILendingVault): NAVILendingMarket {
-  const { markets, defaultMarketCode } = vault.contractConfig.naviLending
-  const market = markets.find((candidate) => candidate.code === defaultMarketCode)
+  const market = vault.contractConfig.naviLending.markets.find((candidate) => candidate.isDefault)
   if (!market) {
     throw new VaultSdkError(
       'VAULT_CONFIG_INVALID',
-      `Vault ${vault.id} names "${defaultMarketCode}" as its default market but does not ` +
-        `configure it. Deposits route only to the default market.`
+      `None of vault ${vault.id}'s markets (${marketCodes(vault)}) is flagged default. ` +
+        `Deposits route only to the default market, and withdrawing from any other one is ` +
+        `penalised.`
     )
   }
   return market
@@ -73,27 +83,44 @@ type HarvestableRule = {
  * Active market rules only: vault-native rules are settled internally by the contract and
  * are exempt. A missing harvest aborts `E_REWARDS_NOT_COLLECTED`, so an unresolvable rule
  * is fatal rather than skippable.
+ *
+ * `Storage` and `incentive_v3` are taken from the market the rule names rather than from
+ * the rule itself: `collect_reward` calls
+ * `assert_storage_and_incentive_v3_match_market(navi_pool_id, ...)`, so the two can only
+ * ever be that market's. Configuring them a second time on the rule would add nothing but
+ * a way for the copies to disagree.
  */
 function harvestableRules(vault: NAVILendingVault): HarvestableRule[] {
-  return vault.contractConfig.naviLending.rewardRules
+  const { markets, rewardRules } = vault.contractConfig.naviLending
+  return rewardRules
     .filter((rule) => rule.active && rule.type === 'market')
     .map((rule) => {
-      const { rewardFundObjectId, storageObjectId, incentiveV3ObjectId, naviPoolId } = rule
-      if (!rewardFundObjectId || !storageObjectId || !incentiveV3ObjectId || !naviPoolId) {
+      const { rewardFundObjectId, naviPoolId } = rule
+      if (!rewardFundObjectId || !naviPoolId) {
         throw new VaultSdkError(
           'VAULT_CONFIG_INVALID',
           `Reward rule ${rule.ruleIndex} (${rule.rewardCoinType}) on vault ${vault.id} is an ` +
-            `active market rule but is missing its RewardFund / Storage / incentive_v3 / pool. ` +
-            `RewardFund objects live on the lending side and are not discoverable from vault ` +
+            `active market rule but is missing its pool or its RewardFund. RewardFund objects ` +
+            `live on the lending side, differ per market, and are not discoverable from vault ` +
             `state, so they must be configured — otherwise every deposit and withdrawal on ` +
             `this vault aborts.`
+        )
+      }
+      const market = markets.find((candidate) => candidate.poolObjectId === naviPoolId)
+      if (!market) {
+        throw new VaultSdkError(
+          'VAULT_CONFIG_INVALID',
+          `Reward rule ${rule.ruleIndex} on vault ${vault.id} harvests from pool ${naviPoolId}, ` +
+            `which is none of the configured markets (${marketCodes(vault)}). The contract ` +
+            `resolves the rule's Storage and incentive_v3 from that market, so the harvest ` +
+            `cannot be built.`
         )
       }
       return {
         ruleIndex: rule.ruleIndex,
         rewardCoinType: rule.rewardCoinType,
-        storageObjectId,
-        incentiveV3ObjectId,
+        storageObjectId: market.storageObjectId,
+        incentiveV3ObjectId: market.incentiveV3ObjectId,
         rewardFundObjectId
       }
     })
@@ -110,7 +137,7 @@ function appendMarketSync(tx: Transaction, vault: NAVILendingVault): void {
         tx.object(vault.id),
         tx.object(market.storageObjectId),
         tx.object(market.poolObjectId),
-        tx.object(config.clockObjectId)
+        tx.object(CLOCK_OBJECT_ID)
       ]
     })
   }
@@ -129,7 +156,7 @@ function appendRewardHarvest(
       typeArguments: [vault.assets.base.coinType, rule.rewardCoinType],
       arguments: [
         tx.object(vault.id),
-        tx.object(config.clockObjectId),
+        tx.object(CLOCK_OBJECT_ID),
         tx.object(rule.storageObjectId),
         tx.object(rule.incentiveV3ObjectId),
         tx.object(rule.rewardFundObjectId),
@@ -181,18 +208,6 @@ async function resolveDepositReceipt(
   return tx.object(best.balance > 0n ? best.receiptId : receipts[0]!)
 }
 
-function assertDepositAsset(vault: NAVILendingVault, coinType?: string): void {
-  if (coinType === undefined) return
-  const base = normalizeCoinType(vault.assets.base.coinType)
-  if (normalizeCoinType(coinType) !== base) {
-    throw new VaultSdkError(
-      'UNSUPPORTED_DEPOSIT_ASSET',
-      `Vault ${vault.id} accepts only ${vault.assets.base.coinType}. Its deposit entrypoint ` +
-        `is generic over the vault's own CoinType, so there is no swap path here.`
-    )
-  }
-}
-
 /**
  * Resolves a withdrawal target to the amount the contract takes.
  *
@@ -207,7 +222,7 @@ function resolveWithdrawAmount(vault: NAVILendingVault, target_: WithdrawTarget)
       // from_default clamps this to the holder's maximum redeemable value.
       return MAX_AMOUNT
     case 'amount':
-      return toBaseUnits(target_.amount, vault.assets.base.decimals)
+      return parseBaseUnits(target_.amount)
     case 'shares':
       throw new VaultSdkError(
         'OPERATION_NOT_SUPPORTED',
@@ -231,14 +246,12 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       tx: Transaction,
       vault: NAVILendingVault,
       owner: string,
-      amount: HumanAmount,
+      amount: IntegerString,
       options?: DepositPTBOptions
     ): Promise<TransactionResult> {
-      assertDepositAsset(vault, options?.coinType)
-
       const config = vault.contractConfig
       const market = defaultMarket(vault)
-      const baseUnits = toBaseUnits(amount, vault.assets.base.decimals)
+      const baseUnits = parseBaseUnits(amount)
       if (baseUnits <= 0n) {
         throw new VaultSdkError('INVALID_AMOUNT', 'Deposit amount must be greater than zero.')
       }
@@ -246,7 +259,7 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       appendFreshnessPrologue(tx, vault)
 
       const receipt = await resolveDepositReceipt(context, tx, vault, owner, options)
-      const receiptType = `${config.initialPackageId}::${MODULE}::Receipt`
+      const receiptType = `${ORIGINAL_PACKAGE_ID[vault.protocol]}::${MODULE}::Receipt`
       const receiptOption = receipt
         ? tx.moveCall({
             target: '0x1::option::some',
@@ -270,7 +283,7 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
         arguments: [
           tx.object(vault.id),
           receiptOption,
-          tx.object(config.clockObjectId),
+          tx.object(CLOCK_OBJECT_ID),
           tx.object(market.storageObjectId),
           tx.object(market.poolObjectId),
           coin,
@@ -298,13 +311,6 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       target_: WithdrawTarget,
       options?: WithdrawPTBOptions
     ): Promise<TransactionResult> {
-      if (options?.cancelPendingDeposit) {
-        throw new VaultSdkError(
-          'OPERATION_NOT_SUPPORTED',
-          `NAVI Lending vaults settle instantly, so there is no pending deposit to cancel.`
-        )
-      }
-
       const config = vault.contractConfig
       const market = defaultMarket(vault)
       const amount = resolveWithdrawAmount(vault, target_)
@@ -328,6 +334,11 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
       await appendOraclePrologue(context, tx, vault)
       appendFreshnessPrologue(tx, vault)
 
+      // `PriceOracle` is a lending-wide object, identical across markets, and already
+      // published by the config service this builder reads the oracle entrypoint from.
+      // Taking it from there rather than from vault configuration keeps one source.
+      const { priceOracle } = await getConfig(toLendingOptions(context))
+
       const coins: TransactionObjectArgument[] = []
       for (const step of plan) {
         const [coin] = tx.moveCall({
@@ -336,8 +347,8 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
           arguments: [
             tx.object(vault.id),
             typeof step.receiptId === 'string' ? tx.object(step.receiptId) : step.receiptId,
-            tx.object(config.clockObjectId),
-            tx.object(config.naviLending.priceOracleObjectId),
+            tx.object(CLOCK_OBJECT_ID),
+            tx.object(priceOracle),
             tx.object(market.storageObjectId),
             tx.object(market.poolObjectId),
             tx.pure.u64(step.amount),
@@ -345,7 +356,7 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
             tx.pure.bool(true),
             tx.object(market.incentiveV2ObjectId),
             tx.object(market.incentiveV3ObjectId),
-            tx.object(config.naviLending.suiSystemStateObjectId ?? '0x5')
+            tx.object(SUI_SYSTEM_STATE_OBJECT_ID)
           ]
         })
         coins.push(coin as TransactionObjectArgument)
@@ -422,11 +433,7 @@ export function createNaviLendingPTB(context: VaultModuleContext): ProtocolPTB<N
         const coin = tx.moveCall({
           target: target(config, 'claim_reward'),
           typeArguments: [vault.assets.base.coinType, reward.rewardCoinType],
-          arguments: [
-            tx.object(vault.id),
-            tx.object(reward.receiptId),
-            tx.object(config.clockObjectId)
-          ]
+          arguments: [tx.object(vault.id), tx.object(reward.receiptId), tx.object(CLOCK_OBJECT_ID)]
         })
         const key = normalizeCoinType(reward.rewardCoinType)
         const group = byCoinType.get(key)
@@ -466,7 +473,7 @@ async function appendOraclePrologue(
   tx: Transaction,
   vault: NAVILendingVault
 ): Promise<void> {
-  const lendingOptions = toLendingOptions(context, vault)
+  const lendingOptions = toLendingOptions(context)
   const feeds = await getPriceFeeds(lendingOptions)
   const wanted = normalizeCoinType(vault.assets.base.coinType)
   const matching = feeds.filter((feed) => normalizeCoinType(feed.coinType) === wanted)
@@ -489,12 +496,14 @@ async function appendOraclePrologue(
  * list, and `JSON.stringify` throws on a BigInt. Forwarding anything carrying one fails
  * inside lending, far from the call site.
  */
-function toLendingOptions(context: VaultModuleContext, vault: NAVILendingVault) {
+function toLendingOptions(context: VaultModuleContext) {
   return {
     // Structurally compatible — both sides only require a `core` property. Casting here
     // keeps the Sui SDK's client subpath out of this package's published declarations,
     // which the repo's SDK v2 boundary check rejects.
     client: context.client as NaviSuiClient,
-    env: (vault.contractConfig.env === 'test' ? 'dev' : 'prod') as 'dev' | 'prod'
+    // One SDK instance serves one environment: `test` is a separate stage deployment with
+    // its own API, not a mix of vaults inside one instance.
+    env: (context.env === 'test' ? 'dev' : 'prod') as 'dev' | 'prod'
   }
 }

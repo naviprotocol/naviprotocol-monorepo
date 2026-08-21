@@ -18,7 +18,7 @@ composed here.
 
 ```ts
 if (vault.protocol === 'navi-lending') {
-  vault.contractConfig.naviLending.defaultMarketCode // no cast needed
+  vault.contractConfig.naviLending.markets // no cast needed
 }
 ```
 
@@ -27,15 +27,19 @@ if (vault.protocol === 'navi-lending') {
 own transaction, `eventual` records a request an operator fulfils later, which is why
 cancellation exists on one protocol and not the other.
 
+`contractConfig` carries only what varies per vault. The two package identities each
+protocol was published under, and the `Clock`, are fixed for the lifetime of a deployment
+and live in `protocols/shared/constants.ts` instead.
+
 ## What is implemented
 
-|                                                                                 | NAVI Lending                   | Volo Vault |
-| ------------------------------------------------------------------------------- | ------------------------------ | ---------- |
-| `depositPTB`                                                                    | yes                            | not yet    |
-| `withdrawPTB`                                                                   | yes                            | not yet    |
-| `claimRewardsPTB`                                                               | yes                            | not yet    |
-| `cancelDepositPTB` / `cancelWithdrawPTB`                                        | n/a — settles instantly        | not yet    |
-| `getVault` / `getVaults` / `getPositions` / `getPendingRequests` / `getRewards` | backend-sourced, not yet wired | same       |
+|                                                                                 | NAVI Lending                   | Volo Vault             |
+| ------------------------------------------------------------------------------- | ------------------------------ | ---------------------- |
+| `depositPTB`                                                                    | yes                            | yes                    |
+| `withdrawPTB`                                                                   | yes, asset-denominated         | yes, share-denominated |
+| `claimRewardsPTB`                                                               | yes                            | yes                    |
+| `cancelDepositPTB` / `cancelWithdrawPTB`                                        | n/a — settles instantly        | yes                    |
+| `getVault` / `getVaults` / `getPositions` / `getPendingRequests` / `getRewards` | backend-sourced, not yet wired | same                   |
 
 ## Notes that cost real money to learn
 
@@ -55,9 +59,11 @@ release here.
 does not expose a slippage bound, matching how the NAVI vault backend calls the contract.
 Compose `navi_vault::withdraw` through the protocol layer if you need one.
 
-**Amounts are decimal strings and are converted with integer arithmetic only.** A deposit
-must equal the requested amount exactly or the contract aborts `E_AMOUNT_MISMATCH`, and an
-input finer than the coin's decimals is rejected rather than truncated.
+**Amounts are in the coin's smallest unit, as integer strings** — the same convention as
+`@naviprotocol/lending`, whose `depositCoinPTB` also takes a raw `u64`. Nothing here
+converts, so the builders need no `decimals` and cannot be off by a power of ten; a deposit
+must equal the requested amount exactly or the contract aborts `E_AMOUNT_MISMATCH`. Callers
+holding a human amount convert it with the exported `toBaseUnits`.
 
 **A withdrawal can span several receipts.** Each receipt is an independent position, so a
 request larger than any single one draws on more than one: receipts consumed in full are
@@ -66,6 +72,11 @@ the resulting coins are merged into one. Balances come from `get_user_balance` i
 simulated block. Volo instead acts on the receipt with the most settled shares, matching
 its backend — read as a dynamic field on the vault's `receipts` table, because the
 contract's own getter returns a reference and is unreachable from a PTB.
+
+**A deposit is funded with the vault's principal coin, and nothing else.** Both contracts'
+`deposit` is generic over the vault's own `CoinType`, so there is no swap inside these
+builders. Depositing another coin means swapping to the principal first and passing the
+result as `options.coin` — a swap and a deposit compose in one transaction.
 
 **A `Receipt` is a position, and the type is not generic** — one type covers every vault,
 so attribution reads each object's `vault_address`. Omit `options.receipt` and the deposit

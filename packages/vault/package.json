@@ -63,7 +63,6 @@
     "@mysten/sui": ">=2.0.0"
   },
   "dependencies": {
-    "@naviprotocol/astros-aggregator-sdk": "workspace:^",
     "@naviprotocol/lending": "workspace:^"
   }
 }

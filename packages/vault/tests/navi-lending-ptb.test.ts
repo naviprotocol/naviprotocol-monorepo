@@ -11,6 +11,9 @@ import {
   suiPrime
 } from './fixtures'
 
+/** The NAVI Vault contract's original published package, as read back from chain. */
+const NAVI_ORIGINAL_PACKAGE = '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c'
+
 function registry(
   receipts: string[] = [],
   balances: Record<string, bigint> = {},
@@ -31,6 +34,14 @@ type MoveCall = {
   arguments: unknown[]
 }
 
+/** Resolves a command argument back to the object id it was built from. */
+function objectIdOf(tx: Transaction, argument: unknown): string | undefined {
+  const index = (argument as { Input?: number }).Input
+  if (index === undefined) return undefined
+  const input = tx.getData().inputs[index] as { UnresolvedObject?: { objectId: string } }
+  return input?.UnresolvedObject?.objectId
+}
+
 function moveCalls(tx: Transaction): MoveCall[] {
   return (tx.getData().commands as { MoveCall?: MoveCall }[])
     .filter((command) => command.MoveCall)
@@ -41,7 +52,7 @@ describe('depositPTB', () => {
   it('emits every market sync, then every active harvest, then deposit', async () => {
     const vault = suiHighYield()
     const tx = new Transaction()
-    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '0.1')
+    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '100000000')
 
     const names = moveCalls(tx).map((call) => call.function)
     // M + R + 1, in order. Omitting a sync aborts 10006; omitting a harvest, 10007.
@@ -57,7 +68,7 @@ describe('depositPTB', () => {
 
   it('drops the harvest step for a vault with no reward rules', async () => {
     const tx = new Transaction()
-    await registry()['navi-lending'].depositPTB(tx, suiPrime(), OWNER, '0.1')
+    await registry()['navi-lending'].depositPTB(tx, suiPrime(), OWNER, '100000000')
     const names = moveCalls(tx).map((call) => call.function)
     expect(names.filter((name) => name === 'sync_market_balance')).toHaveLength(2)
     expect(names).not.toContain('collect_reward')
@@ -66,21 +77,19 @@ describe('depositPTB', () => {
   it('targets the LATEST package but types the receipt by the ORIGINAL one', async () => {
     const vault = suiHighYield()
     const tx = new Transaction()
-    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '0.1')
+    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '100000000')
 
     const deposit = moveCalls(tx).find((call) => call.function === 'deposit')!
     expect(deposit.package).toBe(vault.contractConfig.package)
 
     // Interchanging these fails silently in both directions.
     const option = moveCalls(tx).find((call) => call.function === 'none')!
-    expect(option.typeArguments).toEqual([
-      `${vault.contractConfig.initialPackageId}::navi_vault::Receipt`
-    ])
+    expect(option.typeArguments).toEqual([`${NAVI_ORIGINAL_PACKAGE}::navi_vault::Receipt`])
   })
 
   it('tops up an existing receipt instead of minting a second one', async () => {
     const tx = new Transaction()
-    await registry([RECEIPT])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    await registry([RECEIPT])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000')
     const names = moveCalls(tx).map((call) => call.function)
     expect(names).toContain('some')
     expect(names).not.toContain('none')
@@ -96,7 +105,7 @@ describe('depositPTB', () => {
     } as never
     const protocols = createProtocolRegistry({ client: exploding, env: 'prod', options: {} })
     const tx = new Transaction()
-    await protocols['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1', {
+    await protocols['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000', {
       receipt: RECEIPT
     })
     expect(moveCalls(tx).map((call) => call.function)).toContain('some')
@@ -104,29 +113,59 @@ describe('depositPTB', () => {
 
   it('passes deposit arguments in the contract order', async () => {
     const tx = new Transaction()
-    await registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    await registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000')
     const deposit = moveCalls(tx).find((call) => call.function === 'deposit')!
     // (vault, receipt_opt, clock, storage, pool, coin, amount, incentive_v2, incentive_v3)
     expect(deposit.arguments).toHaveLength(9)
     expect(deposit.typeArguments).toEqual(['0x2::sui::SUI'])
   })
 
-  it('rejects a non-principal deposit asset', async () => {
-    // NAVI Lending's deposit is generic over the vault's own CoinType, so there is no
-    // swap path; Volo is the protocol that accepts other coins.
+  it('rejects a decimal amount — amounts are in the smallest unit', async () => {
     const tx = new Transaction()
     await expect(
-      registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1', {
-        coinType: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
-      })
-    ).rejects.toThrow(/accepts only/)
+      registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    ).rejects.toThrow(/smallest/)
   })
 
-  it('rejects an amount finer than the coin precision', async () => {
+  it("resolves the harvest's Storage and incentive_v3 from the market the rule names", async () => {
+    // The contract asserts they are that market's, so they are joined on naviPoolId rather
+    // than configured a second time on the rule.
+    const vault = suiHighYield()
+    const market = vault.contractConfig.naviLending.markets.find(
+      (m) => m.poolObjectId === vault.contractConfig.naviLending.rewardRules[0]!.naviPoolId
+    )!
+    const tx = new Transaction()
+    await registry()['navi-lending'].depositPTB(tx, vault, OWNER, '100000000')
+
+    const harvest = moveCalls(tx).find((call) => call.function === 'collect_reward')!
+    // (vault, clock, storage, incentive_v3, reward_fund, rule_index)
+    expect(harvest.arguments).toHaveLength(6)
+    const [, , storage, incentiveV3] = harvest.arguments.map((argument) => objectIdOf(tx, argument))
+    expect(storage).toBe(market.storageObjectId)
+    expect(incentiveV3).toBe(market.incentiveV3ObjectId)
+  })
+
+  it('fails when a rule harvests from a pool the vault does not configure', async () => {
+    const vault = suiHighYield()
+    const broken = {
+      ...vault,
+      contractConfig: {
+        ...vault.contractConfig,
+        naviLending: {
+          ...vault.contractConfig.naviLending,
+          rewardRules: [
+            {
+              ...vault.contractConfig.naviLending.rewardRules[0]!,
+              naviPoolId: `0x${'4'.repeat(64)}`
+            }
+          ]
+        }
+      }
+    }
     const tx = new Transaction()
     await expect(
-      registry()['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.0000000001')
-    ).rejects.toThrow(VaultSdkError)
+      registry()['navi-lending'].depositPTB(tx, broken, OWNER, '100000000')
+    ).rejects.toThrow(/none of the configured markets \(main, sui-eco, vsui-sui\)/)
   })
 
   it('fails loudly when an active market rule has no reward fund configured', async () => {
@@ -144,9 +183,9 @@ describe('depositPTB', () => {
       }
     }
     const tx = new Transaction()
-    await expect(registry()['navi-lending'].depositPTB(tx, broken, OWNER, '0.1')).rejects.toThrow(
-      /RewardFund/
-    )
+    await expect(
+      registry()['navi-lending'].depositPTB(tx, broken, OWNER, '100000000')
+    ).rejects.toThrow(/RewardFund/)
   })
 })
 
@@ -195,6 +234,29 @@ describe('operations NAVI Lending does not have', () => {
     ).rejects.toThrow(/not implemented|not supported/i)
   })
 
+  it('fails when no market is flagged default', async () => {
+    // Governance can move the default market; until the configuration catches up, the
+    // contract aborts E_DEFAULT_MARKET_MISMATCH (10022) rather than routing elsewhere.
+    const vault = suiHighYield()
+    const broken = {
+      ...vault,
+      contractConfig: {
+        ...vault.contractConfig,
+        naviLending: {
+          ...vault.contractConfig.naviLending,
+          markets: vault.contractConfig.naviLending.markets.map((m) => ({
+            ...m,
+            isDefault: false
+          }))
+        }
+      }
+    }
+    const tx = new Transaction()
+    await expect(
+      registry()['navi-lending'].depositPTB(tx, broken, OWNER, '100000000')
+    ).rejects.toThrow(/markets \(main, sui-eco, vsui-sui\) is flagged default/)
+  })
+
   it('rejects a share-denominated withdrawal target', async () => {
     const tx = new Transaction()
     await expect(
@@ -204,19 +266,6 @@ describe('operations NAVI Lending does not have', () => {
       })
     ).rejects.toThrow(/asset amount, not shares/)
   })
-
-  it('rejects cancelPendingDeposit on withdraw', async () => {
-    const tx = new Transaction()
-    await expect(
-      registry([RECEIPT])['navi-lending'].withdrawPTB(
-        tx,
-        suiHighYield(),
-        OWNER,
-        { kind: 'all' },
-        { cancelPendingDeposit: true }
-      )
-    ).rejects.toThrow(/settle instantly/)
-  })
 })
 
 describe('receipt selection', () => {
@@ -224,13 +273,13 @@ describe('receipt selection', () => {
 
   it('mints a new position when the owner holds none', async () => {
     const tx = new Transaction()
-    await registry([])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    await registry([])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000')
     expect(moveCalls(tx).map((call) => call.function)).toContain('none')
   })
 
   it('tops up the only position when the owner holds one', async () => {
     const tx = new Transaction()
-    await registry([RECEIPT])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    await registry([RECEIPT])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '100000000')
     expect(moveCalls(tx).map((call) => call.function)).toContain('some')
   })
 
@@ -240,15 +289,21 @@ describe('receipt selection', () => {
     const tx = new Transaction()
     await registry([RECEIPT, SECOND], { [RECEIPT]: 1n, [SECOND]: 9999n })[
       'navi-lending'
-    ].depositPTB(tx, suiHighYield(), OWNER, '0.1')
+    ].depositPTB(tx, suiHighYield(), OWNER, '100000000')
     expect(JSON.stringify(tx.getData().inputs)).toContain(SECOND.slice(2))
   })
 
   it('honours an explicit receipt without reading balances', async () => {
     const tx = new Transaction()
-    await registry([RECEIPT, SECOND])['navi-lending'].depositPTB(tx, suiHighYield(), OWNER, '0.1', {
-      receipt: SECOND
-    })
+    await registry([RECEIPT, SECOND])['navi-lending'].depositPTB(
+      tx,
+      suiHighYield(),
+      OWNER,
+      '100000000',
+      {
+        receipt: SECOND
+      }
+    )
     expect(JSON.stringify(tx.getData().inputs)).toContain(SECOND.slice(2))
   })
 })

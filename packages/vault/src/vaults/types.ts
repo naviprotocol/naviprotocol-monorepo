@@ -1,44 +1,48 @@
-import type { VaultApp, VaultEnv, VaultProtocol } from '../types'
+import type { VaultApp, VaultProtocol } from '../types'
 
 export interface VaultAsset {
   coinType: string
-  decimals: number
 }
 
 /**
  * Assets a vault deals in.
  *
- * `base` is the principal coin the vault accounts in. `deposits` lists every coin type a
- * deposit may be funded with, which is a superset of `base`: Volo vaults accept a
- * configured set of non-principal coins and swap them into the principal before
- * depositing, while NAVI Lending vaults accept only `base` because the contract's
- * `deposit` is generic over the vault's own `CoinType`.
+ * `base` is the principal coin the vault accounts in, and the only coin a deposit may be
+ * funded with. Depositing something else means swapping to `base` first, which the caller
+ * composes into the same transaction.
+ *
+ * No `decimals`: amounts cross the PTB builders in the coin's smallest unit, so nothing
+ * here converts, and the caller that formats balances already holds the coin's metadata.
  */
 export interface VaultAssets {
   base: VaultAsset
-  deposits: VaultAsset[]
 }
 
 export interface BaseVaultContractConfig {
-  env: VaultEnv
-  schemaVersion: number
-  /** Latest published package. The `target` of every moveCall; changes on every upgrade. */
-  package: string
   /**
-   * Original published package. Used for every type string — owned-object filters, event
-   * filters, `objectType` matching. A Sui upgrade never changes type identity, and using
-   * `package` here matches zero objects while reporting no error.
+   * Latest published package — the `target` of every moveCall.
+   *
+   * Changes on every upgrade, and while it is stale everything fails: both contracts check
+   * the vault object's version against a constant compiled into the package, with strict
+   * equality, so calling the previous package after a migration aborts.
    */
-  initialPackageId: string
-  clockObjectId: string
-  minSdkVersion?: string
+  package: string
 }
 
 export interface NAVILendingMarket {
+  /** NAVI's market key, as served by `/api/navi/markets` — `main`, `sui-eco`, `vsui-sui`. */
   code: string
+  /**
+   * The only market a deposit can be routed to, and the only penalty-free withdrawal
+   * source. Exactly one market carries it.
+   *
+   * Governance can move it. Until the configuration catches up, `deposit` and any
+   * withdrawal larger than the vault's idle balance abort `E_DEFAULT_MARKET_MISMATCH`
+   * (10022) — the contract asserts the pool it is handed is the current default.
+   */
+  isDefault: boolean
   poolObjectId: string
   storageObjectId: string
-  assetId: number
   incentiveV2ObjectId: string
   incentiveV3ObjectId: string
 }
@@ -53,62 +57,62 @@ export type NAVILendingRewardRuleType = 'market' | 'vault-native'
 /**
  * A reward rule as configured.
  *
- * Shape follows the NAVI vault backend's own static config. The fields below `active` are
- * optional because `vault-native` rules have no market, no incentive rule and no fund;
- * for `market` rules they are all required to build `collect_reward`, whose signature is
- * `(vault, clock, storage, incentive_v3, reward_fund, rule_index)`.
+ * The two fields below `rewardCoinType` are optional because `vault-native` rules have no
+ * market and no fund; for `market` rules both are required to build `collect_reward`,
+ * whose signature is `(vault, clock, storage, incentive_v3, reward_fund, rule_index)`.
+ * Its `storage` and `incentive_v3` come from the market {@link naviPoolId} names — the
+ * contract asserts exactly that, so they are not configured separately.
  */
 export interface NAVILendingRewardRule {
-  /** Index into the contract's append-only rule vector. Stable for the vault's lifetime. */
+  /**
+   * Index into the contract's append-only rule vector. Stable for the vault's lifetime.
+   *
+   * Explicit rather than the array position: `collect_reward` addresses rules by index, and
+   * harvesting the wrong one is a silent no-op that later aborts `E_REWARDS_NOT_COLLECTED`.
+   */
   ruleIndex: number
   type: NAVILendingRewardRuleType
   /** Inactive rules are not harvested and not counted, but remain claimable. */
   active: boolean
   rewardCoinType: string
-  /** Pool address of the market this rule harvests from. */
+  /** Pool address of the market this rule harvests from, and the key into `markets`. */
   naviPoolId?: string
-  incentiveRuleId?: string
   /**
-   * `RewardFund<RewardCoinType>` object. It belongs to NAVI's `incentive_v3` and is not
-   * discoverable from vault state, so it has to be configured. `@naviprotocol/lending`
-   * also publishes it via `getConfig().rewardFunds`, keyed by reward coin type.
+   * `RewardFund<RewardCoinType>` object. It belongs to NAVI's `incentive_v3`, is not
+   * discoverable from vault state, and is per market — the same reward coin has a
+   * different fund in each one — so it has to be configured per rule.
    */
   rewardFundObjectId?: string
-  storageObjectId?: string
-  incentiveV3ObjectId?: string
 }
 
 export interface NAVILendingContractConfig extends BaseVaultContractConfig {
   naviLending: {
-    timelockObjectId: string
-    oraclePackageId: string
-    oracleConfigObjectId: string
-    priceOracleObjectId: string
-    suiSystemStateObjectId?: string
     /**
      * Every market registered on the vault. The contract asserts that all of them were
      * synchronized in the same transaction as a deposit or withdrawal, so an incomplete
      * list aborts `E_MARKET_NOT_READ`.
      */
     markets: NAVILendingMarket[]
-    /** The only market a deposit can be routed to, and the only penalty-free withdrawal source. */
-    defaultMarketCode: string
     rewardRules: NAVILendingRewardRule[]
   }
 }
 
 export interface ReceiptBasedVaultContractConfig {
-  vaultCode: string
+  /**
+   * The vault's `receipts` Table, parent of the per-receipt dynamic fields holding settled
+   * shares. Optional because it is only read to choose between several receipts; a holder
+   * with one needs no lookup.
+   */
   receiptParentObjectId?: string
-  rewardManagerObjectId?: string
+  /**
+   * `RewardManager` for this vault. Required rather than optional: `user_entry::deposit`
+   * takes it as its second argument, so it is not only a rewards concern.
+   */
+  rewardManagerObjectId: string
 }
 
 export interface VoloVaultContractConfig extends BaseVaultContractConfig {
-  volo: ReceiptBasedVaultContractConfig & {
-    configObjectId: string
-    stakingObjectId: string
-    metadataObjectId?: string
-  }
+  volo: ReceiptBasedVaultContractConfig
 }
 
 export interface VaultContractConfigMap {

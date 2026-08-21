@@ -7,7 +7,7 @@ import { operationNotSupported, VaultSdkError } from '../errors'
 import type { VaultModuleContext } from '../module-context'
 import { createProtocolRegistry } from '../protocols'
 import type { ProtocolRegistry } from '../protocols'
-import type { HumanAmount, IntegerString } from '../types'
+import type { IntegerString } from '../types'
 import type { Vault, VaultIdentifier } from '../vaults'
 import type { DepositPTBOptions, WithdrawPTBOptions } from './options'
 import type {
@@ -71,7 +71,7 @@ class DefaultUserModule implements UserModule {
     tx: Transaction,
     vault: VaultIdentifier,
     owner: string,
-    amount: HumanAmount,
+    amount: IntegerString,
     options?: DepositPTBOptions
   ): Promise<TransactionResult> {
     const resolved = await resolveVault(this.#context, vault)

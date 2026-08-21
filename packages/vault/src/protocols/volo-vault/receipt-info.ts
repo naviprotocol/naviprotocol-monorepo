@@ -3,54 +3,31 @@ import { VaultSdkError } from '../../errors'
 import type { VaultSuiClient } from '../../types'
 import type { VoloVault } from '../../vaults'
 
-/** `sui::table::Table`, which is `{ id: UID, size: u64 }`. */
-const TableStruct = bcs.struct('Table', { id: bcs.Address, size: bcs.U64 })
-
 /**
- * `volo_vault::vault_receipt_info::VaultReceiptInfo`, in declaration order.
+ * The leading fields of `volo_vault::vault_receipt_info::VaultReceiptInfo`.
  *
- * Read as a dynamic field rather than through a view function: the contract's
- * `vault_receipt_info` getter returns `&VaultReceiptInfo`, and a reference cannot be a
- * PTB value, so it is unreachable from a simulated block. The struct lives in the vault's
+ * BCS is positional, so `status` has to be decoded to reach `shares`; the fields after it
+ * are left off, and the trailing bytes ignored. Read as a dynamic field rather than
+ * through a view function: the contract's getter returns `&VaultReceiptInfo`, and a
+ * reference cannot be a PTB value. The struct lives in the vault's
  * `receipts: Table<address, VaultReceiptInfo>`, and every Table entry *is* a dynamic
  * field, so it can be fetched and decoded directly.
  */
 const VaultReceiptInfoStruct = bcs.struct('VaultReceiptInfo', {
-  /** 0 normal, 1 pending_deposit, 2 pending_withdraw, 3 pending_withdraw_with_auto_transfer. */
   status: bcs.U8,
-  shares: bcs.U256,
-  pending_deposit_balance: bcs.U64,
-  pending_withdraw_shares: bcs.U256,
-  last_deposit_time: bcs.U64,
-  claimable_principal: bcs.U64,
-  reward_indices: TableStruct,
-  unclaimed_rewards: TableStruct
+  shares: bcs.U256
 })
 
-/** Settled state of one Volo position. */
+/** Settled share balance of one Volo position, which is what receipt selection needs. */
 export type VoloReceiptInfo = {
   receiptId: string
-  status: number
   shares: bigint
-  pendingDepositBalance: bigint
-  pendingWithdrawShares: bigint
-  claimablePrincipal: bigint
 }
 
 type DynamicFieldApi = {
   getDynamicField?(input: unknown): Promise<{
-    dynamicField?: { value?: { bcs?: Uint8Array | Record<string, number> } }
+    dynamicField?: { value?: { bcs?: Uint8Array } }
   }>
-}
-
-function toBytes(value: Uint8Array | Record<string, number> | undefined): Uint8Array | undefined {
-  if (!value) return undefined
-  return value instanceof Uint8Array ? value : Uint8Array.from(Object.values(value) as number[])
-}
-
-function addressBytes(address: string): number[] {
-  const hex = (address.startsWith('0x') ? address.slice(2) : address).padStart(64, '0')
-  return Array.from({ length: 32 }, (_, i) => Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16))
 }
 
 /**
@@ -72,23 +49,25 @@ export async function readReceiptInfo(
     )
   }
 
-  const response = await api.getDynamicField({
-    parentId: receiptsTableId,
-    name: { type: 'address', bcs: addressBytes(receiptId) }
-  })
-
-  const bytes = toBytes(response?.dynamicField?.value?.bcs)
-  if (!bytes || bytes.length === 0) return undefined
-
-  const info = VaultReceiptInfoStruct.parse(bytes)
-  return {
-    receiptId,
-    status: info.status,
-    shares: BigInt(info.shares),
-    pendingDepositBalance: BigInt(info.pending_deposit_balance),
-    pendingWithdrawShares: BigInt(info.pending_withdraw_shares),
-    claimablePrincipal: BigInt(info.claimable_principal)
+  // A receipt with no Table entry is a normal state, not an error: the object can exist
+  // before the vault records anything against it. The client reports the derived field id
+  // as a missing object, so that one case is turned back into "no entry".
+  let response
+  try {
+    response = await api.getDynamicField({
+      parentId: receiptsTableId,
+      // Must be a real Uint8Array: the client hashes the key into the field id.
+      name: { type: 'address', bcs: bcs.Address.serialize(receiptId).toBytes() }
+    })
+  } catch (error) {
+    if (/not found/i.test(error instanceof Error ? error.message : String(error))) return undefined
+    throw error
   }
+
+  const bytes = response?.dynamicField?.value?.bcs
+  if (!bytes) return undefined
+
+  return { receiptId, shares: BigInt(VaultReceiptInfoStruct.parse(bytes).shares) }
 }
 
 /**
