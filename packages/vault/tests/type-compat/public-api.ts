@@ -8,11 +8,16 @@ import {
   getVault,
   getVaultRewards,
   getVaults,
+  isVaultSdkError,
   navi,
+  VAULT_SDK_ERROR_CODES,
+  VaultSdkError,
+  vaultErrors,
   volo,
   withdrawPTB
 } from '@naviprotocol/vault'
 import type { PendingRequest, Vault, VaultPosition } from '@naviprotocol/vault'
+import type { VaultSdkErrorCode } from '@naviprotocol/vault'
 
 /** Compile-only coverage for the package's public entry point. */
 export async function publicApiCompiles(
@@ -22,6 +27,9 @@ export async function publicApiCompiles(
   request: PendingRequest
 ): Promise<void> {
   const tx = new Transaction()
+  const errorCode: VaultSdkErrorCode = VAULT_SDK_ERROR_CODES.INVALID_AMOUNT
+  const sdkError: VaultSdkError = vaultErrors.invalidAmount('type compatibility check')
+  const recognized: boolean = isVaultSdkError(sdkError)
 
   const allVaults: Vault[] = await getVaults({ protocols: ['navi', 'volo'] })
   const resolved: Vault = await getVault(vault)
@@ -43,6 +51,9 @@ export async function publicApiCompiles(
   }
 
   void allVaults
+  void errorCode
+  void sdkError
+  void recognized
   void positions
   void requests
   void request

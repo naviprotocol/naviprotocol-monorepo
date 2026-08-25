@@ -19,6 +19,7 @@ import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { parseTxValue } from '../../utils'
 import { getVaultReceipts, receiptType, planReceiptWithdraw } from './receipt'
 import { VaultReward } from './reward'
+import { vaultErrors } from '../../error'
 
 // ------ navi_vault ------
 export async function syncMarketBalancePTB(
@@ -175,18 +176,22 @@ export async function depositPTB(
         useGasCoin: options?.useGasCoin
       })
     } else {
-      throw new Error('amount should be bigint when coin is not provided')
+      throw vaultErrors.invalidAmount('amount must be bigint when coin is not provided', {
+        receivedType: typeof amount
+      })
     }
   }
   const pool = await getVaultDefaultPool(vault, {
     client: options?.client
   })
   if (!pool) {
-    throw new Error('can not find vault default pool')
+    throw vaultErrors.vaultConfigInvalid(vault.id, 'default pool was not found')
   }
   const marketConfig = await getMarketConfig(pool.market)
   if (!marketConfig) {
-    throw new Error(`market ${pool.market} not found`)
+    throw vaultErrors.vaultConfigInvalid(vault.id, `market ${pool.market} was not found`, {
+      market: pool.market
+    })
   }
 
   const receiptOption = receipt
@@ -230,7 +235,10 @@ export async function withdrawPTB(
   const marketConfig = await getMarketConfig(pool.market)
 
   if (!marketConfig) {
-    throw new Error('withdraw failed: miss market config')
+    throw vaultErrors.vaultConfigInvalid(vault.id, `market ${pool.market} was not found`, {
+      market: pool.market,
+      operation: 'withdrawPTB'
+    })
   }
 
   const priceFeeds = await getPriceFeeds({
@@ -286,7 +294,11 @@ export async function withdrawPTB(
   }
 
   if (coins.length === 0) {
-    throw new Error('withdraw fail: no receipt coins')
+    throw vaultErrors.insufficientBalance('No vault receipt has shares available to withdraw', {
+      vaultId: vault.id,
+      owner,
+      requestedShares: shares.toString()
+    })
   }
 
   return coins[0]

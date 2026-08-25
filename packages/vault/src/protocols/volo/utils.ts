@@ -1,7 +1,8 @@
 import { Vault } from '../../types'
+import { vaultErrors } from '../../error'
 
 export function checkVault(vault: Vault) {
   if (!vault.volo) {
-    throw new Error(`vault ${vault.id} not volo vault`)
+    throw vaultErrors.vaultUnsupported(vault.id, 'Volo vault operations', vault.source)
   }
 }

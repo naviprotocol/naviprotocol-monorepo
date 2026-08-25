@@ -1,6 +1,7 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import type { CacheOption } from './types'
 import { TransactionResult } from '@mysten/sui/transactions'
+import { vaultErrors } from './error'
 
 /**
  * Generates a cache key from function arguments
@@ -116,12 +117,38 @@ export function getSuiClient(client?: SuiGrpcClient) {
   )
 }
 
+export async function fetchVaultApiData<T>(url: string): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(url, { headers: {} })
+  } catch (error) {
+    throw vaultErrors.apiRequestFailed(url, error)
+  }
+
+  if (!response.ok) {
+    throw vaultErrors.apiRequestFailed(url, undefined, response.status)
+  }
+
+  let body: unknown
+  try {
+    body = await response.json()
+  } catch (error) {
+    throw vaultErrors.apiResponseInvalid(url, 'response body is not valid JSON', error)
+  }
+
+  if (typeof body !== 'object' || body === null || !('data' in body)) {
+    throw vaultErrors.apiResponseInvalid(url, 'response body has no data field')
+  }
+
+  return (body as { data: T }).data
+}
+
 export function parseTxValue(
   value: string | number | boolean | object | null | undefined | bigint,
   format: any
 ): TransactionResult {
   if (value === undefined || value === null) {
-    throw new Error('Transaction value is required')
+    throw vaultErrors.invalidArgument('transaction value', 'value is required')
   }
   if (typeof value === 'object') {
     return value as TransactionResult

@@ -1,6 +1,7 @@
 import { CacheOption, EnvOption, Vault, VaultProtocol } from './types'
-import { withCache, withSingleton } from './utils'
+import { fetchVaultApiData, withCache, withSingleton } from './utils'
 import { OPEN_API_URL } from './config'
+import { isVaultSdkError, vaultErrors } from './error'
 
 export type GetVaultsOptions = Partial<
   {
@@ -15,11 +16,11 @@ export const getVaults = withCache(
   withSingleton(async (options?: GetVaultsOptions): Promise<Vault[]> => {
     const url = `${OPEN_API_URL}/vaults`
 
-    const res: {
-      data: Vault[]
-    } = await fetch(url, { headers: {} }).then((res) => res.json())
-
-    let vaults = res.data
+    const data = await fetchVaultApiData<Vault[]>(url)
+    if (!Array.isArray(data)) {
+      throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
+    }
+    let vaults = data
 
     if (options?.protocols) {
       vaults = vaults.filter((vault) => {
@@ -38,10 +39,17 @@ export const getVault = withCache(
     }
     const url = `${OPEN_API_URL}/vaults/${id}`
 
-    const res: {
-      data: Vault
-    } = await fetch(url, { headers: {} }).then((res) => res.json())
-
-    return res.data
+    try {
+      const vault = await fetchVaultApiData<Vault>(url)
+      if (typeof vault !== 'object' || vault === null || typeof vault.id !== 'string') {
+        throw vaultErrors.apiResponseInvalid(url, 'data is not a vault object')
+      }
+      return vault
+    } catch (error) {
+      if (isVaultSdkError(error) && error.details?.status === 404) {
+        throw vaultErrors.vaultNotFound(id, error)
+      }
+      throw error
+    }
   })
 )

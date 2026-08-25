@@ -5,6 +5,7 @@ import { getSuiClient, withCache, withSingleton } from '../../utils'
 import { checkVault } from './utils'
 import { DEFAULT_CACHE_TIME, getPools } from '@naviprotocol/lending'
 import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils'
+import { vaultErrors } from '../../error'
 
 const UID = bcs.Address
 
@@ -249,7 +250,9 @@ export async function getVaultDefaultPool(
     (pool) => normalizeSuiAddress(pool.contract.pool) === defaultMarket
   )
   if (!defaultPool) {
-    throw new Error('vault default pool not found')
+    throw vaultErrors.vaultConfigInvalid(vault.id, 'default pool was not found', {
+      defaultMarket
+    })
   }
   return defaultPool
 }

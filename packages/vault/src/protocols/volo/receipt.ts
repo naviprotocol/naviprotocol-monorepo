@@ -4,6 +4,7 @@ import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Vault } from '../../types'
 import { getSuiClient } from '../../utils'
 import { checkVault } from './utils'
+import { vaultErrors } from '../../error'
 
 export const receiptType = `0xcd86f77503a755c48fe6c87e1b8e9a137ec0c1bf37aac8878b6083262b27fefa::receipt::Receipt`
 
@@ -57,7 +58,9 @@ async function readReceiptsTableId(client: SuiGrpcClient, vault: Vault): Promise
   })
   const id = (object.json as { receipts?: { id?: unknown } } | null)?.receipts?.id
   if (typeof id !== 'string') {
-    throw new Error(`volo vault ${vault.id} has no receipts table id`)
+    throw vaultErrors.chainDataInvalid(`Volo vault ${vault.id} has no receipts table id`, {
+      vaultId: vault.id
+    })
   }
   return normalizeSuiAddress(id)
 }

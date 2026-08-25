@@ -1,5 +1,6 @@
 import { LendingConfig, getConfig, DEFAULT_CACHE_TIME } from '@naviprotocol/lending'
 import { Vault } from '../../types'
+import { vaultErrors } from '../../error'
 
 export async function getMarketConfig(market: string | LendingConfig) {
   if (typeof market === 'string') {
@@ -12,6 +13,6 @@ export async function getMarketConfig(market: string | LendingConfig) {
 
 export function checkVault(vault: Vault) {
   if (!vault.navi) {
-    throw new Error(`vault ${vault.id} not navi vault`)
+    throw vaultErrors.vaultUnsupported(vault.id, 'NAVI vault operations', vault.source)
   }
 }

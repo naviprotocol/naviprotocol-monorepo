@@ -6,7 +6,7 @@ import {
   VaultIdentifier,
   PendingRequest
 } from './types'
-import { withCache, withSingleton, queryString } from './utils'
+import { fetchVaultApiData, withCache, withSingleton, queryString } from './utils'
 import { OPEN_API_URL, U64_MAX } from './config'
 import type {
   Transaction,
@@ -18,6 +18,7 @@ import * as navi from './protocols/navi'
 import * as volo from './protocols/volo'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { DEFAULT_CACHE_TIME } from '@naviprotocol/lending'
+import { isVaultSdkError, vaultErrors } from './error'
 
 export type GetPositionsOptions = Partial<
   {
@@ -50,11 +51,11 @@ export const getPositions = withCache(
       address: owner
     })}`
 
-    const res: {
-      data: VaultPosition[]
-    } = await fetch(url, { headers: {} }).then((res) => res.json())
-
-    let positions = res.data
+    const data = await fetchVaultApiData<VaultPosition[]>(url)
+    if (!Array.isArray(data)) {
+      throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
+    }
+    let positions = data
 
     if (options?.protocols) {
       positions = positions.filter((position) => {
@@ -80,14 +81,25 @@ export async function depositPTB(
   options?: DepositPTBOptions
 ): Promise<TransactionResult> {
   const vault = await getVault(vaultIdentifier)
-  const amountWithDecimals = BigInt(amount) * BigInt(Math.pow(10, vault.assets.baseCoin.decimals))
+  let amountWithDecimals: bigint
+  try {
+    amountWithDecimals = BigInt(amount) * 10n ** BigInt(vault.assets.baseCoin.decimals)
+  } catch (error) {
+    throw vaultErrors.invalidAmount('amount must be an integer number or bigint', {
+      amount: String(amount),
+      cause: error instanceof Error ? error.message : String(error)
+    })
+  }
+  if (amountWithDecimals < 0n) {
+    throw vaultErrors.invalidAmount('amount must not be negative', { amount: String(amount) })
+  }
   switch (vault.source) {
     case 'navi':
       return await navi.depositPTB(tx, vault, owner, amountWithDecimals, options)
     case 'volo':
       return await volo.depositPTB(tx, vault, owner, amountWithDecimals, options)
     default:
-      throw new Error(`vault ${vault.source} not support`)
+      throw vaultErrors.vaultUnsupported(vault.id, 'depositPTB', vault.source)
   }
 }
 
@@ -100,13 +112,28 @@ export async function withdrawPTB(
 ) {
   const vault = await getVault(vaultIdentifier)
   let shares = 0n
-  if (target.kind === 'all') {
-    shares = U64_MAX
-  } else if (target.kind === 'shares') {
-    shares = BigInt(target.shares)
-  } else {
-    shares =
-      (BigInt(target.amount) * BigInt(vault.totalShares || 0n)) / BigInt(vault.totalStaked || 0n)
+  try {
+    if (target.kind === 'all') {
+      shares = U64_MAX
+    } else if (target.kind === 'shares') {
+      shares = BigInt(target.shares)
+    } else {
+      const totalShares = BigInt(vault.totalShares || 0n)
+      const totalStaked = BigInt(vault.totalStaked || 0n)
+      if (totalStaked === 0n) {
+        throw vaultErrors.vaultConfigInvalid(vault.id, 'totalStaked must be greater than zero')
+      }
+      shares = (BigInt(target.amount) * totalShares) / totalStaked
+    }
+  } catch (error) {
+    if (isVaultSdkError(error)) throw error
+    throw vaultErrors.invalidAmount('withdraw target contains a non-integer value', {
+      target,
+      cause: error instanceof Error ? error.message : String(error)
+    })
+  }
+  if (shares < 0n) {
+    throw vaultErrors.invalidAmount('withdraw shares must not be negative', { target })
   }
   switch (vault.source) {
     case 'navi':
@@ -114,7 +141,7 @@ export async function withdrawPTB(
     case 'volo':
       return await volo.withdrawPTB(tx, vault, owner, shares, options)
     default:
-      throw new Error(`vault ${vault.source} not support`)
+      throw vaultErrors.vaultUnsupported(vault.id, 'withdrawPTB', vault.source)
   }
 }
 
@@ -153,22 +180,25 @@ export async function getPendingRequests(
     vault: options?.vault
   })}`
 
-  const res: {
-    data: PendingRequest[]
-  } = await fetch(url, { headers: {} }).then((res) => res.json())
-
-  return res.data
+  const data = await fetchVaultApiData<PendingRequest[]>(url)
+  if (!Array.isArray(data)) {
+    throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
+  }
+  return data
 }
 
 export async function canclePendingDepositPTB(tx: Transaction, request: PendingRequest) {
+  if (request.type !== 'deposit') {
+    throw vaultErrors.invalidRequestType('deposit', request.type)
+  }
   const vault = await getVault(request.vaultId, {
     cacheTime: DEFAULT_CACHE_TIME
   })
-  if (request.type !== 'deposit') {
-    throw new Error('request type must be deposit')
+  if (!vault.volo) {
+    throw vaultErrors.vaultConfigInvalid(vault.id, 'missing Volo package configuration')
   }
   return tx.moveCall({
-    target: `${vault!.volo!.package}::user_entry::cancel_deposit`,
+    target: `${vault.volo.package}::user_entry::cancel_deposit`,
     typeArguments: [vault.assets.baseCoin.coinType],
     arguments: [
       tx.object(request.vaultId),
@@ -180,14 +210,17 @@ export async function canclePendingDepositPTB(tx: Transaction, request: PendingR
 }
 
 export async function canclePendingWithdrawPTB(tx: Transaction, request: PendingRequest) {
+  if (request.type !== 'withdraw') {
+    throw vaultErrors.invalidRequestType('withdraw', request.type)
+  }
   const vault = await getVault(request.vaultId, {
     cacheTime: DEFAULT_CACHE_TIME
   })
-  if (request.type !== 'withdraw') {
-    throw new Error('request type must be withdraw')
+  if (!vault.volo) {
+    throw vaultErrors.vaultConfigInvalid(vault.id, 'missing Volo package configuration')
   }
   tx.moveCall({
-    target: `${vault!.volo!.package}::user_entry::cancel_withdraw`,
+    target: `${vault.volo.package}::user_entry::cancel_withdraw`,
     typeArguments: [vault.assets.baseCoin.coinType],
     arguments: [
       tx.object(request.vaultId),

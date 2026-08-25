@@ -5,6 +5,7 @@ import { Vault } from '../../types'
 import { getSuiClient } from '../../utils'
 import { checkVault } from './utils'
 import { listOwnedReceiptIds } from './receipt'
+import { vaultErrors } from '../../error'
 
 /** `volo_vault::deposit_request::DepositRequest`, in declaration order. */
 const DepositRequestStruct = bcs.struct('DepositRequest', {
@@ -85,7 +86,7 @@ function tableId(table: unknown, field: string): string {
   const id = (table as { id?: unknown } | undefined)?.id
   const raw = typeof id === 'string' ? id : (id as { id?: unknown } | undefined)?.id
   if (typeof raw !== 'string') {
-    throw new Error(`volo vault object has no ${field} table id`)
+    throw vaultErrors.chainDataInvalid(`Volo vault object has no ${field} table id`, { field })
   }
   return normalizeSuiAddress(raw)
 }
@@ -109,7 +110,9 @@ async function readRequestBuffer(client: SuiGrpcClient, vault: Vault): Promise<R
   } | null
   const buffer = json?.request_buffer
   if (!buffer) {
-    throw new Error(`volo vault ${vault.id} has no request_buffer`)
+    throw vaultErrors.chainDataInvalid(`Volo vault ${vault.id} has no request_buffer`, {
+      vaultId: vault.id
+    })
   }
 
   return {
@@ -148,8 +151,9 @@ async function listRequestTable<T>(
       if (!bytes) continue
       // Guards the hand-written layout below against a table that holds something else.
       if (!field.valueType?.endsWith(valueType)) {
-        throw new Error(
-          `volo vault request table ${parentId} holds ${field.valueType}, expected ${valueType}`
+        throw vaultErrors.chainDataInvalid(
+          `Volo request table ${parentId} holds ${field.valueType}, expected ${valueType}`,
+          { parentId, actualType: field.valueType, expectedType: valueType }
         )
       }
       rows.push(parse(Uint8Array.from(bytes)))

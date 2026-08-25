@@ -1,5 +1,6 @@
 export * from './user'
 export * from './types'
+export * from './error'
 export * from './vault'
 export * as navi from './protocols/navi'
 export * as volo from './protocols/volo'

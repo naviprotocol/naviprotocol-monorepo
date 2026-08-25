@@ -9,6 +9,7 @@ import { parseTxValue } from '../../utils'
 import { checkVault } from './utils'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { getVaultReceipts, planReceiptWithdraw, receiptType } from './receipt'
+import { vaultErrors } from '../../error'
 
 // ------ user_entry -------
 export async function depositPTB(
@@ -47,7 +48,9 @@ export async function depositPTB(
         useGasCoin: options?.useGasCoin
       })
     } else {
-      throw new Error('amount should be bigint when coin is not provided')
+      throw vaultErrors.invalidAmount('amount must be bigint when coin is not provided', {
+        receivedType: typeof amount
+      })
     }
   }
 
