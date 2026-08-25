@@ -11,6 +11,7 @@ export type VaultSdkErrorCode =
   | 'CHAIN_QUERY_FAILED'
   | 'API_RESPONSE_INVALID'
   | 'API_REQUEST_FAILED'
+  | 'RATE_LIMITED'
 
 export class VaultSdkError extends Error {
   readonly code: VaultSdkErrorCode

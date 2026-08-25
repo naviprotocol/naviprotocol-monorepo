@@ -75,18 +75,26 @@ export enum PoolOperator {
 export const getPools = withCache(
   withSingleton(
     async (
-      options?: Partial<EnvOption & CacheOption & MarketsOption & ServiceOption>
+      options?: Partial<
+        EnvOption &
+          CacheOption &
+          MarketsOption &
+          ServiceOption & {
+            pools: string[]
+          }
+      >
     ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
         return getMarketConfig(identity)
       })
       const endpoint = resolveNaviOpenApiEndpoint(options)
+      const poolsFilter = (options?.pools || []).join(',')
       const url = buildNaviOpenApiUrl(
         `/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
           (market) => {
             return market.key
           }
-        )}`,
+        )}${!!poolsFilter ? '&pools=' + poolsFilter : ''}`,
         options
       )
       const res: {
