@@ -1,7 +1,6 @@
 import { bcs, type BcsType } from '@mysten/sui/bcs'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { Transaction } from '@mysten/sui/transactions'
 import { Vault } from '../../types'
 import { getSuiClient } from '../../utils'
 import { checkVault } from './utils'
@@ -34,75 +33,58 @@ export type VaultReceipt = {
   shares: bigint
 }
 
-/** `vector<u256>`, the return shape of `vault::receipts_shares`. */
-const SharesVector = bcs.vector(bcs.u256())
-
 /**
- * Receipt ids per `receipts_shares` command. Every chunk rides in the same simulated
- * transaction, so a batch of any size still costs one round trip — the split only keeps a
- * single command's vector clear of the Move execution limits.
- */
-const SHARES_CHUNK_SIZE = 100
-
-/**
- * Reads the shares of many receipts in one devInspect.
+ * The leading fields of `vault_receipt_info::VaultReceiptInfo`.
  *
- * Shares are not stored in the Receipt object: the vault keeps them in
- * `Vault.receipts: Table<address, VaultReceiptInfo>`, keyed by the receipt's object address.
- * `vault::vault_receipt_info` hands back a reference, which a PTB cannot carry across
- * commands, so the batched read goes through `vault::receipts_shares` — a by-value getter
- * mapping `vector<address>` to `vector<u256>`, which reports a receipt the vault has no entry
- * for as 0 instead of aborting the whole batch.
+ * The remaining fields are irrelevant for receipt selection. BCS parsing is positional,
+ * so decoding this prefix is enough to reach the settled share balance.
  */
-async function readReceiptsShares(
+const VaultReceiptInfoStruct = bcs.struct('VaultReceiptInfo', {
+  status: bcs.u8(),
+  shares: bcs.u256()
+})
+
+/**
+ * Reads the id of the vault's `receipts: Table<address, VaultReceiptInfo>`.
+ *
+ * The public package has no by-value getter for receipt shares. The Vault JSON view exposes
+ * the Table handle, and each receipt state can then be fetched as a normal dynamic field.
+ */
+async function readReceiptsTableId(client: SuiGrpcClient, vault: Vault): Promise<string> {
+  const { object } = await client.getObject({
+    objectId: vault.id,
+    include: { json: true }
+  })
+  const id = (object.json as { receipts?: { id?: unknown } } | null)?.receipts?.id
+  if (typeof id !== 'string') {
+    throw new Error(`volo vault ${vault.id} has no receipts table id`)
+  }
+  return normalizeSuiAddress(id)
+}
+
+/** Settled shares for one receipt; a receipt without a table entry has zero shares. */
+async function readReceiptShares(
   client: SuiGrpcClient,
-  vault: Vault,
-  owner: string,
-  receiptIds: string[]
-): Promise<bigint[]> {
-  const chunks: string[][] = []
-  for (let index = 0; index < receiptIds.length; index += SHARES_CHUNK_SIZE) {
-    chunks.push(receiptIds.slice(index, index + SHARES_CHUNK_SIZE))
-  }
-
-  const tx = new Transaction()
-  tx.setSenderIfNotSet(owner)
-  for (const chunk of chunks) {
-    tx.moveCall({
-      target: `${vault!.volo!.package}::vault::receipts_shares`,
-      typeArguments: [vault.assets.baseCoin.coinType],
-      arguments: [tx.object(vault.id), tx.pure.vector('address', chunk)]
+  receiptsTableId: string,
+  receiptId: string
+): Promise<bigint> {
+  try {
+    const { dynamicField } = await client.getDynamicField({
+      parentId: receiptsTableId,
+      name: {
+        type: 'address',
+        bcs: bcs.Address.serialize(receiptId).toBytes()
+      }
     })
-  }
-
-  const result = await client.simulateTransaction({
-    transaction: tx,
-    // A read-only getter carries no gas coin, which the regular checks would reject.
-    checksEnabled: false,
-    include: { commandResults: true }
-  })
-
-  if (result.$kind === 'FailedTransaction') {
-    throw new Error(
-      `volo vault::receipts_shares failed: ${JSON.stringify(result.FailedTransaction.status.error)}`
-    )
-  }
-
-  return chunks.flatMap((chunk, index) => {
-    const bytes = result.commandResults?.[index]?.returnValues?.[0]?.bcs
-    if (!bytes) {
-      throw new Error('volo vault::receipts_shares returned no value')
+    const bytes = dynamicField.value?.bcs
+    if (!bytes) return 0n
+    return BigInt(VaultReceiptInfoStruct.parse(Uint8Array.from(bytes)).shares)
+  } catch (error) {
+    if (/not found/i.test(error instanceof Error ? error.message : String(error))) {
+      return 0n
     }
-
-    const shares = SharesVector.parse(Uint8Array.from(bytes)).map((value) => BigInt(value))
-    if (shares.length !== chunk.length) {
-      throw new Error(
-        `volo vault::receipts_shares returned ${shares.length} values for ${chunk.length} receipts`
-      )
-    }
-
-    return shares
-  })
+    throw error
+  }
 }
 
 /**
@@ -146,8 +128,8 @@ export async function listOwnedReceiptIds(
 /**
  * Lists an owner's receipts for a vault, each with its share balance.
  *
- * The shares of every receipt come from a single `vault::receipts_shares` devInspect instead
- * of one read per receipt, so the cost stays flat as an owner accumulates receipts.
+ * Shares are read from the vault's on-chain `receipts` Table. Receipt objects only contain
+ * their vault id; the settled balance lives in this dynamic field.
  */
 export async function getVaultReceipts(
   vault: Vault,
@@ -165,7 +147,10 @@ export async function getVaultReceipts(
     return []
   }
 
-  const shares = await readReceiptsShares(client, vault, owner, found)
+  const receiptsTableId = await readReceiptsTableId(client, vault)
+  const shares = await Promise.all(
+    found.map((receiptId) => readReceiptShares(client, receiptsTableId, receiptId))
+  )
 
   return found.map((id, index) => ({
     id,

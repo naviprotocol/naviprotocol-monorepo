@@ -6,7 +6,6 @@ import {
 } from '@mysten/sui/transactions'
 import { Vault } from '../../types'
 import {
-  getPool,
   getPools,
   DEFAULT_CACHE_TIME,
   getConfig,
@@ -175,8 +174,9 @@ export async function depositPTB(
         type: vault.assets.baseCoin.coinType,
         useGasCoin: options?.useGasCoin
       })
+    } else {
+      throw new Error('amount should be bigint when coin is not provided')
     }
-    throw new Error('amount should be bigint')
   }
   const pool = await getVaultDefaultPool(vault, {
     client: options?.client
@@ -198,7 +198,7 @@ export async function depositPTB(
     : tx.moveCall({ target: '0x1::option::none', typeArguments: [receiptType] })
 
   return tx.moveCall({
-    target: `${vault!.navi!.package}::navi_vault::sync_market_balance`,
+    target: `${vault!.navi!.package}::navi_vault::deposit`,
     typeArguments: [vault.assets.baseCoin.coinType],
     arguments: [
       tx.object(vault.id),

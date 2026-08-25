@@ -46,8 +46,9 @@ export async function depositPTB(
         type: vault.assets.baseCoin.coinType,
         useGasCoin: options?.useGasCoin
       })
+    } else {
+      throw new Error('amount should be bigint when coin is not provided')
     }
-    throw new Error('amount should be bigint')
   }
 
   const requestId = newDepositRequestPTB(tx, vault)

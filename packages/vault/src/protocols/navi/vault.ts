@@ -240,11 +240,14 @@ export async function getVaultDefaultPool(
     ...options,
     cacheTime: DEFAULT_CACHE_TIME
   })
+  const defaultMarket = normalizeSuiAddress(vaultInfo.default_market)
   const pools = await getPools({
-    pools: [vaultInfo.default_market],
+    pools: [defaultMarket],
     cacheTime: DEFAULT_CACHE_TIME
   })
-  const defaultPool = pools[0]
+  const defaultPool = pools.find(
+    (pool) => normalizeSuiAddress(pool.contract.pool) === defaultMarket
+  )
   if (!defaultPool) {
     throw new Error('vault default pool not found')
   }
