@@ -21,7 +21,7 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
     async (source) => {
       const { owner, vault } = await discoverDepositor(source)
       const tx = new Transaction()
-      const result = await depositPTB(tx, vault, owner, 1n, {
+      const result = await depositPTB(tx, vault, owner, '1', {
         client,
         useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
       })

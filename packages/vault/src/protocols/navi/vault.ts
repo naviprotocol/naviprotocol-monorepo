@@ -227,7 +227,8 @@ export const getVaultInfo = withCache(
 
       return parsed
     }
-  )
+  ),
+  { defaultCacheTime: DEFAULT_CACHE_TIME }
 )
 
 export async function getVaultDefaultPool(

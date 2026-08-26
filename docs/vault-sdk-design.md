@@ -182,12 +182,12 @@ export interface GetVaultsOptions extends GetVaultOptions {
 }
 
 export interface VaultsModule {
-  getVault(vaultId: string, options?: GetVaultOptions): Promise<Vault | null>
+  getVault(vaultId: string, options?: GetVaultOptions): Promise<Vault>
   getVaults(options?: GetVaultsOptions): Promise<Vault[]>
 }
 ```
 
-- `getVault` 按 ID 返回一个 Vault；不存在时返回 `null`。
+- `getVault` 按 ID 返回一个 Vault；不存在时抛出 `VaultSdkError`（code 为 `VAULT_NOT_FOUND`）。
 - `getVaults` 返回 Vault 列表，可按一个或多个 `app` 过滤。
 - `disableCache` 用于跳过缓存。
 - `cacheTime` 用于覆盖单次查询的缓存时间。
@@ -256,21 +256,9 @@ export interface UserModule {
     options?: WithdrawPTBOptions
   ): Promise<TransactionResult>
 
-  cancelDepositPTB(
-    tx: Transaction,
-    vault: VaultIdentifier,
-    owner: string,
-    requestId: IntegerString,
-    receipt: string | TransactionObjectArgument
-  ): Promise<TransactionResult>
+  cancelPendingDepositPTB(tx: Transaction, request: PendingRequest): Promise<TransactionResult>
 
-  cancelWithdrawPTB(
-    tx: Transaction,
-    vault: VaultIdentifier,
-    owner: string,
-    requestId: IntegerString,
-    receipt: string | TransactionObjectArgument
-  ): Promise<TransactionResult>
+  cancelPendingWithdrawPTB(tx: Transaction, request: PendingRequest): Promise<TransactionResult>
 
   claimRewardsPTB(
     tx: Transaction,

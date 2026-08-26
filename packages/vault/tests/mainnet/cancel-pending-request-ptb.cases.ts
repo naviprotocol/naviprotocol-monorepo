@@ -2,8 +2,8 @@ import { Transaction } from '@mysten/sui/transactions'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
 import { describe, expect, it } from 'vitest'
 import {
-  canclePendingDepositPTB,
-  canclePendingWithdrawPTB,
+  cancelPendingDepositPTB,
+  cancelPendingWithdrawPTB,
   getPendingRequests,
   volo
 } from '../../src'
@@ -27,7 +27,7 @@ describe.skipIf(!runLiveTests)('cancel pending request PTBs', () => {
     const chainRequest = requests.find((candidate) => candidate.cancellableAt <= Date.now())
     if (!chainRequest) {
       report.add({
-        api: 'canclePendingDepositPTB / canclePendingWithdrawPTB',
+        api: 'cancelPendingDepositPTB / cancelPendingWithdrawPTB',
         title: 'Dry-run a cancellable Volo request',
         status: 'skipped',
         purpose:
@@ -54,7 +54,7 @@ describe.skipIf(!runLiveTests)('cancel pending request PTBs', () => {
     )
     if (!request) {
       report.add({
-        api: 'canclePendingDepositPTB / canclePendingWithdrawPTB',
+        api: 'cancelPendingDepositPTB / cancelPendingWithdrawPTB',
         title: 'Dry-run a cancellable Volo request',
         status: 'skipped',
         purpose:
@@ -67,11 +67,14 @@ describe.skipIf(!runLiveTests)('cancel pending request PTBs', () => {
     }
 
     const tx = new Transaction()
-    const cancelResult =
-      request.type === 'deposit'
-        ? await canclePendingDepositPTB(tx, request)
-        : await canclePendingWithdrawPTB(tx, request)
-    if (cancelResult) tx.transferObjects([cancelResult], chainRequest.owner)
+    if (request.type === 'deposit') {
+      // cancel_deposit returns the refunded principal coin, which must be consumed.
+      const refund = await cancelPendingDepositPTB(tx, request)
+      tx.transferObjects([refund], chainRequest.owner)
+    } else {
+      // cancel_withdraw returns the cancelled share count (u256), which is droppable.
+      await cancelPendingWithdrawPTB(tx, request)
+    }
     const result = await dryRun(tx, chainRequest.owner)
     const cancelEvent = result.events?.find(
       (event) =>
@@ -83,7 +86,7 @@ describe.skipIf(!runLiveTests)('cancel pending request PTBs', () => {
     expect(BigInt(requireBalanceChange(result, chainRequest.owner, SUI).amount)).not.toBe(0n)
     const output = dryRunData(result)
     report.add({
-      api: request.type === 'deposit' ? 'canclePendingDepositPTB' : 'canclePendingWithdrawPTB',
+      api: request.type === 'deposit' ? 'cancelPendingDepositPTB' : 'cancelPendingWithdrawPTB',
       title: 'Dry-run a cancellable Volo request',
       status: 'passed',
       purpose:

@@ -9,7 +9,7 @@ export type CacheOption = {
 }
 
 export type EnvOption = {
-  env: 'dev' | 'prod'
+  env: 'prod'
 }
 
 export type VaultSource = 'navi' | 'volo'

@@ -1,7 +1,33 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { parseToUnits } from '@mysten/sui/utils'
 import type { CacheOption } from './types'
 import { TransactionResult } from '@mysten/sui/transactions'
 import { vaultErrors } from './error'
+
+/**
+ * Parses a human-readable decimal amount ("1.5", "0.00020497") into raw base units.
+ *
+ * The public deposit/withdraw entry points take human-unit decimal strings; raw
+ * base-unit flows live on the protocol-level builders instead.
+ *
+ * @throws INVALID_AMOUNT when the string is not a valid decimal, has more
+ *         fractional digits than `decimals`, or is not strictly positive.
+ */
+export function parseHumanAmount(amount: string, decimals: number): bigint {
+  let raw: bigint
+  try {
+    raw = parseToUnits(amount, decimals)
+  } catch (error) {
+    throw vaultErrors.invalidAmount(
+      `amount must be a decimal string with at most ${decimals} decimal places`,
+      { amount, cause: error instanceof Error ? error.message : String(error) }
+    )
+  }
+  if (raw <= 0n) {
+    throw vaultErrors.invalidAmount('amount must be greater than zero', { amount })
+  }
+  return raw
+}
 
 /**
  * Generates a cache key from function arguments
@@ -60,9 +86,15 @@ export function withSingleton<T extends (...args: any[]) => Promise<any>>(fn: T)
  * It respects cache time settings and can be disabled per call.
  *
  * @param fn - Function to wrap with caching behavior
+ * @param defaults - `defaultCacheTime` applies when a call passes no `cacheTime`;
+ *                   without it an entry never expires, which is wrong for vault
+ *                   data that feeds money math (share/asset conversions).
  * @returns Wrapped function with caching behavior
  */
-export function withCache<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+export function withCache<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  defaults?: { defaultCacheTime?: number }
+): T {
   let cache: Record<
     string,
     {
@@ -75,17 +107,18 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(fn: T): T 
     const options = args[args.length - 1] as Partial<CacheOption>
     const key = argsKey(args)
     const cacheData = cache[key]
+    const cacheTime = options?.cacheTime ?? defaults?.defaultCacheTime
 
     // Check if cache is valid and not disabled
     if (!options?.disableCache && typeof cacheData?.data !== 'undefined') {
-      if (
-        typeof options?.cacheTime === 'undefined' ||
-        options.cacheTime > Date.now() - cacheData.cacheAt
-      ) {
+      if (typeof cacheTime === 'undefined' || cacheTime > Date.now() - cacheData.cacheAt) {
         // Wrap in Promise.resolve to honor the declared `Promise<any>` return type.
         // Returning the cached value synchronously breaks `.then()` chaining at call sites.
         return Promise.resolve(cacheData.data)
       }
+      // Expired entries are dropped on read so per-argument keys (owners, vaults)
+      // don't accumulate for the process lifetime.
+      delete cache[key]
     }
 
     // Execute function and cache result

@@ -17,8 +17,9 @@ request, not new data.
 **§1 is what blocks the SDK today.** `StandardVault` is deliberately the intersection of
 what both upstreams serve, and neither serves contract wiring, so `assets` and
 `contractConfig` have to be added as a documented exception to that rule. Until they are,
-`vaults.getVaults()` returns an empty list and `vaults.getVault()` returns `null` — the
-SDK reads both fields when present and needs no change once they land.
+`vaults.getVaults()` returns an empty list and `vaults.getVault()` throws a
+`VaultSdkError` with code `VAULT_NOT_FOUND` — the SDK reads both fields when present and
+needs no change once they land.
 
 ---
 

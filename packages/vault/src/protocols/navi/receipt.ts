@@ -3,6 +3,7 @@ import { deriveDynamicFieldID, normalizeSuiAddress } from '@mysten/sui/utils'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { DEFAULT_CACHE_TIME } from '@naviprotocol/lending'
 import { Vault } from '../../types'
+import { U64_MAX } from '../../config'
 import { getSuiClient } from '../../utils'
 import { getVaultInfo, getVaultRewardRules, VaultRewardRule } from './vault'
 
@@ -246,29 +247,61 @@ export async function getVaultReceipts(
   return receipts
 }
 
-export function planReceiptWithdraw(receipts: VaultReceipt[], shares: bigint) {
-  const filterReceipts = receipts
-    .sort((a, b) => {
-      return Number(a.shares - b.shares)
-    })
-    .filter((a) => {
-      return a.shares > 0
-    })
-  const plans: VaultReceipt[] = []
-  let remaining = shares
+/** One `navi_vault::withdraw` call to build: `amount` is in base units, `U64_MAX` drains the receipt. */
+export type ReceiptWithdrawPlan = {
+  id: string
+  amount: bigint
+}
 
-  for (const receipt of filterReceipts) {
-    if (remaining >= receipt.shares) {
-      plans.push(receipt)
-      remaining -= receipt.shares
-    } else {
-      plans.push({
-        ...receipt,
-        shares: remaining
-      })
-      remaining = 0n
-      break
+/**
+ * Plans per-receipt withdraw calls in ASSET units.
+ *
+ * `navi_vault::withdraw` takes an underlying asset amount (u64), not a share count, and
+ * treats `U64_MAX` as "withdraw everything on this receipt". Receipts consumed in full
+ * therefore get the `U64_MAX` sentinel — the contract computes the exact payout at
+ * execution time — and only the final partial receipt carries an explicit amount, sized
+ * with floor division so it can never exceed the receipt's redeemable value.
+ *
+ * @param amount - Requested asset amount in base units; `U64_MAX` withdraws everything.
+ * @param totalAssets / totalShares - On-chain `Vault.total_assets` / `Vault.total_shares`,
+ *        used only to estimate each receipt's redeemable value for plan sizing.
+ * @returns The plan plus the `shortfall` still uncovered after consuming every receipt
+ *          (always `0n` for the withdraw-everything sentinel). Callers must treat a
+ *          non-zero shortfall (or an empty plan) as an insufficient-balance error
+ *          rather than silently withdrawing less than requested.
+ */
+export function planReceiptWithdrawByAmount(
+  receipts: VaultReceipt[],
+  amount: bigint,
+  totalAssets: bigint,
+  totalShares: bigint
+): { plans: ReceiptWithdrawPlan[]; shortfall: bigint } {
+  const available = [...receipts]
+    .filter((receipt) => receipt.shares > 0n)
+    .sort((a, b) => (a.shares < b.shares ? -1 : a.shares > b.shares ? 1 : 0))
+
+  if (amount === U64_MAX) {
+    return {
+      plans: available.map((receipt) => ({ id: receipt.id, amount: U64_MAX })),
+      shortfall: 0n
     }
   }
-  return plans
+
+  const plans: ReceiptWithdrawPlan[] = []
+  let remaining = amount
+
+  for (const receipt of available) {
+    if (remaining === 0n) break
+    const value = (receipt.shares * totalAssets) / totalShares
+    if (value === 0n) continue
+    if (remaining >= value) {
+      plans.push({ id: receipt.id, amount: U64_MAX })
+      remaining -= value
+    } else {
+      plans.push({ id: receipt.id, amount: remaining })
+      remaining = 0n
+    }
+  }
+
+  return { plans, shortfall: remaining }
 }

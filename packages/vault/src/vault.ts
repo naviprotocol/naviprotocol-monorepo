@@ -7,7 +7,7 @@ export type GetVaultsOptions = Partial<
   {
     protocols: VaultProtocol[]
   } & EnvOption &
-    CacheOption
+  CacheOption
 >
 
 export type GetVaultOptions = Partial<EnvOption & CacheOption>
@@ -29,7 +29,8 @@ export const getVaults = withCache(
     }
 
     return vaults
-  })
+  }),
+  { defaultCacheTime: 1000 * 60 }
 )
 
 export const getVault = withCache(
@@ -37,7 +38,7 @@ export const getVault = withCache(
     if (typeof id !== 'string') {
       return id
     }
-    const url = `${OPEN_API_URL}/vaults/${id}`
+    const url = `${OPEN_API_URL}/vaults/${encodeURIComponent(id)}`
 
     try {
       const vault = await fetchVaultApiData<Vault>(url)
@@ -51,5 +52,6 @@ export const getVault = withCache(
       }
       throw error
     }
-  })
+  }),
+  { defaultCacheTime: 1000 * 60 }
 )
