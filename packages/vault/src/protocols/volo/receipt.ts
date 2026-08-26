@@ -36,14 +36,27 @@ export const RECEIPT_STATUS = {
   PARALLEL_PENDING_DEPOSIT_WITHDRAW_WITH_AUTO_TRANSFER: 5
 } as const
 
-/** Whether `user_entry::withdraw*` would pass the receipt-status assert for this receipt. */
+/**
+ * Whether `user_entry::withdraw*` would pass the receipt-status assert for this receipt.
+ *
+ * Only covers the status check (ERR_WRONG_RECEIPT_STATUS). The withdraw lock is a separate
+ * gate — check `lastDepositTime + lockingTimeForWithdrawMs` too, as {@link withdrawPTB} does.
+ *
+ * @param receipt - Receipt to test; only its `status` is read
+ * @returns True when a withdraw request would be accepted on status grounds
+ */
 export function canRequestWithdraw(receipt: Pick<VaultReceipt, 'status'>): boolean {
   return (
     receipt.status === RECEIPT_STATUS.NORMAL || receipt.status === RECEIPT_STATUS.PENDING_DEPOSIT
   )
 }
 
-/** Whether `user_entry::deposit` would pass the receipt-status assert for this receipt. */
+/**
+ * Whether `user_entry::deposit` would pass the receipt-status assert for this receipt.
+ *
+ * @param receipt - Receipt to test; only its `status` is read
+ * @returns True when a deposit request would be accepted on status grounds
+ */
 export function canRequestDeposit(receipt: Pick<VaultReceipt, 'status'>): boolean {
   return (
     receipt.status === RECEIPT_STATUS.NORMAL ||
@@ -112,6 +125,12 @@ export type VoloVaultView = {
  *
  * The public package has no by-value getter for receipt shares. The Vault JSON view exposes
  * the Table handle, and each receipt state can then be fetched as a normal dynamic field.
+ *
+ * @param client - gRPC client used to fetch the vault object
+ * @param vault - The Volo vault to read
+ * @returns Promise<VoloVaultView> - The receipts table id and the withdraw lock in milliseconds
+ * @throws VaultSdkError with code `CHAIN_DATA_INVALID` when the object exposes no receipts
+ *         table id
  */
 export async function readVoloVaultView(
   client: SuiGrpcClient,
@@ -138,13 +157,27 @@ export async function readVoloVaultView(
   }
 }
 
-/** True when a gRPC error means "no such dynamic field" rather than a transport failure. */
+/**
+ * True when a gRPC error means "no such dynamic field" rather than a transport failure.
+ *
+ * @param error - The caught error to classify
+ * @returns True for a NOT_FOUND status, in either its string or numeric form
+ */
 function isGrpcNotFound(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code
   return code === 'NOT_FOUND' || code === 5
 }
 
-/** Receipt state for one receipt; a receipt without a table entry is empty, not an error. */
+/**
+ * Receipt state for one receipt; a receipt without a table entry is empty, not an error.
+ *
+ * @param client - gRPC client used to fetch the dynamic field
+ * @param receiptsTableId - Id of the vault's `receipts` table, from {@link readVoloVaultView}
+ * @param receiptId - Receipt object id, the table key
+ * @returns Promise of the receipt's status, shares, pending withdraw shares, and last deposit
+ *          time; all-zero defaults when the receipt has no entry yet
+ * @throws VaultSdkError with code `CHAIN_QUERY_FAILED` on any error other than NOT_FOUND
+ */
 async function readReceiptState(
   client: SuiGrpcClient,
   receiptsTableId: string,
@@ -187,6 +220,11 @@ async function readReceiptState(
  * everything by receipt address and never records who holds one. A receipt deposited into
  * another vault as a defi asset (`receipt_adaptor`) therefore drops out of this list while
  * its share balance keeps living in the vault.
+ *
+ * @param client - gRPC client used to page through owned objects
+ * @param vault - Vault to filter receipts by; receipts for other vaults are skipped
+ * @param owner - Sui address holding the receipts
+ * @returns Promise<string[]> - Normalized receipt object ids, in the order the node paged them
  */
 export async function listOwnedReceiptIds(
   client: SuiGrpcClient,
@@ -224,6 +262,19 @@ export async function listOwnedReceiptIds(
  * Receipt state is read from the vault's on-chain `receipts` Table. Receipt objects only
  * contain their vault id; balance, status, and the withdraw-lock timestamp live in this
  * dynamic field. `view` is `null` when the owner holds no receipts — nothing needed it.
+ *
+ * Use this over {@link getVaultReceipts} when you also need the withdraw lock, which is what
+ * makes a receipt's `lastDepositTime` interpretable.
+ *
+ * @param vault - The Volo vault to read receipts for. Must carry `vault.volo` config
+ * @param owner - Sui address holding the receipts
+ * @param options - Optional client override
+ * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @returns Promise of the owner's receipts and the vault view they were read against;
+ *          `{ view: null, receipts: [] }` when the owner holds none
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault,
+ *         `CHAIN_DATA_INVALID` when the vault exposes no receipts table, or
+ *         `CHAIN_QUERY_FAILED` when a receipt state read fails
  */
 export async function getVaultReceiptsWithView(
   vault: Vault,
@@ -255,7 +306,22 @@ export async function getVaultReceiptsWithView(
   }
 }
 
-/** Lists an owner's receipts for a vault, each with its share balance and status. */
+/**
+ * Lists an owner's receipts for a vault, each with its share balance and status.
+ *
+ * Thin wrapper over {@link getVaultReceiptsWithView} that drops the vault view. Prefer that
+ * one if you also need the withdraw lock.
+ *
+ * @param vault - The Volo vault to read receipts for. Must carry `vault.volo` config
+ * @param owner - Sui address holding the receipts
+ * @param options - Optional client override
+ * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @returns Promise<VaultReceipt[]> - One entry per owned receipt for this vault. Empty when the
+ *          owner holds none
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault,
+ *         `CHAIN_DATA_INVALID` when the vault exposes no receipts table, or
+ *         `CHAIN_QUERY_FAILED` when a receipt state read fails
+ */
 export async function getVaultReceipts(
   vault: Vault,
   owner: string,
@@ -275,6 +341,15 @@ export async function getVaultReceipts(
  * The contract aborts on zero-share withdrawals, so the plan never contains one, and a
  * non-zero `shortfall` (or an empty plan) must be treated as an insufficient-balance
  * error by the caller instead of silently withdrawing less than requested.
+ *
+ * Receipts are consumed smallest-first, which keeps the number of requests down by retiring
+ * dust receipts before touching a large one.
+ *
+ * @param receipts - Eligible receipts to draw from, already filtered by the caller. Not
+ *        mutated; zero-share entries are skipped
+ * @param shares - Total shares to withdraw
+ * @returns The plan — receipts with `shares` overwritten by the amount to draw from each —
+ *          plus the `shortfall` still uncovered after consuming every receipt
  */
 export function planReceiptWithdraw(
   receipts: VaultReceipt[],

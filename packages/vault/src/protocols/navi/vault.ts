@@ -19,6 +19,13 @@ const TableHandle = bcs.struct('Table', {
   size: bcs.u64()
 })
 
+/**
+ * `sui::vec_map::VecMap<K, V>` — a vector of key/value entries, inlined in its parent object.
+ *
+ * @param keyType - BCS type of the map's keys
+ * @param valueType - BCS type of the map's values
+ * @returns A BCS struct decoding to `{ contents: { key, value }[] }`
+ */
 function vecMap<K extends BcsType<any>, V extends BcsType<any>>(keyType: K, valueType: V) {
   return bcs.struct('VecMap', {
     contents: bcs.vector(
@@ -200,10 +207,20 @@ export type VaultRewardRule = {
 }
 
 /**
- * Reads all reward rules of a NAVI vault straight from the vault object.
+ * Reads and BCS-parses the on-chain `navi_vault::Vault<CoinType>` object.
  *
- * Includes inactive (soft-deleted) rules, since users may still have unclaimed
- * rewards accrued under them — filter on `isActive` when listing live incentives.
+ * The single source `depositPTB`/`withdrawPTB`/reward reading pull from — total
+ * shares/assets, registered markets, reward rules, and table handles. Cached for
+ * `DEFAULT_CACHE_TIME` by default; concurrent calls for the same vault share one
+ * in-flight request.
+ *
+ * @param vault - The NAVI vault to read. Must carry `vault.navi` config
+ * @param options - Optional client and cache overrides
+ * @param options.client - gRPC client used to fetch the vault object. Defaults to a mainnet client
+ * @param options.cacheTime - Cache lifetime in milliseconds. Defaults to `DEFAULT_CACHE_TIME`
+ * @param options.disableCache - Bypass the cache and always refetch
+ * @returns Promise<VaultInfo> - The parsed vault object fields
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault
  */
 export const getVaultInfo = withCache(
   withSingleton(
@@ -231,6 +248,17 @@ export const getVaultInfo = withCache(
   { defaultCacheTime: DEFAULT_CACHE_TIME }
 )
 
+/**
+ * Resolves the vault's `default_market` to its NAVI lending pool — the pool deposits land in
+ * and withdrawals are drawn from.
+ *
+ * @param vault - The NAVI vault to resolve for. Must carry `vault.navi` config
+ * @param options - Optional client override
+ * @param options.client - gRPC client used to read the vault object. Defaults to a mainnet client
+ * @returns Promise<Pool> - The lending pool backing the vault's default market
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault, or
+ *         `VAULT_CONFIG_INVALID` when the default market has no matching pool
+ */
 export async function getVaultDefaultPool(
   vault: Vault,
   options?: {
@@ -258,6 +286,20 @@ export async function getVaultDefaultPool(
   return defaultPool
 }
 
+/**
+ * Reads and normalizes all reward rules of a NAVI vault straight from the vault object.
+ *
+ * Includes inactive (soft-deleted) rules, since users may still have unclaimed rewards
+ * accrued under them — filter on `isActive` when listing live incentives. The returned order
+ * is the on-chain `reward_rules` order, which `ruleIndex` refers to and which reward replay
+ * depends on.
+ *
+ * @param vault - The NAVI vault to read rules for. Must carry `vault.navi` config
+ * @param options - Optional client override
+ * @param options.client - gRPC client used to read the vault object. Defaults to a mainnet client
+ * @returns Promise<VaultRewardRule[]> - Every rule, active or not, in on-chain order
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault
+ */
 export async function getVaultRewardRules(
   vault: Vault,
   options?: {

@@ -10,8 +10,11 @@ import { vaultErrors } from './error'
  * The public deposit/withdraw entry points take human-unit decimal strings; raw
  * base-unit flows live on the protocol-level builders instead.
  *
- * @throws INVALID_AMOUNT when the string is not a valid decimal, has more
- *         fractional digits than `decimals`, or is not strictly positive.
+ * @param amount - Decimal string in human units, e.g. `"1.5"` or `"0.00020497"`
+ * @param decimals - The coin's decimal places, from `vault.assets.baseCoin.decimals`
+ * @returns The amount in raw base units
+ * @throws VaultSdkError with code `INVALID_AMOUNT` when the string is not a valid decimal,
+ *         has more fractional digits than `decimals`, or is not strictly positive
  */
 export function parseHumanAmount(amount: string, decimals: number): bigint {
   let raw: bigint
@@ -34,6 +37,10 @@ export function parseHumanAmount(amount: string, decimals: number): bigint {
  *
  * This function creates a unique key for caching by serializing the arguments
  * and removing cache-specific options that shouldn't affect the cache key.
+ *
+ * Only a trailing object argument is stripped, and only of `client`, `disableCache`, and
+ * `cacheTime` — a client instance would not serialize, and the cache flags describe how to
+ * fetch rather than what is fetched.
  *
  * @param args - Function arguments to generate key from
  * @returns JSON string representing the arguments
@@ -61,8 +68,12 @@ function argsKey(args: any[]) {
  * while a previous call is still pending, it returns the existing promise instead
  * of making a new call.
  *
+ * Arguments are keyed by {@link argsKey}, which ignores `client`, `disableCache`, and
+ * `cacheTime` on a trailing options object.
+ *
+ * @typeParam T - Signature of the wrapped async function, preserved by the wrapper
  * @param fn - Function to wrap with singleton behavior
- * @returns Wrapped function with singleton behavior
+ * @returns Wrapped function with singleton behavior, with `fn`'s signature
  */
 export function withSingleton<T extends (...args: any[]) => Promise<any>>(fn: T): T {
   const promiseMap: Record<string, Promise<any> | null> = {}
@@ -85,11 +96,17 @@ export function withSingleton<T extends (...args: any[]) => Promise<any>>(fn: T)
  * This decorator caches function results based on arguments and cache options.
  * It respects cache time settings and can be disabled per call.
  *
+ * Per-call behavior is read off the LAST argument, which is expected to be a
+ * {@link CacheOption}-shaped options object: `cacheTime` overrides the default lifetime and
+ * `disableCache` bypasses the cache entirely. Arguments are keyed by {@link argsKey}.
+ *
+ * @typeParam T - Signature of the wrapped async function, preserved by the wrapper
  * @param fn - Function to wrap with caching behavior
- * @param defaults - `defaultCacheTime` applies when a call passes no `cacheTime`;
- *                   without it an entry never expires, which is wrong for vault
- *                   data that feeds money math (share/asset conversions).
- * @returns Wrapped function with caching behavior
+ * @param defaults - Fallback cache settings for calls that pass no `cacheTime`
+ * @param defaults.defaultCacheTime - Default entry lifetime in milliseconds. Without it an
+ *        entry never expires, which is wrong for vault data that feeds money math
+ *        (share/asset conversions)
+ * @returns Wrapped function with caching behavior, with `fn`'s signature
  */
 export function withCache<T extends (...args: any[]) => Promise<any>>(
   fn: T,
@@ -132,6 +149,13 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(
   }) as T
 }
 
+/**
+ * Builds a URL query string, dropping any parameter whose value is `undefined` so optional
+ * filters can be passed through unconditionally. Remaining values are stringified.
+ *
+ * @param params - Query parameters; `undefined` values are omitted
+ * @returns URLSearchParams - Stringifies to the encoded query, without a leading `?`
+ */
 export function queryString(params: Record<string, any>) {
   return new URLSearchParams(
     Object.entries(params)
@@ -140,6 +164,12 @@ export function queryString(params: Record<string, any>) {
   )
 }
 
+/**
+ * Resolves the gRPC client every on-chain read in this SDK goes through.
+ *
+ * @param client - Caller-supplied client, returned unchanged when present
+ * @returns The supplied client, or a new `SuiGrpcClient` against the public mainnet fullnode
+ */
 export function getSuiClient(client?: SuiGrpcClient) {
   return (
     client ||
@@ -150,6 +180,19 @@ export function getSuiClient(client?: SuiGrpcClient) {
   )
 }
 
+/**
+ * Fetches `url` and unwraps the NAVI open API's `{ data: T }` envelope.
+ *
+ * The `data` payload is returned unvalidated — callers are expected to check its shape and
+ * raise `apiResponseInvalid` themselves, since the expected shape differs per endpoint.
+ *
+ * @typeParam T - Expected shape of the response's `data` field. Not verified at runtime
+ * @param url - Fully-built request URL, including any query string
+ * @returns Promise<T> - The response body's `data` field
+ * @throws VaultSdkError with code `API_REQUEST_FAILED` (or `RATE_LIMITED` on HTTP 429) on a
+ *         network error or non-2xx response, or `API_RESPONSE_INVALID` when the body is not
+ *         JSON or has no `data` field
+ */
 export async function fetchVaultApiData<T>(url: string): Promise<T> {
   let response: Response
   try {
@@ -176,6 +219,18 @@ export async function fetchVaultApiData<T>(url: string): Promise<T> {
   return (body as { data: T }).data
 }
 
+/**
+ * Normalizes a value into a Move call argument, so builders can accept either a literal or
+ * the result of an earlier call in the same PTB.
+ *
+ * Primitives are serialized through `format`; an already-built `TransactionResult` (any
+ * object) is passed through untouched.
+ *
+ * @param value - Literal to serialize, or an existing `TransactionResult` to pass through
+ * @param format - Serializer applied to primitives, e.g. `tx.pure.u64` or `tx.object`
+ * @returns The argument, ready to place in a `moveCall`'s `arguments`
+ * @throws VaultSdkError with code `INVALID_ARGUMENT` when `value` is `null` or `undefined`
+ */
 export function parseTxValue(
   value: string | number | boolean | object | null | undefined | bigint,
   format: any

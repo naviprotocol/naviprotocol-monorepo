@@ -100,7 +100,12 @@ export type VaultReceipt = {
   rewards: VaultReceiptReward[]
 }
 
-/** Parsed `VecMap<String, u256>` entries as a lookup. */
+/**
+ * Parsed `VecMap<String, u256>` entries as a lookup.
+ *
+ * @param entries - The decoded `contents` vector of a reward ledger
+ * @returns Rule key to amount. Later duplicates win, matching `VecMap` insertion semantics
+ */
 function toAmountMap(entries: { key: string; value: string }[]): Map<string, bigint> {
   return new Map(entries.map((entry) => [entry.key, BigInt(entry.value)]))
 }
@@ -111,6 +116,13 @@ function toAmountMap(entries: { key: string; value: string }[]): Map<string, big
  * Walks the rules in on-chain order and carries a running index per rule key, because two rules
  * sharing a key settle one after the other against the same ledger. Accrual is floor division
  * (`shares * diff / RAY`), not `ray_mul` — the contract does not round half up here.
+ *
+ * @param rules - The vault's reward rules in on-chain order; order is significant
+ * @param shares - The receipt's share balance, the multiplier for pending accrual
+ * @param indices - Per-rule-key index snapshots from the receipt's `reward_indices` ledger
+ * @param totals - Per-rule-key settled amounts from the receipt's `reward_total` ledger
+ * @param claimed - Per-rule-key paid-out amounts from the receipt's `reward_claimed` ledger
+ * @returns One entry per distinct rule key, in first-seen rule order
  */
 function buildRewards(
   rules: VaultRewardRule[],
@@ -167,6 +179,15 @@ function buildRewards(
  * Reward figures inherit the contract's staleness: market rules only advance on
  * `collect_reward`, so rewards sitting unharvested in the underlying protocol are invisible
  * here, and a vault-native rule's index only advances when someone interacts with the vault.
+ *
+ * @param vault - The NAVI vault to read receipts for. Must carry `vault.navi` config
+ * @param owner - Sui address holding the receipts. Receipts transferred away or deposited
+ *                elsewhere as a defi asset drop out of this list
+ * @param options - Optional client override
+ * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @returns Promise<VaultReceipt[]> - One entry per owned receipt for this vault, each with its
+ *          shares and full per-rule reward position. Empty when the owner holds none
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault
  */
 export async function getVaultReceipts(
   vault: Vault,
@@ -262,13 +283,20 @@ export type ReceiptWithdrawPlan = {
  * execution time — and only the final partial receipt carries an explicit amount, sized
  * with floor division so it can never exceed the receipt's redeemable value.
  *
- * @param amount - Requested asset amount in base units; `U64_MAX` withdraws everything.
- * @param totalAssets / totalShares - On-chain `Vault.total_assets` / `Vault.total_shares`,
- *        used only to estimate each receipt's redeemable value for plan sizing.
+ * Receipts are consumed smallest-first, which keeps the number of calls down by retiring
+ * dust receipts before touching a large one. Zero-share receipts are skipped.
+ *
+ * @param receipts - The owner's receipts for the vault, as returned by {@link getVaultReceipts}.
+ *        Not mutated; filtered and sorted internally
+ * @param amount - Requested asset amount in base units; `U64_MAX` withdraws everything
+ * @param totalAssets - On-chain `Vault.total_assets`, used only to estimate each receipt's
+ *        redeemable value for plan sizing
+ * @param totalShares - On-chain `Vault.total_shares`, the denominator of that same estimate.
+ *        Must be non-zero unless `amount` is `U64_MAX`
  * @returns The plan plus the `shortfall` still uncovered after consuming every receipt
  *          (always `0n` for the withdraw-everything sentinel). Callers must treat a
  *          non-zero shortfall (or an empty plan) as an insufficient-balance error
- *          rather than silently withdrawing less than requested.
+ *          rather than silently withdrawing less than requested
  */
 export function planReceiptWithdrawByAmount(
   receipts: VaultReceipt[],

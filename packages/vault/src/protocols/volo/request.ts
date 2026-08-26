@@ -81,6 +81,11 @@ type RequestBufferView = {
  *
  * gRPC renders a `Table`'s `UID` as a plain address; other API implementations nest it as
  * `{ id: { id } }`, so both are accepted rather than trusting one shape.
+ *
+ * @param table - The JSON view of the `Table` field
+ * @param field - Field name, used only in the error message
+ * @returns The normalized table id
+ * @throws VaultSdkError with code `CHAIN_DATA_INVALID` when neither shape yields an id
  */
 function tableId(table: unknown, field: string): string {
   const id = (table as { id?: unknown } | undefined)?.id
@@ -97,6 +102,12 @@ function tableId(table: unknown, field: string): string {
  * The tables are read through the object's JSON view: their ids live inside `Vault.request_buffer`
  * and BCS-decoding the whole vault to reach them would mean modelling every asset table ahead of
  * it, for two addresses.
+ *
+ * @param client - gRPC client used to fetch the vault object
+ * @param vault - The Volo vault to read
+ * @returns Promise<RequestBufferView> - Both request table ids and the cancel lock in milliseconds
+ * @throws VaultSdkError with code `CHAIN_DATA_INVALID` when the object exposes no
+ *         `request_buffer`, or either table id is missing
  */
 async function readRequestBuffer(client: SuiGrpcClient, vault: Vault): Promise<RequestBufferView> {
   const { object } = await client.getObject({
@@ -129,6 +140,16 @@ async function readRequestBuffer(client: SuiGrpcClient, vault: Vault): Promise<R
  * vault — a few dozen in practice — and the caller narrows them down to one wallet. There is no
  * cheaper path: the vault keeps no wallet index, and the gRPC client exposes no event query to
  * replay `DepositRequested` / `WithdrawRequested` from.
+ *
+ * @typeParam T - Decoded row type produced by `parse`
+ * @param client - gRPC client used to page through the table's dynamic fields
+ * @param parentId - Id of the request table to enumerate
+ * @param valueType - Expected Move type suffix of each value, e.g. `'::deposit_request::DepositRequest'`.
+ *        Guards the hand-written BCS layout against a table holding something else
+ * @param parse - Decoder applied to each entry's BCS bytes
+ * @returns Promise<T[]> - Every entry in the table, in page order
+ * @throws VaultSdkError with code `CHAIN_DATA_INVALID` when an entry's type does not end with
+ *         `valueType`
  */
 async function listRequestTable<T>(
   client: SuiGrpcClient,
@@ -176,6 +197,21 @@ async function listRequestTable<T>(
  *
  * Cancelling one takes `requestId` and `receiptId` from the returned entry; `cancellableAt` says
  * when the vault's lock lets that through.
+ *
+ * This reads one vault directly from chain. The top-level `getPendingRequests` instead queries
+ * the NAVI open API across every vault, and returns a differently-shaped `PendingRequest`.
+ *
+ * @param vault - The Volo vault whose request buffer to read. Must carry `vault.volo` config
+ * @param owner - Sui address to attribute requests to, by `recipient` or receipt ownership
+ * @param options - Optional client override and type filter
+ * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @param options.type - Read only deposits or only withdrawals, skipping the other table.
+ *        Unset reads both
+ * @returns Promise<PendingRequest[]> - The owner's outstanding requests, oldest first — the
+ *          order the buffer drains in
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault, or
+ *         `CHAIN_DATA_INVALID` when the vault exposes no request buffer or a request table
+ *         holds an unexpected type
  */
 export async function getPendingRequests(
   vault: Vault,
