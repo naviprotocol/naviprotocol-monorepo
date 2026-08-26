@@ -63,6 +63,11 @@ export const MARKETS = {
     id: 9,
     key: "hasui-sui",
     name: "haSUI / SUI Market"
+  },
+  "high-usdc": {
+    id: 10,
+    key: "high-usdc",
+    name: "Ember High Market"
   }
 }
 
