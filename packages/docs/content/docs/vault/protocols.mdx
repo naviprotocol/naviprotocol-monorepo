@@ -1,0 +1,224 @@
+---
+title: Protocol Namespaces
+---
+
+The top-level interfaces cover the common path. When you need raw base units, on-chain receipt state, or protocol-specific behavior the unified layer smooths over, the `navi` and `volo` namespaces expose the layer underneath.
+
+```typescript
+import { navi, volo } from '@naviprotocol/vault'
+```
+
+<Callout>
+  These interfaces do **not** dispatch by source. Calling a `navi.*` function with a Volo vault
+  throws `VAULT_UNSUPPORTED`, and vice versa. Check `vault.source` yourself before calling.
+</Callout>
+
+## When to Use Them
+
+| You need                                                 | Use                                              |
+| -------------------------------------------------------- | ------------------------------------------------ |
+| Raw `bigint` amounts instead of decimal strings          | `navi.depositPTB`, `volo.depositPTB`             |
+| On-chain share balances per receipt                      | `navi.getVaultReceipts`, `volo.getVaultReceipts` |
+| Vault state — total assets/shares, markets, reward rules | `navi.getVaultInfo`                              |
+| One vault's request buffer read from chain               | `volo.getPendingRequests`                        |
+| To compose calls yourself, skipping the SDK's planning   | The PTB builders below                           |
+
+## NAVI Namespace
+
+### navi.depositPTB / navi.withdrawPTB
+
+The raw base-unit equivalents of the top-level builders. Amounts are `bigint`, and withdraw targets take `bigint` rather than strings.
+
+```typescript
+import { navi } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Raw base units — 1.5 SUI at 9 decimals
+const result = await navi.depositPTB(tx, vault, owner, 1_500_000_000n, { client })
+tx.transferObjects([result[0]], owner) // consume the Receipt
+
+const coin = await navi.withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'amount', amount: 1_500_000_000n },
+  { client }
+)
+tx.transferObjects([coin], owner)
+```
+
+### navi.getVaultInfo
+
+Reads and BCS-parses the on-chain vault object — the source deposit/withdraw planning runs against. Cached, with concurrent calls de-duplicated.
+
+```typescript
+import { navi } from '@naviprotocol/vault'
+
+const info = await navi.getVaultInfo(vault, { client })
+
+const totalAssets = BigInt(info.total_assets)
+const totalShares = BigInt(info.total_shares)
+
+// The exact on-chain exchange rate, not the API's snapshot
+const positionValue = (shares * totalAssets) / totalShares
+```
+
+Notable fields: `total_shares`, `total_assets`, `idle_balance`, `default_market`, `markets`, `reward_rules`, `user_states`, `paused`, `management_fee`, `performance_fee`.
+
+### navi.getVaultReceipts
+
+Lists an owner's receipts with share balances and full per-rule reward positions. Any number of receipts costs a single batched read.
+
+```typescript
+import { navi } from '@naviprotocol/vault'
+
+const receipts = await navi.getVaultReceipts(vault, owner, { client })
+
+for (const receipt of receipts) {
+  console.log(receipt.id, receipt.shares)
+
+  for (const reward of receipt.rewards) {
+    // What a claim would actually pay for this rule
+    const payout = reward.claimable + reward.pending
+  }
+}
+```
+
+Each reward entry carries `ruleKey`, `rewardCoinType`, `naviPoolId`, `userIndex`, `accrued`, `claimed`, `claimable`, and `pending`. `pending` is the unsettled portion — the part `getVaultRewards` does not include in its `claimable`.
+
+<Callout>
+  A freshly created receipt, and one that was fully withdrawn, both report `shares: 0n` — the
+  contract never deletes receipts or their state.
+</Callout>
+
+### navi.getVaultRewardRules
+
+Reads the vault's reward rules, including inactive ones (users may still hold unclaimed rewards under them). Filter on `isActive` when listing live incentives.
+
+```typescript
+import { navi } from '@naviprotocol/vault'
+
+const rules = await navi.getVaultRewardRules(vault, { client })
+const live = rules.filter((rule) => rule.isActive)
+
+// Market rules are harvested from the underlying pool; vault-native rules are admin-funded
+const marketRules = live.filter((rule) => !rule.isVaultNative)
+```
+
+### Other NAVI Interfaces
+
+- `navi.syncMarketBalancePTB` — sync cached market balances
+- `navi.collectNaviRewardsPTB` — harvest market reward rules
+- `navi.claimRewardsPTB` — the implementation behind the top-level claim builder
+- `navi.createReceiptPTB` — create an empty receipt
+- `navi.getVaultDefaultPool` — resolve the vault's default lending pool
+- `navi.planReceiptWithdrawByAmount` — the withdrawal planner, if you want to inspect or replace it
+
+## Volo Namespace
+
+### volo.depositPTB / volo.withdrawPTB
+
+Raw base-unit equivalents of the top-level builders.
+
+```typescript
+import { volo } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+const result = await volo.depositPTB(tx, vault, owner, 1_500_000_000n, {
+  client,
+  expectedShares: 1_400_000_000n
+})
+// Volo returns (request_id, Receipt, change)
+tx.transferObjects([result[1], result[2]], owner)
+
+const requestIds = await volo.withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'shares', shares: 1_000_000n },
+  { client }
+)
+```
+
+### volo.getVaultReceipts / volo.getVaultReceiptsWithView
+
+Lists an owner's receipts with share balances, status, and the withdraw-lock timestamp. Use the `WithView` variant when you also need the vault's lock duration — it is what makes `lastDepositTime` interpretable.
+
+```typescript
+import { volo } from '@naviprotocol/vault'
+
+const { view, receipts } = await volo.getVaultReceiptsWithView(vault, owner, { client })
+
+const lockMs = view?.lockingTimeForWithdrawMs ?? 0
+const now = Date.now()
+
+for (const receipt of receipts) {
+  const unlocksAt = receipt.lastDepositTime + lockMs
+  const withdrawable = volo.canRequestWithdraw(receipt) && unlocksAt <= now
+}
+```
+
+<Callout>
+  `shares` is the **settled** balance. A pending withdraw request does not reduce it until an
+  operator executes the request — only `pendingWithdrawShares` grows in the meantime.
+</Callout>
+
+### volo.canRequestWithdraw / volo.canRequestDeposit
+
+Predicates mirroring the contract's receipt-status asserts. `canRequestWithdraw` covers the status check only — the withdraw lock is a separate gate you must check yourself, as shown above.
+
+```typescript
+import { volo } from '@naviprotocol/vault'
+
+const eligible = receipts.filter(volo.canRequestWithdraw)
+```
+
+Receipt statuses are exposed as `volo.RECEIPT_STATUS`.
+
+### volo.getPendingRequests
+
+Reads one vault's request buffer directly from chain. Richer than the top-level API-backed call: it carries the exact `cancellableAt` timestamp and the floors the caller declared.
+
+```typescript
+import { volo } from '@naviprotocol/vault'
+
+const requests = await volo.getPendingRequests(vault, owner, {
+  client,
+  type: 'withdraw' // Optional: skip the other table entirely
+})
+
+for (const request of requests) {
+  const cancellableNow = Date.now() >= request.cancellableAt
+
+  if (request.type === 'deposit') {
+    console.log(request.deposit?.amount, request.deposit?.expectedShares)
+  } else {
+    console.log(request.withdraw?.shares, request.withdraw?.expectedAmount)
+  }
+}
+```
+
+Results are sorted oldest-first — the order the buffer drains in.
+
+<Callout>
+  Requests are attributed by `recipient`, which `deposit` and `withdraw_with_auto_transfer` both set
+  to the sender. A plain `withdraw` leaves it at `0x0…0`, and those are attributed by receipt
+  ownership instead.
+</Callout>
+
+## Two `PendingRequest` Types
+
+The top level and the `volo` namespace both export a type named `PendingRequest`, and they are **not** the same shape:
+
+|             | Top-level `PendingRequest` | `volo.PendingRequest`                      |
+| ----------- | -------------------------- | ------------------------------------------ |
+| Source      | NAVI open API, all vaults  | On-chain buffer, one vault                 |
+| `requestId` | `string`                   | `bigint`                                   |
+| Amounts     | Decimal strings, plus USD  | `bigint`, no USD                           |
+| Timing      | `executeTime` (ISO-8601)   | `requestTime` / `cancellableAt` (epoch ms) |
+
+The `cancelPendingDepositPTB` / `cancelPendingWithdrawPTB` builders take the **top-level** shape. If you read requests through `volo.getPendingRequests`, build the cancel call yourself from `requestId` and `receiptId`.

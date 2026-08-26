@@ -17,7 +17,6 @@ import { getVault } from './vault'
 import * as navi from './protocols/navi'
 import * as volo from './protocols/volo'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { DEFAULT_CACHE_TIME } from '@naviprotocol/lending'
 import { isVaultSdkError, vaultErrors } from './error'
 
 export type GetPositionsOptions = Partial<
@@ -133,8 +132,10 @@ export const getPositions = withCache(
  * @param options.expectedShares - Minimum shares the deposit must mint, enforced on-chain by
  *                                 Volo. NAVI vaults have no slippage parameter and currently
  *                                 IGNORE this field — see {@link DepositPTBOptions.expectedShares}
- * @returns Promise<TransactionResult> - The deposit call's result: the vault receipt for NAVI,
- *          `[request_id, Receipt, change]` for Volo
+ * @returns Promise<TransactionResult> - The deposit call's result, shaped per protocol:
+ *          `[Receipt, shares]` for NAVI, `[request_id, Receipt, change]` for Volo. The
+ *          `Receipt` (and Volo's `change` coin) are unconsumed — transfer them to the owner,
+ *          or the transaction will fail
  * @throws VaultSdkError with code `INVALID_AMOUNT` when `amount` is not a positive decimal
  *         within the coin's precision, `VAULT_NOT_FOUND` when the vault does not exist, or
  *         `VAULT_UNSUPPORTED` when its source has no deposit builder

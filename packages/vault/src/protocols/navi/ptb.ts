@@ -248,7 +248,8 @@ export function createReceiptPTB(tx: Transaction, vault: Vault) {
  *                       balance (or gas coin, with `useGasCoin`) for `amount`
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of
  *                             a coin object lookup. Ignored when `coin` is given
- * @returns Promise<TransactionResult> - The `navi_vault::deposit` result
+ * @returns Promise<TransactionResult> - The `navi_vault::deposit` result, `[Receipt, shares]`.
+ *          The `Receipt` is unconsumed — transfer it to the owner, or the transaction will fail
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault,
  *         `INVALID_AMOUNT` when `amount` is not a `bigint` and no `coin` was supplied, or
  *         `VAULT_CONFIG_INVALID` when the vault's default pool or its market cannot be resolved

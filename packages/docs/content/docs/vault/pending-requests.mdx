@@ -1,0 +1,163 @@
+---
+title: Pending Requests
+---
+
+Volo deposits and withdrawals do not settle immediately — they create a request that an operator executes later. This module lists a wallet's outstanding requests and builds the calls to cancel them.
+
+<Callout>
+  Pending requests are a **Volo-only** concept. NAVI vault deposits and withdrawals settle in the
+  same transaction, so they never appear here.
+</Callout>
+
+## Core Features
+
+- **Request Listing**: Read a wallet's outstanding deposit and withdraw requests
+- **Cancellation**: Build calls to cancel a request before an operator executes it
+- **Scoping**: Narrow to a single vault
+
+## API Reference
+
+### getPendingRequests
+
+Get a wallet's pending requests as recorded by the NAVI open API. See [documentation](/typedoc/functions/_naviprotocol_vault.getPendingRequests.html) for details.
+
+Unlike most reads in this SDK, this one is **not cached**.
+
+**Usage Example**
+
+```typescript
+import { getPendingRequests } from '@naviprotocol/vault'
+
+// All pending requests across every vault
+const requests = await getPendingRequests('0x...')
+
+// Scoped to one vault
+const vaultRequests = await getPendingRequests('0x...', {
+  vault: '0x...' // Optional: restrict to this vault id
+})
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "txId": "BVpGDpt9nmb1TkTnh65QmqedXt2gYqkVMhhkBE1uraWG",
+    "vaultId": "0x...",
+    "type": "withdraw",
+    "amount": "1.5",
+    "amountUsd": "5.25",
+    "shares": "1000000000",
+    "receiptId": "0x...",
+    "requestId": "42",
+    "executeTime": "2026-08-26T10:30:00.000Z"
+  }
+]
+```
+
+**Return Fields**
+
+- `txId`: Transaction digest that created the request
+- `vaultId`: The vault the request targets
+- `type`: `'deposit'` or `'withdraw'`
+- `amount` / `amountUsd`: Requested amount in human units and in USD, as decimal strings
+- `shares`: Shares involved, as a raw base-unit string
+- `receiptId`: Receipt the request settles into. Required to cancel
+- `requestId`: On-chain request id. Required to cancel
+- `executeTime`: ISO-8601 timestamp of when an operator is expected to execute the request
+
+### cancelPendingDepositPTB
+
+Build a cancellation of a pending deposit request. See [documentation](/typedoc/functions/_naviprotocol_vault.cancelPendingDepositPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPendingRequests, cancelPendingDepositPTB } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const requests = await getPendingRequests(owner)
+const deposit = requests.find((request) => request.type === 'deposit')
+
+if (deposit) {
+  const tx = new Transaction()
+  const refund = await cancelPendingDepositPTB(tx, deposit)
+
+  // Returns the refunded principal coin — you must consume it
+  tx.transferObjects([refund], owner)
+}
+```
+
+<Callout type="warn">
+  Cancelling a deposit returns the refunded principal coin. Transfer it, or the transaction will
+  fail.
+</Callout>
+
+### cancelPendingWithdrawPTB
+
+Build a cancellation of a pending withdraw request. See [documentation](/typedoc/functions/_naviprotocol_vault.cancelPendingWithdrawPTB.html) for details.
+
+**Usage Example**
+
+```typescript
+import { getPendingRequests, cancelPendingWithdrawPTB } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const requests = await getPendingRequests(owner)
+const withdraw = requests.find((request) => request.type === 'withdraw')
+
+if (withdraw) {
+  const tx = new Transaction()
+  // Returns the cancelled share count (u256) — a droppable value, nothing to consume
+  await cancelPendingWithdrawPTB(tx, withdraw)
+}
+```
+
+## Cancellation Timing
+
+Two things gate a cancellation, and neither is guaranteed:
+
+1. **The cancel lock.** The vault rejects a cancellation until the request's lock expires. `executeTime` tells you when the request is expected to be actionable.
+2. **The operator.** An operator can execute a request at any point, including before the lock expires. Once executed, the request is gone from the buffer and cancelling it aborts.
+
+A cancellation is therefore best-effort — build it expecting the on-chain call may abort, and re-read `getPendingRequests` afterwards to confirm the outcome.
+
+## Passing the Right Request Type
+
+Each cancel builder validates the request's direction and throws `INVALID_REQUEST_TYPE` on a mismatch, so a mixed list cannot silently cancel the wrong thing:
+
+```typescript
+import {
+  getPendingRequests,
+  cancelPendingDepositPTB,
+  cancelPendingWithdrawPTB
+} from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+const requests = await getPendingRequests(owner, { vault: vaultId })
+
+for (const request of requests) {
+  if (request.type === 'deposit') {
+    const refund = await cancelPendingDepositPTB(tx, request)
+    tx.transferObjects([refund], owner)
+  } else {
+    await cancelPendingWithdrawPTB(tx, request)
+  }
+}
+```
+
+## Reading Requests On-Chain
+
+`getPendingRequests` reads the API's aggregated record across every vault. To read one vault's request buffer directly from chain — with richer fields including the exact `cancellableAt` timestamp and the declared floors — use `volo.getPendingRequests`. See [Protocol Namespaces](/vault/protocols).
+
+## Errors
+
+| Code                   | Cause                                                       |
+| ---------------------- | ----------------------------------------------------------- |
+| `INVALID_REQUEST_TYPE` | The request's `type` does not match the cancel builder used |
+| `VAULT_NOT_FOUND`      | No vault matches the request's `vaultId`                    |
+| `VAULT_CONFIG_INVALID` | The vault carries no Volo package configuration             |
+| `API_REQUEST_FAILED`   | The API call failed                                         |
+
+See [Error Handling](/vault/errors) for how to branch on these.
