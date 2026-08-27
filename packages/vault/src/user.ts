@@ -1,17 +1,18 @@
 import {
-  CacheOption,
-  EnvOption,
-  VaultPosition,
-  VaultProtocol,
-  VaultIdentifier,
-  PendingRequest
+    CacheOption,
+    EnvOption,
+    VaultPosition,
+    VaultProtocol,
+    VaultIdentifier,
+    PendingRequest
 } from './types'
 import { fetchVaultApiData, withCache, withSingleton, queryString, parseHumanAmount } from './utils'
 import { OPEN_API_URL } from './config'
 import type {
-  Transaction,
-  TransactionObjectArgument,
-  TransactionResult
+    Transaction,
+    TransactionObjectArgument,
+    TransactionResult,
+    TransactionArgument
 } from '@mysten/sui/transactions'
 import { getVault } from './vault'
 import * as navi from './protocols/navi'
@@ -20,51 +21,51 @@ import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { isVaultSdkError, vaultErrors } from './error'
 
 export type GetPositionsOptions = Partial<
-  {
-    /** Restrict the result to these strategy providers. */
-    protocols: VaultProtocol[]
-    /** Restrict the result to these vault ids. */
-    vaults: string[]
-  } & EnvOption &
+    {
+        /** Restrict the result to these strategy providers. */
+        protocols: VaultProtocol[]
+        /** Restrict the result to these vault ids. */
+        vaults: string[]
+    } & EnvOption &
     CacheOption
 >
 
 export type GetVaultPositionOptions = Partial<EnvOption & CacheOption>
 
 export type DepositPTBOptions = {
-  /** Coin object to deposit from. When omitted, one is split from the owner's balance (or gas coin) for `amount`. */
-  coin?: TransactionObjectArgument
-  /** Split the deposit coin from the transaction's gas coin instead of a coin object lookup. */
-  useGasCoin?: boolean
-  /** gRPC client for on-chain reads this call needs (receipts, vault state). Defaults to a mainnet client. */
-  client?: SuiGrpcClient
-  /**
-   * Minimum shares the deposit must mint, enforced on-chain by Volo's
-   * `user_entry::deposit`.
-   *
-   * NAVI vault deposits have no slippage parameter. This field is currently
-   * IGNORED for a NAVI vault — `navi.depositPTB` neither reads nor rejects it, so a
-   * non-zero floor silently provides no protection there. Only rely on it for Volo
-   * vaults (`vault.source === 'volo'`).
-   */
-  expectedShares?: bigint
+    /** Coin object to deposit from. When omitted, one is split from the owner's balance (or gas coin) for `amount`. */
+    coin?: TransactionObjectArgument
+    /** Split the deposit coin from the transaction's gas coin instead of a coin object lookup. */
+    useGasCoin?: boolean
+    /** gRPC client for on-chain reads this call needs (receipts, vault state). Defaults to a mainnet client. */
+    client?: SuiGrpcClient
+    /**
+     * Minimum shares the deposit must mint, enforced on-chain by Volo's
+     * `user_entry::deposit`.
+     *
+     * NAVI vault deposits have no slippage parameter. This field is currently
+     * IGNORED for a NAVI vault — `navi.depositPTB` neither reads nor rejects it, so a
+     * non-zero floor silently provides no protection there. Only rely on it for Volo
+     * vaults (`vault.source === 'volo'`).
+     */
+    expectedShares?: bigint
 }
 
 export type WithdrawPTBOptions = {
-  /** gRPC client for on-chain reads this call needs (receipts, vault state, prices). Defaults to a mainnet client. */
-  client?: SuiGrpcClient
+    /** gRPC client for on-chain reads this call needs (receipts, vault state, prices). Defaults to a mainnet client. */
+    client?: SuiGrpcClient
 }
 
 /**
  * What to withdraw:
- * - `amount` — human-readable decimal string in vault coin units ("1.5"), like `depositPTB`.
+ * - `amount` — human-readable decimal string in vault coin units ("1.5").
  * - `shares` — raw on-chain share count (the unit `VaultPosition.shares` is in).
  * - `all` — everything the owner's receipts hold.
  */
 export type WithdrawTarget =
-  | { kind: 'amount'; amount: string }
-  | { kind: 'shares'; shares: string | bigint }
-  | { kind: 'all' }
+    | { kind: 'amount'; amount: string }
+    | { kind: 'shares'; shares: string | bigint }
+    | { kind: 'all' }
 
 /**
  * Lists an owner's positions across all vaults.
@@ -85,32 +86,32 @@ export type WithdrawTarget =
  *         the API call fails, or `API_RESPONSE_INVALID` when the payload is not an array
  */
 export const getPositions = withCache(
-  withSingleton(async (owner: string, options?: GetPositionsOptions): Promise<VaultPosition[]> => {
-    const url = `${OPEN_API_URL}/vaults/positions?${queryString({
-      address: owner
-    })}`
+    withSingleton(async (owner: string, options?: GetPositionsOptions): Promise<VaultPosition[]> => {
+        const url = `${OPEN_API_URL}/vaults/positions?${queryString({
+            address: owner
+        })}`
 
-    const data = await fetchVaultApiData<VaultPosition[]>(url)
-    if (!Array.isArray(data)) {
-      throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
-    }
-    let positions = data
+        const data = await fetchVaultApiData<VaultPosition[]>(url)
+        if (!Array.isArray(data)) {
+            throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
+        }
+        let positions = data
 
-    if (options?.protocols) {
-      positions = positions.filter((position) => {
-        return options.protocols?.includes(position.protocol)
-      })
-    }
+        if (options?.protocols) {
+            positions = positions.filter((position) => {
+                return options.protocols?.includes(position.protocol)
+            })
+        }
 
-    if (options?.vaults) {
-      positions = positions.filter((position) => {
-        return options.vaults?.includes(position.vaultId)
-      })
-    }
+        if (options?.vaults) {
+            positions = positions.filter((position) => {
+                return options.vaults?.includes(position.vaultId)
+            })
+        }
 
-    return positions
-  }),
-  { defaultCacheTime: 1000 }
+        return positions
+    }),
+    { defaultCacheTime: 1000 }
 )
 
 /**
@@ -122,9 +123,10 @@ export const getPositions = withCache(
  * @param tx - Transaction to append the deposit calls to
  * @param vaultIdentifier - Vault Sui object id, or an already-fetched `Vault` object
  * @param owner - Sui address the deposit is credited to; its existing receipts are reused when present
- * @param amount - Human-readable decimal string in vault coin units ("1.5", "0.0002"), parsed
- *                 against `vault.assets.baseCoin.decimals`. Raw base-unit flows live on the
- *                 protocol-level builders (`navi.depositPTB` / `volo.depositPTB`)
+ * @param amount - Either a human-readable decimal string in vault coin units ("1.5", "0.0002"),
+ *                 or a transaction argument/result containing the raw base-unit amount. A
+ *                 transaction value must be paired with `options.coin`. Literal raw `bigint`
+ *                 amounts remain available through `navi.depositPTB` / `volo.depositPTB`
  * @param options - Optional coin source, client, and slippage floor
  * @param options.coin - Coin object to deposit from. When omitted, one is split from the owner's balance for `amount`
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of a coin object lookup
@@ -132,31 +134,48 @@ export const getPositions = withCache(
  * @param options.expectedShares - Minimum shares the deposit must mint, enforced on-chain by
  *                                 Volo. NAVI vaults have no slippage parameter and currently
  *                                 IGNORE this field — see {@link DepositPTBOptions.expectedShares}
- * @returns Promise<TransactionResult> - The deposit call's result, shaped per protocol:
- *          `[Receipt, shares]` for NAVI, `[request_id, Receipt, change]` for Volo. The
- *          `Receipt` (and Volo's `change` coin) are unconsumed — transfer them to the owner,
- *          or the transaction will fail
- * @throws VaultSdkError with code `INVALID_AMOUNT` when `amount` is not a positive decimal
- *         within the coin's precision, `VAULT_NOT_FOUND` when the vault does not exist, or
+ * @returns The receipt handle plus the protocol-specific value: `shares` for NAVI or
+ *          `requestId` for Volo. The builder transfers the receipt and Volo charge coin to
+ *          `owner` automatically, so callers must not consume the returned receipt again
+ * @throws VaultSdkError with code `INVALID_AMOUNT` when a string amount is not a positive
+ *         decimal within the coin's precision or a transaction value is passed without
+ *         `options.coin`, `VAULT_NOT_FOUND` when the vault does not exist, or
  *         `VAULT_UNSUPPORTED` when its source has no deposit builder
  */
 export async function depositPTB(
-  tx: Transaction,
-  vaultIdentifier: VaultIdentifier,
-  owner: string,
-  amount: string,
-  options?: DepositPTBOptions
-): Promise<TransactionResult> {
-  const vault = await getVault(vaultIdentifier)
-  const amountRaw = parseHumanAmount(amount, vault.assets.baseCoin.decimals)
-  switch (vault.source) {
-    case 'navi':
-      return await navi.depositPTB(tx, vault, owner, amountRaw, options)
-    case 'volo':
-      return await volo.depositPTB(tx, vault, owner, amountRaw, options)
-    default:
-      throw vaultErrors.vaultUnsupported(vault.id, 'depositPTB', vault.source)
-  }
+    tx: Transaction,
+    vaultIdentifier: VaultIdentifier,
+    owner: string,
+    amount: string | TransactionArgument | TransactionResult,
+    options?: DepositPTBOptions
+): Promise<{
+    receipt: TransactionResult,
+    shares?: TransactionResult
+    requestId?: TransactionResult
+}> {
+    const vault = await getVault(vaultIdentifier)
+    let amountRaw = amount as any;
+    if (typeof amount === 'string') {
+        amountRaw = parseHumanAmount(amount, vault.assets.baseCoin.decimals)
+    }
+    switch (vault.source) {
+        case 'navi':
+            const [naviReceipt, shares]: any = await navi.depositPTB(tx, vault, owner, amountRaw, options)
+            tx.transferObjects([naviReceipt], tx.pure.address(owner));
+            return {
+                receipt: naviReceipt,
+                shares,
+            }
+        case 'volo':
+            const [requestId, voloReceipt, charge]: any = await volo.depositPTB(tx, vault, owner, amountRaw, options)
+            tx.transferObjects([voloReceipt, charge], owner);
+            return {
+                receipt: naviReceipt,
+                requestId
+            }
+        default:
+            throw vaultErrors.vaultUnsupported(vault.id, 'depositPTB', vault.source)
+    }
 }
 
 /**
@@ -184,51 +203,51 @@ export async function depositPTB(
  *         when its source has no withdrawal builder
  */
 export async function withdrawPTB(
-  tx: Transaction,
-  vaultIdentifier: VaultIdentifier,
-  owner: string,
-  target: WithdrawTarget,
-  options?: WithdrawPTBOptions
+    tx: Transaction,
+    vaultIdentifier: VaultIdentifier,
+    owner: string,
+    target: WithdrawTarget,
+    options?: WithdrawPTBOptions
 ): Promise<TransactionResult | TransactionResult[]> {
-  const vault = await getVault(vaultIdentifier)
+    const vault = await getVault(vaultIdentifier)
 
-  let normalized:
-    | { kind: 'amount'; amount: bigint }
-    | { kind: 'shares'; shares: bigint }
-    | { kind: 'all' }
-  try {
-    if (target.kind === 'all') {
-      normalized = { kind: 'all' }
-    } else if (target.kind === 'shares') {
-      const shares = BigInt(target.shares)
-      if (shares <= 0n) {
-        throw vaultErrors.invalidAmount('withdraw shares must be greater than zero', {
-          shares: shares.toString()
+    let normalized:
+        | { kind: 'amount'; amount: bigint }
+        | { kind: 'shares'; shares: bigint }
+        | { kind: 'all' }
+    try {
+        if (target.kind === 'all') {
+            normalized = { kind: 'all' }
+        } else if (target.kind === 'shares') {
+            const shares = BigInt(target.shares)
+            if (shares <= 0n) {
+                throw vaultErrors.invalidAmount('withdraw shares must be greater than zero', {
+                    shares: shares.toString()
+                })
+            }
+            normalized = { kind: 'shares', shares }
+        } else {
+            normalized = {
+                kind: 'amount',
+                amount: parseHumanAmount(target.amount, vault.assets.baseCoin.decimals)
+            }
+        }
+    } catch (error) {
+        if (isVaultSdkError(error)) throw error
+        throw vaultErrors.invalidAmount('withdraw target contains an invalid value', {
+            target,
+            cause: error instanceof Error ? error.message : String(error)
         })
-      }
-      normalized = { kind: 'shares', shares }
-    } else {
-      normalized = {
-        kind: 'amount',
-        amount: parseHumanAmount(target.amount, vault.assets.baseCoin.decimals)
-      }
     }
-  } catch (error) {
-    if (isVaultSdkError(error)) throw error
-    throw vaultErrors.invalidAmount('withdraw target contains an invalid value', {
-      target,
-      cause: error instanceof Error ? error.message : String(error)
-    })
-  }
 
-  switch (vault.source) {
-    case 'navi':
-      return await navi.withdrawPTB(tx, vault, owner, normalized, options)
-    case 'volo':
-      return await volo.withdrawPTB(tx, vault, owner, normalized, options)
-    default:
-      throw vaultErrors.vaultUnsupported(vault.id, 'withdrawPTB', vault.source)
-  }
+    switch (vault.source) {
+        case 'navi':
+            return await navi.withdrawPTB(tx, vault, owner, normalized, options)
+        case 'volo':
+            return await volo.withdrawPTB(tx, vault, owner, normalized, options)
+        default:
+            throw vaultErrors.vaultUnsupported(vault.id, 'withdrawPTB', vault.source)
+    }
 }
 
 /**
@@ -248,17 +267,17 @@ export async function withdrawPTB(
  *         `CHAIN_QUERY_FAILED` when an on-chain read fails
  */
 export async function getVaultRewards(
-  vaultIdentifier: VaultIdentifier,
-  owner: string,
-  options?: {
-    client: SuiGrpcClient
-  }
+    vaultIdentifier: VaultIdentifier,
+    owner: string,
+    options?: {
+        client: SuiGrpcClient
+    }
 ) {
-  const vault = await getVault(vaultIdentifier)
-  if (vault.source === 'navi') {
-    return await navi.getVaultRewards(vault, owner, options)
-  }
-  return []
+    const vault = await getVault(vaultIdentifier)
+    if (vault.source === 'navi') {
+        return await navi.getVaultRewards(vault, owner, options)
+    }
+    return []
 }
 
 /**
@@ -279,13 +298,13 @@ export async function getVaultRewards(
  *         or `VAULT_CONFIG_INVALID` when a reward rule's pool or reward fund cannot be resolved
  */
 export async function claimRewardsPTB(
-  tx: Transaction,
-  rewards: navi.VaultReward[],
-  options?: {
-    client: SuiGrpcClient
-  }
+    tx: Transaction,
+    rewards: navi.VaultReward[],
+    options?: {
+        client: SuiGrpcClient
+    }
 ) {
-  return await navi.claimRewardsPTB(tx, rewards, options)
+    return await navi.claimRewardsPTB(tx, rewards, options)
 }
 
 /**
@@ -304,21 +323,21 @@ export async function claimRewardsPTB(
  *         the API call fails, or `API_RESPONSE_INVALID` when the payload is not an array
  */
 export async function getPendingRequests(
-  owner: string,
-  options?: {
-    vault?: string
-  }
+    owner: string,
+    options?: {
+        vault?: string
+    }
 ): Promise<PendingRequest[]> {
-  const url = `${OPEN_API_URL}/vaults/requests?${queryString({
-    address: owner,
-    vault: options?.vault
-  })}`
+    const url = `${OPEN_API_URL}/vaults/requests?${queryString({
+        address: owner,
+        vault: options?.vault
+    })}`
 
-  const data = await fetchVaultApiData<PendingRequest[]>(url)
-  if (!Array.isArray(data)) {
-    throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
-  }
-  return data
+    const data = await fetchVaultApiData<PendingRequest[]>(url)
+    if (!Array.isArray(data)) {
+        throw vaultErrors.apiResponseInvalid(url, 'data is not an array')
+    }
+    return data
 }
 
 /**
@@ -330,27 +349,27 @@ export async function getPendingRequests(
  * @param expectedType - Direction the caller's entry point handles; `request.type` must match
  */
 async function cancelPendingRequestPTB(
-  tx: Transaction,
-  request: PendingRequest,
-  expectedType: 'deposit' | 'withdraw'
+    tx: Transaction,
+    request: PendingRequest,
+    expectedType: 'deposit' | 'withdraw'
 ) {
-  if (request.type !== expectedType) {
-    throw vaultErrors.invalidRequestType(expectedType, request.type)
-  }
-  const vault = await getVault(request.vaultId)
-  if (!vault.volo) {
-    throw vaultErrors.vaultConfigInvalid(vault.id, 'missing Volo package configuration')
-  }
-  return tx.moveCall({
-    target: `${vault.volo.package}::user_entry::cancel_${expectedType}`,
-    typeArguments: [vault.assets.baseCoin.coinType],
-    arguments: [
-      tx.object(request.vaultId),
-      tx.object(request.receiptId),
-      tx.pure.u64(request.requestId),
-      tx.object('0x6')
-    ]
-  })
+    if (request.type !== expectedType) {
+        throw vaultErrors.invalidRequestType(expectedType, request.type)
+    }
+    const vault = await getVault(request.vaultId)
+    if (!vault.volo) {
+        throw vaultErrors.vaultConfigInvalid(vault.id, 'missing Volo package configuration')
+    }
+    return tx.moveCall({
+        target: `${vault.volo.package}::user_entry::cancel_${expectedType}`,
+        typeArguments: [vault.assets.baseCoin.coinType],
+        arguments: [
+            tx.object(request.vaultId),
+            tx.object(request.receiptId),
+            tx.pure.u64(request.requestId),
+            tx.object('0x6')
+        ]
+    })
 }
 
 /**
@@ -369,7 +388,7 @@ async function cancelPendingRequestPTB(
  *         carries no Volo package configuration
  */
 export async function cancelPendingDepositPTB(tx: Transaction, request: PendingRequest) {
-  return await cancelPendingRequestPTB(tx, request, 'deposit')
+    return await cancelPendingRequestPTB(tx, request, 'deposit')
 }
 
 /**
@@ -387,5 +406,5 @@ export async function cancelPendingDepositPTB(tx: Transaction, request: PendingR
  *         carries no Volo package configuration
  */
 export async function cancelPendingWithdrawPTB(tx: Transaction, request: PendingRequest) {
-  return await cancelPendingRequestPTB(tx, request, 'withdraw')
+    return await cancelPendingRequestPTB(tx, request, 'withdraw')
 }

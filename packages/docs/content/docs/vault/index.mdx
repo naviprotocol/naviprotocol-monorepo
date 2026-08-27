@@ -47,13 +47,18 @@ Both protocols track your position as **shares** recorded against a **receipt** 
 Receipts matter for two reasons:
 
 - A receipt transferred away, or deposited elsewhere as a DeFi asset, drops out of the SDK's view while its shares keep living in the vault.
-- Deposit builders return a `Receipt` you must consume. See [Deposit](/vault/deposit).
+- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically.
+  Raw protocol builders return an unconsumed receipt that you must use or transfer. See
+  [Deposit](/vault/deposit).
 
 ### Units
 
 This trips people up, so it is worth stating plainly:
 
-- Top-level entry points take **human-readable decimal strings** — `'1.5'`, `'0.0002'` — parsed against `vault.assets.baseCoin.decimals`.
+- Top-level `depositPTB` takes a **human-readable decimal string** (`'1.5'`, `'0.0002'`) or a
+  `TransactionArgument` / `TransactionResult` containing raw base units. A transaction value
+  must be paired with `options.coin`.
+- Amount targets passed to `withdrawPTB` are human-readable decimal strings.
 - `withdrawPTB` with `{ kind: 'shares' }` takes a **raw on-chain share count**, the same unit `VaultPosition.shares` reports.
 - Protocol namespaces (`navi.*`, `volo.*`) take **raw base units** as `bigint`.
 - APY and APR fields are **decimal fractions**, not percentages: `0.0807` means 8.07%.
@@ -80,8 +85,9 @@ const vault = vaults[0]
 const tx = new Transaction()
 const result = await depositPTB(tx, vault, owner, '1.5')
 
-// 3. Consume the returned receipt (NAVI returns [Receipt, shares])
-tx.transferObjects([result[0]], owner)
+// 3. The receipt is transferred to owner automatically. The remaining value is
+// shares for NAVI or a request id for Volo.
+console.log(result.shares ?? result.requestId)
 
 // 4. Read positions back
 const positions = await getPositions(owner)

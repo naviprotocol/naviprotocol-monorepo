@@ -7,8 +7,9 @@ The deposit builder appends vault deposit calls to a transaction you provide. It
 ## Core Features
 
 - **Unified Interface**: One builder for both NAVI and Volo vaults
-- **Automatic Receipt Handling**: Reuses an existing receipt when the owner has one, creates one otherwise
+- **Automatic Receipt Handling**: Reuses or creates a receipt, then transfers it to the owner
 - **Flexible Coin Sourcing**: Split from the owner's balance, from the gas coin, or supply your own coin
+- **Composable Amounts**: Accept a decimal string or a raw amount produced earlier in the same PTB
 - **Slippage Protection**: Enforce a minimum share floor on Volo vaults
 
 `client` is optional — it defaults to the public mainnet fullnode; pass your own for a private endpoint.
@@ -44,6 +45,11 @@ const coinResult = await depositPTB(tx, vault, owner, '1.5', {
 const protectedResult = await depositPTB(tx, voloVault, owner, '1.5', {
   expectedShares: 1_400_000_000n // Optional: on-chain minimum-shares assert
 })
+
+// Compose with an amount and coin already built in this PTB. Transaction values are raw base units.
+const amount = tx.pure.u64(1_500_000_000n)
+const [coin] = tx.splitCoins(tx.gas, [amount])
+const composedResult = await depositPTB(tx, suiVault, owner, amount, { coin })
 ```
 
 **Parameters**
@@ -51,7 +57,8 @@ const protectedResult = await depositPTB(tx, voloVault, owner, '1.5', {
 - `tx`: The transaction to append calls to
 - `vaultIdentifier`: A vault id or an already-fetched vault object
 - `owner`: Sui address the deposit is credited to. Existing receipts are reused when present
-- `amount`: **Human-readable decimal string** in vault coin units, e.g. `'1.5'` or `'0.0002'`
+- `amount`: A human-readable decimal string in vault coin units, or a `TransactionArgument` /
+  `TransactionResult` containing raw base units
 - `options.coin`: Coin object to deposit from. When omitted, one is split for `amount`
 - `options.useGasCoin`: Split from the gas coin instead of a coin object lookup. Ignored when `coin` is given
 - `options.client`: gRPC client for on-chain reads
@@ -59,12 +66,12 @@ const protectedResult = await depositPTB(tx, voloVault, owner, '1.5', {
 
 ## Consuming the Result
 
-This is the step most easily missed. The deposit returns objects that Sui requires you to consume, and the transaction will fail if you leave them dangling. The shape differs by source:
+The top-level builder normalizes the protocol-specific tuples into one object and transfers owned return values to `owner` automatically:
 
-| Source | Return shape                    | Must consume                |
-| ------ | ------------------------------- | --------------------------- |
-| NAVI   | `[Receipt, shares]`             | `result[0]` — the receipt   |
-| Volo   | `[request_id, Receipt, change]` | `result[1]` and `result[2]` |
+| Source | Return shape             | Automatic transfer                |
+| ------ | ------------------------ | --------------------------------- |
+| NAVI   | `{ receipt, shares }`    | `receipt` to `owner`              |
+| Volo   | `{ receipt, requestId }` | `receipt` and `charge` to `owner` |
 
 ```typescript
 import { depositPTB } from '@naviprotocol/vault'
@@ -74,22 +81,23 @@ const tx = new Transaction()
 const result = await depositPTB(tx, vault, owner, '1.5', { client })
 
 if (vault.source === 'navi') {
-  // NAVI returns (Receipt, shares)
-  tx.transferObjects([result[0]], owner)
+  // The receipt is already transferred. Use the minted share amount if needed.
+  console.log(result.shares)
 } else {
-  // Volo returns (request_id, Receipt, change)
-  tx.transferObjects([result[1], result[2]], owner)
+  // The receipt and charge coin are already transferred. Keep the request id for composition.
+  console.log(result.requestId)
 }
 ```
 
 <Callout type="warn">
-  Always branch on `vault.source`, never on `vault.protocol`. An `astros`-protocol vault is served
-  through either source, so branching on `protocol` will index the wrong tuple slot.
+  Do not transfer `result.receipt` again. The top-level builder has already consumed that handle by
+  transferring it to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
+  unconsumed tuples; see [Protocol Namespaces](/vault/protocols).
 </Callout>
 
 ## Amount Units
 
-`depositPTB` takes a **human-readable decimal string**, parsed against `vault.assets.baseCoin.decimals`. It does not take a number, and it does not take raw base units.
+String amounts are parsed against `vault.assets.baseCoin.decimals`:
 
 ```typescript
 await depositPTB(tx, vault, owner, '1.5') // 1.5 tokens
@@ -105,7 +113,11 @@ await depositPTB(tx, vault, owner, 'abc') // throws: not a decimal string
 await depositPTB(tx, vault, owner, '0.0000000001') // throws on a 9-decimal coin
 ```
 
-If you already hold raw base units as a `bigint`, use the [protocol namespaces](/vault/protocols) instead of stringifying by hand — `navi.depositPTB` and `volo.depositPTB` take `bigint` directly.
+For PTB composition, `amount` can instead be a `TransactionArgument` or `TransactionResult`
+containing raw base units. In that form you must also pass the matching `options.coin`; the SDK
+cannot create a coin from a dynamic amount. The top-level builder does not accept a literal
+`bigint`. Use the [protocol namespaces](/vault/protocols) when you already hold a literal raw
+amount — `navi.depositPTB` and `volo.depositPTB` take `bigint` directly.
 
 ## Slippage Protection
 
@@ -150,20 +162,22 @@ Both implementations do meaningful setup work before the deposit call, so you do
 2. Harvests active market reward rules so indices are current
 3. Reuses the owner's lowest-share receipt, or creates a new one
 4. Deposits into the vault's default lending pool
+5. Transfers the returned receipt to `owner`
 
 **Volo**
 
 1. Reuses the owner's lowest-share receipt, or lets the contract mint one
 2. Creates a deposit request with your `expectedShares` floor
 3. Records the request off-chain so it appears in [`getPendingRequests`](/vault/pending-requests)
+4. Transfers the returned receipt and charge coin to `owner`
 
 ## Errors
 
-| Code                   | Cause                                                           |
-| ---------------------- | --------------------------------------------------------------- |
-| `INVALID_AMOUNT`       | `amount` is not a positive decimal within the coin's precision  |
-| `VAULT_NOT_FOUND`      | No vault matches the given id                                   |
-| `VAULT_UNSUPPORTED`    | The vault's source has no deposit builder                       |
-| `VAULT_CONFIG_INVALID` | The vault's default pool or market could not be resolved (NAVI) |
+| Code                   | Cause                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `INVALID_AMOUNT`       | A string amount is invalid, or a PTB amount is passed without `options.coin` |
+| `VAULT_NOT_FOUND`      | No vault matches the given id                                                |
+| `VAULT_UNSUPPORTED`    | The vault's source has no deposit builder                                    |
+| `VAULT_CONFIG_INVALID` | The vault's default pool or market could not be resolved (NAVI)              |
 
 See [Error Handling](/vault/errors) for how to branch on these.

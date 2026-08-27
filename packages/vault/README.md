@@ -38,12 +38,12 @@ when `vault.source === 'volo'`.
 
 ### Units
 
-Every top-level entry point (`depositPTB`, `withdrawPTB({ kind: 'amount' })`) takes
-**human-readable decimal strings** in the vault's base coin (`"1.5"`, `"0.0002"`), parsed
-against `vault.assets.baseCoin.decimals`. `withdrawPTB({ kind: 'shares' })` takes a raw
-on-chain share count instead — the same unit `VaultPosition.shares` is reported in. Raw
-base-unit builders live on the protocol-level namespaces (`navi.depositPTB`,
-`volo.depositPTB`, ...), which take `bigint` amounts directly.
+`depositPTB` accepts either a **human-readable decimal string** in the vault's base coin
+(`"1.5"`, `"0.0002"`) or a `TransactionArgument` / `TransactionResult` containing a raw
+base-unit amount. Transaction values must be paired with `options.coin`. Amount targets for
+`withdrawPTB` remain human-readable decimal strings, while `{ kind: 'shares' }` takes a raw
+on-chain share count. Literal raw `bigint` amounts live on the protocol-level namespaces
+(`navi.depositPTB`, `volo.depositPTB`, ...).
 
 ### Common `options`
 
@@ -69,9 +69,11 @@ import { Transaction } from '@mysten/sui/transactions'
 const vaults = await getVaults()
 const vault = await getVault(vaults[0].id)
 
-// Deposit: amounts are human-readable decimal strings in vault coin units
+// Deposit: decimal strings are parsed in vault coin units. The receipt is transferred to
+// owner automatically; inspect shares for NAVI or requestId for Volo.
 const tx = new Transaction()
-await depositPTB(tx, vault, owner, '1.5')
+const deposit = await depositPTB(tx, vault, owner, '1.5')
+console.log(deposit.shares ?? deposit.requestId)
 
 // Withdraw by amount ("1.5" tokens), by raw share count, or everything
 await withdrawPTB(tx, vault, owner, { kind: 'amount', amount: '1.5' })
@@ -91,7 +93,9 @@ const positions = await getPositions(owner)
 
 ### Deposit / withdraw
 
-- `depositPTB(tx, vault, owner, amount, options?)` — build a deposit (human-readable decimal amount).
+- `depositPTB(tx, vault, owner, amount, options?)` — build a deposit from a human-readable
+  decimal amount or a PTB amount value. Returns `{ receipt, shares? }` for NAVI or
+  `{ receipt, requestId? }` for Volo and transfers owned return objects to `owner`.
 - `withdrawPTB(tx, vault, owner, target, options?)` — build a withdrawal, where `target` is
   `{ kind: 'amount', amount }`, `{ kind: 'shares', shares }`, or `{ kind: 'all' }`.
 

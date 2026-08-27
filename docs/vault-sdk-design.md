@@ -222,6 +222,14 @@ export interface DepositPTBOptions {
   useGasCoin?: boolean
 }
 
+export type DepositAmount = HumanAmount | TransactionArgument | TransactionResult
+
+export interface DepositPTBResult {
+  receipt: TransactionResult
+  shares?: TransactionResult
+  requestId?: TransactionResult
+}
+
 export interface WithdrawPTBOptions {
   cancelPendingDeposit?: boolean
 }
@@ -244,9 +252,9 @@ export interface UserModule {
     tx: Transaction,
     vault: VaultIdentifier,
     owner: string,
-    amount: HumanAmount,
+    amount: DepositAmount,
     options?: DepositPTBOptions
-  ): Promise<TransactionResult>
+  ): Promise<DepositPTBResult>
 
   withdrawPTB(
     tx: Transaction,
@@ -269,6 +277,11 @@ export interface UserModule {
 ```
 
 `portfolio` 模块和独立 `ptb` 模块不再存在。持仓查询与交易构建统一通过 `sdk.user` 调用。
+
+`depositPTB` 接受人类可读金额字符串，也接受同一 PTB 中产生的原始金额参数。传入
+`TransactionArgument` 或 `TransactionResult` 时必须同时提供 `options.coin`。返回值统一为对象：
+NAVI 返回 `receipt` 和 `shares`，Volo 返回 `receipt` 和 `requestId`。顶层接口会自动把 receipt
+以及 Volo 返回的 charge coin 转给 `owner`，调用方不能再次消费返回的 `receipt`。
 
 ## 7. Protocols 模块
 

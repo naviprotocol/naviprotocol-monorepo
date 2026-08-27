@@ -44,7 +44,7 @@ import { vaultErrors } from '../../error'
  * @param options.expectedShares - Minimum shares the request must mint when executed, enforced
  *                                 on-chain. Defaults to `0n`, i.e. no floor
  * @returns Promise<TransactionResult> - The `user_entry::deposit` result:
- *          `[request_id, Receipt, change]`. The receipt and change are unconsumed
+ *          `[request_id, Receipt, charge]`. The receipt and charge are unconsumed
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault, or
  *         `INVALID_AMOUNT` when `amount` is not a `bigint` and no `coin` was supplied
  */
@@ -70,10 +70,10 @@ export async function depositPTB(
 
   const receiptOption = receipt
     ? tx.moveCall({
-        target: '0x1::option::some',
-        typeArguments: [receiptType],
-        arguments: [tx.object(receipt.id)]
-      })
+      target: '0x1::option::some',
+      typeArguments: [receiptType],
+      arguments: [tx.object(receipt.id)]
+    })
     : tx.moveCall({ target: '0x1::option::none', typeArguments: [receiptType] })
 
   let coin = options?.coin
@@ -105,7 +105,7 @@ export async function depositPTB(
     ]
   })
 
-  // user_entry::deposit returns (request_id, Receipt, change). Feeding the returned
+  // user_entry::deposit returns (request_id, Receipt, charge). Feeding the returned
   // request_id into the recorder keeps the off-chain record tied to the request the
   // contract actually created, instead of a pre-read counter.
   recordUserDepositPTB(tx, vault, owner, deposit[0], amount)

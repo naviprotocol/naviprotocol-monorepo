@@ -132,7 +132,7 @@ const result = await volo.depositPTB(tx, vault, owner, 1_500_000_000n, {
   client,
   expectedShares: 1_400_000_000n
 })
-// Volo returns (request_id, Receipt, change)
+// Volo returns (request_id, Receipt, charge)
 tx.transferObjects([result[1], result[2]], owner)
 
 const requestIds = await volo.withdrawPTB(

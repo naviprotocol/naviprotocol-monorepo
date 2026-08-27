@@ -27,7 +27,7 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const tx = new Transaction()
 
-// By amount — human-readable decimal string, like depositPTB
+// By amount — human-readable decimal string in vault coin units
 await withdrawPTB(tx, vault, owner, { kind: 'amount', amount: '1.5' })
 
 // By raw share count — the unit VaultPosition.shares reports
@@ -54,7 +54,8 @@ type WithdrawTarget =
   | { kind: 'all' } // everything available
 ```
 
-- **`amount`** — a decimal string in vault coin units, same unit as `depositPTB`. Must be positive and within the coin's precision.
+- **`amount`** — a decimal string in vault coin units, matching the string form accepted by
+  `depositPTB`. Must be positive and within the coin's precision.
 - **`shares`** — a raw share count, the unit `VaultPosition.shares` reports. Accepts a string or a `bigint`. Must be greater than zero.
 - **`all`** — drains what is available.
 
