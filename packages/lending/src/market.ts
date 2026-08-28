@@ -22,7 +22,7 @@ export const MARKETS = {
   ember: {
     id: 1,
     key: 'ember',
-    name: 'Ember Market'
+    name: 'eACRED / USDC Market'
   },
   rwa: {
     id: 2,
