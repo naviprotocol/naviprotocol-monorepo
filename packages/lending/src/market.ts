@@ -67,7 +67,7 @@ export const MARKETS = {
   "high-usdc": {
     id: 10,
     key: "high-usdc",
-    name: "Ember High Market"
+    name: "HIGH / USDC Market"
   }
 }
 
