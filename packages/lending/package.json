@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/lending",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "NAVI Lending SDK",
   "license": "MIT",
   "type": "module",

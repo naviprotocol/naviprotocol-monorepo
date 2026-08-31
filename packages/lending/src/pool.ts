@@ -77,11 +77,11 @@ export const getPools = withCache(
     async (
       options?: Partial<
         EnvOption &
-          CacheOption &
-          MarketsOption &
-          ServiceOption & {
-            pools: string[]
-          }
+        CacheOption &
+        MarketsOption &
+        ServiceOption & {
+          pools: string[]
+        }
       >
     ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
@@ -99,15 +99,15 @@ export const getPools = withCache(
       )
       const res: {
         data: Pool[]
-        meta: {
-          emodes: EMode[]
+        meta?: {
+          emodes?: EMode[]
         }
       } = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) }).then((res) =>
         res.json()
       )
 
       res.data.forEach((pool) => {
-        const filterEmodes = res.meta.emodes.filter((emode) => {
+        const filterEmodes = (res?.meta?.emodes || []).filter((emode) => {
           const market = getMarketConfig(emode.marketId)
           return pool.market === market.key && emode.isActive
         })
@@ -297,11 +297,11 @@ export async function depositCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption &
-      ServiceOption &
-      MarketOption & {
-        amount: number | TransactionResult
-      }
+    AccountCapOption &
+    ServiceOption &
+    MarketOption & {
+      amount: number | TransactionResult
+    }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -629,11 +629,11 @@ export async function repayCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption &
-      ServiceOption &
-      MarketOption & {
-        amount: number | TransactionResult
-      }
+    AccountCapOption &
+    ServiceOption &
+    MarketOption & {
+      amount: number | TransactionResult
+    }
   >
 ): Promise<Transaction | TransactionResult> {
   const config = await getConfig({
