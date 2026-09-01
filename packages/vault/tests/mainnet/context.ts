@@ -232,6 +232,16 @@ export async function dryRun(tx: Transaction, sender: string) {
   return result.Transaction
 }
 
+/**
+ * True when a dry-run failed with Volo's `vault::assert_normal` abort
+ * (5022 ERR_VAULT_NOT_NORMAL) — the vault is locked/in operation, so user
+ * requests are rejected regardless of how the PTB was built.
+ */
+export function isVaultNotNormalAbort(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('"abortCode":"5022"') || /abort code: 5022\b/.test(message)
+}
+
 export function requireEvent(
   result: Awaited<ReturnType<typeof dryRun>>,
   expectedType: string,

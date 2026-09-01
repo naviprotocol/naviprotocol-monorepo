@@ -10,6 +10,36 @@ NAVI Vault SDK is a unified vault SDK for the Sui blockchain. It covers vault di
   you deposit, the strategy earns, and you withdraw.
 </Callout>
 
+## Installation
+
+```npm
+npm install @naviprotocol/vault @mysten/sui
+```
+
+`@mysten/sui` is a peer dependency (`>=2.16.0`).
+
+## Quick Start
+
+```typescript
+import { getVaults, depositPTB, getPositions } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+// 1. Discover vaults
+const vaults = await getVaults()
+const vault = vaults[0]
+
+// 2. Build a deposit of 1.5 tokens
+const tx = new Transaction()
+const result = await depositPTB(tx, vault, owner, '1.5')
+
+// 3. The receipt is transferred to owner automatically. The remaining value is
+// shares for NAVI or a request id for Volo.
+console.log(result.shares ?? result.requestId)
+
+// 4. Read positions back
+const positions = await getPositions(owner)
+```
+
 ## Core Concepts
 
 ### Source vs. Protocol
@@ -47,9 +77,7 @@ Both protocols track your position as **shares** recorded against a **receipt** 
 Receipts matter for two reasons:
 
 - A receipt transferred away, or deposited elsewhere as a DeFi asset, drops out of the SDK's view while its shares keep living in the vault.
-- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically.
-  Raw protocol builders return an unconsumed receipt that you must use or transfer. See
-  [Deposit](/vault/deposit).
+- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically. Raw protocol builders return an unconsumed receipt that you must use or transfer. See [Deposit & Withdraw](/vault/deposit).
 
 ### Units
 
@@ -63,63 +91,16 @@ This trips people up, so it is worth stating plainly:
 - Protocol namespaces (`navi.*`, `volo.*`) take **raw base units** as `bigint`.
 - APY and APR fields are **decimal fractions**, not percentages: `0.0807` means 8.07%.
 
-## Installation
+## Conventions
 
-```npm
-npm install @naviprotocol/vault @mysten/sui
-```
+Every interface takes an optional trailing `options` object. The ones worth knowing:
 
-`@mysten/sui` is a peer dependency (`>=2.0.0`).
+- `client` — a `SuiGrpcClient` from `@mysten/sui/grpc`, for on-chain reads. Defaults to the public mainnet fullnode; pass your own for a private endpoint. Interfaces backed by the NAVI open API rather than by chain ignore it.
+- `cacheTime` / `disableCache` — read interfaces are cached and de-duplicated, so concurrent calls with identical arguments share one in-flight request. Per-interface defaults are documented in the [API reference](/typedoc/modules/_naviprotocol_vault.html).
+- `env` — only `'prod'` is currently supported.
+- `protocols` / `vaults` — filter results by strategy provider or vault id.
 
-## Quick Start
-
-```typescript
-import { getVaults, depositPTB, getPositions } from '@naviprotocol/vault'
-import { Transaction } from '@mysten/sui/transactions'
-
-// 1. Discover vaults
-const vaults = await getVaults()
-const vault = vaults[0]
-
-// 2. Build a deposit of 1.5 tokens
-const tx = new Transaction()
-const result = await depositPTB(tx, vault, owner, '1.5')
-
-// 3. The receipt is transferred to owner automatically. The remaining value is
-// shares for NAVI or a request id for Volo.
-console.log(result.shares ?? result.requestId)
-
-// 4. Read positions back
-const positions = await getPositions(owner)
-```
-
-## Code Style and Conventions
-
-### Interface Optional Parameters
-
-The last `options` parameter is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
-
-- `client`: Sui SDK v2 gRPC client instance (`SuiGrpcClient` from `@mysten/sui/grpc`), used for customizing network requests in multi-network or custom RPC environments. Defaults to the public mainnet fullnode.
-- `env`: Specify environment. Only `'prod'` is currently supported.
-- `cacheTime`: Custom cache time in milliseconds. For example, `cacheTime: 60000` means cache for 60 seconds.
-- `disableCache`: Whether to disable cache.
-- `protocols`: Filter results by strategy provider.
-- `vaults`: Filter results by vault id.
-
-**Usage Recommendations:**
-
-- If you don't pass `options`, the SDK will automatically use default configuration, suitable for most regular scenarios.
-- When you need to customize network, environment, or cache strategy, it's recommended to pass corresponding parameters for more flexible control.
-
-### Interface Naming
-
-- Interfaces with the `PTB` suffix indicate that the current interface is used for constructing transactions. They append calls to a `Transaction` you pass in and return handles to the values those calls produce — they do not sign or execute anything.
-
-### Caching
-
-Read interfaces are cached and de-duplicated: concurrent calls with identical arguments share one in-flight request. Defaults are 60s for `getVaults`/`getVault` and 1s for `getPositions`. `getPendingRequests` is not cached.
-
-### Error Handling
+Interfaces with a **`PTB` suffix** build transactions: they append calls to a `Transaction` you pass in and return handles to the values those calls produce. They never sign or execute anything.
 
 Every failure throws a `VaultSdkError` carrying a stable machine-readable `code`. See [Error Handling](/vault/errors).
 

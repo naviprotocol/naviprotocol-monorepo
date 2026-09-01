@@ -7,6 +7,7 @@ import {
   discoverDepositor,
   dryRun,
   dryRunData,
+  isVaultNotNormalAbort,
   report,
   requireBalanceChange,
   requireEvent,
@@ -16,21 +17,66 @@ import {
 } from './context'
 
 describe.skipIf(!runLiveTests)('depositPTB', () => {
-  it.each(['navi', 'volo'] as const)(
+  it.for(['navi', 'volo'] as const)(
     'dry-runs a %s deposit',
-    async (source) => {
-      const { owner, vault } = await discoverDepositor(source)
+    async (source, testContext) => {
+      const title = `Dry-run a ${source.toUpperCase()} deposit`
+      const purpose =
+        'Simulate a one-token deposit from a wallet discovered on mainnet and prove the exact deposit through event and balance data.'
+
+      let depositor: Awaited<ReturnType<typeof discoverDepositor>>
+      try {
+        depositor = await discoverDepositor(source)
+      } catch (error) {
+        report.add({
+          api: 'depositPTB',
+          title,
+          status: 'skipped',
+          purpose,
+          reason: `No ${source} vault with status=open had a discoverable, funded depositor (${
+            error instanceof Error ? error.message : String(error)
+          }).`
+        })
+        testContext.skip()
+        return
+      }
+
+      const { owner, vault } = depositor
       const tx = new Transaction()
       const result = await depositPTB(tx, vault, owner, '1', {
         client,
         useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
       })
-      // NAVI returns (Receipt, shares); Volo returns (request_id, Receipt, change).
-      const receipt = source === 'navi' ? result[0] : result[1]
-      const change = source === 'volo' ? result[2] : undefined
-      if (receipt) tx.transferObjects([receipt], owner)
-      if (change) tx.transferObjects([change], owner)
-      const dryRunResult = await dryRun(tx, owner)
+      // The top-level builder already transfers the receipt (and the Volo change coin) to
+      // owner; the caller only gets handles back.
+      expect(result.receipt).toBeDefined()
+      if (source === 'navi') {
+        expect(result.shares).toBeDefined()
+        expect(result.requestId).toBeUndefined()
+      } else {
+        expect(result.requestId).toBeDefined()
+        expect(result.shares).toBeUndefined()
+      }
+
+      let dryRunResult: Awaited<ReturnType<typeof dryRun>>
+      try {
+        dryRunResult = await dryRun(tx, owner)
+      } catch (error) {
+        if (isVaultNotNormalAbort(error)) {
+          report.add({
+            api: 'depositPTB',
+            title,
+            status: 'skipped',
+            purpose,
+            data: { sender: owner, vault },
+            reason: `Vault ${vault.id} is not in NORMAL state on chain (abort 5022 ERR_VAULT_NOT_NORMAL; API status=${vault.status}), so the contract rejects deposit requests right now.`
+          })
+          testContext.skip()
+          return
+        }
+        throw error
+      }
+
       const amount = 10n ** BigInt(vault.assets.baseCoin.decimals)
       const event = requireEvent(
         dryRunResult,
@@ -55,10 +101,9 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
       const output = dryRunData(dryRunResult)
       report.add({
         api: 'depositPTB',
-        title: `Dry-run a ${source.toUpperCase()} deposit`,
+        title,
         status: 'passed',
-        purpose:
-          'Simulate a one-token deposit from a wallet discovered on mainnet and prove the exact deposit through event and balance data.',
+        purpose,
         data: {
           sender: owner,
           vault,

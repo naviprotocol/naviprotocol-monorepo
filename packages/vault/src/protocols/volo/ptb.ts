@@ -63,17 +63,20 @@ export async function depositPTB(
   checkVault(vault)
   const { receipts } = await getVaultReceiptsWithView(vault, owner, options)
 
+  // request_deposit aborts with ERR_WRONG_RECEIPT_STATUS unless the receipt is NORMAL or
+  // has only a pending withdraw, so a receipt mid-deposit is skipped; with none eligible the
+  // contract mints a fresh receipt via option::none.
   const depositable = receipts
-    // .filter(canRequestDeposit)
+    .filter(canRequestDeposit)
     .sort((a, b) => (a.shares < b.shares ? -1 : a.shares > b.shares ? 1 : 0))
   const receipt = depositable[0]
 
   const receiptOption = receipt
     ? tx.moveCall({
-      target: '0x1::option::some',
-      typeArguments: [receiptType],
-      arguments: [tx.object(receipt.id)]
-    })
+        target: '0x1::option::some',
+        typeArguments: [receiptType],
+        arguments: [tx.object(receipt.id)]
+      })
     : tx.moveCall({ target: '0x1::option::none', typeArguments: [receiptType] })
 
   let coin = options?.coin
