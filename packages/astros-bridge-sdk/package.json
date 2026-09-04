@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/astros-bridge-sdk",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "NAVI Astros Aggregator SDK",
   "license": "MIT",
   "type": "module",
@@ -60,7 +60,7 @@
     "ethers": "6.13.5"
   },
   "devDependencies": {
-    "@mayanfinance/swap-sdk": "15.0.0",
+    "@mayanfinance/swap-sdk": "15.2.2",
     "@mysten/sui": "2.20.2",
     "@types/node": "22.7.5",
     "tsconfig-paths": "4.2.0",
