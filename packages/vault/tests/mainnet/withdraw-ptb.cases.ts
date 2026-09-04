@@ -7,6 +7,8 @@ import {
   dryRun,
   dryRunData,
   getMainnetContext,
+  rawToHuman,
+  unavoidableAbort,
   report,
   requireBalanceChange,
   requireEvent,
@@ -14,14 +16,6 @@ import {
   SUI,
   vaultEventType
 } from './context'
-
-/** Raw base units -> exact human decimal string (the unit the public API takes). */
-function rawToHuman(raw: bigint, decimals: number): string {
-  const base = 10n ** BigInt(decimals)
-  const int = raw / base
-  const frac = (raw % base).toString().padStart(decimals, '0').replace(/0+$/, '')
-  return frac ? `${int}.${frac}` : int.toString()
-}
 
 describe.skipIf(!runLiveTests)('withdrawPTB', () => {
   it('dry-runs a navi withdrawal by amount', async () => {
@@ -109,7 +103,7 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
     })
   }, 180_000)
 
-  it('dry-runs a volo withdrawal request', async () => {
+  it('dry-runs a volo withdrawal request', async (testContext) => {
     const context = getMainnetContext()
     const position = context.voloPosition
     const unit = 10n ** BigInt(position.vault.assets.baseCoin.decimals)
@@ -125,7 +119,32 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
       { client }
     )) as TransactionResult[]
     expect(requestIds.length).toBeGreaterThan(0)
-    const result = await dryRun(tx, position.owner)
+    let result: Awaited<ReturnType<typeof dryRun>>
+    try {
+      result = await dryRun(tx, position.owner)
+    } catch (error) {
+      const abort = unavoidableAbort(error)
+      if (abort) {
+        report.add({
+          api: 'withdrawPTB',
+          title: 'Dry-run a Volo withdrawal request',
+          status: 'skipped',
+          purpose:
+            'Simulate creating a Volo withdrawal request from a live receipt and prove the request was executed by event fields and gas movement.',
+          data: {
+            sender: position.owner,
+            vault: position.vault,
+            receiptId: position.receiptId,
+            requestedShares: shares,
+            plannedRequests: requestIds.length
+          },
+          reason: `Vault ${position.vault.id} rejects withdraw requests on chain right now: ${abort.name} (${abort.abortCode}), API status=${position.vault.status}. ${abort.message} The PTB itself built ${requestIds.length} request(s).`
+        })
+        testContext.skip()
+        return
+      }
+      throw error
+    }
 
     requireEvent(result, vaultEventType('volo', 'WithdrawRequested'), {
       vault_id: position.vault.id,

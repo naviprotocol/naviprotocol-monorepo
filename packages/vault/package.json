@@ -3,6 +3,7 @@
   "version": "0.0.1-beta.5",
   "description": "Unified Lending and Volo Vault SDK",
   "license": "MIT",
+  "homepage": "https://sdk.naviprotocol.io/vault",
   "type": "module",
   "keywords": [
     "navi",
@@ -62,7 +63,7 @@
     "vitest": "3.2.4"
   },
   "peerDependencies": {
-    "@mysten/sui": ">=2.0.0"
+    "@mysten/sui": ">=2.16.0"
   },
   "dependencies": {
     "@naviprotocol/lending": "workspace:^"

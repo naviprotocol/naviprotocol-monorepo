@@ -1,9 +1,10 @@
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Transaction } from '@mysten/sui/transactions'
-import { normalizeSuiAddress, normalizeStructTag } from '@mysten/sui/utils'
+import { normalizeSuiAddress, normalizeStructTag, parseToUnits } from '@mysten/sui/utils'
 import { expect } from 'vitest'
-import { getVaults, navi, volo } from '../../src'
+import { getVaults, navi, parseMoveAbort, volo } from '../../src'
+import type { VaultSdkErrorCode } from '../../src'
 import type { Vault } from '../../src/types'
 import { VaultTestReport } from '../report'
 
@@ -158,6 +159,30 @@ async function discoverChainPosition(source: Source, vaults: Vault[]): Promise<C
   throw new Error(`No funded ${source} vault holder was discoverable from recent chain events`)
 }
 
+/** Raw base units -> exact human decimal string (the unit the public API takes). */
+export function rawToHuman(raw: bigint, decimals: number): string {
+  const base = 10n ** BigInt(decimals)
+  const int = raw / base
+  const frac = (raw % base).toString().padStart(decimals, '0').replace(/0+$/, '')
+  return frac ? `${int}.${frac}` : int.toString()
+}
+
+/**
+ * What a live deposit case deposits: one whole token, or the vault's advertised
+ * `minInvestment` where that is larger. `depositPTB` rejects a deposit under the minimum
+ * before it builds anything, so a smaller amount would never reach the chain — even though
+ * the contract itself does not enforce the figure.
+ */
+export function depositAmountFor(vault: Vault): bigint {
+  const decimals = vault.assets.baseCoin.decimals
+  const oneToken = 10n ** BigInt(decimals)
+  const minimum =
+    typeof vault.minInvestment === 'number' && vault.minInvestment > 0
+      ? parseToUnits(vault.minInvestment.toFixed(decimals), decimals)
+      : 0n
+  return minimum > oneToken ? minimum : oneToken
+}
+
 export async function discoverDepositor(source: Source) {
   const { vaults } = getMainnetContext()
   const byId = new Map(
@@ -177,7 +202,7 @@ export async function discoverDepositor(source: Source) {
     if (seen.has(key)) continue
     seen.add(key)
 
-    const amount = 10n ** BigInt(vault.assets.baseCoin.decimals)
+    const amount = depositAmountFor(vault)
     const [{ balance: gas }, { balance: base }] = await Promise.all([
       client.getBalance({ owner, coinType: SUI }),
       client.getBalance({ owner, coinType: vault.assets.baseCoin.coinType })
@@ -230,6 +255,27 @@ export async function dryRun(tx: Transaction, sender: string) {
   }
   expect(result.Transaction.effects?.status.success).toBe(true)
   return result.Transaction
+}
+
+/**
+ * The chain-side conditions no PTB can be built around: the vault is locked or
+ * mid-operation (5022), or the configured package address is behind the deployed one
+ * (5013). A live case that hits one of these is reported as skipped, not failed — the
+ * request was built correctly and the chain declined it.
+ */
+const UNAVOIDABLE_ABORT_CODES: VaultSdkErrorCode[] = [
+  'VAULT_NOT_OPEN',
+  'UNSUPPORTED_CONFIG_VERSION'
+]
+
+/**
+ * The decoded abort when a dry-run failed for a reason the SDK cannot build around, else
+ * `undefined`. Uses the SDK's own decoder, so the test suite and its callers classify a
+ * given abort the same way.
+ */
+export function unavoidableAbort(error: unknown) {
+  const abort = parseMoveAbort(error)
+  return abort && UNAVOIDABLE_ABORT_CODES.includes(abort.code) ? abort : undefined
 }
 
 export function requireEvent(

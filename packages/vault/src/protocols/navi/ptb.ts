@@ -16,7 +16,7 @@ import {
 import { getMarketConfig, checkVault } from './utils'
 import { getVaultDefaultPool, getVaultInfo, getVaultRewardRules } from './vault'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { parseTxValue } from '../../utils'
+import { apportion, parseTxValue } from '../../utils'
 import { U64_MAX } from '../../config'
 import { getVaultReceipts, receiptType, planReceiptWithdrawByAmount } from './receipt'
 import { VaultReward } from './reward'
@@ -24,6 +24,12 @@ import { vaultErrors } from '../../error'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
 
 // ------ navi_vault ------
+/**
+ * `navi_vault::withdraw`'s `from_default_market` flag. Drawing from a non-default market
+ * charges a penalty, so this SDK always takes the default one.
+ */
+const FROM_DEFAULT_MARKET = true
+
 /**
  * Syncs the vault's cached balance in every registered lending market with the market's
  * actual on-chain balance.
@@ -360,8 +366,11 @@ export type NaviWithdrawTarget =
  * @param vault - The NAVI vault to withdraw from. Must carry `vault.navi` config
  * @param owner - Sui address whose receipts are drawn from
  * @param target - What to withdraw, in raw base units or raw shares; see {@link NaviWithdrawTarget}
- * @param options - Optional client override
+ * @param options - Optional client override and payout floor
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @param options.minAmountOut - Minimum base-coin amount the withdrawal must pay out, enforced
+ *        on-chain per call. A withdrawal spread over several receipts divides the floor
+ *        between them in proportion to each receipt's redeemable value
  * @returns Promise<TransactionResult> - The withdrawn coin, merged across every receipt drawn
  *          from. Unconsumed: the caller must transfer or otherwise use it
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault,
@@ -377,6 +386,7 @@ export async function withdrawPTB(
   target: NaviWithdrawTarget,
   options?: {
     client?: SuiGrpcClient
+    minAmountOut?: bigint
   }
 ) {
   checkVault(vault)
@@ -456,8 +466,20 @@ export async function withdrawPTB(
     client: options?.client
   })
 
+  // A plan carrying the U64_MAX sentinel drains its receipt, so its payout is the
+  // receipt's redeemable value rather than the literal argument.
+  const shareOf = new Map(receipts.map((receipt) => [receipt.id, receipt.shares]))
+  const floors = apportion(
+    options?.minAmountOut ?? 0n,
+    plans.map((plan) => {
+      if (plan.amount !== U64_MAX) return plan.amount
+      if (totalShares === 0n) return 1n
+      return ((shareOf.get(plan.id) ?? 0n) * totalAssets) / totalShares
+    })
+  )
+
   const coins: TransactionResult[] = []
-  for (const plan of plans) {
+  for (const [index, plan] of plans.entries()) {
     const [coin] = tx.moveCall({
       target: `${vault!.navi!.package}::navi_vault::withdraw`,
       typeArguments: [vault.assets.baseCoin.coinType],
@@ -469,8 +491,8 @@ export async function withdrawPTB(
         tx.object(marketConfig.storage),
         tx.object(pool.contract.pool),
         tx.pure.u64(plan.amount),
-        tx.pure.u64(0),
-        tx.pure.bool(true),
+        tx.pure.u64(floors[index]),
+        tx.pure.bool(FROM_DEFAULT_MARKET),
         tx.object(marketConfig.incentiveV2),
         tx.object(marketConfig.incentiveV3),
         tx.object('0x5')

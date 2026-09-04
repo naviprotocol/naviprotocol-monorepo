@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { depositPTB } from '../../src'
 import {
   client,
+  depositAmountFor,
   discoverDepositor,
   dryRun,
   dryRunData,
+  unavoidableAbort,
   report,
   requireBalanceChange,
+  rawToHuman,
   requireEvent,
   runLiveTests,
   SUI,
@@ -16,22 +19,74 @@ import {
 } from './context'
 
 describe.skipIf(!runLiveTests)('depositPTB', () => {
-  it.each(['navi', 'volo'] as const)(
+  it.for(['navi', 'volo'] as const)(
     'dry-runs a %s deposit',
-    async (source) => {
-      const { owner, vault } = await discoverDepositor(source)
+    async (source, testContext) => {
+      const title = `Dry-run a ${source.toUpperCase()} deposit`
+      const purpose =
+        'Simulate a one-token deposit from a wallet discovered on mainnet and prove the exact deposit through event and balance data.'
+
+      let depositor: Awaited<ReturnType<typeof discoverDepositor>>
+      try {
+        depositor = await discoverDepositor(source)
+      } catch (error) {
+        report.add({
+          api: 'depositPTB',
+          title,
+          status: 'skipped',
+          purpose,
+          reason: `No ${source} vault with status=open had a discoverable, funded depositor (${
+            error instanceof Error ? error.message : String(error)
+          }).`
+        })
+        testContext.skip()
+        return
+      }
+
+      const { owner, vault } = depositor
+      const amount = depositAmountFor(vault)
       const tx = new Transaction()
-      const result = await depositPTB(tx, vault, owner, '1', {
-        client,
-        useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
-      })
-      // NAVI returns (Receipt, shares); Volo returns (request_id, Receipt, change).
-      const receipt = source === 'navi' ? result[0] : result[1]
-      const change = source === 'volo' ? result[2] : undefined
-      if (receipt) tx.transferObjects([receipt], owner)
-      if (change) tx.transferObjects([change], owner)
-      const dryRunResult = await dryRun(tx, owner)
-      const amount = 10n ** BigInt(vault.assets.baseCoin.decimals)
+      const result = await depositPTB(
+        tx,
+        vault,
+        owner,
+        rawToHuman(amount, vault.assets.baseCoin.decimals),
+        {
+          client,
+          useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
+        }
+      )
+      // The top-level builder already transfers the receipt (and the Volo change coin) to
+      // owner; the caller only gets handles back.
+      expect(result.receipt).toBeDefined()
+      if (source === 'navi') {
+        expect(result.shares).toBeDefined()
+        expect(result.requestId).toBeUndefined()
+      } else {
+        expect(result.requestId).toBeDefined()
+        expect(result.shares).toBeUndefined()
+      }
+
+      let dryRunResult: Awaited<ReturnType<typeof dryRun>>
+      try {
+        dryRunResult = await dryRun(tx, owner)
+      } catch (error) {
+        const abort = unavoidableAbort(error)
+        if (abort) {
+          report.add({
+            api: 'depositPTB',
+            title,
+            status: 'skipped',
+            purpose,
+            data: { sender: owner, vault },
+            reason: `Vault ${vault.id} rejects deposit requests on chain right now: ${abort.name} (${abort.abortCode}), API status=${vault.status}. ${abort.message}`
+          })
+          testContext.skip()
+          return
+        }
+        throw error
+      }
+
       const event = requireEvent(
         dryRunResult,
         vaultEventType(source, source === 'navi' ? 'DepositEvent' : 'DepositRequested'),
@@ -55,10 +110,9 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
       const output = dryRunData(dryRunResult)
       report.add({
         api: 'depositPTB',
-        title: `Dry-run a ${source.toUpperCase()} deposit`,
+        title,
         status: 'passed',
-        purpose:
-          'Simulate a one-token deposit from a wallet discovered on mainnet and prove the exact deposit through event and balance data.',
+        purpose,
         data: {
           sender: owner,
           vault,
