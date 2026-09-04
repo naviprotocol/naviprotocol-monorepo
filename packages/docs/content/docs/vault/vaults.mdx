@@ -1,0 +1,170 @@
+---
+title: Vault Discovery
+---
+
+The vault discovery module provides functions to list every available vault and resolve a single vault by id. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
+
+## Core Features
+
+- **Vault Listing**: Retrieve all available vaults, optionally filtered by strategy provider
+- **Vault Resolution**: Resolve a vault id — or an already-fetched vault — to a full vault object
+- **Metadata Access**: Read APY, TVL, exchange rate, deposit limits, and lockup windows
+
+`client` is not used here — vault metadata comes from the NAVI open API rather than from chain.
+
+## API Reference
+
+### getVaults
+
+Get information for all available vaults. You can filter by strategy provider. See [documentation](/typedoc/variables/_naviprotocol_vault.getVaults.html) for details.
+
+Results are cached for 60 seconds by default.
+
+**Usage Example**
+
+```typescript
+import { getVaults } from '@naviprotocol/vault'
+
+// Get all vaults
+const vaults = await getVaults()
+
+// Filter by strategy provider
+const naviVaults = await getVaults({
+  protocols: ['navi'] // Optional: filter by strategy provider
+})
+
+// With cache control
+const fresh = await getVaults({
+  cacheTime: 30000, // Optional: cache time in milliseconds
+  disableCache: false // Optional: bypass the cache entirely
+})
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "id": "0x...",
+    "source": "navi",
+    "protocol": "navi",
+    "name": "SUI Yield Vault",
+    "riskLevel": "low",
+    "status": "active",
+    "apy": {
+      "avg7d": 0.0807,
+      "avg30d": 0.0791,
+      "instant": 0.0823,
+      "target": null
+    },
+    "assets": {
+      "baseCoin": {
+        "coinType": "0x2::sui::SUI",
+        "decimals": 9,
+        "symbol": "SUI"
+      }
+    },
+    "totalStaked": 1250000.5,
+    "totalStakedUsd": 4375001.75,
+    "totalShares": "1200000000000000",
+    "exchangeRate": 1.0417,
+    "coinPrice": 3.5,
+    "minInvestment": 0.1,
+    "stakeCapAmount": 5000000,
+    "lockup": null,
+    "navi": {
+      "package": "0x..."
+    }
+  }
+]
+```
+
+**Return Fields**
+
+- `id`: Sui object id of the vault. The global primary key
+- `source`: Which SDK code path serves this vault (`'navi'` or `'volo'`). Branch on this
+- `protocol`: Strategy provider (`'navi'`, `'volo'`, or `'astros'`). Filter on this, do not branch on it
+- `name`: Human-readable display name
+- `riskLevel`: Free-form risk classification, e.g. `"low"`
+- `status`: Free-form vault status, e.g. `"active"`
+- `apy`: Yield figures as **decimal fractions** (`0.0807` = 8.07%), with `avg7d`, `avg30d`, `instant`, and `target`
+- `assets.baseCoin`: The single coin the vault accepts and pays out — `coinType`, `decimals`, `symbol`
+- `totalStaked` / `totalStakedUsd`: Total principal staked, in human units and in USD
+- `totalShares`: Total shares outstanding, as a raw base-unit **string** (may exceed `Number.MAX_SAFE_INTEGER`)
+- `exchangeRate`: Base coin units per share
+- `coinPrice`: Base coin's current USD price
+- `minInvestment`: Minimum deposit in human units, or `null` if unrestricted
+- `stakeCapAmount`: Vault-wide deposit cap in human units, or `null` if unrestricted
+- `lockup`: Deposit lockup window `{ startAt, endAt }` as ISO-8601 timestamps, or `null`
+- `navi` / `volo`: On-chain package configuration. Exactly one is present, matching `source`
+
+<Callout>
+  Nearly every numeric field is nullable — the API returns `null` when a figure is unavailable
+  rather than guessing. Handle `null` before doing arithmetic on `totalStaked`, `exchangeRate`, or
+  any `apy` member.
+</Callout>
+
+### getVault
+
+Resolve a vault id to a full vault object. See [documentation](/typedoc/variables/_naviprotocol_vault.getVault.html) for details.
+
+An already-fetched `Vault` object is returned as-is with no network call, so you can pass either form through without branching. Results are cached for 60 seconds by default.
+
+**Usage Example**
+
+```typescript
+import { getVault } from '@naviprotocol/vault'
+
+// Resolve by id
+const vault = await getVault('0x...')
+
+// Pass through an object you already have (no lookup performed)
+const same = await getVault(vault)
+
+// With cache control
+const fresh = await getVault('0x...', {
+  disableCache: true // Optional: always refetch
+})
+```
+
+**Errors**
+
+Throws `VaultSdkError` with code `VAULT_NOT_FOUND` when no vault matches the id:
+
+```typescript
+import { getVault, isVaultSdkError } from '@naviprotocol/vault'
+
+try {
+  await getVault('0xdoesnotexist')
+} catch (error) {
+  if (isVaultSdkError(error) && error.code === 'VAULT_NOT_FOUND') {
+    // handle the missing vault
+  }
+}
+```
+
+## Selecting a Vault
+
+Vault identifiers are accepted anywhere as either a string id or a resolved object. Passing the object avoids a redundant lookup when you already have it:
+
+```typescript
+import { getVaults, depositPTB } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const vaults = await getVaults({ protocols: ['navi'] })
+
+// Pick by base coin, skipping vaults that are full or inactive
+const suiVault = vaults.find(
+  (vault) =>
+    vault.assets.baseCoin.symbol === 'SUI' &&
+    vault.status === 'active' &&
+    (vault.stakeCapAmount === null ||
+      vault.totalStaked === null ||
+      vault.totalStaked < vault.stakeCapAmount)
+)
+
+if (suiVault) {
+  const tx = new Transaction()
+  await depositPTB(tx, suiVault, owner, '1.5')
+}
+```

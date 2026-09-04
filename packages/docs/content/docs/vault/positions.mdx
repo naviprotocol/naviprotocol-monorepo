@@ -1,0 +1,129 @@
+---
+title: Positions
+---
+
+The positions module reports what a wallet currently holds across every vault — share balances, position value, realized yield, and the APR each position is earning.
+
+## Core Features
+
+- **Cross-Vault Query**: Read every position a wallet holds in a single call
+- **Filtering**: Narrow results by strategy provider or by specific vault ids
+- **Yield Tracking**: Lifetime yield in both base-coin and USD terms
+
+`client` is not used here — positions come from the NAVI open API rather than from chain. For on-chain share balances, see [Protocol Namespaces](/vault/protocols).
+
+## API Reference
+
+### getPositions
+
+Get all vault positions for an address. See [documentation](/typedoc/variables/_naviprotocol_vault.getPositions.html) for details.
+
+Results are cached for 1 second by default.
+
+**Usage Example**
+
+```typescript
+import { getPositions } from '@naviprotocol/vault'
+
+// Get all positions
+const positions = await getPositions('0x...')
+
+// Filter by strategy provider
+const naviPositions = await getPositions('0x...', {
+  protocols: ['navi'] // Optional: filter by strategy provider
+})
+
+// Filter by specific vaults
+const vaultPositions = await getPositions('0x...', {
+  vaults: ['0xvault1', '0xvault2'] // Optional: filter by vault id
+})
+
+// With cache control
+const fresh = await getPositions('0x...', {
+  disableCache: true // Optional: always refetch
+})
+```
+
+**Result Example**
+
+```json
+[
+  {
+    "vaultId": "0x...",
+    "source": "navi",
+    "protocol": "navi",
+    "address": "0x...",
+    "shares": "1000000000000",
+    "tokenBalance": 1041.7,
+    "tokenUsd": 3645.95,
+    "coinPrice": 3.5,
+    "apr": 0.0647,
+    "yieldLifetimeAmount": 41.7,
+    "yieldLifetimeUsd": 145.95
+  }
+]
+```
+
+**Return Fields**
+
+- `vaultId`: The vault this position is in
+- `source`: Which SDK code path serves the vault (`'navi'` or `'volo'`)
+- `protocol`: Strategy provider (`'navi'`, `'volo'`, or `'astros'`)
+- `address`: Normalized holder address, echoed back so callers can cross-check
+- `shares`: Raw on-chain share count, as a **string**. This is the unit `withdrawPTB` accepts for `{ kind: 'shares' }`
+- `tokenBalance`: Position size denominated in the vault's base coin
+- `tokenUsd`: Position value in USD
+- `coinPrice`: Base coin's current USD price
+- `apr`: Current APR as a **decimal fraction** (`0.0647` = 6.47%)
+- `yieldLifetimeAmount` / `yieldLifetimeUsd`: Lifetime yield earned, in base-coin units and in USD
+
+<Callout>
+  `apr` is `null` when the upstream value fell outside a plausible band — the SDK prefers reporting
+  nothing over reporting a 100x-wrong yield. Every other numeric field is nullable too. Check for
+  `null` before doing arithmetic.
+</Callout>
+
+## Filtering Behavior
+
+Both `protocols` and `vaults` filter **client-side** on the full API response, so narrowing does not save a round trip. Use them for convenience, not for performance.
+
+Note that `protocols` filters on the strategy provider, not the source. To split positions by which code path serves them, filter on `source` yourself:
+
+```typescript
+import { getPositions } from '@naviprotocol/vault'
+
+const positions = await getPositions('0x...')
+
+const naviServed = positions.filter((position) => position.source === 'navi')
+const voloServed = positions.filter((position) => position.source === 'volo')
+```
+
+## Computing a Portfolio Total
+
+```typescript
+import { getPositions } from '@naviprotocol/vault'
+
+const positions = await getPositions('0x...')
+
+const totalUsd = positions.reduce((sum, position) => sum + (position.tokenUsd ?? 0), 0)
+
+const lifetimeYieldUsd = positions.reduce(
+  (sum, position) => sum + (position.yieldLifetimeUsd ?? 0),
+  0
+)
+
+// Weighted average APR across positions that report one
+const withApr = positions.filter((position) => position.apr !== null && position.tokenUsd !== null)
+const weightedApr =
+  withApr.reduce((sum, position) => sum + position.apr! * position.tokenUsd!, 0) /
+  withApr.reduce((sum, position) => sum + position.tokenUsd!, 0)
+```
+
+## Positions vs. On-Chain Receipts
+
+`getPositions` reports the API's view, which is what you want for portfolio display. It is not the same as the wallet's on-chain receipts:
+
+- A receipt transferred away or deposited elsewhere as a DeFi asset may not appear here, while its shares keep living in the vault.
+- For Volo, a pending withdraw request does not reduce `shares` until an operator executes it.
+
+When you need the exact on-chain state that deposit and withdraw planning runs against, read receipts directly through the [protocol namespaces](/vault/protocols).

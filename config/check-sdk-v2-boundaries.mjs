@@ -6,6 +6,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 const sdkPackages = [
   'lending',
+  'vault',
   'wallet-client',
   'astros-aggregator-sdk',
   'astros-bridge-sdk',
