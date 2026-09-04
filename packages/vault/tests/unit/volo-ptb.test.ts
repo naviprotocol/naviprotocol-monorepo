@@ -96,6 +96,14 @@ function pureU256(tx: Transaction, argument: unknown): string {
   return bcs.u256().parse(fromBase64(input.Pure!.bytes))
 }
 
+/** Decode the u64 a `Pure` input argument carries. */
+function pureU64(tx: Transaction, argument: unknown): string {
+  const index = (argument as { Input: number }).Input
+  const input = tx.getData().inputs[index]
+  expect(input.$kind).toBe('Pure')
+  return bcs.u64().parse(fromBase64(input.Pure!.bytes))
+}
+
 async function codeOf(promise: Promise<unknown>) {
   try {
     await promise
@@ -230,6 +238,38 @@ describe('volo.withdrawPTB call shape (user_entry::withdraw_with_auto_transfer +
     // 10 raw units * 2e12 shares / 1e12 raw = 20 shares
     await withdrawPTB(tx, vault, OWNER, { kind: 'amount', amount: 10n })
     expect(pureU256(tx, moveCalls(tx)[0].arguments[1])).toBe('20')
+  })
+
+  it('leaves the payout floor at zero unless the caller sets one', async () => {
+    mockReceipts([receipt('0xa', 1_000n)])
+    const tx = new Transaction()
+    await withdrawPTB(tx, vault, OWNER, { kind: 'shares', shares: 100n })
+    expect(pureU64(tx, moveCalls(tx)[0].arguments[2])).toBe('0')
+  })
+
+  it('divides one minAmountOut across the receipts the withdrawal spans', async () => {
+    mockReceipts([receipt('0xa', 30n), receipt('0xb', 100n)])
+    const tx = new Transaction()
+
+    // 50 shares drawn as 30 + 20, so the floor splits 3:2. Each call carries its own
+    // expected_amount, so passing the full floor to both would demand 2x the payout.
+    await withdrawPTB(tx, vault, OWNER, { kind: 'shares', shares: 50n }, { minAmountOut: 1_000n })
+
+    const calls = moveCalls(tx)
+    expect(pureU64(tx, calls[0].arguments[2])).toBe('600')
+    expect(pureU64(tx, calls[2].arguments[2])).toBe('400')
+  })
+
+  it('gives the remainder of an uneven split to the last call, so the floor is never lowered', async () => {
+    mockReceipts([receipt('0xa', 1n), receipt('0xb', 1n), receipt('0xc', 1n)])
+    const tx = new Transaction()
+    await withdrawPTB(tx, vault, OWNER, { kind: 'shares', shares: 3n }, { minAmountOut: 10n })
+
+    const floors = moveCalls(tx)
+      .filter((call) => call.function === 'withdraw_with_auto_transfer')
+      .map((call) => BigInt(pureU64(tx, call.arguments[2])))
+    expect(floors).toEqual([3n, 3n, 4n])
+    expect(floors.reduce((sum, floor) => sum + floor, 0n)).toBe(10n)
   })
 
   it('fails closed when the vault has no priced supply', async () => {

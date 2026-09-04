@@ -19,6 +19,7 @@ import * as navi from './protocols/navi'
 import * as volo from './protocols/volo'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { isVaultSdkError, vaultErrors } from './error'
+import { checkDepositAmount, checkVaultAccepts } from './preflight'
 
 export type GetPositionsOptions = Partial<
   {
@@ -40,13 +41,10 @@ export type DepositPTBOptions = {
   /** gRPC client for on-chain reads this call needs (receipts, vault state). Defaults to a mainnet client. */
   client?: SuiGrpcClient
   /**
-   * Minimum shares the deposit must mint, enforced on-chain by Volo's
-   * `user_entry::deposit`.
+   * Minimum shares the deposit must mint, enforced on-chain by Volo's `user_entry::deposit`.
    *
-   * NAVI vault deposits have no slippage parameter. This field is currently
-   * IGNORED for a NAVI vault — `navi.depositPTB` neither reads nor rejects it, so a
-   * non-zero floor silently provides no protection there. Only rely on it for Volo
-   * vaults (`vault.source === 'volo'`).
+   * Volo vaults only: `navi_vault::deposit` takes no floor, and NAVI deposits settle in the
+   * same transaction at a rate the caller can already see.
    */
   expectedShares?: bigint
 }
@@ -54,6 +52,14 @@ export type DepositPTBOptions = {
 export type WithdrawPTBOptions = {
   /** gRPC client for on-chain reads this call needs (receipts, vault state, prices). Defaults to a mainnet client. */
   client?: SuiGrpcClient
+  /**
+   * Minimum base-coin amount the withdrawal must pay out, in raw base units, enforced
+   * on-chain. Defaults to `0n`.
+   *
+   * A withdrawal spread over several receipts issues one call per receipt and divides the
+   * floor between them, so the total payout is what the floor bounds.
+   */
+  minAmountOut?: bigint
 }
 
 /**
@@ -132,15 +138,16 @@ export const getPositions = withCache(
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of a coin object lookup
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
  * @param options.expectedShares - Minimum shares the deposit must mint, enforced on-chain by
- *                                 Volo. NAVI vaults have no slippage parameter and currently
- *                                 IGNORE this field — see {@link DepositPTBOptions.expectedShares}
+ *                                 Volo; see {@link DepositPTBOptions.expectedShares}
  * @returns The receipt handle plus the protocol-specific value: `shares` for NAVI or
  *          `requestId` for Volo. Each is a nested result of the underlying Move call. The builder transfers the receipt and Volo charge coin to
  *          `owner` automatically, so callers must not consume the returned receipt again
  * @throws VaultSdkError with code `INVALID_AMOUNT` when a string amount is not a positive
  *         decimal within the coin's precision or a transaction value is passed without
- *         `options.coin`, `VAULT_NOT_FOUND` when the vault does not exist, or
- *         `VAULT_UNSUPPORTED` when its source has no deposit builder
+ *         `options.coin`, `VAULT_NOT_FOUND` when the vault does not exist,
+ *         `VAULT_UNSUPPORTED` when its source has no deposit builder, `VAULT_NOT_OPEN` when
+ *         the vault's status rejects deposits, or `DEPOSIT_BELOW_MINIMUM` /
+ *         `DEPOSIT_CAP_EXCEEDED` when a literal amount falls outside the vault's bounds
  */
 export async function depositPTB(
   tx: Transaction,
@@ -154,8 +161,12 @@ export async function depositPTB(
   requestId?: TransactionArgument
 }> {
   const vault = await getVault(vaultIdentifier)
+  checkVaultAccepts(vault, 'deposit')
   const amountRaw: bigint | TransactionArgument | TransactionResult =
     typeof amount === 'string' ? parseHumanAmount(amount, vault.assets.baseCoin.decimals) : amount
+  if (typeof amountRaw === 'bigint') {
+    checkDepositAmount(vault, amountRaw)
+  }
   switch (vault.source) {
     case 'navi': {
       // navi_vault::deposit returns (Receipt, shares).
@@ -195,14 +206,17 @@ export async function depositPTB(
  * @param vaultIdentifier - Vault Sui object id, or an already-fetched `Vault` object
  * @param owner - Sui address whose receipts are drawn from
  * @param target - What to withdraw; see {@link WithdrawTarget} for the three forms
- * @param options - Optional client override
+ * @param options - Optional client override and payout floor
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @param options.minAmountOut - Minimum base-coin amount the withdrawal must pay out, in raw
+ *                               base units; see {@link WithdrawPTBOptions.minAmountOut}
  * @returns Promise<TransactionResult | TransactionResult[]> - The withdrawn coin (NAVI) or the
  *          created request ids (Volo)
  * @throws VaultSdkError with code `INVALID_AMOUNT` when `target` holds a non-positive or
  *         unparsable value, `INSUFFICIENT_BALANCE` when the owner's receipts cannot cover the
- *         request, `VAULT_NOT_FOUND` when the vault does not exist, or `VAULT_UNSUPPORTED`
- *         when its source has no withdrawal builder
+ *         request, `VAULT_NOT_FOUND` when the vault does not exist, `VAULT_UNSUPPORTED`
+ *         when its source has no withdrawal builder, or `VAULT_NOT_OPEN` when the vault's
+ *         status rejects withdrawals
  */
 export async function withdrawPTB(
   tx: Transaction,
@@ -212,6 +226,7 @@ export async function withdrawPTB(
   options?: WithdrawPTBOptions
 ): Promise<TransactionResult | TransactionResult[]> {
   const vault = await getVault(vaultIdentifier)
+  checkVaultAccepts(vault, 'withdraw')
 
   let normalized:
     | { kind: 'amount'; amount: bigint }

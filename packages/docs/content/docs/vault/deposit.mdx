@@ -63,7 +63,9 @@ The builder normalizes the protocol-specific tuples into one object and transfer
   unconsumed tuples; see [Protocol Namespaces](/vault/protocols).
 </Callout>
 
-### Slippage Protection
+### Payout Floors
+
+A vault's exchange rate moves with accrued yield, not with trade flow, so it does not swing the way a swap price does — most integrations leave these floors alone. Set one when a rate change between building and settling would matter to you: `expectedShares` on a deposit, `minAmountOut` on a withdrawal.
 
 Volo deposits settle asynchronously at whatever rate an operator executes them at. `expectedShares` sets a floor the contract enforces at execution time, aborting the request if it would mint fewer shares:
 
@@ -101,7 +103,20 @@ type WithdrawTarget =
 await withdrawPTB(tx, vault, owner, { kind: 'amount', amount: '1.5' })
 await withdrawPTB(tx, vault, owner, { kind: 'shares', shares: '1000000' })
 await withdrawPTB(tx, vault, owner, { kind: 'all' })
+
+// Require a minimum payout, in raw base units
+await withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'shares', shares: '1000000' },
+  {
+    minAmountOut: 990_000_000n
+  }
+)
 ```
+
+`minAmountOut` bounds the **whole** withdrawal, on either source. A withdrawal drawn from several receipts issues one call per receipt and divides the floor between them in proportion to each one's size, so the total payout is what the floor covers. A payout under the floor aborts on chain, which [`asVaultSdkError`](/vault/errors) reports as `SLIPPAGE_EXCEEDED`.
 
 <Callout>
   For Volo, `{ kind: 'all' }` covers only the receipts eligible **right now**. Receipts still inside
@@ -184,12 +199,15 @@ Both implementations do setup work before the main call, so you do not have to. 
 
 ## Errors
 
-| Code                   | Cause                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| `INVALID_AMOUNT`       | An amount is invalid, or a PTB amount was passed without `options.coin`           |
-| `INSUFFICIENT_BALANCE` | The owner's receipts cannot cover the withdrawal                                  |
-| `VAULT_NOT_FOUND`      | No vault matches the given id                                                     |
-| `VAULT_UNSUPPORTED`    | The vault's source has no builder for this operation                              |
-| `VAULT_CONFIG_INVALID` | A NAVI default pool could not be resolved, or a Volo `amount` could not be priced |
+| Code                    | Cause                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `INVALID_AMOUNT`        | An amount is invalid, or a PTB amount was passed without `options.coin`           |
+| `INSUFFICIENT_BALANCE`  | The owner's receipts cannot cover the withdrawal                                  |
+| `VAULT_NOT_FOUND`       | No vault matches the given id                                                     |
+| `VAULT_UNSUPPORTED`     | The vault's source has no builder for this operation                              |
+| `VAULT_CONFIG_INVALID`  | A NAVI default pool could not be resolved, or a Volo `amount` could not be priced |
+| `VAULT_NOT_OPEN`        | The vault's status does not currently accept this operation                       |
+| `DEPOSIT_BELOW_MINIMUM` | The deposit is under the vault's `minInvestment`                                  |
+| `DEPOSIT_CAP_EXCEEDED`  | The deposit is over the vault's remaining `stakeCapAmount` headroom               |
 
-See [Error Handling](/vault/errors) for how to branch on these.
+The last three are raised before any call is appended, so a rejected request costs no gas. See [Error Handling](/vault/errors) for how to branch on these, and for decoding the aborts the chain raises at execution time.

@@ -10,7 +10,9 @@ import { navi, volo } from '@naviprotocol/vault'
 
 <Callout>
   These interfaces do **not** dispatch by source. Calling a `navi.*` function with a Volo vault
-  throws `VAULT_UNSUPPORTED`, and vice versa. Check `vault.source` yourself before calling.
+  throws `VAULT_UNSUPPORTED`, and vice versa. Check `vault.source` yourself before calling. They
+  also skip the [pre-call checks](/vault/errors#checks-that-run-before-the-call) the top-level
+  builders apply, leaving vault status and deposit bounds to you.
 </Callout>
 
 ## When to Use Them
@@ -44,7 +46,7 @@ const coin = await navi.withdrawPTB(
   vault,
   owner,
   { kind: 'amount', amount: 1_500_000_000n },
-  { client }
+  { client, minAmountOut: 1_485_000_000n }
 )
 tx.transferObjects([coin], owner)
 

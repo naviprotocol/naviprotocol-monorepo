@@ -19,6 +19,12 @@ export * from './types'
 // Export the VaultSdkError class and error codes
 export * from './error'
 
+// Move abort decoding: abort code -> constant name, meaning, and VaultSdkError code
+export * from './abort'
+
+// Pre-build checks the top-level deposit/withdraw entry points already apply
+export * from './preflight'
+
 // Export vault discovery (getVaults, getVault)
 export * from './vault'
 

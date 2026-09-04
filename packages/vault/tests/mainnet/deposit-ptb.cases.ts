@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { depositPTB } from '../../src'
 import {
   client,
+  depositAmountFor,
   discoverDepositor,
   dryRun,
   dryRunData,
-  isVaultNotNormalAbort,
+  unavoidableAbort,
   report,
   requireBalanceChange,
+  rawToHuman,
   requireEvent,
   runLiveTests,
   SUI,
@@ -42,11 +44,18 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
       }
 
       const { owner, vault } = depositor
+      const amount = depositAmountFor(vault)
       const tx = new Transaction()
-      const result = await depositPTB(tx, vault, owner, '1', {
-        client,
-        useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
-      })
+      const result = await depositPTB(
+        tx,
+        vault,
+        owner,
+        rawToHuman(amount, vault.assets.baseCoin.decimals),
+        {
+          client,
+          useGasCoin: normalizeStructTag(vault.assets.baseCoin.coinType) === SUI
+        }
+      )
       // The top-level builder already transfers the receipt (and the Volo change coin) to
       // owner; the caller only gets handles back.
       expect(result.receipt).toBeDefined()
@@ -62,14 +71,15 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
       try {
         dryRunResult = await dryRun(tx, owner)
       } catch (error) {
-        if (isVaultNotNormalAbort(error)) {
+        const abort = unavoidableAbort(error)
+        if (abort) {
           report.add({
             api: 'depositPTB',
             title,
             status: 'skipped',
             purpose,
             data: { sender: owner, vault },
-            reason: `Vault ${vault.id} is not in NORMAL state on chain (abort 5022 ERR_VAULT_NOT_NORMAL; API status=${vault.status}), so the contract rejects deposit requests right now.`
+            reason: `Vault ${vault.id} rejects deposit requests on chain right now: ${abort.name} (${abort.abortCode}), API status=${vault.status}. ${abort.message}`
           })
           testContext.skip()
           return
@@ -77,7 +87,6 @@ describe.skipIf(!runLiveTests)('depositPTB', () => {
         throw error
       }
 
-      const amount = 10n ** BigInt(vault.assets.baseCoin.decimals)
       const event = requireEvent(
         dryRunResult,
         vaultEventType(source, source === 'navi' ? 'DepositEvent' : 'DepositRequested'),

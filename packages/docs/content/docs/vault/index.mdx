@@ -62,12 +62,11 @@ The two sources settle very differently, and this shapes every deposit and withd
 | Rate        | Known at execution              | Set when the operator executes                                      |
 | Cancellable | N/A                             | Yes, after a lock — see [Pending Requests](/vault/pending-requests) |
 
-Because a Volo request settles at a rate nobody knows at build time, `depositPTB` accepts an `expectedShares` floor that the contract enforces on execution.
+Because a Volo request settles at a rate nobody knows at build time, `depositPTB` accepts an `expectedShares` floor that the contract enforces on execution. `withdrawPTB` takes a `minAmountOut` floor on either source — see [Payout Floors](/vault/deposit#payout-floors).
 
-<Callout type="warn">
-  `expectedShares` is currently **ignored** for NAVI vaults rather than rejected. NAVI has no
-  slippage parameter, so a non-zero floor silently provides no protection there. Only rely on it
-  when `vault.source === 'volo'`.
+<Callout>
+  `expectedShares` applies to Volo deposits. `navi_vault::deposit` takes no floor argument, and a
+  NAVI deposit settles in the same transaction at a rate you can already see.
 </Callout>
 
 ### Shares and Receipts

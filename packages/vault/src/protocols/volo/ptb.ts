@@ -7,7 +7,7 @@ import {
 import { parseToUnits } from '@mysten/sui/utils'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Vault } from '../../types'
-import { parseTxValue } from '../../utils'
+import { apportion, parseTxValue } from '../../utils'
 import { checkVault } from './utils'
 import {
   canRequestDeposit,
@@ -145,14 +145,19 @@ export type VoloWithdrawTarget =
  * @param target - What to withdraw, in raw base units or raw shares; see {@link VoloWithdrawTarget}.
  *        `'all'` covers only the receipts eligible right now, not those still locked or already
  *        carrying a pending withdraw
- * @param options - Optional client override
+ * @param options - Optional client override and payout floor
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @param options.minAmountOut - Minimum base-coin amount the withdrawal must pay out, enforced
+ *        on-chain per request. A withdrawal spread over several receipts divides the floor
+ *        between them in proportion to the shares each burns
  * @returns Promise<TransactionResult[]> - The created request ids, one per receipt drawn from
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault,
  *         `INSUFFICIENT_BALANCE` when the eligible receipts cannot cover the request (the
  *         error's `details.excludedReceipts` says which were skipped and why), `INVALID_AMOUNT`
  *         when the resolved share count is not positive, or `VAULT_CONFIG_INVALID` when an
- *         `amount` target cannot be priced from the vault's `totalStaked`/`totalShares`
+ *         `amount` target cannot be priced from the vault's `totalStaked`/`totalShares`.
+ *         A floor the executed request cannot meet aborts on chain as `5009`, which
+ *         {@link asVaultSdkError} decodes to `SLIPPAGE_EXCEEDED`
  */
 export async function withdrawPTB(
   tx: Transaction,
@@ -161,6 +166,7 @@ export async function withdrawPTB(
   target: VoloWithdrawTarget,
   options?: {
     client?: SuiGrpcClient
+    minAmountOut?: bigint
   }
 ): Promise<TransactionResult[]> {
   checkVault(vault)
@@ -218,15 +224,20 @@ export async function withdrawPTB(
     })
   }
 
+  const floors = apportion(
+    options?.minAmountOut ?? 0n,
+    plans.map((plan) => plan.shares)
+  )
+
   const requestIds: TransactionResult[] = []
-  for (const plan of plans) {
+  for (const [index, plan] of plans.entries()) {
     const requestId = tx.moveCall({
       target: `${vault!.volo!.package}::user_entry::withdraw_with_auto_transfer`,
       typeArguments: [vault.assets.baseCoin.coinType],
       arguments: [
         tx.object(vault.id),
         tx.pure.u256(plan.shares),
-        tx.pure.u64(0),
+        tx.pure.u64(floors[index]),
         tx.object(plan.id),
         tx.object('0x6')
       ]
