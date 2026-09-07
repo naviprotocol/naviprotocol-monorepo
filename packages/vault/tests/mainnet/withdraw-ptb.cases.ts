@@ -1,4 +1,4 @@
-import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+import { Transaction } from '@mysten/sui/transactions'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { describe, expect, it } from 'vitest'
 import { navi, withdrawPTB } from '../../src'
@@ -34,14 +34,13 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
     const amountHuman = rawToHuman(amountRaw, decimals)
 
     const tx = new Transaction()
-    const coin = (await withdrawPTB(
+    await withdrawPTB(
       tx,
       position.vault,
       position.owner,
       { kind: 'amount', amount: amountHuman },
       { client }
-    )) as TransactionResult
-    tx.transferObjects([coin], position.owner)
+    )
     const result = await dryRun(tx, position.owner)
 
     const event = requireEvent(result, vaultEventType('navi', 'WithdrawEvent'), {

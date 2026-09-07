@@ -36,16 +36,22 @@ import { Transaction } from '@mysten/sui/transactions'
 const tx = new Transaction()
 const rewards = await getVaultRewards(vault, owner, { client })
 
-const claimed = await claimRewardsPTB(tx, rewards, { client })
+const claimed = await claimRewardsPTB(tx, rewards, owner, { client })
+```
 
+<Callout type="warn">
+  Coins are transferred to the required `owner` address by default. Do not consume the returned
+  coins again unless you set `disableAutoTransfer: true`.
+</Callout>
+
+For PTB composition, disable the automatic transfer and consume the coins yourself:
+
+```typescript
+const claimed = await claimRewardsPTB(tx, rewards, owner, { disableAutoTransfer: true })
 for (const { coin } of claimed) {
   tx.transferObjects([coin], owner)
 }
 ```
-
-<Callout type="warn">
-  The returned coins are unconsumed — transfer them, or the transaction will fail.
-</Callout>
 
 `claimRewardsPTB` accepts rewards spanning several vaults and harvests each distinct vault once, so a whole portfolio can be claimed in one transaction:
 
@@ -63,7 +69,7 @@ const allRewards = (
   )
 ).flat()
 
-const claimed = await claimRewardsPTB(tx, allRewards, { client })
+const claimed = await claimRewardsPTB(tx, allRewards, owner, { client })
 ```
 
 ## Why Figures Look Stale

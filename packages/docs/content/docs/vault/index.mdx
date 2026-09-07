@@ -71,7 +71,7 @@ Both protocols track your position as **shares** recorded against a **receipt** 
 Receipts matter for two reasons:
 
 - A receipt transferred away, or deposited elsewhere as a DeFi asset, drops out of the SDK's view while its shares keep living in the vault.
-- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically. Raw protocol builders return an unconsumed receipt that you must use or transfer. See [Deposit & Withdraw](/vault/deposit).
+- The top-level deposit builder transfers its returned `Receipt` and any Volo change coin to `owner` by default. Set `disableAutoTransfer: true` to compose with those objects yourself. Raw protocol builders return an unconsumed receipt that you must use or transfer. See [Deposit & Withdraw](/vault/deposit).
 
 ### Units
 

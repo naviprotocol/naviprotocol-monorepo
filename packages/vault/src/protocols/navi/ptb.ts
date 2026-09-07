@@ -176,7 +176,7 @@ export async function claimRewardsPTB(
   tx: Transaction,
   rewards: VaultReward[],
   options?: {
-    client: SuiGrpcClient
+    client?: SuiGrpcClient
   }
 ) {
   const rewardCoins = {} as Record<string, TransactionResult[]>

@@ -34,6 +34,8 @@ export type GetPositionsOptions = Partial<
 export type GetVaultPositionOptions = Partial<EnvOption & CacheOption>
 
 export type DepositPTBOptions = {
+  /** Leave the receipt and Volo change coin unconsumed for PTB composition. Defaults to false. */
+  disableAutoTransfer?: boolean
   /** Coin object to deposit from. When omitted, one is split from the owner's balance (or gas coin) for `amount`. */
   coin?: TransactionObjectArgument
   /** Split the deposit coin from the transaction's gas coin instead of a coin object lookup. */
@@ -43,6 +45,8 @@ export type DepositPTBOptions = {
 }
 
 export type WithdrawPTBOptions = {
+  /** Leave the NAVI coin unconsumed. Volo asynchronous settlement is unaffected. Defaults to false. */
+  disableAutoTransfer?: boolean
   /** gRPC client for on-chain reads this call needs (receipts, vault state, prices). Defaults to a mainnet client. */
   client?: SuiGrpcClient
   /**
@@ -50,6 +54,13 @@ export type WithdrawPTBOptions = {
    * on-chain. Defaults to `0n`.
    */
   minAmountOut?: bigint
+}
+
+export type ClaimRewardsPTBOptions = {
+  /** gRPC client for on-chain reads. Defaults to a mainnet client. */
+  client?: SuiGrpcClient
+  /** Leave reward coins unconsumed for PTB composition. Defaults to false. */
+  disableAutoTransfer?: boolean
 }
 
 /**
@@ -123,13 +134,15 @@ export const getPositions = withCache(
  *                 or a transaction argument/result containing the raw base-unit amount. A
  *                 transaction value must be paired with `options.coin`. Literal raw `bigint`
  *                 amounts remain available through `navi.depositPTB` / `volo.depositPTB`
- * @param options - Optional coin source and client
+ * @param options - Optional coin source, client, and automatic transfer overrides
+ * @param options.disableAutoTransfer - Skip automatic receipt and change-coin transfers. Defaults to false
  * @param options.coin - Coin object to deposit from. When omitted, one is split from the owner's balance for `amount`
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of a coin object lookup
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
  * @returns The receipt handle plus the protocol-specific value: `shares` for NAVI or
  *          `requestId` for Volo. Each is a nested result of the underlying Move call. The builder transfers the receipt and Volo charge coin to
- *          `owner` automatically, so callers must not consume the returned receipt again
+ *          `owner` by default. Set `disableAutoTransfer` to consume the returned receipt and
+ *          Volo `charge` coin yourself
  * @throws VaultSdkError with code `INVALID_AMOUNT` when a string amount is not a positive
  *         decimal within the coin's precision or a transaction value is passed without
  *         `options.coin`, `VAULT_NOT_FOUND` when the vault does not exist,
@@ -147,6 +160,8 @@ export async function depositPTB(
   receipt: TransactionObjectArgument
   shares?: TransactionArgument
   requestId?: TransactionArgument
+  /** Volo change coin; unconsumed only when disableAutoTransfer is true. */
+  charge?: TransactionObjectArgument
 }> {
   const vault = await getVault(vaultIdentifier)
   checkVaultAccepts(vault, 'deposit')
@@ -159,7 +174,7 @@ export async function depositPTB(
     case 'navi': {
       // navi_vault::deposit returns (Receipt, shares).
       const [receipt, shares] = await navi.depositPTB(tx, vault, owner, amountRaw, options)
-      tx.transferObjects([receipt], owner)
+      if (!options?.disableAutoTransfer) tx.transferObjects([receipt], owner)
       return { receipt, shares }
     }
     case 'volo': {
@@ -171,8 +186,8 @@ export async function depositPTB(
         amountRaw,
         options
       )
-      tx.transferObjects([receipt, charge], owner)
-      return { receipt, requestId }
+      if (!options?.disableAutoTransfer) tx.transferObjects([receipt, charge], owner)
+      return { receipt, requestId, charge }
     }
     default:
       throw vaultErrors.vaultUnsupported(vault.id, 'depositPTB', vault.source)
@@ -185,7 +200,9 @@ export async function depositPTB(
  * Returns what the protocol produces: for NAVI vaults the withdrawn coin
  * (`TransactionResult`), for Volo vaults the created request ids (`TransactionResult[]`) —
  * Volo withdrawals settle asynchronously once an operator executes the request. Narrow on
- * `vault.source` (or `Array.isArray`) before consuming the result.
+ * `vault.source` (or `Array.isArray`) before using the result. NAVI coins transfer to `owner`
+ * by default; set `disableAutoTransfer` to keep the coin available for PTB composition.
+ * Volo request ids are droppable values; its later on-chain payout is unaffected.
  *
  * Both protocols may split the withdrawal across several of the owner's receipts; NAVI
  * merges the resulting coins into one, Volo returns one request id per receipt drawn from.
@@ -196,6 +213,7 @@ export async function depositPTB(
  * @param target - What to withdraw; see {@link WithdrawTarget} for the three forms
  * @param options - Optional client override and payout floor
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
+ * @param options.disableAutoTransfer - Skip automatic NAVI coin transfer. Defaults to false; Volo settlement is unaffected
  * @param options.minAmountOut - Minimum base-coin amount the withdrawal must pay out, in raw
  *                               base units; see {@link WithdrawPTBOptions.minAmountOut}
  * @returns Promise<TransactionResult | TransactionResult[]> - The withdrawn coin (NAVI) or the
@@ -246,8 +264,11 @@ export async function withdrawPTB(
   }
 
   switch (vault.source) {
-    case 'navi':
-      return await navi.withdrawPTB(tx, vault, owner, normalized, options)
+    case 'navi': {
+      const coin = await navi.withdrawPTB(tx, vault, owner, normalized, options)
+      if (!options?.disableAutoTransfer) tx.transferObjects([coin], owner)
+      return coin
+    }
     case 'volo':
       return await volo.withdrawPTB(tx, vault, owner, normalized, options)
     default:
@@ -289,27 +310,39 @@ export async function getVaultRewards(
  * Builds calls to harvest and claim the given NAVI vault rewards.
  *
  * Harvests each distinct vault once, then claims every reward and merges same-coin-type
- * payouts into a single coin per type. The returned coins are unconsumed — the caller must
- * transfer or otherwise use them, or the transaction will fail.
+ * payouts into a single coin per type. Transfers the coins to `owner` by default.
+ * Set `disableAutoTransfer` to keep them available for further PTB composition.
  *
  * @param tx - Transaction to append the harvest and claim calls to
  * @param rewards - Reward positions to claim, as returned by {@link getVaultRewards}. May span
  *                  several receipts and several vaults
- * @param options - Optional client override
+ * @param owner - Address to receive the claimed reward coins
+ * @param options - Optional client and automatic transfer overrides
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
- * @returns Promise of one entry per distinct `rewardCoinType`, each `{ coin, coinType }` with the
- *          merged claimed coin
+ * @param options.disableAutoTransfer - Leave reward coins unconsumed. Defaults to false
+ * @returns One entry per distinct `rewardCoinType`, each `{ coin, coinType }`. Coins are
+ *          already transferred unless `disableAutoTransfer` is true
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when a reward's vault is not a NAVI vault,
  *         or `VAULT_CONFIG_INVALID` when a reward rule's pool or reward fund cannot be resolved
  */
 export async function claimRewardsPTB(
   tx: Transaction,
   rewards: navi.VaultReward[],
-  options?: {
-    client: SuiGrpcClient
-  }
+  owner: string,
+  options?: ClaimRewardsPTBOptions
 ) {
-  return await navi.claimRewardsPTB(tx, rewards, options)
+  const claimed = await navi.claimRewardsPTB(
+    tx,
+    rewards,
+    options?.client ? { client: options.client } : undefined
+  )
+  if (!options?.disableAutoTransfer && claimed.length > 0) {
+    tx.transferObjects(
+      claimed.map(({ coin }) => coin),
+      owner
+    )
+  }
+  return claimed
 }
 
 /**

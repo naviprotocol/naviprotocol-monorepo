@@ -39,6 +39,21 @@ export async function publicApiCompiles(
   const requests: PendingRequest[] = await getPendingRequests(owner, { vault: resolved.id })
 
   await depositPTB(tx, resolved, owner, '1.5', { client, useGasCoin: true })
+  const composedDeposit = await depositPTB(tx, resolved, owner, '1.5', {
+    disableAutoTransfer: true
+  })
+  tx.transferObjects(
+    [composedDeposit.receipt, ...(composedDeposit.charge ? [composedDeposit.charge] : [])],
+    owner
+  )
+  const composedWithdrawal = await withdrawPTB(
+    tx,
+    resolved,
+    owner,
+    { kind: 'all' },
+    { disableAutoTransfer: true }
+  )
+  if (!Array.isArray(composedWithdrawal)) tx.transferObjects([composedWithdrawal], owner)
   await withdrawPTB(tx, resolved, owner, { kind: 'shares', shares: '1' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'amount', amount: '0.5' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'all' }, { client })
@@ -46,7 +61,13 @@ export async function publicApiCompiles(
   await cancelPendingWithdrawPTB(tx, request)
 
   const rewards = await getVaultRewards(resolved, owner, { client })
-  await claimRewardsPTB(tx, rewards, { client })
+  await claimRewardsPTB(tx, rewards, owner, { client })
+  const claimed = await claimRewardsPTB(tx, rewards, owner, { disableAutoTransfer: true })
+  if (claimed.length)
+    tx.transferObjects(
+      claimed.map(({ coin }) => coin),
+      owner
+    )
 
   if (resolved.source === 'navi') {
     await navi.getVaultInfo(resolved, { client })

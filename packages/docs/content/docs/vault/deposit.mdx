@@ -52,13 +52,21 @@ The builder normalizes the protocol-specific tuples into one object and transfer
 | Source | Return shape             | Automatic transfer                |
 | ------ | ------------------------ | --------------------------------- |
 | NAVI   | `{ receipt, shares }`    | `receipt` to `owner`              |
-| Volo   | `{ receipt, requestId }` | `receipt` and `charge` to `owner` |
+| Volo   | `{ receipt, requestId, charge }` | `receipt` and `charge` to `owner` |
 
 <Callout type="warn">
-  Do not transfer `result.receipt` again. The top-level builder has already consumed that handle by
-  transferring it to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
+  By default, do not consume `result.receipt` or the Volo `result.charge` again: they have
+  already been transferred to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
   unconsumed tuples; see [Protocol Namespaces](/vault/protocols).
 </Callout>
+
+Set `disableAutoTransfer: true` to keep the returned objects available for further calls in the same PTB. You must eventually consume both the receipt and any Volo change coin:
+
+```typescript
+const result = await depositPTB(tx, vault, owner, '1.5', { disableAutoTransfer: true })
+// Compose other calls here, then consume any remaining objects.
+tx.transferObjects([result.receipt, ...(result.charge ? [result.charge] : [])], owner)
+```
 
 ### Payout Floors
 
@@ -114,11 +122,11 @@ The return type differs by source, and this is the single most important differe
 import { Transaction, TransactionResult } from '@mysten/sui/transactions'
 
 if (vault.source === 'navi') {
-  // A coin you must consume
+  // Disable the default transfer to compose with the coin yourself
   const coin = (await withdrawPTB(tx, vault, owner, {
     kind: 'amount',
     amount: '1.5'
-  })) as TransactionResult
+  }, { disableAutoTransfer: true })) as TransactionResult
   tx.transferObjects([coin], owner)
 } else {
   // Request ids — droppable u64s, nothing to consume. The principal arrives
@@ -128,9 +136,9 @@ if (vault.source === 'navi') {
 ```
 
 <Callout type="warn">
-  A NAVI withdrawal hands you a coin that Sui requires you to consume — transfer it, or the
-  transaction will fail. A Volo withdrawal returns nothing you need to consume, and moves no
-  principal in this transaction.
+  NAVI withdrawals transfer the coin to `owner` by default. With `disableAutoTransfer: true`,
+  you must consume it yourself. Volo returns droppable request ids; the flag does not change
+  its later contract-managed payout, and no principal moves in this transaction.
 </Callout>
 
 ### Receipt Planning

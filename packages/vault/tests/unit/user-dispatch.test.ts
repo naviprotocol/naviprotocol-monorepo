@@ -15,7 +15,7 @@ vi.mock('../../src/protocols/volo', () => ({
   withdrawPTB: vi.fn()
 }))
 
-import { depositPTB, withdrawPTB } from '../../src/user'
+import { claimRewardsPTB, depositPTB, withdrawPTB } from '../../src/user'
 import * as navi from '../../src/protocols/navi'
 import * as volo from '../../src/protocols/volo'
 import { isVaultSdkError } from '../../src/error'
@@ -91,7 +91,7 @@ describe('top-level depositPTB dispatch', () => {
 
     expect(volo.depositPTB).toHaveBeenCalledWith(tx, vault('volo', 6), OWNER, 2_250_000n, undefined)
     expect(tx.transferObjects).toHaveBeenCalledWith(['VOLO_RECEIPT', 'CHANGE'], OWNER)
-    expect(result).toEqual({ receipt: 'VOLO_RECEIPT', requestId: 'REQUEST_ID' })
+    expect(result).toEqual({ receipt: 'VOLO_RECEIPT', requestId: 'REQUEST_ID', charge: 'CHANGE' })
     expect(navi.depositPTB).not.toHaveBeenCalled()
   })
 
@@ -139,5 +139,81 @@ describe('top-level withdrawPTB dispatch', () => {
       { kind: 'all' },
       undefined
     )
+  })
+})
+
+describe('automatic transfers', () => {
+  it.each([undefined, false, true])(
+    'handles deposit disableAutoTransfer=%s',
+    async (disableAutoTransfer) => {
+      for (const source of ['navi', 'volo'] as const) {
+        const tx = fakeTx()
+        vi.mocked(navi.depositPTB).mockResolvedValue(['RECEIPT', 'SHARES'] as never)
+        vi.mocked(volo.depositPTB).mockResolvedValue(['REQUEST', 'RECEIPT', 'CHANGE'] as never)
+        const result = await depositPTB(tx, vault(source), OWNER, '1', { disableAutoTransfer })
+        expect(result.receipt).toBe('RECEIPT')
+        if (source === 'volo') expect(result.charge).toBe('CHANGE')
+        if (disableAutoTransfer) expect(tx.transferObjects).not.toHaveBeenCalled()
+        else
+          expect(tx.transferObjects).toHaveBeenCalledWith(
+            source === 'navi' ? ['RECEIPT'] : ['RECEIPT', 'CHANGE'],
+            OWNER
+          )
+      }
+    }
+  )
+
+  it.each([undefined, false, true])(
+    'handles withdrawal disableAutoTransfer=%s',
+    async (disableAutoTransfer) => {
+      const tx = fakeTx()
+      vi.mocked(navi.withdrawPTB).mockResolvedValue('COIN' as never)
+      expect(
+        await withdrawPTB(tx, vault('navi'), OWNER, { kind: 'all' }, { disableAutoTransfer })
+      ).toBe('COIN')
+      if (disableAutoTransfer) expect(tx.transferObjects).not.toHaveBeenCalled()
+      else expect(tx.transferObjects).toHaveBeenCalledWith(['COIN'], OWNER)
+
+      const voloTx = fakeTx()
+      vi.mocked(volo.withdrawPTB).mockResolvedValue(['REQUEST'] as never)
+      expect(
+        await withdrawPTB(voloTx, vault('volo'), OWNER, { kind: 'all' }, { disableAutoTransfer })
+      ).toEqual(['REQUEST'])
+      expect(voloTx.transferObjects).not.toHaveBeenCalled()
+    }
+  )
+})
+
+describe('claimRewardsPTB automatic transfers', () => {
+  it.each([undefined, false, true])(
+    'handles disableAutoTransfer=%s',
+    async (disableAutoTransfer) => {
+      const tx = fakeTx()
+      const rewards = [
+        {
+          vault: vault('navi'),
+          receipt: 'RECEIPT',
+          rewardCoinType: 'SUI',
+          claimable: 1n,
+          claimed: 0n
+        }
+      ]
+      const claimed = [
+        { coin: 'COIN_A', coinType: 'SUI' },
+        { coin: 'COIN_B', coinType: 'USDC' }
+      ]
+      vi.mocked(navi.claimRewardsPTB).mockResolvedValue(claimed as never)
+      expect(await claimRewardsPTB(tx, rewards, OWNER, { disableAutoTransfer })).toBe(claimed)
+      expect(navi.claimRewardsPTB).toHaveBeenCalledWith(tx, rewards, undefined)
+      if (disableAutoTransfer) expect(tx.transferObjects).not.toHaveBeenCalled()
+      else expect(tx.transferObjects).toHaveBeenCalledWith(['COIN_A', 'COIN_B'], OWNER)
+    }
+  )
+
+  it('does not append an empty transfer when there are no rewards', async () => {
+    const tx = fakeTx()
+    vi.mocked(navi.claimRewardsPTB).mockResolvedValue([])
+    expect(await claimRewardsPTB(tx, [], OWNER)).toEqual([])
+    expect(tx.transferObjects).not.toHaveBeenCalled()
   })
 })

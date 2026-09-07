@@ -19,8 +19,7 @@ describe.skipIf(!runLiveTests)('claimRewardsPTB', () => {
     const { naviPosition } = getMainnetContext()
     const rewards = await getVaultRewards(naviPosition.vault, naviPosition.owner, { client })
     const tx = new Transaction()
-    const coins = await claimRewardsPTB(tx, rewards, { client })
-    for (const { coin } of coins) tx.transferObjects([coin], naviPosition.owner)
+    await claimRewardsPTB(tx, rewards, naviPosition.owner, { client })
     const result = await dryRun(tx, naviPosition.owner)
     const claimEvents = result.events?.filter(
       (event) => event.eventType === vaultEventType('navi', 'ClaimRewardEvent')
