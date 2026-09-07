@@ -1,0 +1,70 @@
+---
+title: Pending Requests
+---
+
+Volo deposits and withdrawals do not settle immediately — they create a request an operator executes later. This module lists a wallet's outstanding requests and builds the calls to cancel them.
+
+<Callout>
+  Pending requests are a **Volo-only** concept. NAVI vault deposits and withdrawals settle in the
+  same transaction, so they never appear here.
+</Callout>
+
+## Listing Requests
+
+[`getPendingRequests`](/typedoc/functions/_naviprotocol_vault.getPendingRequests.html) reads a wallet's requests as recorded by the NAVI open API. Unlike most reads in this SDK, it is **not cached**.
+
+```typescript
+import { getPendingRequests } from '@naviprotocol/vault'
+
+const requests = await getPendingRequests('0x...')
+const vaultRequests = await getPendingRequests('0x...', { vault: '0x...' })
+```
+
+Each request reports its `type` (`'deposit'` or `'withdraw'`), the amount and shares involved, and `executeTime` — when an operator is expected to execute it. Two fields are **required to cancel**: `receiptId` and `requestId`.
+
+## Cancelling
+
+Each cancel builder validates the request's direction and throws `INVALID_REQUEST_TYPE` on a mismatch, so a mixed list cannot silently cancel the wrong thing:
+
+```typescript
+import {
+  getPendingRequests,
+  cancelPendingDepositPTB,
+  cancelPendingWithdrawPTB
+} from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+const requests = await getPendingRequests(owner, { vault: vaultId })
+
+for (const request of requests) {
+  if (request.type === 'deposit') {
+    // Returns the refunded principal coin
+    const refund = await cancelPendingDepositPTB(tx, request)
+    tx.transferObjects([refund], owner)
+  } else {
+    // Returns the cancelled share count (u256) — droppable, nothing to consume
+    await cancelPendingWithdrawPTB(tx, request)
+  }
+}
+```
+
+<Callout type="warn">
+  Cancelling a deposit returns the refunded principal coin. Transfer it, or the transaction will
+  fail. Cancelling a withdraw returns nothing you need to consume.
+</Callout>
+
+## Cancellation Timing
+
+Two things gate a cancellation, and neither is guaranteed:
+
+1. **The cancel lock.** The vault rejects a cancellation until the request's lock expires. `executeTime` tells you when the request is expected to be actionable.
+2. **The operator.** An operator can execute a request at any point, including before the lock expires. Once executed, the request is gone from the buffer and cancelling it aborts.
+
+A cancellation is therefore best-effort — build it expecting the on-chain call may abort, and re-read `getPendingRequests` afterwards to confirm the outcome.
+
+## Reading Requests On-Chain
+
+`getPendingRequests` reads the API's aggregated record across every vault. To read one vault's request buffer directly from chain — with richer fields including the exact `cancellableAt` timestamp and the declared floors — use `volo.getPendingRequests`. See [Protocol Namespaces](/vault/protocols).
+
+Failures throw `INVALID_REQUEST_TYPE`, `VAULT_NOT_FOUND`, `VAULT_CONFIG_INVALID` (the vault carries no Volo package configuration), or `API_REQUEST_FAILED`. See [Error Handling](/vault/errors).

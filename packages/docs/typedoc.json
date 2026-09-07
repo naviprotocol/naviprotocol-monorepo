@@ -3,6 +3,7 @@
     "../astros-aggregator-sdk",
     "../astros-bridge-sdk",
     "../lending",
+    "../vault",
     "../wallet-client"
   ],
   "excludeInternal": true,

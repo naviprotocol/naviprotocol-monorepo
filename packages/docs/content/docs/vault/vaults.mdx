@@ -1,0 +1,93 @@
+---
+title: Vaults & Positions
+---
+
+Vault discovery lists what exists; positions report what a wallet holds in it. Both read from the NAVI open API rather than from chain, so neither uses `client`. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
+
+## Discovering Vaults
+
+`getVaults` lists every available vault, optionally filtered by strategy provider. `getVault` resolves a single id — and passes an already-fetched `Vault` object straight through with no network call, so you can hand it either form without branching.
+
+```typescript
+import { getVaults, getVault } from '@naviprotocol/vault'
+
+const vaults = await getVaults()
+const naviVaults = await getVaults({ protocols: ['navi'] })
+
+const vault = await getVault('0x...')
+const same = await getVault(vault) // no lookup performed
+```
+
+Field-by-field shapes are in the [API reference](/typedoc/variables/_naviprotocol_vault.getVaults.html). Four things about them are worth stating here, because they cause real bugs:
+
+- **Nearly every numeric field is nullable.** The API returns `null` when a figure is unavailable rather than guessing. Handle `null` before doing arithmetic on `totalStaked`, `exchangeRate`, or any `apy` member.
+- **`totalShares` is a string**, not a number — it can exceed `Number.MAX_SAFE_INTEGER`. Keep it as a `bigint`.
+- **`apy` members are decimal fractions**: `0.0807` means 8.07%.
+- **`navi` / `volo` config**: exactly one is present, matching `source`.
+
+`getVault` throws `VAULT_NOT_FOUND` when no vault matches:
+
+```typescript
+import { getVault, isVaultSdkError } from '@naviprotocol/vault'
+
+try {
+  await getVault('0xdoesnotexist')
+} catch (error) {
+  if (isVaultSdkError(error) && error.code === 'VAULT_NOT_FOUND') {
+    // handle the missing vault
+  }
+}
+```
+
+## Selecting a Vault
+
+Vault identifiers are accepted anywhere as either a string id or a resolved object. Note the null checks — a vault with unknown totals should not be silently treated as having room:
+
+```typescript
+import { getVaults, depositPTB } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const vaults = await getVaults({ protocols: ['navi'] })
+
+const suiVault = vaults.find(
+  (vault) =>
+    vault.assets.baseCoin.symbol === 'SUI' &&
+    vault.status === 'active' &&
+    (vault.stakeCapAmount === null ||
+      vault.totalStaked === null ||
+      vault.totalStaked < vault.stakeCapAmount)
+)
+
+if (suiVault) {
+  const tx = new Transaction()
+  await depositPTB(tx, suiVault, owner, '1.5')
+}
+```
+
+## Reading Positions
+
+`getPositions` reports what a wallet holds across every vault — share balances, position value, lifetime yield, and the APR each position earns.
+
+```typescript
+import { getPositions } from '@naviprotocol/vault'
+
+const positions = await getPositions('0x...')
+const naviPositions = await getPositions('0x...', { protocols: ['navi'] })
+const scoped = await getPositions('0x...', { vaults: ['0xvault1', '0xvault2'] })
+```
+
+Two fields carry more meaning than their names suggest:
+
+- **`shares`** is a raw on-chain share count as a **string** — exactly the unit `withdrawPTB` accepts for `{ kind: 'shares' }`.
+- **`apr`** is `null` when the upstream value fell outside a plausible band. The SDK prefers reporting nothing over reporting a 100x-wrong yield. Every other numeric field is nullable too.
+
+Both `protocols` and `vaults` filter **client-side** on the full API response, so narrowing does not save a round trip. Use them for convenience, not performance. And `protocols` filters on the strategy provider, not the source — to split by which code path serves a position, filter on `position.source` yourself.
+
+## Positions vs. On-Chain Receipts
+
+`getPositions` reports the API's view, which is what you want for portfolio display. It is not the same as the wallet's on-chain receipts:
+
+- A receipt transferred away or deposited elsewhere as a DeFi asset may not appear here, while its shares keep living in the vault.
+- For Volo, a pending withdraw request does not reduce `shares` until an operator executes it.
+
+When you need the exact on-chain state that deposit and withdraw planning runs against, read receipts directly through the [protocol namespaces](/vault/protocols).

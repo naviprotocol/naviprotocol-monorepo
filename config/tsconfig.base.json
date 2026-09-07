@@ -37,6 +37,9 @@
       "@naviprotocol/lending": [
         "../packages/lending/src/index.ts"
       ],
+      "@naviprotocol/vault": [
+        "../packages/vault/src/index.ts"
+      ],
       "@naviprotocol/wallet-client": [
         "../packages/wallet-client/src/index.ts"
       ]

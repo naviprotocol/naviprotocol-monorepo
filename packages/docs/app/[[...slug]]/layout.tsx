@@ -17,6 +17,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             icon: <Image src="/assets/logo.png" alt="Lending" width={24} height={24} />
           },
           {
+            title: 'Vault',
+            description: 'NAVI Vault SDK',
+            url: '/vault',
+            icon: <Image src="/assets/logo.png" alt="Vault" width={24} height={24} />
+          },
+          {
             title: 'Astros Aggregator',
             description: 'Swap coins on Sui',
             url: '/swap',

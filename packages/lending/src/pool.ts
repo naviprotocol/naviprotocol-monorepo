@@ -75,31 +75,39 @@ export enum PoolOperator {
 export const getPools = withCache(
   withSingleton(
     async (
-      options?: Partial<EnvOption & CacheOption & MarketsOption & ServiceOption>
+      options?: Partial<
+        EnvOption &
+        CacheOption &
+        MarketsOption &
+        ServiceOption & {
+          pools: string[]
+        }
+      >
     ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
         return getMarketConfig(identity)
       })
       const endpoint = resolveNaviOpenApiEndpoint(options)
+      const poolsFilter = (options?.pools || []).join(',')
       const url = buildNaviOpenApiUrl(
         `/navi/pools?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${markets.map(
           (market) => {
             return market.key
           }
-        )}`,
+        )}${!!poolsFilter ? '&pools=' + poolsFilter : ''}`,
         options
       )
       const res: {
         data: Pool[]
-        meta: {
-          emodes: EMode[]
+        meta?: {
+          emodes?: EMode[]
         }
       } = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) }).then((res) =>
         res.json()
       )
 
       res.data.forEach((pool) => {
-        const filterEmodes = res.meta.emodes.filter((emode) => {
+        const filterEmodes = (res?.meta?.emodes || []).filter((emode) => {
           const market = getMarketConfig(emode.marketId)
           return pool.market === market.key && emode.isActive
         })
@@ -289,11 +297,11 @@ export async function depositCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption &
-      ServiceOption &
-      MarketOption & {
-        amount: number | TransactionResult
-      }
+    AccountCapOption &
+    ServiceOption &
+    MarketOption & {
+      amount: number | TransactionResult
+    }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -621,11 +629,11 @@ export async function repayCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-      AccountCapOption &
-      ServiceOption &
-      MarketOption & {
-        amount: number | TransactionResult
-      }
+    AccountCapOption &
+    ServiceOption &
+    MarketOption & {
+      amount: number | TransactionResult
+    }
   >
 ): Promise<Transaction | TransactionResult> {
   const config = await getConfig({

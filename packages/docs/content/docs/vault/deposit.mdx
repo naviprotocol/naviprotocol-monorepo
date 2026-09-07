@@ -1,0 +1,200 @@
+---
+title: Deposit & Withdraw
+---
+
+Both builders append vault calls to a transaction you provide and dispatch to the NAVI or Volo implementation automatically based on `vault.source`, so the same call works for both. Neither signs or executes anything.
+
+Full signatures are in the API reference: [`depositPTB`](/typedoc/functions/_naviprotocol_vault.depositPTB.html), [`withdrawPTB`](/typedoc/functions/_naviprotocol_vault.withdrawPTB.html).
+
+## Deposit
+
+```typescript
+import { depositPTB } from '@naviprotocol/vault'
+import { Transaction } from '@mysten/sui/transactions'
+
+const tx = new Transaction()
+
+// Amount is a human-readable decimal string in vault coin units
+const result = await depositPTB(tx, vault, owner, '1.5')
+
+// Split from the gas coin instead of looking up a coin object
+await depositPTB(tx, suiVault, owner, '1.5', { useGasCoin: true })
+
+// Supply your own coin
+await depositPTB(tx, vault, owner, '1.5', { coin: myCoin })
+```
+
+### Amount Units
+
+String amounts are parsed against `vault.assets.baseCoin.decimals`. The string must be a valid decimal, strictly positive, and carry no more fractional digits than the coin supports. Anything else throws `INVALID_AMOUNT`:
+
+```typescript
+await depositPTB(tx, vault, owner, '0') // throws: must be greater than zero
+await depositPTB(tx, vault, owner, '-1') // throws: must be greater than zero
+await depositPTB(tx, vault, owner, 'abc') // throws: not a decimal string
+await depositPTB(tx, vault, owner, '0.0000000001') // throws on a 9-decimal coin
+```
+
+For PTB composition, `amount` can instead be a `TransactionArgument` or `TransactionResult` holding raw base units. In that form you must also pass the matching `options.coin` — the SDK cannot create a coin from a dynamic amount:
+
+```typescript
+const amount = tx.pure.u64(1_500_000_000n)
+const [coin] = tx.splitCoins(tx.gas, [amount])
+await depositPTB(tx, suiVault, owner, amount, { coin })
+```
+
+The top-level builder does not accept a literal `bigint`. Use the [protocol namespaces](/vault/protocols) when you already hold a raw amount — `navi.depositPTB` and `volo.depositPTB` take `bigint` directly.
+
+### Consuming the Result
+
+The builder normalizes the protocol-specific tuples into one object and transfers owned return values to `owner` automatically:
+
+| Source | Return shape                     | Automatic transfer                |
+| ------ | -------------------------------- | --------------------------------- |
+| NAVI   | `{ receipt, shares }`            | `receipt` to `owner`              |
+| Volo   | `{ receipt, requestId, charge }` | `receipt` and `charge` to `owner` |
+
+<Callout type="warn">
+  By default, do not consume `result.receipt` or the Volo `result.charge` again: they have already
+  been transferred to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
+  unconsumed tuples; see [Protocol Namespaces](/vault/protocols).
+</Callout>
+
+Set `disableAutoTransfer: true` to keep the returned objects available for further calls in the same PTB. You must eventually consume both the receipt and any Volo change coin:
+
+```typescript
+const result = await depositPTB(tx, vault, owner, '1.5', { disableAutoTransfer: true })
+// Compose other calls here, then consume any remaining objects.
+tx.transferObjects([result.receipt, ...(result.charge ? [result.charge] : [])], owner)
+```
+
+### Payout Floors
+
+Volo deposits settle asynchronously at the exchange rate when an operator executes them. The SDK sets the contract's minimum share amount to zero.
+
+For withdrawals on either source, use `minAmountOut` to set the minimum payout in raw base units. It defaults to `0n`.
+
+## Withdraw
+
+```typescript
+import { withdrawPTB } from '@naviprotocol/vault'
+
+type WithdrawTarget =
+  | { kind: 'amount'; amount: string } // human-readable decimal string
+  | { kind: 'shares'; shares: string | bigint } // raw on-chain share count
+  | { kind: 'all' } // everything currently available
+
+await withdrawPTB(tx, vault, owner, { kind: 'amount', amount: '1.5' })
+await withdrawPTB(tx, vault, owner, { kind: 'shares', shares: '1000000' })
+await withdrawPTB(tx, vault, owner, { kind: 'all' })
+
+// Require a minimum payout, in raw base units
+await withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'shares', shares: '1000000' },
+  {
+    minAmountOut: 990_000_000n
+  }
+)
+```
+
+`minAmountOut` is a non-negative total in raw base units. For several receipts, the SDK divides it proportionally and distributes rounding units by largest fractional remainder, breaking ties in call order. A positive minimum is rejected if every allocation weight is zero. Each call must meet its own floor, so sufficient aggregate payout alone does not guarantee success. NAVI calls execute atomically in one transaction; Volo requests settle independently and may only partially complete. A payout under its per-call floor aborts on chain, which [`asVaultSdkError`](/vault/errors) reports as `SLIPPAGE_EXCEEDED`.
+
+<Callout>
+  For Volo, `{ kind: 'all' }` covers only the receipts eligible **right now**. Receipts still inside
+  the withdraw lock, or already carrying a pending withdraw request, are skipped — so "all" can
+  withdraw less than the wallet's total shares. Check
+  [`getPendingRequests`](/vault/pending-requests) if the result looks short.
+</Callout>
+
+### Consuming the Result
+
+The builder returns an object with the field for the selected source:
+
+| Source | Returns                                | Settlement                            |
+| ------ | -------------------------------------- | ------------------------------------- |
+| NAVI   | `{ coin }` — the withdrawn coin        | Immediate, same transaction           |
+| Volo   | `{ requestIds }` — created request ids | Asynchronous, executed by an operator |
+
+```typescript
+const result = await withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'amount', amount: '1.5' },
+  { disableAutoTransfer: true }
+)
+
+if (result.coin) {
+  // NAVI: compose with the coin, then consume it.
+  tx.transferObjects([result.coin], owner)
+}
+if (result.requestIds) {
+  // Volo: request ids are droppable u64s. The principal arrives later,
+  // when an operator executes the requests.
+  console.log('Created requests:', result.requestIds.length)
+}
+```
+
+<Callout type="warn">
+  NAVI withdrawals transfer the coin to `owner` by default. With `disableAutoTransfer: true`, you
+  must consume it yourself. Volo returns droppable request ids; the flag does not change its later
+  contract-managed payout, and no principal moves in this transaction.
+</Callout>
+
+### Receipt Planning
+
+A wallet can hold several receipts for one vault. Both implementations consume them **smallest-first**, which retires dust receipts before touching a large one. A single `withdrawPTB` may therefore append several on-chain calls: NAVI merges the resulting coins so you always get exactly one coin back, while Volo creates one request per receipt drawn from.
+
+If the owner's receipts cannot cover the request, the builder throws `INSUFFICIENT_BALANCE` rather than withdrawing less than you asked for:
+
+```typescript
+import { withdrawPTB, isVaultSdkError } from '@naviprotocol/vault'
+
+try {
+  await withdrawPTB(tx, vault, owner, { kind: 'amount', amount: '1000' }, { client })
+} catch (error) {
+  if (isVaultSdkError(error) && error.code === 'INSUFFICIENT_BALANCE') {
+    console.log(error.details?.uncoveredShares) // or uncoveredAmount for NAVI
+    console.log(error.details?.excludedReceipts) // Volo: [{ id, reason }]
+  }
+}
+```
+
+The Volo contract rejects a withdrawal on a receipt that already has a pending withdraw request, or one still inside its withdraw lock — locked for `locking_time_for_withdraw` after its last _executed_ deposit. The SDK excludes both up front and lists them in `details.excludedReceipts`.
+
+### Unit Conversion Caveats
+
+The two protocols burn different things on-chain, and the SDK converts for you:
+
+- **NAVI** withdraws by **asset amount**. A `shares` target is converted at the vault's current on-chain exchange rate before planning.
+- **Volo** burns **shares**. An `amount` target is converted from the API's `totalStaked`/`totalShares` snapshot.
+
+<Callout>
+  For Volo, that conversion is an **estimate**. The request settles at whatever rate the operator
+  executes it at, which may differ from the snapshot the SDK converted against. Use
+  `{ kind: 'shares' }` when you need an exact share count burned.
+</Callout>
+
+## What the Builders Do For You
+
+Both implementations do setup work before the main call, so you do not have to. **NAVI** syncs the vault's cached balance in every registered lending market, harvests active reward rules so indices are current, reuses the owner's lowest-share receipt or creates one, deposits into the vault's default lending pool, and transfers the receipt to `owner`.
+
+**Volo** creates the request with a zero minimum share amount, records it off-chain so it appears in [`getPendingRequests`](/vault/pending-requests), and transfers the receipt and charge coin to `owner`.
+
+## Errors
+
+| Code                    | Cause                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `INVALID_AMOUNT`        | An amount is invalid, or a PTB amount was passed without `options.coin`           |
+| `INSUFFICIENT_BALANCE`  | The owner's receipts cannot cover the withdrawal                                  |
+| `VAULT_NOT_FOUND`       | No vault matches the given id                                                     |
+| `VAULT_UNSUPPORTED`     | The vault's source has no builder for this operation                              |
+| `VAULT_CONFIG_INVALID`  | A NAVI default pool could not be resolved, or a Volo `amount` could not be priced |
+| `VAULT_NOT_OPEN`        | The vault's status does not currently accept this operation                       |
+| `DEPOSIT_BELOW_MINIMUM` | The deposit is under the vault's `minInvestment`                                  |
+| `DEPOSIT_CAP_EXCEEDED`  | The deposit is over the vault's remaining `stakeCapAmount` headroom               |
+
+The last three are raised before any call is appended, so a rejected request costs no gas. See [Error Handling](/vault/errors) for how to branch on these, and for decoding the aborts the chain raises at execution time.

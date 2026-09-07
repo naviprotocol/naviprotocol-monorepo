@@ -1,0 +1,15 @@
+{
+  "root": true,
+  "title": "Vault",
+  "description": "NAVI Vault SDK",
+  "pages": [
+    "index",
+    "vaults",
+    "deposit",
+    "rewards",
+    "pending-requests",
+    "protocols",
+    "errors",
+    "[Api Reference](/typedoc/modules/_naviprotocol_vault.html)"
+  ]
+}
