@@ -1,7 +1,7 @@
 {
   "name": "@naviprotocol/vault",
-  "version": "0.0.1-beta.5",
-  "description": "Unified Lending and Volo Vault SDK",
+  "version": "0.0.1",
+  "description": "Unified Vault SDK",
   "license": "MIT",
   "homepage": "https://sdk.naviprotocol.io/vault",
   "type": "module",
