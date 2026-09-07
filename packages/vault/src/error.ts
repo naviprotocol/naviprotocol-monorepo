@@ -9,6 +9,8 @@ export const VAULT_SDK_ERROR_CODES = {
   VAULT_UNSUPPORTED: 'VAULT_UNSUPPORTED',
   /** The vault's API/on-chain configuration is missing a field an operation needs. */
   VAULT_CONFIG_INVALID: 'VAULT_CONFIG_INVALID',
+  /** The vault's status does not currently permit the operation. */
+  VAULT_NOT_OPEN: 'VAULT_NOT_OPEN',
   /** Reserved for a future on-chain config version this SDK build cannot parse. */
   UNSUPPORTED_CONFIG_VERSION: 'UNSUPPORTED_CONFIG_VERSION',
   /** A function argument (other than an amount) is missing or malformed. */
@@ -19,6 +21,16 @@ export const VAULT_SDK_ERROR_CODES = {
   INVALID_REQUEST_TYPE: 'INVALID_REQUEST_TYPE',
   /** The owner's receipts cannot cover the requested withdrawal. */
   INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+  /** The deposit is below the vault's `minInvestment`. */
+  DEPOSIT_BELOW_MINIMUM: 'DEPOSIT_BELOW_MINIMUM',
+  /** The deposit would push the vault past its `stakeCapAmount`. */
+  DEPOSIT_CAP_EXCEEDED: 'DEPOSIT_CAP_EXCEEDED',
+  /** The payout would fall below the caller's `minAmountOut` / `expectedShares` floor. */
+  SLIPPAGE_EXCEEDED: 'SLIPPAGE_EXCEEDED',
+  /** A receipt or request is not yet in a state that permits the operation; retry later. */
+  RECEIPT_UNAVAILABLE: 'RECEIPT_UNAVAILABLE',
+  /** A recognized vault-package abort with no more specific code. See `details.abort`. */
+  MOVE_ABORT: 'MOVE_ABORT',
   /** Reserved for a deposit asset type the target vault does not accept. */
   UNSUPPORTED_DEPOSIT_ASSET: 'UNSUPPORTED_DEPOSIT_ASSET',
   /** The operation is not implemented by this SDK/protocol. */
@@ -218,6 +230,51 @@ export const vaultErrors = {
    */
   insufficientBalance(message: string, details?: VaultSdkErrorDetails) {
     return create('INSUFFICIENT_BALANCE', message, details)
+  },
+
+  /**
+   * The vault's status does not currently permit the operation.
+   *
+   * @param vaultId - The vault whose status blocks the operation
+   * @param operation - What was attempted, e.g. `'withdrawPTB'`
+   * @param status - The vault's status as reported by the API
+   */
+  vaultNotOpen(vaultId: string, operation: string, status: string | null) {
+    return create(
+      'VAULT_NOT_OPEN',
+      `Vault ${vaultId} does not accept ${operation} while its status is ${status}`,
+      { vaultId, operation, status }
+    )
+  },
+
+  /**
+   * The deposit is below the vault's `minInvestment`.
+   *
+   * @param vaultId - The vault the deposit targets
+   * @param amount - Requested amount in raw base units
+   * @param minimum - The vault's minimum in raw base units
+   */
+  depositBelowMinimum(vaultId: string, amount: bigint, minimum: bigint) {
+    return create(
+      'DEPOSIT_BELOW_MINIMUM',
+      `Deposit of ${amount} is below vault ${vaultId}'s minimum of ${minimum}`,
+      { vaultId, amount: amount.toString(), minimum: minimum.toString() }
+    )
+  },
+
+  /**
+   * The deposit would push the vault past its `stakeCapAmount`.
+   *
+   * @param vaultId - The vault the deposit targets
+   * @param amount - Requested amount in raw base units
+   * @param headroom - Remaining capacity in raw base units
+   */
+  depositCapExceeded(vaultId: string, amount: bigint, headroom: bigint) {
+    return create(
+      'DEPOSIT_CAP_EXCEEDED',
+      `Deposit of ${amount} exceeds vault ${vaultId}'s remaining capacity of ${headroom}`,
+      { vaultId, amount: amount.toString(), headroom: headroom.toString() }
+    )
   },
 
   /**

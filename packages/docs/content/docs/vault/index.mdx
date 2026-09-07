@@ -10,66 +10,13 @@ NAVI Vault SDK is a unified vault SDK for the Sui blockchain. It covers vault di
   you deposit, the strategy earns, and you withdraw.
 </Callout>
 
-## Core Concepts
-
-### Source vs. Protocol
-
-Every vault carries two different discriminators, and mixing them up is the most common integration mistake:
-
-- **`source`** (`'navi' | 'volo'`) — which SDK code path and which Move package back the vault. This is what `depositPTB`, `withdrawPTB`, and the rest dispatch on.
-- **`protocol`** (`'navi' | 'volo' | 'astros'`) — the strategy provider that deploys the capital. This is a labelling/filtering field only.
-
-They often match, but not always: an `astros`-protocol vault is still served through the `navi` or `volo` source. **Branch on `source`, filter on `protocol`.**
-
-### Synchronous vs. Asynchronous Settlement
-
-The two sources settle very differently, and this shapes every deposit and withdrawal you build:
-
-|             | NAVI vaults                     | Volo vaults                                                         |
-| ----------- | ------------------------------- | ------------------------------------------------------------------- |
-| Deposit     | Settles in the same transaction | Creates a request an operator executes later                        |
-| Withdraw    | Returns the withdrawn coin      | Returns created request ids                                         |
-| Rate        | Known at execution              | Set when the operator executes                                      |
-| Cancellable | N/A                             | Yes, after a lock — see [Pending Requests](/vault/pending-requests) |
-
-Because a Volo request settles at a rate nobody knows at build time, `depositPTB` accepts an `expectedShares` floor that the contract enforces on execution.
-
-<Callout type="warn">
-  `expectedShares` is currently **ignored** for NAVI vaults rather than rejected. NAVI has no
-  slippage parameter, so a non-zero floor silently provides no protection there. Only rely on it
-  when `vault.source === 'volo'`.
-</Callout>
-
-### Shares and Receipts
-
-Both protocols track your position as **shares** recorded against a **receipt** object your wallet holds. A wallet can hold several receipts for the same vault, and the SDK plans deposits and withdrawals across them automatically — a single `withdrawPTB` call may produce several on-chain calls.
-
-Receipts matter for two reasons:
-
-- A receipt transferred away, or deposited elsewhere as a DeFi asset, drops out of the SDK's view while its shares keep living in the vault.
-- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically.
-  Raw protocol builders return an unconsumed receipt that you must use or transfer. See
-  [Deposit](/vault/deposit).
-
-### Units
-
-This trips people up, so it is worth stating plainly:
-
-- Top-level `depositPTB` takes a **human-readable decimal string** (`'1.5'`, `'0.0002'`) or a
-  `TransactionArgument` / `TransactionResult` containing raw base units. A transaction value
-  must be paired with `options.coin`.
-- Amount targets passed to `withdrawPTB` are human-readable decimal strings.
-- `withdrawPTB` with `{ kind: 'shares' }` takes a **raw on-chain share count**, the same unit `VaultPosition.shares` reports.
-- Protocol namespaces (`navi.*`, `volo.*`) take **raw base units** as `bigint`.
-- APY and APR fields are **decimal fractions**, not percentages: `0.0807` means 8.07%.
-
 ## Installation
 
 ```npm
 npm install @naviprotocol/vault @mysten/sui
 ```
 
-`@mysten/sui` is a peer dependency (`>=2.0.0`).
+`@mysten/sui` is a peer dependency (`>=2.16.0`).
 
 ## Quick Start
 
@@ -93,33 +40,66 @@ console.log(result.shares ?? result.requestId)
 const positions = await getPositions(owner)
 ```
 
-## Code Style and Conventions
+## Core Concepts
 
-### Interface Optional Parameters
+### Source vs. Protocol
 
-The last `options` parameter is usually an optional object used to customize interface behavior. Common optional parameters include but are not limited to:
+Every vault carries two different discriminators, and mixing them up is the most common integration mistake:
 
-- `client`: Sui SDK v2 gRPC client instance (`SuiGrpcClient` from `@mysten/sui/grpc`), used for customizing network requests in multi-network or custom RPC environments. Defaults to the public mainnet fullnode.
-- `env`: Specify environment. Only `'prod'` is currently supported.
-- `cacheTime`: Custom cache time in milliseconds. For example, `cacheTime: 60000` means cache for 60 seconds.
-- `disableCache`: Whether to disable cache.
-- `protocols`: Filter results by strategy provider.
-- `vaults`: Filter results by vault id.
+- **`source`** (`'navi' | 'volo'`) — which SDK code path and which Move package back the vault. This is what `depositPTB`, `withdrawPTB`, and the rest dispatch on.
+- **`protocol`** (`'navi' | 'volo' | 'astros'`) — the strategy provider that deploys the capital. This is a labelling/filtering field only.
 
-**Usage Recommendations:**
+They often match, but not always: an `astros`-protocol vault is still served through the `navi` or `volo` source. **Branch on `source`, filter on `protocol`.**
 
-- If you don't pass `options`, the SDK will automatically use default configuration, suitable for most regular scenarios.
-- When you need to customize network, environment, or cache strategy, it's recommended to pass corresponding parameters for more flexible control.
+### Synchronous vs. Asynchronous Settlement
 
-### Interface Naming
+The two sources settle very differently, and this shapes every deposit and withdrawal you build:
 
-- Interfaces with the `PTB` suffix indicate that the current interface is used for constructing transactions. They append calls to a `Transaction` you pass in and return handles to the values those calls produce — they do not sign or execute anything.
+|             | NAVI vaults                     | Volo vaults                                                         |
+| ----------- | ------------------------------- | ------------------------------------------------------------------- |
+| Deposit     | Settles in the same transaction | Creates a request an operator executes later                        |
+| Withdraw    | Returns the withdrawn coin      | Returns created request ids                                         |
+| Rate        | Known at execution              | Set when the operator executes                                      |
+| Cancellable | N/A                             | Yes, after a lock — see [Pending Requests](/vault/pending-requests) |
 
-### Caching
+Because a Volo request settles at a rate nobody knows at build time, `depositPTB` accepts an `expectedShares` floor that the contract enforces on execution. `withdrawPTB` takes a `minAmountOut` floor on either source — see [Payout Floors](/vault/deposit#payout-floors).
 
-Read interfaces are cached and de-duplicated: concurrent calls with identical arguments share one in-flight request. Defaults are 60s for `getVaults`/`getVault` and 1s for `getPositions`. `getPendingRequests` is not cached.
+<Callout>
+  `expectedShares` applies to Volo deposits. `navi_vault::deposit` takes no floor argument, and a
+  NAVI deposit settles in the same transaction at a rate you can already see.
+</Callout>
 
-### Error Handling
+### Shares and Receipts
+
+Both protocols track your position as **shares** recorded against a **receipt** object your wallet holds. A wallet can hold several receipts for the same vault, and the SDK plans deposits and withdrawals across them automatically — a single `withdrawPTB` call may produce several on-chain calls.
+
+Receipts matter for two reasons:
+
+- A receipt transferred away, or deposited elsewhere as a DeFi asset, drops out of the SDK's view while its shares keep living in the vault.
+- The top-level deposit builder transfers its returned `Receipt` to `owner` automatically. Raw protocol builders return an unconsumed receipt that you must use or transfer. See [Deposit & Withdraw](/vault/deposit).
+
+### Units
+
+This trips people up, so it is worth stating plainly:
+
+- Top-level `depositPTB` takes a **human-readable decimal string** (`'1.5'`, `'0.0002'`) or a
+  `TransactionArgument` / `TransactionResult` containing raw base units. A transaction value
+  must be paired with `options.coin`.
+- Amount targets passed to `withdrawPTB` are human-readable decimal strings.
+- `withdrawPTB` with `{ kind: 'shares' }` takes a **raw on-chain share count**, the same unit `VaultPosition.shares` reports.
+- Protocol namespaces (`navi.*`, `volo.*`) take **raw base units** as `bigint`.
+- APY and APR fields are **decimal fractions**, not percentages: `0.0807` means 8.07%.
+
+## Conventions
+
+Every interface takes an optional trailing `options` object. The ones worth knowing:
+
+- `client` — a `SuiGrpcClient` from `@mysten/sui/grpc`, for on-chain reads. Defaults to the public mainnet fullnode; pass your own for a private endpoint. Interfaces backed by the NAVI open API rather than by chain ignore it.
+- `cacheTime` / `disableCache` — read interfaces are cached and de-duplicated, so concurrent calls with identical arguments share one in-flight request. Per-interface defaults are documented in the [API reference](/typedoc/modules/_naviprotocol_vault.html).
+- `env` — only `'prod'` is currently supported.
+- `protocols` / `vaults` — filter results by strategy provider or vault id.
+
+Interfaces with a **`PTB` suffix** build transactions: they append calls to a `Transaction` you pass in and return handles to the values those calls produce. They never sign or execute anything.
 
 Every failure throws a `VaultSdkError` carrying a stable machine-readable `code`. See [Error Handling](/vault/errors).
 

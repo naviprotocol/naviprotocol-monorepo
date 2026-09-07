@@ -2,59 +2,22 @@
 title: Rewards
 ---
 
-The rewards module reads a wallet's claimable vault rewards and builds the calls to claim them.
+The rewards module reads a wallet's claimable vault rewards and builds the calls to claim them. See the API reference for [`getVaultRewards`](/typedoc/functions/_naviprotocol_vault.getVaultRewards.html) and [`claimRewardsPTB`](/typedoc/functions/_naviprotocol_vault.claimRewardsPTB.html).
 
 <Callout>
   Vault rewards are a **NAVI-only** feature. Volo vaults have no receipt reward ledger, so
   `getVaultRewards` returns an empty array for them and there is nothing to claim.
 </Callout>
 
-## Core Features
+## Reading Rewards
 
-- **Reward Discovery**: Read claimable and already-claimed amounts per receipt and coin type
-- **Automatic Harvesting**: Claim builders harvest the underlying markets first
-- **Coin Merging**: Payouts sharing a coin type are merged into a single coin
-
-`client` is optional — it defaults to the public mainnet fullnode; pass your own for a private endpoint.
-
-## API Reference
-
-### getVaultRewards
-
-Get a wallet's rewards for a vault, one entry per (receipt, reward coin type) pair — the granularity claiming happens at. See [documentation](/typedoc/functions/_naviprotocol_vault.getVaultRewards.html) for details.
-
-**Usage Example**
+`getVaultRewards` returns one entry per (receipt, reward coin type) pair — the granularity claiming happens at. Each entry carries `claimable`, `claimed`, the `receipt` it is credited to, and the `vault`, so a list can span several vaults.
 
 ```typescript
 import { getVaultRewards } from '@naviprotocol/vault'
 
 const rewards = await getVaultRewards(vault, '0x...')
-
-// Volo vaults always resolve to []
-const voloRewards = await getVaultRewards(voloVault, '0x...') // []
 ```
-
-**Result Example**
-
-```json
-[
-  {
-    "rewardCoinType": "0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX",
-    "receipt": "0x...",
-    "claimable": "345351397",
-    "claimed": "1200000000",
-    "vault": { "id": "0x...", "source": "navi" }
-  }
-]
-```
-
-**Return Fields**
-
-- `rewardCoinType`: Reward coin type, normalized to a `0x`-prefixed struct tag
-- `receipt`: Receipt object id the reward is credited to
-- `claimable`: Settled rewards not yet paid out, as a `bigint`
-- `claimed`: Rewards already paid out, as a `bigint`
-- `vault`: The vault object, carried through so `claimRewardsPTB` can span several vaults
 
 <Callout type="warn">
   `claimable` counts only **settled** rewards. An actual claim settles first and then pays, so it
@@ -62,11 +25,9 @@ const voloRewards = await getVaultRewards(voloVault, '0x...') // []
   filter on `claimable > 0n` to decide whether to claim.
 </Callout>
 
-### claimRewardsPTB
+## Claiming
 
-Build calls to harvest and claim rewards. See [documentation](/typedoc/functions/_naviprotocol_vault.claimRewardsPTB.html) for details.
-
-**Usage Example**
+`claimRewardsPTB` returns an array of `{ coin, coinType }`, one entry per **distinct reward coin type** across the rewards you passed in. Payouts from different receipts sharing a coin type are merged into one coin.
 
 ```typescript
 import { getVaultRewards, claimRewardsPTB } from '@naviprotocol/vault'
@@ -77,77 +38,43 @@ const rewards = await getVaultRewards(vault, owner, { client })
 
 const claimed = await claimRewardsPTB(tx, rewards, { client })
 
-// One entry per distinct reward coin type — each coin must be consumed
-for (const { coin, coinType } of claimed) {
-  tx.transferObjects([coin], owner)
-}
-```
-
-**Parameters**
-
-- `tx`: The transaction to append calls to
-- `rewards`: Reward positions from `getVaultRewards`. May span several receipts and several vaults
-- `options.client`: gRPC client for on-chain reads
-
-**Returns**
-
-An array of `{ coin, coinType }`, one entry per **distinct reward coin type** across all the rewards you passed in. Payouts from different receipts sharing a coin type are merged into one coin.
-
-<Callout type="warn">
-  The returned coins are unconsumed — transfer them, or the transaction will fail.
-</Callout>
-
-## Claiming Across Multiple Vaults
-
-`claimRewardsPTB` accepts rewards spanning several vaults and harvests each distinct vault once. You can collect rewards across a whole portfolio and claim them in a single transaction:
-
-```typescript
-import { getPositions, getVault, getVaultRewards, claimRewardsPTB } from '@naviprotocol/vault'
-import { Transaction } from '@mysten/sui/transactions'
-
-const positions = await getPositions(owner)
-
-// Only NAVI-served vaults have rewards
-const naviPositions = positions.filter((position) => position.source === 'navi')
-
-const allRewards = (
-  await Promise.all(
-    naviPositions.map(async (position) => {
-      const vault = await getVault(position.vaultId)
-      return getVaultRewards(vault, owner, { client })
-    })
-  )
-).flat()
-
-const tx = new Transaction()
-const claimed = await claimRewardsPTB(tx, allRewards, { client })
-
 for (const { coin } of claimed) {
   tx.transferObjects([coin], owner)
 }
 ```
 
-## What the Builder Does For You
+<Callout type="warn">
+  The returned coins are unconsumed — transfer them, or the transaction will fail.
+</Callout>
 
-Before claiming, `claimRewardsPTB` harvests each distinct vault's active market reward rules (`collect_reward`), advancing their on-chain indices. Without this, rewards sitting unharvested in the underlying lending market would be invisible and unclaimable.
+`claimRewardsPTB` accepts rewards spanning several vaults and harvests each distinct vault once, so a whole portfolio can be claimed in one transaction:
 
-Deposits and withdrawals harvest too, so a claim bundled after either one in the same transaction is already working from current indices.
+```typescript
+import { getPositions, getVault, getVaultRewards, claimRewardsPTB } from '@naviprotocol/vault'
 
-## Reward Staleness
+const positions = await getPositions(owner)
 
-Reward figures inherit the contract's own staleness, which is worth understanding when numbers look lower than expected:
+// Only NAVI-served vaults have rewards
+const allRewards = (
+  await Promise.all(
+    positions
+      .filter((position) => position.source === 'navi')
+      .map(async (position) => getVaultRewards(await getVault(position.vaultId), owner, { client }))
+  )
+).flat()
 
-- **Market rules** only advance on `collect_reward`. Rewards accrued in the underlying lending protocol since the last harvest are not yet reflected.
+const claimed = await claimRewardsPTB(tx, allRewards, { client })
+```
+
+## Why Figures Look Stale
+
+Before claiming, `claimRewardsPTB` harvests each vault's active market reward rules, advancing their on-chain indices. Without this, rewards sitting unharvested in the underlying lending market would be invisible and unclaimable. Deposits and withdrawals harvest too, so a claim bundled after either one in the same transaction already works from current indices.
+
+Reward figures otherwise inherit the contract's own staleness:
+
+- **Market rules** only advance on harvest. Rewards accrued in the underlying lending protocol since the last one are not yet reflected.
 - **Vault-native rules** (funded by admin deposits) only advance when someone interacts with the vault.
 
 This is why `claimable` understates what a claim actually pays: the claim harvests and settles first.
 
-## Errors
-
-| Code                   | Cause                                                                  |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `VAULT_UNSUPPORTED`    | A reward's vault is not a NAVI vault                                   |
-| `VAULT_CONFIG_INVALID` | A reward rule's pool or its market's reward fund could not be resolved |
-| `CHAIN_QUERY_FAILED`   | An on-chain read failed                                                |
-
-See [Error Handling](/vault/errors) for how to branch on these.
+Failures throw `VAULT_UNSUPPORTED` (the reward's vault is not a NAVI vault), `VAULT_CONFIG_INVALID` (a rule's pool or reward fund could not be resolved), or `CHAIN_QUERY_FAILED`. See [Error Handling](/vault/errors).

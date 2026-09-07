@@ -1,135 +1,31 @@
 ---
-title: Vault Discovery
+title: Vaults & Positions
 ---
 
-The vault discovery module provides functions to list every available vault and resolve a single vault by id. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
+Vault discovery lists what exists; positions report what a wallet holds in it. Both read from the NAVI open API rather than from chain, so neither uses `client`. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
 
-## Core Features
+## Discovering Vaults
 
-- **Vault Listing**: Retrieve all available vaults, optionally filtered by strategy provider
-- **Vault Resolution**: Resolve a vault id — or an already-fetched vault — to a full vault object
-- **Metadata Access**: Read APY, TVL, exchange rate, deposit limits, and lockup windows
-
-`client` is not used here — vault metadata comes from the NAVI open API rather than from chain.
-
-## API Reference
-
-### getVaults
-
-Get information for all available vaults. You can filter by strategy provider. See [documentation](/typedoc/variables/_naviprotocol_vault.getVaults.html) for details.
-
-Results are cached for 60 seconds by default.
-
-**Usage Example**
+`getVaults` lists every available vault, optionally filtered by strategy provider. `getVault` resolves a single id — and passes an already-fetched `Vault` object straight through with no network call, so you can hand it either form without branching.
 
 ```typescript
-import { getVaults } from '@naviprotocol/vault'
+import { getVaults, getVault } from '@naviprotocol/vault'
 
-// Get all vaults
 const vaults = await getVaults()
+const naviVaults = await getVaults({ protocols: ['navi'] })
 
-// Filter by strategy provider
-const naviVaults = await getVaults({
-  protocols: ['navi'] // Optional: filter by strategy provider
-})
-
-// With cache control
-const fresh = await getVaults({
-  cacheTime: 30000, // Optional: cache time in milliseconds
-  disableCache: false // Optional: bypass the cache entirely
-})
-```
-
-**Result Example**
-
-```json
-[
-  {
-    "id": "0x...",
-    "source": "navi",
-    "protocol": "navi",
-    "name": "SUI Yield Vault",
-    "riskLevel": "low",
-    "status": "active",
-    "apy": {
-      "avg7d": 0.0807,
-      "avg30d": 0.0791,
-      "instant": 0.0823,
-      "target": null
-    },
-    "assets": {
-      "baseCoin": {
-        "coinType": "0x2::sui::SUI",
-        "decimals": 9,
-        "symbol": "SUI"
-      }
-    },
-    "totalStaked": 1250000.5,
-    "totalStakedUsd": 4375001.75,
-    "totalShares": "1200000000000000",
-    "exchangeRate": 1.0417,
-    "coinPrice": 3.5,
-    "minInvestment": 0.1,
-    "stakeCapAmount": 5000000,
-    "lockup": null,
-    "navi": {
-      "package": "0x..."
-    }
-  }
-]
-```
-
-**Return Fields**
-
-- `id`: Sui object id of the vault. The global primary key
-- `source`: Which SDK code path serves this vault (`'navi'` or `'volo'`). Branch on this
-- `protocol`: Strategy provider (`'navi'`, `'volo'`, or `'astros'`). Filter on this, do not branch on it
-- `name`: Human-readable display name
-- `riskLevel`: Free-form risk classification, e.g. `"low"`
-- `status`: Free-form vault status, e.g. `"active"`
-- `apy`: Yield figures as **decimal fractions** (`0.0807` = 8.07%), with `avg7d`, `avg30d`, `instant`, and `target`
-- `assets.baseCoin`: The single coin the vault accepts and pays out — `coinType`, `decimals`, `symbol`
-- `totalStaked` / `totalStakedUsd`: Total principal staked, in human units and in USD
-- `totalShares`: Total shares outstanding, as a raw base-unit **string** (may exceed `Number.MAX_SAFE_INTEGER`)
-- `exchangeRate`: Base coin units per share
-- `coinPrice`: Base coin's current USD price
-- `minInvestment`: Minimum deposit in human units, or `null` if unrestricted
-- `stakeCapAmount`: Vault-wide deposit cap in human units, or `null` if unrestricted
-- `lockup`: Deposit lockup window `{ startAt, endAt }` as ISO-8601 timestamps, or `null`
-- `navi` / `volo`: On-chain package configuration. Exactly one is present, matching `source`
-
-<Callout>
-  Nearly every numeric field is nullable — the API returns `null` when a figure is unavailable
-  rather than guessing. Handle `null` before doing arithmetic on `totalStaked`, `exchangeRate`, or
-  any `apy` member.
-</Callout>
-
-### getVault
-
-Resolve a vault id to a full vault object. See [documentation](/typedoc/variables/_naviprotocol_vault.getVault.html) for details.
-
-An already-fetched `Vault` object is returned as-is with no network call, so you can pass either form through without branching. Results are cached for 60 seconds by default.
-
-**Usage Example**
-
-```typescript
-import { getVault } from '@naviprotocol/vault'
-
-// Resolve by id
 const vault = await getVault('0x...')
-
-// Pass through an object you already have (no lookup performed)
-const same = await getVault(vault)
-
-// With cache control
-const fresh = await getVault('0x...', {
-  disableCache: true // Optional: always refetch
-})
+const same = await getVault(vault) // no lookup performed
 ```
 
-**Errors**
+Field-by-field shapes are in the [API reference](/typedoc/variables/_naviprotocol_vault.getVaults.html). Four things about them are worth stating here, because they cause real bugs:
 
-Throws `VaultSdkError` with code `VAULT_NOT_FOUND` when no vault matches the id:
+- **Nearly every numeric field is nullable.** The API returns `null` when a figure is unavailable rather than guessing. Handle `null` before doing arithmetic on `totalStaked`, `exchangeRate`, or any `apy` member.
+- **`totalShares` is a string**, not a number — it can exceed `Number.MAX_SAFE_INTEGER`. Keep it as a `bigint`.
+- **`apy` members are decimal fractions**: `0.0807` means 8.07%.
+- **`navi` / `volo` config**: exactly one is present, matching `source`.
+
+`getVault` throws `VAULT_NOT_FOUND` when no vault matches:
 
 ```typescript
 import { getVault, isVaultSdkError } from '@naviprotocol/vault'
@@ -145,7 +41,7 @@ try {
 
 ## Selecting a Vault
 
-Vault identifiers are accepted anywhere as either a string id or a resolved object. Passing the object avoids a redundant lookup when you already have it:
+Vault identifiers are accepted anywhere as either a string id or a resolved object. Note the null checks — a vault with unknown totals should not be silently treated as having room:
 
 ```typescript
 import { getVaults, depositPTB } from '@naviprotocol/vault'
@@ -153,7 +49,6 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const vaults = await getVaults({ protocols: ['navi'] })
 
-// Pick by base coin, skipping vaults that are full or inactive
 const suiVault = vaults.find(
   (vault) =>
     vault.assets.baseCoin.symbol === 'SUI' &&
@@ -168,3 +63,31 @@ if (suiVault) {
   await depositPTB(tx, suiVault, owner, '1.5')
 }
 ```
+
+## Reading Positions
+
+`getPositions` reports what a wallet holds across every vault — share balances, position value, lifetime yield, and the APR each position earns.
+
+```typescript
+import { getPositions } from '@naviprotocol/vault'
+
+const positions = await getPositions('0x...')
+const naviPositions = await getPositions('0x...', { protocols: ['navi'] })
+const scoped = await getPositions('0x...', { vaults: ['0xvault1', '0xvault2'] })
+```
+
+Two fields carry more meaning than their names suggest:
+
+- **`shares`** is a raw on-chain share count as a **string** — exactly the unit `withdrawPTB` accepts for `{ kind: 'shares' }`.
+- **`apr`** is `null` when the upstream value fell outside a plausible band. The SDK prefers reporting nothing over reporting a 100x-wrong yield. Every other numeric field is nullable too.
+
+Both `protocols` and `vaults` filter **client-side** on the full API response, so narrowing does not save a round trip. Use them for convenience, not performance. And `protocols` filters on the strategy provider, not the source — to split by which code path serves a position, filter on `position.source` yourself.
+
+## Positions vs. On-Chain Receipts
+
+`getPositions` reports the API's view, which is what you want for portfolio display. It is not the same as the wallet's on-chain receipts:
+
+- A receipt transferred away or deposited elsewhere as a DeFi asset may not appear here, while its shares keep living in the vault.
+- For Volo, a pending withdraw request does not reduce `shares` until an operator executes it.
+
+When you need the exact on-chain state that deposit and withdraw planning runs against, read receipts directly through the [protocol namespaces](/vault/protocols).

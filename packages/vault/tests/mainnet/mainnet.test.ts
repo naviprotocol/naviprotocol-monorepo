@@ -6,6 +6,7 @@
  */
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { errorData, initializeMainnetContext, report } from './context'
+import './all-vaults-config.cases'
 import './cancel-pending-request-ptb.cases'
 import './claim-rewards-ptb.cases'
 import './deposit-ptb.cases'

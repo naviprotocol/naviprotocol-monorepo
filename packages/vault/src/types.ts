@@ -56,7 +56,10 @@ type VoloVaultCustomConfig = {
   package: string
   /** Shared `RewardManager` object the vault's deposit/reward calls read. */
   rewardManager: string
-  /** Shared status-record object `vault_deposit_recorder` calls write off-chain-visible request records to. */
+  /**
+   * Address of the vault-event-recorder PACKAGE whose `vault_deposit_recorder` module the
+   * deposit/withdraw builders call to emit off-chain-visible request records. Not an object id.
+   */
   statusRecord: string
 }
 

@@ -33,6 +33,29 @@ export function parseHumanAmount(amount: string, decimals: number): bigint {
 }
 
 /**
+ * Splits a single total across several calls in proportion to `weights`.
+ *
+ * Both protocols may spread one withdrawal over several receipts, and each contract call
+ * carries its own payout floor — so a caller's one `minAmountOut` has to be divided among
+ * them, or every call would have to clear the whole floor on its own. Floor division leaves
+ * a remainder of at most `weights.length - 1`, which goes on the last entry so the parts
+ * sum to exactly `total`.
+ *
+ * @param total - The value to divide, in raw base units
+ * @param weights - One non-negative weight per call, in call order
+ * @returns One share per weight, summing to `total`; all zeroes when `total` or the weights
+ *          sum to zero
+ */
+export function apportion(total: bigint, weights: bigint[]): bigint[] {
+  const sum = weights.reduce((carry, weight) => carry + weight, 0n)
+  if (total <= 0n || sum <= 0n) return weights.map(() => 0n)
+  const shares = weights.map((weight) => (total * weight) / sum)
+  const assigned = shares.reduce((carry, share) => carry + share, 0n)
+  shares[shares.length - 1] += total - assigned
+  return shares
+}
+
+/**
  * Generates a cache key from function arguments
  *
  * This function creates a unique key for caching by serializing the arguments

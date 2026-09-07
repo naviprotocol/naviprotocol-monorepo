@@ -4,15 +4,6 @@ title: Error Handling
 
 Every failure the Vault SDK raises is a `VaultSdkError` carrying a stable, machine-readable `code`. Branch on `code` rather than parsing messages — messages are free-form and may change between releases.
 
-## Core Features
-
-- **Stable Codes**: A fixed set of codes safe to switch on
-- **Structured Details**: Machine-readable context attached to each error
-- **Cause Chaining**: The underlying error preserved as `cause`
-- **Type Guard**: `isVaultSdkError` for narrowing a caught `unknown`
-
-## Basic Usage
-
 ```typescript
 import { getVault, isVaultSdkError } from '@naviprotocol/vault'
 
@@ -20,8 +11,8 @@ try {
   const vault = await getVault('0x...')
 } catch (error) {
   if (isVaultSdkError(error)) {
-    console.log(error.code) // 'VAULT_NOT_FOUND'
-    console.log(error.message) // human-readable, not a stable contract
+    console.log(error.code) // 'VAULT_NOT_FOUND' — stable, safe to switch on
+    console.log(error.message) // human-readable, NOT a stable contract
     console.log(error.details) // structured context
     console.log(error.cause) // underlying error, when there was one
   }
@@ -29,13 +20,7 @@ try {
 }
 ```
 
-## VaultSdkError
-
-- `code`: Stable failure code — see the table below
-- `message`: Human-readable description. **Not** part of the stable contract
-- `details`: Structured context, e.g. the vault id or the offending amount
-- `cause`: The underlying error this one wraps, when applicable
-- `toJSON()`: Serializable form for logs — name, code, message, and details. Deliberately omits `cause` and the stack
+`toJSON()` gives a serializable form safe to log — name, code, message and details, deliberately omitting `cause` and the stack.
 
 ## Error Codes
 
@@ -46,24 +31,59 @@ All codes are exported as `VAULT_SDK_ERROR_CODES`, with the union type `VaultSdk
 | `VAULT_NOT_FOUND`            | No vault matches the given id                                                      |
 | `VAULT_UNSUPPORTED`          | The vault does not support this operation, e.g. a `navi.*` builder on a Volo vault |
 | `VAULT_CONFIG_INVALID`       | The vault's API or on-chain configuration is missing a field the operation needs   |
+| `VAULT_NOT_OPEN`             | The vault's status does not currently permit the operation                         |
 | `INVALID_ARGUMENT`           | An argument other than an amount is missing or malformed                           |
 | `INVALID_AMOUNT`             | An amount or share count is not a valid positive value                             |
 | `INVALID_REQUEST_TYPE`       | A pending request was passed to the wrong cancel builder                           |
 | `INSUFFICIENT_BALANCE`       | The owner's receipts cannot cover the requested withdrawal                         |
+| `DEPOSIT_BELOW_MINIMUM`      | The deposit is under the vault's `minInvestment`                                   |
+| `DEPOSIT_CAP_EXCEEDED`       | The deposit is over the vault's remaining `stakeCapAmount` headroom                |
+| `SLIPPAGE_EXCEEDED`          | The payout fell below the `minAmountOut` / `expectedShares` floor                  |
+| `RECEIPT_UNAVAILABLE`        | A receipt or request is not yet in a state that permits the operation              |
+| `UNSUPPORTED_CONFIG_VERSION` | The vault object's schema version is ahead of the configured package address       |
+| `MOVE_ABORT`                 | A recognized vault-package abort with no more specific code                        |
 | `OPERATION_NOT_SUPPORTED`    | The operation is not implemented by this SDK                                       |
 | `CHAIN_QUERY_FAILED`         | An on-chain read failed at the transport level                                     |
 | `CHAIN_DATA_INVALID`         | On-chain data was read but has an unexpected shape                                 |
 | `API_REQUEST_FAILED`         | A NAVI open API request failed — network error or non-2xx                          |
 | `API_RESPONSE_INVALID`       | The API responded successfully but with an unexpected payload                      |
 | `RATE_LIMITED`               | The API responded with HTTP 429. A specialization of `API_REQUEST_FAILED`          |
-| `UNSUPPORTED_CONFIG_VERSION` | Reserved for a future on-chain config version this build cannot parse              |
-| `UNSUPPORTED_DEPOSIT_ASSET`  | Reserved for a deposit asset the vault does not accept                             |
-| `REQUEST_NOT_FOUND`          | Reserved for looking up a pending request that does not exist                      |
 
 <Callout>
   `RATE_LIMITED` is raised **instead of** `API_REQUEST_FAILED` on HTTP 429, not in addition to it.
   Handle both if you are catching API failures generically.
 </Callout>
+
+`UNSUPPORTED_DEPOSIT_ASSET` and `REQUEST_NOT_FOUND` are also exported but reserved — nothing in this release throws them.
+
+## Checks That Run Before the Call
+
+`depositPTB` and `withdrawPTB` reject a request the vault is known to refuse before appending anything to your transaction, so it costs no gas and needs no dry run: `VAULT_NOT_OPEN` when the vault's status rejects the operation, and `DEPOSIT_BELOW_MINIMUM` / `DEPOSIT_CAP_EXCEEDED` when a literal amount falls outside the vault's advertised bounds. Both bounds come from the API snapshot and match what the NAVI front end applies, so your users hit the same limits. Neither is a contract invariant — the vault contract does not check `minInvestment`, and it prices the cap against its own state at execution time.
+
+The checks are exported as [`checkVaultAccepts`](/typedoc/functions/_naviprotocol_vault.checkVaultAccepts.html) and [`checkDepositAmount`](/typedoc/functions/_naviprotocol_vault.checkDepositAmount.html) if you want to run them yourself — to disable a button before anyone clicks it, say. The [protocol namespaces](/vault/protocols) skip them, since they take raw amounts and leave policy to the caller.
+
+## Decoding On-Chain Aborts
+
+A PTB builder cannot see an abort: it happens when you dry-run or execute the transaction. `parseMoveAbort` decodes what came back into the Move constant's name and meaning, and `asVaultSdkError` turns it into a `VaultSdkError` carrying the same codes as the table above — so one `switch` handles a condition whether the SDK caught it or the chain did.
+
+```typescript
+import { asVaultSdkError, parseMoveAbort } from '@naviprotocol/vault'
+
+const result = await client.dryRunTransaction({ transaction: tx })
+
+if (result.effects?.status.error) {
+  const abort = parseMoveAbort(result.effects.status.error)
+  // { abortCode: 5022, name: 'ERR_VAULT_NOT_NORMAL', module: 'vault',
+  //   code: 'VAULT_NOT_OPEN', message: 'The vault is locked or mid-operation, ...' }
+
+  const typed = asVaultSdkError(result.effects.status.error)
+  if (typed?.code === 'VAULT_NOT_OPEN') {
+    // Transient: the vault is mid-operation. Retry later.
+  }
+}
+```
+
+Both return `undefined` for anything they cannot decode — a network failure, or an abort from a module the SDK does not call into. Rethrow the original in that case rather than relabeling it. The decoded table is exported as `VAULT_MOVE_ABORTS`.
 
 ## Branching on Codes
 
@@ -93,7 +113,7 @@ try {
 
 ## Reading Details
 
-`details` carries operation-specific context. The most useful case is an insufficient balance, where it tells you exactly how far short the request fell:
+`details` carries operation-specific context. The most useful case is an insufficient balance, where it tells you exactly how far short the request fell — and, for Volo, why each receipt was skipped:
 
 ```typescript
 import { withdrawPTB, isVaultSdkError } from '@naviprotocol/vault'
@@ -106,73 +126,21 @@ try {
     // Volo: requestedShares, uncoveredShares, excludedReceipts
     console.log(error.details?.uncoveredShares)
 
-    // Volo lists why each receipt was skipped: locked, or already pending
     for (const excluded of (error.details?.excludedReceipts as { id: string; reason: string }[]) ??
       []) {
-      console.log(excluded.id, excluded.reason)
+      console.log(excluded.id, excluded.reason) // locked, or already pending
     }
   }
 }
 ```
 
-Other common `details` keys:
+Other common `details` keys: `vaultId` and `owner` on most vault-scoped failures, `url` and `status` on API failures, `expected` and `actual` on `VAULT_UNSUPPORTED` and `INVALID_REQUEST_TYPE`, `amount` and `target` on `INVALID_AMOUNT`.
 
-- `vaultId`, `owner` — on most vault-scoped failures
-- `url`, `status` — on `API_REQUEST_FAILED` and `RATE_LIMITED`
-- `expected`, `actual` — on `VAULT_UNSUPPORTED` and `INVALID_REQUEST_TYPE`
-- `amount`, `target` — on `INVALID_AMOUNT`
-
-## Retry Strategy
+## What to Retry
 
 Codes fall into three groups, and only one is worth retrying:
 
-**Retryable** — transient, retry with backoff:
-
-- `RATE_LIMITED` — back off before retrying
-- `API_REQUEST_FAILED` — network or upstream failure
-- `CHAIN_QUERY_FAILED` — RPC transport failure
-
-**Not retryable — fix the input:**
-
-- `INVALID_AMOUNT`, `INVALID_ARGUMENT`, `INVALID_REQUEST_TYPE`
-- `VAULT_NOT_FOUND`, `VAULT_UNSUPPORTED`
-- `INSUFFICIENT_BALANCE`
-
-**Not retryable — report it:**
-
-- `VAULT_CONFIG_INVALID`, `CHAIN_DATA_INVALID`, `API_RESPONSE_INVALID` — these indicate a data or configuration problem upstream rather than anything the caller did
-
-```typescript
-import { isVaultSdkError, type VaultSdkErrorCode } from '@naviprotocol/vault'
-
-const RETRYABLE: VaultSdkErrorCode[] = ['RATE_LIMITED', 'API_REQUEST_FAILED', 'CHAIN_QUERY_FAILED']
-
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await fn()
-    } catch (error) {
-      const retryable = isVaultSdkError(error) && RETRYABLE.includes(error.code)
-      if (!retryable || attempt >= attempts) throw error
-      await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 500))
-    }
-  }
-}
-```
-
-## Logging
-
-`toJSON()` gives a serializable form safe to log, omitting the stack and the non-JSON-safe `cause`:
-
-```typescript
-import { isVaultSdkError } from '@naviprotocol/vault'
-
-try {
-  await getPositions(owner)
-} catch (error) {
-  if (isVaultSdkError(error)) {
-    logger.error('vault sdk failure', error.toJSON())
-  }
-  throw error
-}
-```
+- **Retryable, with backoff** — `RATE_LIMITED`, `API_REQUEST_FAILED`, `CHAIN_QUERY_FAILED`. Transient network or upstream failures.
+- **Retryable, but later** — `VAULT_NOT_OPEN`, `RECEIPT_UNAVAILABLE`, `SLIPPAGE_EXCEEDED`. The request was built correctly; the vault, the receipt, or the rate has to change first. Re-read state before rebuilding rather than resending the same transaction.
+- **Not retryable, fix the input** — `INVALID_AMOUNT`, `INVALID_ARGUMENT`, `INVALID_REQUEST_TYPE`, `VAULT_NOT_FOUND`, `VAULT_UNSUPPORTED`, `INSUFFICIENT_BALANCE`, `DEPOSIT_BELOW_MINIMUM`, `DEPOSIT_CAP_EXCEEDED`.
+- **Not retryable, report it** — `VAULT_CONFIG_INVALID`, `CHAIN_DATA_INVALID`, `API_RESPONSE_INVALID`, `UNSUPPORTED_CONFIG_VERSION`. These indicate a data or configuration problem upstream rather than anything the caller did.
