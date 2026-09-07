@@ -23,15 +23,14 @@ import { vaultErrors } from '../../error'
  *
  * Volo deposits are asynchronous: this creates a `DepositRequest` that an operator later
  * executes, minting shares at that point's exchange rate. The share floor is fixed at zero.
- * Reuses the owner's lowest-share existing receipt if one exists; otherwise the contract
- * mints a new one. Also records the request off-chain via {@link recordUserDepositPTB} so
+ * Also records the request off-chain via {@link recordUserDepositPTB} so
  * it surfaces through the NAVI open API's pending-requests endpoint.
  *
  * The top-level `depositPTB` wraps this with human-unit amount parsing and source dispatch.
  *
  * @param tx - Transaction to append the deposit calls to
  * @param vault - The Volo vault to deposit into. Must carry `vault.volo` config
- * @param owner - Sui address the request pays out to, and whose receipts are searched for one to reuse
+ * @param owner - Sui address the request is credited to
  * @param amount - Deposit amount in RAW base units. Must be a `bigint` unless `options.coin`
  *                 is given, in which case a transaction argument is also accepted
  * @param options - Optional coin source and client override
@@ -59,7 +58,7 @@ export async function depositPTB(
   checkVault(vault)
   const { receipts } = await getVaultReceiptsWithView(vault, owner, options)
 
-  const depositable = receipts.sort((a, b) =>
+  const depositable = [...receipts].sort((a, b) =>
     a.shares < b.shares ? -1 : a.shares > b.shares ? 1 : 0
   )
   const receipt = depositable[0]

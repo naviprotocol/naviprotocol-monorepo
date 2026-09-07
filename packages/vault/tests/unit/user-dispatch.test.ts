@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Vault } from '../../src/types'
 
+import { claimRewardsPTB, depositPTB, withdrawPTB } from '../../src/user'
+import * as navi from '../../src/protocols/navi'
+import * as volo from '../../src/protocols/volo'
+import { isVaultSdkError } from '../../src/error'
+
 vi.mock('../../src/vault', () => ({
   getVault: vi.fn(async (vault: Vault) => vault)
 }))
@@ -14,11 +19,6 @@ vi.mock('../../src/protocols/volo', () => ({
   depositPTB: vi.fn(),
   withdrawPTB: vi.fn()
 }))
-
-import { claimRewardsPTB, depositPTB, withdrawPTB } from '../../src/user'
-import * as navi from '../../src/protocols/navi'
-import * as volo from '../../src/protocols/volo'
-import { isVaultSdkError } from '../../src/error'
 
 const OWNER = '0x000000000000000000000000000000000000000000000000000000000000abcd'
 

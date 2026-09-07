@@ -49,14 +49,14 @@ The top-level builder does not accept a literal `bigint`. Use the [protocol name
 
 The builder normalizes the protocol-specific tuples into one object and transfers owned return values to `owner` automatically:
 
-| Source | Return shape             | Automatic transfer                |
-| ------ | ------------------------ | --------------------------------- |
-| NAVI   | `{ receipt, shares }`    | `receipt` to `owner`              |
+| Source | Return shape                     | Automatic transfer                |
+| ------ | -------------------------------- | --------------------------------- |
+| NAVI   | `{ receipt, shares }`            | `receipt` to `owner`              |
 | Volo   | `{ receipt, requestId, charge }` | `receipt` and `charge` to `owner` |
 
 <Callout type="warn">
-  By default, do not consume `result.receipt` or the Volo `result.charge` again: they have
-  already been transferred to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
+  By default, do not consume `result.receipt` or the Volo `result.charge` again: they have already
+  been transferred to `owner`. Raw `navi.depositPTB` and `volo.depositPTB` calls still return
   unconsumed tuples; see [Protocol Namespaces](/vault/protocols).
 </Callout>
 
@@ -113,9 +113,9 @@ await withdrawPTB(
 
 The builder returns an object with the field for the selected source:
 
-| Source | Returns                                     | Settlement                            |
-| ------ | ------------------------------------------- | ------------------------------------- |
-| NAVI   | `{ coin }` — the withdrawn coin    | Immediate, same transaction           |
+| Source | Returns                                | Settlement                            |
+| ------ | -------------------------------------- | ------------------------------------- |
+| NAVI   | `{ coin }` — the withdrawn coin        | Immediate, same transaction           |
 | Volo   | `{ requestIds }` — created request ids | Asynchronous, executed by an operator |
 
 ```typescript
@@ -139,9 +139,9 @@ if (result.requestIds) {
 ```
 
 <Callout type="warn">
-  NAVI withdrawals transfer the coin to `owner` by default. With `disableAutoTransfer: true`,
-  you must consume it yourself. Volo returns droppable request ids; the flag does not change
-  its later contract-managed payout, and no principal moves in this transaction.
+  NAVI withdrawals transfer the coin to `owner` by default. With `disableAutoTransfer: true`, you
+  must consume it yourself. Volo returns droppable request ids; the flag does not change its later
+  contract-managed payout, and no principal moves in this transaction.
 </Callout>
 
 ### Receipt Planning
@@ -182,7 +182,7 @@ The two protocols burn different things on-chain, and the SDK converts for you:
 
 Both implementations do setup work before the main call, so you do not have to. **NAVI** syncs the vault's cached balance in every registered lending market, harvests active reward rules so indices are current, reuses the owner's lowest-share receipt or creates one, deposits into the vault's default lending pool, and transfers the receipt to `owner`.
 
-**Volo** reuses the owner's lowest-share **eligible** receipt — one whose status accepts a new request — or passes `option::none` and lets the contract mint one, creates the request with a zero minimum share amount, records it off-chain so it appears in [`getPendingRequests`](/vault/pending-requests), and transfers the receipt and charge coin to `owner`.
+**Volo** creates the request with a zero minimum share amount, records it off-chain so it appears in [`getPendingRequests`](/vault/pending-requests), and transfers the receipt and charge coin to `owner`.
 
 ## Errors
 

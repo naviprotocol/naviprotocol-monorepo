@@ -120,10 +120,10 @@ beforeEach(() => {
 })
 
 describe('volo.depositPTB call shape (user_entry::deposit + recorder)', () => {
-  it('reuses the smallest eligible receipt and records the request with the contract-returned id', async () => {
+  it('reuses the smallest receipt regardless of status and records the contract-returned request id', async () => {
     mockReceipts([
       receipt('0xb16', 100n),
-      receipt('0x5a11', 5n, RECEIPT_STATUS.PENDING_DEPOSIT), // ineligible: mid-deposit (5017 on chain)
+      receipt('0x5a11', 5n, RECEIPT_STATUS.PENDING_DEPOSIT),
       receipt('0xa1d', 50n)
     ])
     const tx = new Transaction()
@@ -139,7 +139,7 @@ describe('volo.depositPTB call shape (user_entry::deposit + recorder)', () => {
     ])
 
     const some = calls[0]
-    expect(inputObjectId(tx, some.arguments[0])).toBe(normalizeSuiAddress('0xa1d'))
+    expect(inputObjectId(tx, some.arguments[0])).toBe(normalizeSuiAddress('0x5a11'))
 
     const deposit = calls[1]
     expect(deposit.package).toBe(PACKAGE)
@@ -167,12 +167,21 @@ describe('volo.depositPTB call shape (user_entry::deposit + recorder)', () => {
     expect(pureU256(tx, deposit.arguments[4])).toBe('0')
   })
 
-  it('asks the contract to mint a receipt when every existing one is ineligible', async () => {
-    // Regression: without the status filter this passed a mid-deposit receipt and aborted with 5017.
-    mockReceipts([
-      receipt('0xa', 10n, RECEIPT_STATUS.PENDING_DEPOSIT),
-      receipt('0xb', 20n, RECEIPT_STATUS.PARALLEL_PENDING_DEPOSIT_WITHDRAW)
-    ])
+  it.each(Object.values(RECEIPT_STATUS))(
+    'reuses the sole receipt with status %s',
+    async (status) => {
+      mockReceipts([receipt('0xa', 0n, status)])
+      const tx = new Transaction()
+      await depositPTB(tx, vault, OWNER, 1n, { coin: tx.object(normalizeSuiAddress('0xc0ffee')) })
+      const calls = moveCalls(tx)
+      expect(target(calls[0])).toBe('option::some')
+      expect(inputObjectId(tx, calls[0].arguments[0])).toBe(normalizeSuiAddress('0xa'))
+      expect(calls.some((call) => target(call) === 'option::none')).toBe(false)
+    }
+  )
+
+  it('asks the contract to mint a receipt when none exists', async () => {
+    mockReceipts([])
     const tx = new Transaction()
     await depositPTB(tx, vault, OWNER, 1n, { coin: tx.object(normalizeSuiAddress('0xc0ffee')) })
     expect(moveCalls(tx).map(target)).toEqual([
