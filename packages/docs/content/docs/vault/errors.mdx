@@ -38,7 +38,7 @@ All codes are exported as `VAULT_SDK_ERROR_CODES`, with the union type `VaultSdk
 | `INSUFFICIENT_BALANCE`       | The owner's receipts cannot cover the requested withdrawal                         |
 | `DEPOSIT_BELOW_MINIMUM`      | The deposit is under the vault's `minInvestment`                                   |
 | `DEPOSIT_CAP_EXCEEDED`       | The deposit is over the vault's remaining `stakeCapAmount` headroom                |
-| `SLIPPAGE_EXCEEDED`          | The payout fell below the `minAmountOut` / `expectedShares` floor                  |
+| `SLIPPAGE_EXCEEDED`          | The payout fell below the `minAmountOut` withdrawal floor                  |
 | `RECEIPT_UNAVAILABLE`        | A receipt or request is not yet in a state that permits the operation              |
 | `UNSUPPORTED_CONFIG_VERSION` | The vault object's schema version is ahead of the configured package address       |
 | `MOVE_ABORT`                 | A recognized vault-package abort with no more specific code                        |

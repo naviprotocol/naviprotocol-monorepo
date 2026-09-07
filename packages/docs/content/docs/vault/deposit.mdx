@@ -22,9 +22,6 @@ await depositPTB(tx, suiVault, owner, '1.5', { useGasCoin: true })
 
 // Supply your own coin
 await depositPTB(tx, vault, owner, '1.5', { coin: myCoin })
-
-// Volo only: require a minimum share floor
-await depositPTB(tx, voloVault, owner, '1.5', { expectedShares: 1_400_000_000n })
 ```
 
 ### Amount Units
@@ -65,30 +62,9 @@ The builder normalizes the protocol-specific tuples into one object and transfer
 
 ### Payout Floors
 
-A vault's exchange rate moves with accrued yield, not with trade flow, so it does not swing the way a swap price does — most integrations leave these floors alone. Set one when a rate change between building and settling would matter to you: `expectedShares` on a deposit, `minAmountOut` on a withdrawal.
+Volo deposits settle asynchronously at the exchange rate when an operator executes them. The SDK sets the contract's minimum share amount to zero.
 
-Volo deposits settle asynchronously at whatever rate an operator executes them at. `expectedShares` sets a floor the contract enforces at execution time, aborting the request if it would mint fewer shares:
-
-```typescript
-import { depositPTB, getVault } from '@naviprotocol/vault'
-
-const vault = await getVault(vaultId)
-
-if (vault.source === 'volo' && vault.totalShares && vault.totalStaked) {
-  // shares = amount * totalShares / totalStaked, both sides in the same units,
-  // so the coin's decimals cancel out and do not appear here.
-  const estimated = (1.5 * Number(vault.totalShares)) / vault.totalStaked
-  const floor = BigInt(Math.floor(estimated * 0.99)) // allow 1% slippage
-
-  await depositPTB(tx, vault, owner, '1.5', { expectedShares: floor })
-}
-```
-
-<Callout>
-  `totalShares` can exceed `Number.MAX_SAFE_INTEGER`, so `Number()` loses precision on large vaults.
-  That is acceptable for a slippage floor you are rounding down anyway, but do not reuse this
-  pattern where exactness matters — keep the value as a `bigint` instead.
-</Callout>
+For withdrawals on either source, use `minAmountOut` to set the minimum payout in raw base units. It defaults to `0n`.
 
 ## Withdraw
 
@@ -195,7 +171,7 @@ The two protocols burn different things on-chain, and the SDK converts for you:
 
 Both implementations do setup work before the main call, so you do not have to. **NAVI** syncs the vault's cached balance in every registered lending market, harvests active reward rules so indices are current, reuses the owner's lowest-share receipt or creates one, deposits into the vault's default lending pool, and transfers the receipt to `owner`.
 
-**Volo** reuses the owner's lowest-share **eligible** receipt — one whose status accepts a new request — or passes `option::none` and lets the contract mint one, creates the request with your `expectedShares` floor, records it off-chain so it appears in [`getPendingRequests`](/vault/pending-requests), and transfers the receipt and charge coin to `owner`.
+**Volo** reuses the owner's lowest-share **eligible** receipt — one whose status accepts a new request — or passes `option::none` and lets the contract mint one, creates the request with a zero minimum share amount, records it off-chain so it appears in [`getPendingRequests`](/vault/pending-requests), and transfers the receipt and charge coin to `owner`.
 
 ## Errors
 

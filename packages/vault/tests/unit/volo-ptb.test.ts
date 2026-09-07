@@ -129,7 +129,7 @@ describe('volo.depositPTB call shape (user_entry::deposit + recorder)', () => {
     const tx = new Transaction()
     const coin = tx.object(normalizeSuiAddress('0xc0ffee'))
 
-    await depositPTB(tx, vault, OWNER, 1_000_000_000n, { coin, expectedShares: 7n })
+    await depositPTB(tx, vault, OWNER, 1_000_000_000n, { coin })
 
     const calls = moveCalls(tx)
     expect(calls.map(target)).toEqual([
@@ -157,6 +157,14 @@ describe('volo.depositPTB call shape (user_entry::deposit + recorder)', () => {
     // (vault_id, request_id u64, user, source String, amount u64)
     expect(record.arguments).toHaveLength(5)
     expect(record.arguments[1]).toEqual({ $kind: 'NestedResult', NestedResult: [1, 0] })
+  })
+
+  it('sets the deposit share floor to zero', async () => {
+    mockReceipts([])
+    const tx = new Transaction()
+    await depositPTB(tx, vault, OWNER, 1n, { coin: tx.object(normalizeSuiAddress('0xc0ffee')) })
+    const deposit = moveCalls(tx).find((call) => call.function === 'deposit')!
+    expect(pureU256(tx, deposit.arguments[4])).toBe('0')
   })
 
   it('asks the contract to mint a receipt when every existing one is ineligible', async () => {

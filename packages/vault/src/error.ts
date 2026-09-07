@@ -25,7 +25,7 @@ export const VAULT_SDK_ERROR_CODES = {
   DEPOSIT_BELOW_MINIMUM: 'DEPOSIT_BELOW_MINIMUM',
   /** The deposit would push the vault past its `stakeCapAmount`. */
   DEPOSIT_CAP_EXCEEDED: 'DEPOSIT_CAP_EXCEEDED',
-  /** The payout would fall below the caller's `minAmountOut` / `expectedShares` floor. */
+  /** The payout would fall below the caller's `minAmountOut` withdrawal floor. */
   SLIPPAGE_EXCEEDED: 'SLIPPAGE_EXCEEDED',
   /** A receipt or request is not yet in a state that permits the operation; retry later. */
   RECEIPT_UNAVAILABLE: 'RECEIPT_UNAVAILABLE',

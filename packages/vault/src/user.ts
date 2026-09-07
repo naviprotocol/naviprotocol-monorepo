@@ -40,13 +40,6 @@ export type DepositPTBOptions = {
   useGasCoin?: boolean
   /** gRPC client for on-chain reads this call needs (receipts, vault state). Defaults to a mainnet client. */
   client?: SuiGrpcClient
-  /**
-   * Minimum shares the deposit must mint, enforced on-chain by Volo's `user_entry::deposit`.
-   *
-   * Volo vaults only: `navi_vault::deposit` takes no floor, and NAVI deposits settle in the
-   * same transaction at a rate the caller can already see.
-   */
-  expectedShares?: bigint
 }
 
 export type WithdrawPTBOptions = {
@@ -133,12 +126,10 @@ export const getPositions = withCache(
  *                 or a transaction argument/result containing the raw base-unit amount. A
  *                 transaction value must be paired with `options.coin`. Literal raw `bigint`
  *                 amounts remain available through `navi.depositPTB` / `volo.depositPTB`
- * @param options - Optional coin source, client, and slippage floor
+ * @param options - Optional coin source and client
  * @param options.coin - Coin object to deposit from. When omitted, one is split from the owner's balance for `amount`
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of a coin object lookup
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
- * @param options.expectedShares - Minimum shares the deposit must mint, enforced on-chain by
- *                                 Volo; see {@link DepositPTBOptions.expectedShares}
  * @returns The receipt handle plus the protocol-specific value: `shares` for NAVI or
  *          `requestId` for Volo. Each is a nested result of the underlying Move call. The builder transfers the receipt and Volo charge coin to
  *          `owner` automatically, so callers must not consume the returned receipt again

@@ -38,7 +38,7 @@ export async function publicApiCompiles(
   const positions: VaultPosition[] = await getPositions(owner, { vaults: [resolved.id] })
   const requests: PendingRequest[] = await getPendingRequests(owner, { vault: resolved.id })
 
-  await depositPTB(tx, resolved, owner, '1.5', { client, useGasCoin: true, expectedShares: 1n })
+  await depositPTB(tx, resolved, owner, '1.5', { client, useGasCoin: true })
   await withdrawPTB(tx, resolved, owner, { kind: 'shares', shares: '1' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'amount', amount: '0.5' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'all' }, { client })

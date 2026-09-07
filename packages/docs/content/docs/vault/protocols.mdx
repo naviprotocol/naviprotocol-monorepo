@@ -52,8 +52,7 @@ tx.transferObjects([coin], owner)
 
 // Volo returns (request_id, Receipt, charge)
 const voloResult = await volo.depositPTB(tx, voloVault, owner, 1_500_000_000n, {
-  client,
-  expectedShares: 1_400_000_000n
+  client
 })
 tx.transferObjects([voloResult[1], voloResult[2]], owner)
 ```

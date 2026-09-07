@@ -10,7 +10,6 @@ import { Vault } from '../../types'
 import { apportion, parseTxValue } from '../../utils'
 import { checkVault } from './utils'
 import {
-  canRequestDeposit,
   canRequestWithdraw,
   getVaultReceiptsWithView,
   planReceiptWithdraw,
@@ -23,7 +22,7 @@ import { vaultErrors } from '../../error'
  * Builds a deposit request into a Volo vault, in raw base units.
  *
  * Volo deposits are asynchronous: this creates a `DepositRequest` that an operator later
- * executes, minting shares at that point's exchange rate (subject to `expectedShares`).
+ * executes, minting shares at that point's exchange rate. The share floor is fixed at zero.
  * Reuses the owner's lowest-share existing receipt if one exists; otherwise the contract
  * mints a new one. Also records the request off-chain via {@link recordUserDepositPTB} so
  * it surfaces through the NAVI open API's pending-requests endpoint.
@@ -35,14 +34,12 @@ import { vaultErrors } from '../../error'
  * @param owner - Sui address the request pays out to, and whose receipts are searched for one to reuse
  * @param amount - Deposit amount in RAW base units. Must be a `bigint` unless `options.coin`
  *                 is given, in which case a transaction argument is also accepted
- * @param options - Optional coin source, client override, and slippage floor
+ * @param options - Optional coin source and client override
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
  * @param options.coin - Coin object to deposit from. When omitted, one is split from the owner's
  *                       balance (or gas coin, with `useGasCoin`) for `amount`
  * @param options.useGasCoin - Split the deposit coin from the transaction's gas coin instead of
  *                             a coin object lookup. Ignored when `coin` is given
- * @param options.expectedShares - Minimum shares the request must mint when executed, enforced
- *                                 on-chain. Defaults to `0n`, i.e. no floor
  * @returns Promise<TransactionResult> - The `user_entry::deposit` result:
  *          `[request_id, Receipt, charge]`. The receipt and charge are unconsumed
  * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a Volo vault, or
@@ -57,18 +54,14 @@ export async function depositPTB(
     client?: SuiGrpcClient
     coin?: TransactionObjectArgument
     useGasCoin?: boolean
-    expectedShares?: bigint
   }
 ): Promise<TransactionResult> {
   checkVault(vault)
   const { receipts } = await getVaultReceiptsWithView(vault, owner, options)
 
-  // request_deposit aborts with ERR_WRONG_RECEIPT_STATUS unless the receipt is NORMAL or
-  // has only a pending withdraw, so a receipt mid-deposit is skipped; with none eligible the
-  // contract mints a fresh receipt via option::none.
-  const depositable = receipts
-    .filter(canRequestDeposit)
-    .sort((a, b) => (a.shares < b.shares ? -1 : a.shares > b.shares ? 1 : 0))
+  const depositable = receipts.sort((a, b) =>
+    a.shares < b.shares ? -1 : a.shares > b.shares ? 1 : 0
+  )
   const receipt = depositable[0]
 
   const receiptOption = receipt
@@ -102,7 +95,7 @@ export async function depositPTB(
       tx.object(vault!.volo!.rewardManager),
       parseTxValue(coin, tx.object),
       parseTxValue(amount, tx.pure.u64),
-      tx.pure.u256(options?.expectedShares ?? 0n),
+      tx.pure.u256(0n),
       parseTxValue(receiptOption, tx.object),
       tx.object('0x6')
     ]
