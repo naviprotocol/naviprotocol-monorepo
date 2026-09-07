@@ -2,6 +2,10 @@
 title: Vaults & Positions
 ---
 
+import VaultUserPlayground from '@/components/vault-user-playground'
+
+import GetVaultsPlayground from '@/components/get-vaults-playground'
+
 Vault discovery lists what exists; positions report what a wallet holds in it. Both read from the NAVI open API rather than from chain, so neither uses `client`. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
 
 ## Discovering Vaults
@@ -17,6 +21,14 @@ const naviVaults = await getVaults({ protocols: ['navi'] })
 const vault = await getVault('0x...')
 const same = await getVault(vault) // no lookup performed
 ```
+
+### Try getVaults
+
+Adjust the parameters below to call the SDK in your browser. Filtering happens client-side on the full API response. Results use the SDK’s default in-memory cache. Only the production environment is supported.
+
+<GetVaultsPlayground />
+
+The table shows the last completed request. APY is formatted as a percentage, TVL is in USD, and `—` means the value is unavailable. Expand **Full response · JSON** to inspect every field, including full vault IDs.
 
 Field-by-field shapes are in the [API reference](/typedoc/variables/_naviprotocol_vault.getVaults.html). Four things about them are worth stating here, because they cause real bugs:
 
@@ -75,6 +87,10 @@ const positions = await getPositions('0x...')
 const naviPositions = await getPositions('0x...', { protocols: ['navi'] })
 const scoped = await getPositions('0x...', { vaults: ['0xvault1', '0xvault2'] })
 ```
+
+### Try getPositions
+
+<VaultUserPlayground method="getPositions" />
 
 Two fields carry more meaning than their names suggest:
 

@@ -3,6 +3,7 @@ import { deriveDynamicFieldID, normalizeSuiAddress } from '@mysten/sui/utils'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { DEFAULT_CACHE_TIME } from '@naviprotocol/lending'
 import { Vault } from '../../types'
+import { vaultErrors } from '../../error'
 import { U64_MAX } from '../../config'
 import { getSuiClient } from '../../utils'
 import { getVaultInfo, getVaultRewardRules, VaultRewardRule } from './vault'
@@ -187,7 +188,9 @@ function buildRewards(
  * @param options.client - gRPC client for the on-chain reads this call needs. Defaults to a mainnet client
  * @returns Promise<VaultReceipt[]> - One entry per owned receipt for this vault, each with its
  *          shares and full per-rule reward position. Empty when the owner holds none
- * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault
+ * @throws VaultSdkError with code `VAULT_UNSUPPORTED` when `vault` is not a NAVI vault,
+ *         `CHAIN_QUERY_FAILED` when a state query fails, or `CHAIN_DATA_INVALID` when
+ *         a returned state has no content or cannot be decoded
  */
 export async function getVaultReceipts(
   vault: Vault,
@@ -234,23 +237,65 @@ export async function getVaultReceipts(
     deriveDynamicFieldID(userStatesTable, 'address', bcs.Address.serialize(receiptId).toBytes())
   )
 
-  // Batched, order-preserving, and chunked at 50 by the client. A receipt with no entry yet
-  // comes back as an Error in its own slot instead of failing the whole read.
-  const { objects } = await client.getObjects({
-    objectIds: fieldIds,
-    include: { content: true }
-  })
+  // getObjects discards per-object status codes. Use the raw batch RPC to distinguish
+  // NOT_FOUND from failed reads, while retaining batches of at most 50 objects.
+  const states: (Uint8Array | null)[] = []
+  for (let offset = 0; offset < fieldIds.length; offset += 50) {
+    const batch = fieldIds.slice(offset, offset + 50)
+    let response
+    try {
+      response = (
+        await client.ledgerService.batchGetObjects({
+          requests: batch.map((objectId) => ({ objectId })),
+          readMask: { paths: ['contents'] }
+        })
+      ).response
+    } catch (error) {
+      throw vaultErrors.chainQueryFailed('reading NAVI receipt states', error, {
+        vaultId: vault.id
+      })
+    }
+    for (const [index, fieldId] of batch.entries()) {
+      const result = response.objects[index]?.result
+      const details = { vaultId: vault.id, receiptId: found[offset + index], fieldId }
+      if (result?.oneofKind === 'error') {
+        if (result.error.code === 5) {
+          // gRPC NOT_FOUND
+          states.push(null)
+          continue
+        }
+        throw vaultErrors.chainQueryFailed('reading a NAVI receipt state', result.error, details)
+      }
+      if (result?.oneofKind !== 'object' || !result.object.contents?.value) {
+        throw vaultErrors.chainDataInvalid('NAVI receipt state has no content', details)
+      }
+      states.push(result.object.contents.value)
+    }
+  }
 
   const receipts = found.map((id, index) => {
-    const object = objects[index]
-    if (object instanceof Error || !object?.content) {
+    const content = states[index]
+    if (content === null) {
       return {
         id,
         shares: 0n,
         rewards: buildRewards(rules, 0n, new Map(), new Map(), new Map())
       }
     }
-    const state = UserStateFieldStruct.parse(Uint8Array.from(object.content)).value
+    let state
+    try {
+      state = UserStateFieldStruct.parse(content).value
+    } catch (error) {
+      throw vaultErrors.chainDataInvalid(
+        'Invalid NAVI receipt state content',
+        {
+          vaultId: vault.id,
+          receiptId: id,
+          fieldId: fieldIds[index]
+        },
+        error
+      )
+    }
     const shares = BigInt(state.shares)
     return {
       id,

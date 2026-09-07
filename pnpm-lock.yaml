@@ -260,6 +260,9 @@ importers:
       '@naviprotocol/lending':
         specifier: workspace:*
         version: link:../lending
+      '@naviprotocol/vault':
+        specifier: workspace:*
+        version: link:../vault
       fumadocs-core:
         specifier: 15.6.3
         version: 15.6.3(@types/react@19.1.8)(next@16.0.10(@babel/core@7.26.10)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
