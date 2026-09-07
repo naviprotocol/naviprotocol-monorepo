@@ -2,6 +2,8 @@
 title: Pending Requests
 ---
 
+import VaultUserPlayground from '@/components/vault-user-playground'
+
 Volo deposits and withdrawals do not settle immediately — they create a request an operator executes later. This module lists a wallet's outstanding requests and builds the calls to cancel them.
 
 <Callout>
@@ -19,6 +21,10 @@ import { getPendingRequests } from '@naviprotocol/vault'
 const requests = await getPendingRequests('0x...')
 const vaultRequests = await getPendingRequests('0x...', { vault: '0x...' })
 ```
+
+### Try getPendingRequests
+
+<VaultUserPlayground method="getPendingRequests" />
 
 Each request reports its `type` (`'deposit'` or `'withdraw'`), the amount and shares involved, and `executeTime` — when an operator is expected to execute it. Two fields are **required to cancel**: `receiptId` and `requestId`.
 

@@ -2,6 +2,8 @@
 title: Vaults & Positions
 ---
 
+import VaultUserPlayground from '@/components/vault-user-playground'
+
 import GetVaultsPlayground from '@/components/get-vaults-playground'
 
 Vault discovery lists what exists; positions report what a wallet holds in it. Both read from the NAVI open API rather than from chain, so neither uses `client`. Every other interface in this SDK takes a vault as its subject, so this is usually where an integration starts.
@@ -85,6 +87,10 @@ const positions = await getPositions('0x...')
 const naviPositions = await getPositions('0x...', { protocols: ['navi'] })
 const scoped = await getPositions('0x...', { vaults: ['0xvault1', '0xvault2'] })
 ```
+
+### Try getPositions
+
+<VaultUserPlayground method="getPositions" />
 
 Two fields carry more meaning than their names suggest:
 

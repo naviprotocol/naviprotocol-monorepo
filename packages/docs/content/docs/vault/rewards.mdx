@@ -2,6 +2,8 @@
 title: Rewards
 ---
 
+import VaultUserPlayground from '@/components/vault-user-playground'
+
 The rewards module reads a wallet's claimable vault rewards and builds the calls to claim them. See the API reference for [`getVaultRewards`](/typedoc/functions/_naviprotocol_vault.getVaultRewards.html) and [`claimRewardsPTB`](/typedoc/functions/_naviprotocol_vault.claimRewardsPTB.html).
 
 <Callout>
@@ -18,6 +20,10 @@ import { getVaultRewards } from '@naviprotocol/vault'
 
 const rewards = await getVaultRewards(vault, '0x...')
 ```
+
+### Try getVaultRewards
+
+<VaultUserPlayground method="getVaultRewards" />
 
 <Callout type="warn">
   `claimable` counts only **settled** rewards. An actual claim settles first and then pays, so it
