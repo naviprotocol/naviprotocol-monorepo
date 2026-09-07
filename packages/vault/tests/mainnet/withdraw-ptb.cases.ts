@@ -110,13 +110,14 @@ describe.skipIf(!runLiveTests)('withdrawPTB', () => {
     const tx = new Transaction()
     // Volo withdrawals are asynchronous requests; the builder returns the created
     // request ids (droppable u64s), not a coin.
-    const requestIds = (await withdrawPTB(
+    const { requestIds } = await withdrawPTB(
       tx,
       position.vault,
       position.owner,
       { kind: 'shares', shares: shares.toString() },
       { client }
-    )) as TransactionResult[]
+    )
+    if (!requestIds) throw new Error('Volo withdrawal must return requestIds')
     expect(requestIds.length).toBeGreaterThan(0)
     let result: Awaited<ReturnType<typeof dryRun>>
     try {

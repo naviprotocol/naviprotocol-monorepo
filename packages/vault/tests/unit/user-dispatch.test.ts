@@ -170,7 +170,7 @@ describe('automatic transfers', () => {
       vi.mocked(navi.withdrawPTB).mockResolvedValue('COIN' as never)
       expect(
         await withdrawPTB(tx, vault('navi'), OWNER, { kind: 'all' }, { disableAutoTransfer })
-      ).toBe('COIN')
+      ).toEqual({ coin: 'COIN' })
       if (disableAutoTransfer) expect(tx.transferObjects).not.toHaveBeenCalled()
       else expect(tx.transferObjects).toHaveBeenCalledWith(['COIN'], OWNER)
 
@@ -178,7 +178,7 @@ describe('automatic transfers', () => {
       vi.mocked(volo.withdrawPTB).mockResolvedValue(['REQUEST'] as never)
       expect(
         await withdrawPTB(voloTx, vault('volo'), OWNER, { kind: 'all' }, { disableAutoTransfer })
-      ).toEqual(['REQUEST'])
+      ).toEqual({ requestIds: ['REQUEST'] })
       expect(voloTx.transferObjects).not.toHaveBeenCalled()
     }
   )

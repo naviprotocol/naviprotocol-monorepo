@@ -111,27 +111,30 @@ await withdrawPTB(
 
 ### Consuming the Result
 
-The return type differs by source, and this is the single most important difference between the two:
+The builder returns an object with the field for the selected source:
 
 | Source | Returns                                     | Settlement                            |
 | ------ | ------------------------------------------- | ------------------------------------- |
-| NAVI   | `TransactionResult` — the withdrawn coin    | Immediate, same transaction           |
-| Volo   | `TransactionResult[]` — created request ids | Asynchronous, executed by an operator |
+| NAVI   | `{ coin }` — the withdrawn coin    | Immediate, same transaction           |
+| Volo   | `{ requestIds }` — created request ids | Asynchronous, executed by an operator |
 
 ```typescript
-import { Transaction, TransactionResult } from '@mysten/sui/transactions'
+const result = await withdrawPTB(
+  tx,
+  vault,
+  owner,
+  { kind: 'amount', amount: '1.5' },
+  { disableAutoTransfer: true }
+)
 
-if (vault.source === 'navi') {
-  // Disable the default transfer to compose with the coin yourself
-  const coin = (await withdrawPTB(tx, vault, owner, {
-    kind: 'amount',
-    amount: '1.5'
-  }, { disableAutoTransfer: true })) as TransactionResult
-  tx.transferObjects([coin], owner)
-} else {
-  // Request ids — droppable u64s, nothing to consume. The principal arrives
-  // later, when an operator executes the request.
-  await withdrawPTB(tx, vault, owner, { kind: 'shares', shares: '1000000' })
+if (result.coin) {
+  // NAVI: compose with the coin, then consume it.
+  tx.transferObjects([result.coin], owner)
+}
+if (result.requestIds) {
+  // Volo: request ids are droppable u64s. The principal arrives later,
+  // when an operator executes the requests.
+  console.log('Created requests:', result.requestIds.length)
 }
 ```
 

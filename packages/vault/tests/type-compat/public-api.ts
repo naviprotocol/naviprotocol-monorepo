@@ -53,7 +53,10 @@ export async function publicApiCompiles(
     { kind: 'all' },
     { disableAutoTransfer: true }
   )
-  if (!Array.isArray(composedWithdrawal)) tx.transferObjects([composedWithdrawal], owner)
+  if (composedWithdrawal.coin) tx.transferObjects([composedWithdrawal.coin], owner)
+  const requestIds: import('@mysten/sui/transactions').TransactionResult[] | undefined =
+    composedWithdrawal.requestIds
+  void requestIds
   await withdrawPTB(tx, resolved, owner, { kind: 'shares', shares: '1' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'amount', amount: '0.5' }, { client })
   await withdrawPTB(tx, resolved, owner, { kind: 'all' }, { client })

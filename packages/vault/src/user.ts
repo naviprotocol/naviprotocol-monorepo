@@ -197,10 +197,9 @@ export async function depositPTB(
 /**
  * Builds a withdrawal from the vault, dispatching to the NAVI or Volo builder by `vault.source`.
  *
- * Returns what the protocol produces: for NAVI vaults the withdrawn coin
- * (`TransactionResult`), for Volo vaults the created request ids (`TransactionResult[]`) —
- * Volo withdrawals settle asynchronously once an operator executes the request. Narrow on
- * `vault.source` (or `Array.isArray`) before using the result. NAVI coins transfer to `owner`
+ * Returns `{ coin }` for NAVI vaults or `{ requestIds }` for Volo vaults.
+ * Volo withdrawals settle asynchronously once an operator executes the request. Check the
+ * corresponding result field before using it. NAVI coins transfer to `owner`
  * by default; set `disableAutoTransfer` to keep the coin available for PTB composition.
  * Volo request ids are droppable values; its later on-chain payout is unaffected.
  *
@@ -216,8 +215,7 @@ export async function depositPTB(
  * @param options.disableAutoTransfer - Skip automatic NAVI coin transfer. Defaults to false; Volo settlement is unaffected
  * @param options.minAmountOut - Minimum base-coin amount the withdrawal must pay out, in raw
  *                               base units; see {@link WithdrawPTBOptions.minAmountOut}
- * @returns Promise<TransactionResult | TransactionResult[]> - The withdrawn coin (NAVI) or the
- *          created request ids (Volo)
+ * @returns An object containing `coin` (NAVI) or `requestIds` (Volo)
  * @throws VaultSdkError with code `INVALID_AMOUNT` when `target` holds a non-positive or
  *         unparsable value, `INSUFFICIENT_BALANCE` when the owner's receipts cannot cover the
  *         request, `VAULT_NOT_FOUND` when the vault does not exist, `VAULT_UNSUPPORTED`
@@ -230,7 +228,12 @@ export async function withdrawPTB(
   owner: string,
   target: WithdrawTarget,
   options?: WithdrawPTBOptions
-): Promise<TransactionResult | TransactionResult[]> {
+): Promise<{
+  /** NAVI withdrawn coin; unconsumed only when disableAutoTransfer is true. */
+  coin?: TransactionResult
+  /** Volo request ids, one per receipt drawn from. */
+  requestIds?: TransactionResult[]
+}> {
   const vault = await getVault(vaultIdentifier)
   checkVaultAccepts(vault, 'withdraw')
 
@@ -267,10 +270,12 @@ export async function withdrawPTB(
     case 'navi': {
       const coin = await navi.withdrawPTB(tx, vault, owner, normalized, options)
       if (!options?.disableAutoTransfer) tx.transferObjects([coin], owner)
-      return coin
+      return { coin }
     }
-    case 'volo':
-      return await volo.withdrawPTB(tx, vault, owner, normalized, options)
+    case 'volo': {
+      const requestIds = await volo.withdrawPTB(tx, vault, owner, normalized, options)
+      return { requestIds }
+    }
     default:
       throw vaultErrors.vaultUnsupported(vault.id, 'withdrawPTB', vault.source)
   }
