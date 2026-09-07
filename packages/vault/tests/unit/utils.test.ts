@@ -48,8 +48,27 @@ describe('apportion', () => {
     }
   })
 
-  it('yields zeroes when there is nothing to divide or nothing to divide by', () => {
+  it('yields zeroes when there is nothing to divide', () => {
     expect(apportion(0n, [1n, 2n])).toEqual([0n, 0n])
-    expect(apportion(100n, [0n, 0n])).toEqual([0n, 0n])
+    expect(apportion(0n, [0n, 0n])).toEqual([0n, 0n])
+    expect(apportion(0n, [])).toEqual([])
+  })
+
+  it('rejects negative inputs and unallocatable positive totals', () => {
+    for (const [total, weights] of [
+      [-1n, [30n, 20n]],
+      [1n, [-1n, 2n]],
+      [1n, [0n, 0n]],
+      [1n, []]
+    ] as [bigint, bigint[]][]) {
+      expect(codeOf(() => apportion(total, weights))).toBe('INVALID_AMOUNT')
+    }
+  })
+
+  it('distributes remaining units by fractional remainder without burdening zero weights', () => {
+    expect(apportion(2n, [1n, 1n, 1n])).toEqual([1n, 1n, 0n])
+    expect(apportion(2n, [1n, 2n, 3n])).toEqual([0n, 1n, 1n])
+    expect(apportion(1n, [1n, 1n, 0n])).toEqual([1n, 0n, 0n])
+    expect(apportion(2n, [0n, 1n, 0n])).toEqual([0n, 2n, 0n])
   })
 })

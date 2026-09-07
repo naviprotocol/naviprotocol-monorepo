@@ -48,9 +48,6 @@ export type WithdrawPTBOptions = {
   /**
    * Minimum base-coin amount the withdrawal must pay out, in raw base units, enforced
    * on-chain. Defaults to `0n`.
-   *
-   * A withdrawal spread over several receipts issues one call per receipt and divides the
-   * floor between them, so the total payout is what the floor bounds.
    */
   minAmountOut?: bigint
 }

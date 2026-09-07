@@ -37,21 +37,37 @@ export function parseHumanAmount(amount: string, decimals: number): bigint {
  *
  * Both protocols may spread one withdrawal over several receipts, and each contract call
  * carries its own payout floor — so a caller's one `minAmountOut` has to be divided among
- * them, or every call would have to clear the whole floor on its own. Floor division leaves
- * a remainder of at most `weights.length - 1`, which goes on the last entry so the parts
- * sum to exactly `total`.
+ * them, or every call would have to clear the whole floor on its own. After floor
+ * division, remaining units go to the largest fractional remainders, one per entry.
+ * Ties are resolved in call order; zero-weight entries never receive a remainder.
  *
- * @param total - The value to divide, in raw base units
+ * @param total - The non-negative value to divide, in raw base units
  * @param weights - One non-negative weight per call, in call order
- * @returns One share per weight, summing to `total`; all zeroes when `total` or the weights
- *          sum to zero
+ * @returns One share per weight, summing to `total`
+ * @throws VaultSdkError with code `INVALID_AMOUNT` for negative inputs or a positive
+ *         total with no positive weight
  */
 export function apportion(total: bigint, weights: bigint[]): bigint[] {
+  if (total < 0n || weights.some((weight) => weight < 0n)) {
+    throw vaultErrors.invalidAmount('apportion total and weights must be non-negative')
+  }
+  if (total === 0n) return weights.map(() => 0n)
   const sum = weights.reduce((carry, weight) => carry + weight, 0n)
-  if (total <= 0n || sum <= 0n) return weights.map(() => 0n)
+  if (sum === 0n) {
+    throw vaultErrors.invalidAmount('cannot apportion a positive total without positive weights')
+  }
   const shares = weights.map((weight) => (total * weight) / sum)
-  const assigned = shares.reduce((carry, share) => carry + share, 0n)
-  shares[shares.length - 1] += total - assigned
+  let remaining = total - shares.reduce((carry, share) => carry + share, 0n)
+  const ranked = weights
+    .map((weight, index) => ({ index, remainder: (total * weight) % sum }))
+    .sort((a, b) =>
+      a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1
+    )
+  for (const { index } of ranked) {
+    if (remaining === 0n) break
+    shares[index] += 1n
+    remaining -= 1n
+  }
   return shares
 }
 

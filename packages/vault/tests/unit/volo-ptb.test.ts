@@ -268,16 +268,25 @@ describe('volo.withdrawPTB call shape (user_entry::withdraw_with_auto_transfer +
     expect(pureU64(tx, calls[2].arguments[2])).toBe('400')
   })
 
-  it('gives the remainder of an uneven split to the last call, so the floor is never lowered', async () => {
+  it('distributes rounding units across requests, preserving the total floor', async () => {
     mockReceipts([receipt('0xa', 1n), receipt('0xb', 1n), receipt('0xc', 1n)])
     const tx = new Transaction()
-    await withdrawPTB(tx, vault, OWNER, { kind: 'shares', shares: 3n }, { minAmountOut: 10n })
+    await withdrawPTB(tx, vault, OWNER, { kind: 'shares', shares: 3n }, { minAmountOut: 2n })
 
     const floors = moveCalls(tx)
       .filter((call) => call.function === 'withdraw_with_auto_transfer')
       .map((call) => BigInt(pureU64(tx, call.arguments[2])))
-    expect(floors).toEqual([3n, 3n, 4n])
-    expect(floors.reduce((sum, floor) => sum + floor, 0n)).toBe(10n)
+    expect(floors).toEqual([1n, 1n, 0n])
+    expect(floors.reduce((sum, floor) => sum + floor, 0n)).toBe(2n)
+  })
+
+  it('rejects a negative floor before reading receipts or mutating the transaction', async () => {
+    const tx = new Transaction()
+    await expect(
+      withdrawPTB(tx, vault, OWNER, { kind: 'all' }, { minAmountOut: -1n })
+    ).rejects.toMatchObject({ code: 'INVALID_AMOUNT' })
+    expect(getVaultReceiptsWithView).not.toHaveBeenCalled()
+    expect(tx.getData().commands).toEqual([])
   })
 
   it('fails closed when the vault has no priced supply', async () => {

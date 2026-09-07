@@ -144,4 +144,25 @@ describe('navi.withdrawPTB call shape (navi_vault::withdraw)', () => {
     expect(floors).toEqual([200n, 600n])
     expect(floors.reduce((sum, floor) => sum + floor, 0n)).toBe(800n)
   })
+
+  it('rejects a negative floor before reading receipts or mutating the transaction', async () => {
+    const tx = new Transaction()
+    await expect(
+      withdrawPTB(tx, vault, OWNER, { kind: 'all' }, { minAmountOut: -1n })
+    ).rejects.toMatchObject({ code: 'INVALID_AMOUNT' })
+    expect(getVaultReceipts).not.toHaveBeenCalled()
+    expect(tx.getData().commands).toEqual([])
+  })
+
+  it('rejects a positive floor when all receipt values round to zero', async () => {
+    mockReceipts([
+      { id: '0xa', shares: 1n },
+      { id: '0xb', shares: 1n }
+    ])
+    const tx = new Transaction()
+    await expect(
+      withdrawPTB(tx, vault, OWNER, { kind: 'all' }, { minAmountOut: 1n })
+    ).rejects.toMatchObject({ code: 'INVALID_AMOUNT' })
+    expect(tx.getData().commands).toEqual([])
+  })
 })

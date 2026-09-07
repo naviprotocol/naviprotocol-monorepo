@@ -162,6 +162,9 @@ export async function withdrawPTB(
     minAmountOut?: bigint
   }
 ): Promise<TransactionResult[]> {
+  if ((options?.minAmountOut ?? 0n) < 0n) {
+    throw vaultErrors.invalidAmount('minAmountOut must be non-negative')
+  }
   checkVault(vault)
   const { view, receipts } = await getVaultReceiptsWithView(vault, owner, options)
 

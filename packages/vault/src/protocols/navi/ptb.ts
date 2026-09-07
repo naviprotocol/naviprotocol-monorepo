@@ -389,6 +389,9 @@ export async function withdrawPTB(
     minAmountOut?: bigint
   }
 ) {
+  if ((options?.minAmountOut ?? 0n) < 0n) {
+    throw vaultErrors.invalidAmount('minAmountOut must be non-negative')
+  }
   checkVault(vault)
   const receipts = await getVaultReceipts(vault, owner, options)
   const vaultInfo = await getVaultInfo(vault, {
@@ -434,6 +437,18 @@ export async function withdrawPTB(
     })
   }
 
+  // A plan carrying the U64_MAX sentinel drains its receipt, so its payout is the
+  // receipt's redeemable value rather than the literal argument.
+  const shareOf = new Map(receipts.map((receipt) => [receipt.id, receipt.shares]))
+  const floors = apportion(
+    options?.minAmountOut ?? 0n,
+    plans.map((plan) => {
+      if (plan.amount !== U64_MAX) return plan.amount
+      if (totalShares === 0n) return 1n
+      return ((shareOf.get(plan.id) ?? 0n) * totalAssets) / totalShares
+    })
+  )
+
   const pool = await getVaultDefaultPool(vault, options)
   const marketConfig = await getMarketConfig(pool.market)
 
@@ -465,18 +480,6 @@ export async function withdrawPTB(
   await collectNaviRewardsPTB(tx, vault, {
     client: options?.client
   })
-
-  // A plan carrying the U64_MAX sentinel drains its receipt, so its payout is the
-  // receipt's redeemable value rather than the literal argument.
-  const shareOf = new Map(receipts.map((receipt) => [receipt.id, receipt.shares]))
-  const floors = apportion(
-    options?.minAmountOut ?? 0n,
-    plans.map((plan) => {
-      if (plan.amount !== U64_MAX) return plan.amount
-      if (totalShares === 0n) return 1n
-      return ((shareOf.get(plan.id) ?? 0n) * totalAssets) / totalShares
-    })
-  )
 
   const coins: TransactionResult[] = []
   for (const [index, plan] of plans.entries()) {

@@ -92,7 +92,7 @@ await withdrawPTB(
 )
 ```
 
-`minAmountOut` bounds the **whole** withdrawal, on either source. A withdrawal drawn from several receipts issues one call per receipt and divides the floor between them in proportion to each one's size, so the total payout is what the floor covers. A payout under the floor aborts on chain, which [`asVaultSdkError`](/vault/errors) reports as `SLIPPAGE_EXCEEDED`.
+`minAmountOut` is a non-negative total in raw base units. For several receipts, the SDK divides it proportionally and distributes rounding units by largest fractional remainder, breaking ties in call order. A positive minimum is rejected if every allocation weight is zero. Each call must meet its own floor, so sufficient aggregate payout alone does not guarantee success. NAVI calls execute atomically in one transaction; Volo requests settle independently and may only partially complete. A payout under its per-call floor aborts on chain, which [`asVaultSdkError`](/vault/errors) reports as `SLIPPAGE_EXCEEDED`.
 
 <Callout>
   For Volo, `{ kind: 'all' }` covers only the receipts eligible **right now**. Receipts still inside
