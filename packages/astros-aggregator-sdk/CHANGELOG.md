@@ -1,5 +1,13 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.6
+
+### Patch Changes
+
+- Update the Cetus integrate package to on-chain v16 (`0xae9c208c…`) so
+  `router::swap` no longer aborts in `config::checked_package_version`, and bump
+  the `find_routes` client version from 14 to 15 for backend capability gating.
+
 ## 2.0.5
 
 ### Patch Changes
