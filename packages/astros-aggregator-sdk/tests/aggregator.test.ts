@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 import { buildSwapPTBFromQuote, getCoinPTB, swapPTB } from '../src/libs/Aggregator/swapPTB'
+import { makeCETUSPTB } from '../src/libs/Aggregator/Dex/cetus'
 import { getQuote } from '../src/astros-sdk'
 import { Dex } from '../src/types'
 
@@ -49,6 +50,24 @@ const coins = {
 }
 
 describe('swap test', () => {
+  it('targets the Cetus v16 integrate package', async () => {
+    const txb = createTransaction(coins.sui.holder)
+    const amount = txb.pure.u64(1)
+
+    await makeCETUSPTB(txb, `0x${'a'.repeat(64)}`, true, txb.gas, txb.gas, amount, true, [
+      coins.sui.address,
+      coins.sui.address
+    ])
+
+    expect(txb.getData().commands.at(-1)).toMatchObject({
+      MoveCall: {
+        package: '0xae9c208cf58fd5ba36737c9ee5dcfa7f152d0fb5a5a99eebb7c881ebc2fe59e0',
+        module: 'router',
+        function: 'swap'
+      }
+    })
+  })
+
   it('builds a deterministic v2 PTB from a fixture quote', async () => {
     const userAddress = '0x0000000000000000000000000000000000000000000000000000000000000001'
     const txb = createTransaction(userAddress)

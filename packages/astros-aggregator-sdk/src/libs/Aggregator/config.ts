@@ -30,7 +30,9 @@ export const AggregatorConfig = {
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
   // Cetus DEX configuration
-  cetusPackageId: '0xb2db7142fa83210a7d78d9c12ac49c043b3cbbd482224fea6e3da00aa5a5ae2d',
+  // Cetus integrate package v16. The previous package aborts with code 10 in
+  // config::checked_package_version after the on-chain protocol upgrade.
+  cetusPackageId: '0xae9c208cf58fd5ba36737c9ee5dcfa7f152d0fb5a5a99eebb7c881ebc2fe59e0',
   cetusConfigId: '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f',
 
   // Turbos DEX configuration

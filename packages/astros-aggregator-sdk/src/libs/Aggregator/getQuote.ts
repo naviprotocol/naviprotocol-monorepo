@@ -57,10 +57,10 @@ export async function getQuoteInternal(
     by_amount_in:
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
-    // Bumped 13 -> 14 alongside the magma v4 integrate package fix: the router API only
-    // returns magma routes to version >= 14 clients (this SDK), so older clients that still
-    // build the pre-v4 magma PTB don't get magma and avoid the on-chain abort.
-    version: '14'
+    // Version 14 added the Magma v4 integrate package. Version 15 adds the Cetus v16
+    // integrate package so the router API can keep incompatible Cetus routes away from
+    // older clients once the corresponding backend capability gate is enabled.
+    version: '15'
   }).toString()
 
   // Construct dex provider string if dexList is provided
