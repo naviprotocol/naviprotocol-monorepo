@@ -22,9 +22,9 @@ import { getEnv } from "../../helpers/env";
 // must throw, never return 0).
 // ===========================================================================
 
-// Same endpoint and auth parameter already used by the merged `fees/navi` adapter.
-// The `cf_pass` value is read from the environment, never committed: add
-// NAVI_DEFILLAMA_CF_PASS to ENV_KEYS in helpers/env.ts and set it in the runtime.
+// The merged `fees/navi` adapter passes a `cf_pass` query parameter to this endpoint.
+// NAVI's handler reads only `fromTimestamp` and never reads it; it is passed anyway so
+// this request stays identical to the merged adapter's. Value: NAVI_DEFILLAMA_CF_PASS.
 const NAVI_FEE_API = "https://open-api.naviprotocol.io/api/internal/defillama/fee";
 
 // Vault group this listing covers. The on-chain objects behind it, for

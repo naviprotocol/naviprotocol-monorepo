@@ -108,13 +108,25 @@ Treat the TVL numbers as unverified until that run is attached to the PR.
 
 ## Note on the fee endpoint parameter
 
-The fees adapters pass a `cf_pass` query parameter — a Cloudflare bypass
-parameter for `open-api.naviprotocol.io`, the same one the already-merged
-upstream `fees/navi` adapter uses. It is **not** hardcoded here. Both adapters
-read it with `getEnv("NAVI_DEFILLAMA_CF_PASS")` from `helpers/env`, which is the
-mechanism upstream accepts, and there is no fallback literal in the files. No
-NAVI token, key, or parameter value should ever be committed to these
-adapters — DefiLlama adapters are public source.
+The fees adapters pass a `cf_pass` query parameter to
+`open-api.naviprotocol.io`, the same parameter the already-merged upstream
+`fees/navi` adapter passes. It is passed for parity with that merged adapter's
+request, and nothing beyond that is claimed for it: NAVI's handler for this
+endpoint reads only `fromTimestamp` from the query and never reads, validates,
+or compares `cf_pass`, and the endpoint is unauthenticated — no token check,
+served with `Access-Control-Allow-Origin: *`, and the `internal/` path segment
+is a naming convention, not a gate. Whether a Cloudflare edge rule (WAF or bot
+management) keys on the parameter is **unverified**: that configuration lives in
+the Cloudflare zone rather than in any repo, so only the zone's WAF config can
+settle it. Earlier revisions of this file and of the adapter comments called
+`cf_pass` an auth parameter and a Cloudflare bypass; both readings were inferred
+from its name and neither was verified.
+
+The value is **not** hardcoded here. Both adapters read it with
+`getEnv("NAVI_DEFILLAMA_CF_PASS")` from `helpers/env`, which is the mechanism
+upstream accepts, and there is no fallback literal in the files. No NAVI token,
+key, or parameter value should ever be committed to these adapters — DefiLlama
+adapters are public source.
 
 Three things follow from that, and all three are on whoever opens the upstream
 `dimension-adapters` PR:
