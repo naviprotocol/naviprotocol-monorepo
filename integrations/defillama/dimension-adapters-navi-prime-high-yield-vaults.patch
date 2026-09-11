@@ -1,4 +1,4 @@
-From 6ca35480d0a5b98ca102caae60171ee970e71bba Mon Sep 17 00:00:00 2001
+From 35b5e218d79e7d1fabd4b29e66e25dcc86ff8196 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 11 Sep 2026 12:15:53 +0000
 Subject: [PATCH] navi-prime, navi-high-yield: add vault fees and revenue
@@ -22,22 +22,26 @@ cache.
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_015CyPJY6XuJwThFkHQdLAi3
 ---
- fees/navi-high-yield/index.ts | 117 ++++++++++++++++++++++++++++++++++
- fees/navi-prime/index.ts      | 117 ++++++++++++++++++++++++++++++++++
- 2 files changed, 234 insertions(+)
+ fees/navi-high-yield/index.ts | 124 ++++++++++++++++++++++++++++++++++
+ fees/navi-prime/index.ts      | 124 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 248 insertions(+)
  create mode 100644 fees/navi-high-yield/index.ts
  create mode 100644 fees/navi-prime/index.ts
 
 diff --git a/fees/navi-high-yield/index.ts b/fees/navi-high-yield/index.ts
 new file mode 100644
-index 000000000..aea228fe5
+index 000000000..bc150322d
 --- /dev/null
 +++ b/fees/navi-high-yield/index.ts
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,124 @@
 +import { FetchOptions, SimpleAdapter } from "../../adapters/types";
 +import { CHAIN } from "../../helpers/chains";
 +import { METRIC } from "../../helpers/metrics";
 +import fetchURL from "../../utils/fetchURL";
++// Import paths are relative to the dimension-adapters repo root, which is where
++// this file lives upstream. A copy is vendored in the NAVI monorepo outside that
++// tree, so they are kept written the way upstream resolves them.
++import { getEnv } from "../../helpers/env";
 +
 +// ===========================================================================
 +// BLOCKED: this adapter cannot be merged yet.
@@ -55,8 +59,9 @@ index 000000000..aea228fe5
 +// ===========================================================================
 +
 +// Same endpoint and auth parameter already used by the merged `fees/navi` adapter.
++// The `cf_pass` value is read from the environment, never committed: add
++// NAVI_DEFILLAMA_CF_PASS to ENV_KEYS in helpers/env.ts and set it in the runtime.
 +const NAVI_FEE_API = "https://open-api.naviprotocol.io/api/internal/defillama/fee";
-+const CF_PASS = "b35f13a110a4";
 +
 +// Vault group this listing covers. The on-chain objects behind it, for
 +// reference and so the adapter can be rebuilt if the endpoint disappears:
@@ -84,7 +89,9 @@ index 000000000..aea228fe5
 +};
 +
 +const fetch = async ({ startTimestamp, createBalances }: FetchOptions) => {
-+  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${CF_PASS}`;
++  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${getEnv(
++    "NAVI_DEFILLAMA_CF_PASS"
++  )}`;
 +  const stats = (await fetchURL(url)).data;
 +
 +  const group: VaultGroupStats | undefined = stats?.vaults?.[VAULT_GROUP];
@@ -153,14 +160,18 @@ index 000000000..aea228fe5
 +export default adapter;
 diff --git a/fees/navi-prime/index.ts b/fees/navi-prime/index.ts
 new file mode 100644
-index 000000000..3aee1b7a9
+index 000000000..8087ebd07
 --- /dev/null
 +++ b/fees/navi-prime/index.ts
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,124 @@
 +import { FetchOptions, SimpleAdapter } from "../../adapters/types";
 +import { CHAIN } from "../../helpers/chains";
 +import { METRIC } from "../../helpers/metrics";
 +import fetchURL from "../../utils/fetchURL";
++// Import paths are relative to the dimension-adapters repo root, which is where
++// this file lives upstream. A copy is vendored in the NAVI monorepo outside that
++// tree, so they are kept written the way upstream resolves them.
++import { getEnv } from "../../helpers/env";
 +
 +// ===========================================================================
 +// BLOCKED: this adapter cannot be merged yet.
@@ -178,8 +189,9 @@ index 000000000..3aee1b7a9
 +// ===========================================================================
 +
 +// Same endpoint and auth parameter already used by the merged `fees/navi` adapter.
++// The `cf_pass` value is read from the environment, never committed: add
++// NAVI_DEFILLAMA_CF_PASS to ENV_KEYS in helpers/env.ts and set it in the runtime.
 +const NAVI_FEE_API = "https://open-api.naviprotocol.io/api/internal/defillama/fee";
-+const CF_PASS = "b35f13a110a4";
 +
 +// Vault group this listing covers. The on-chain objects behind it, for
 +// reference and so the adapter can be rebuilt if the endpoint disappears:
@@ -207,7 +219,9 @@ index 000000000..3aee1b7a9
 +};
 +
 +const fetch = async ({ startTimestamp, createBalances }: FetchOptions) => {
-+  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${CF_PASS}`;
++  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${getEnv(
++    "NAVI_DEFILLAMA_CF_PASS"
++  )}`;
 +  const stats = (await fetchURL(url)).data;
 +
 +  const group: VaultGroupStats | undefined = stats?.vaults?.[VAULT_GROUP];

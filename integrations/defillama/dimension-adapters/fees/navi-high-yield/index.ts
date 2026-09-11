@@ -2,6 +2,10 @@ import { FetchOptions, SimpleAdapter } from "../../adapters/types";
 import { CHAIN } from "../../helpers/chains";
 import { METRIC } from "../../helpers/metrics";
 import fetchURL from "../../utils/fetchURL";
+// Import paths are relative to the dimension-adapters repo root, which is where
+// this file lives upstream. A copy is vendored in the NAVI monorepo outside that
+// tree, so they are kept written the way upstream resolves them.
+import { getEnv } from "../../helpers/env";
 
 // ===========================================================================
 // BLOCKED: this adapter cannot be merged yet.
@@ -19,8 +23,9 @@ import fetchURL from "../../utils/fetchURL";
 // ===========================================================================
 
 // Same endpoint and auth parameter already used by the merged `fees/navi` adapter.
+// The `cf_pass` value is read from the environment, never committed: add
+// NAVI_DEFILLAMA_CF_PASS to ENV_KEYS in helpers/env.ts and set it in the runtime.
 const NAVI_FEE_API = "https://open-api.naviprotocol.io/api/internal/defillama/fee";
-const CF_PASS = "b35f13a110a4";
 
 // Vault group this listing covers. The on-chain objects behind it, for
 // reference and so the adapter can be rebuilt if the endpoint disappears:
@@ -48,7 +53,9 @@ const methodology = {
 };
 
 const fetch = async ({ startTimestamp, createBalances }: FetchOptions) => {
-  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${CF_PASS}`;
+  const url = `${NAVI_FEE_API}?fromTimestamp=${startTimestamp}&cf_pass=${getEnv(
+    "NAVI_DEFILLAMA_CF_PASS"
+  )}`;
   const stats = (await fetchURL(url)).data;
 
   const group: VaultGroupStats | undefined = stats?.vaults?.[VAULT_GROUP];

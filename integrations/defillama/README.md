@@ -108,9 +108,31 @@ Treat the TVL numbers as unverified until that run is attached to the PR.
 
 ## Note on the fee endpoint parameter
 
-The fees adapters pass the same `cf_pass` query parameter as the already-merged
-upstream `fees/navi` adapter, copied verbatim from it. It is a Cloudflare
-bypass parameter, not a credential, and it is already public in
-`DefiLlama/dimension-adapters`. Nothing here adds a new secret, and no NAVI
-token or key should ever be added to these files — DefiLlama adapters are
-public source.
+The fees adapters pass a `cf_pass` query parameter — a Cloudflare bypass
+parameter for `open-api.naviprotocol.io`, the same one the already-merged
+upstream `fees/navi` adapter uses. It is **not** hardcoded here. Both adapters
+read it with `getEnv("NAVI_DEFILLAMA_CF_PASS")` from `helpers/env`, which is the
+mechanism upstream accepts, and there is no fallback literal in the files. No
+NAVI token, key, or parameter value should ever be committed to these
+adapters — DefiLlama adapters are public source.
+
+Three things follow from that, and all three are on whoever opens the upstream
+`dimension-adapters` PR:
+
+1. **`NAVI_DEFILLAMA_CF_PASS` must be added to `ENV_KEYS` in DefiLlama's
+   `helpers/env.ts` as part of that PR.** `getEnv` throws
+   `Unknown env key: ...` for any key missing from that committed whitelist, so
+   without the whitelist entry both adapters fail before they ever make a
+   request. The vendored patch touches the two adapter files only; the
+   `helpers/env.ts` line has to be added in the upstream checkout.
+2. **The value itself goes to DefiLlama's maintainers out of band**, for them to
+   set in their runtime. It is never written into the repo, the patch, the PR
+   body, or this file.
+3. **The adapter test will fail in DefiLlama's PR CI until a maintainer sets
+   it.** Their PR CI injects no secrets, so `NAVI_DEFILLAMA_CF_PASS` is unset
+   for the run and the fetch cannot succeed. Expect a red check on the PR and
+   say so in the PR description rather than working around it.
+
+The precedent for exactly this shape is `GATESWAP_DEFILLAMA_API_KEY`, which was
+moved out of the adapter source and into `helpers/env.ts` in upstream PR #8740;
+`helpers/gateswap.ts` reads it the same way these adapters read theirs.
