@@ -1,32 +1,7 @@
-From d5f4c1fef7fec53d2878b02e41148eb9e9bacb97 Mon Sep 17 00:00:00 2001
+From 335db604b5bbfc3a5559bcf10527484c710e81ab Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
-Date: Sun, 13 Sep 2026 06:00:18 +0000
-Subject: [PATCH] navi-vaults: add TVL for NAVI's vaults on Sui
-
-One listing for NAVI's navi_vault product, covering all four production
-vaults (USDC and SUI, in NAVI's Prime and High Yield product lines).
-Prime vs High Yield is off-chain product labelling over a single
-contract, so it is kept as a per-entry comment rather than split into
-two listings - the same shape as projects/moonwell-vaults and
-projects/felix-vaults.
-
-TVL is the `total_assets` field read straight off each Vault<CoinType>
-object: the vault's idle balance plus what it has supplied into NAVI's
-lending markets. It is a stored balance refreshed on market sync, so
-the methodology says "as of the vault's last market sync" rather than
-presenting it as live. The vaults have no borrow entrypoint, so nothing
-is netted out. The coin type comes from the object's own generic type
-argument, with no fallback: a missing object, an unparseable type or a
-missing total_assets throws instead of silently contributing zero.
-
-Marked doublecounted: the vaults supply into NAVI's own lending markets,
-which the existing `navi` listing already counts. That listing reports
-`total_supply - borrowed`, so the overlap is not exact and flagging the
-whole book under-reports rather than over-reports.
-
-The vault object ids are listed explicitly rather than enumerated by
-type; the comment names the public vault-list endpoint as the maintained
-source to diff the list against, and states the stale-list risk.
+Date: Sun, 13 Sep 2026 13:46:33 +0000
+Subject: [PATCH] navi-vaults: add vault TVL
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_015CyPJY6XuJwThFkHQdLAi3

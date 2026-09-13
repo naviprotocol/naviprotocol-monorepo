@@ -41,12 +41,13 @@ upstream repository. The `dimension-adapters` patch additionally adds one line
 to upstream's `helpers/env.ts` (see "The fee endpoint parameter" below); that
 file is not vendored here, only the patch carries the change.
 
-They are vendored into this repo only because the session that wrote them has no
-push access to the DefiLlama repositories: they are not NAVI-owned, so the
-GitHub App that authorizes this environment's pushes cannot be installed on
-them, and a direct push is refused by the git proxy as a repository outside the
-authorized set. Vendoring into a NAVI-owned repository was the remedy that error
-names.
+They are vendored into this repo only because the session that wrote them could
+not push them to their real home. A NAVI fork of the TVL repository does exist
+(`naviprotocol/DefiLlama-Adapters`), but it is not in the authorized repository
+set of this environment either, so pushes to it and PR creation against
+`DefiLlama/DefiLlama-Adapters` are both refused with `403`. Vendoring into an
+already-authorized NAVI repository was the remedy that error names. See
+"How to get the adapters upstream" for what unblocking this needs.
 
 **This is a staging area, not the source of truth.** Once the upstream PRs are
 open from a fork, the adapters live upstream and this copy should be treated as
@@ -54,31 +55,78 @@ a historical snapshot (or deleted).
 
 ## How to get the adapters upstream
 
-Both `.patch` files are `git format-patch` output and were verified with
-`git apply --check` against `DefiLlama-Adapters` `main` at `f4c1225` and
-`dimension-adapters` `master` at `2f6081e`:
+### The upstream PR is not open, and could not be opened from here
+
+`naviprotocol/DefiLlama-Adapters` — the NAVI fork of
+`DefiLlama/DefiLlama-Adapters` — **exists**, but neither it nor the upstream
+repository is in the authorized repository set of the Claude session that
+prepared this work. The `navi-vaults-tvl` branch therefore could not be pushed
+(`403` at the git proxy) and the pull request could not be created (`403` from
+the GitHub API). That is an authorization boundary, not an unfinished branch:
+the commit is complete and is vendored here as
+`DefiLlama-Adapters-navi-vaults.patch`.
+
+For a Claude session to do the push and open the PR itself, an organization
+owner has to authorize **both** repositories for it:
+
+- `naviprotocol/DefiLlama-Adapters` — the push target for the branch.
+- `DefiLlama/DefiLlama-Adapters` — the PR's base repository; a cross-fork PR
+  needs the base authorized as well as the head.
+
+Until that happens, use the manual route below.
+
+### Manual route (for someone with push access to the fork)
+
+`DefiLlama-Adapters-navi-vaults.patch` is `git format-patch` output for a single
+commit adding one file, `projects/navi-vaults/index.js`. It is cut from upstream
+`main` at `0e7225715` and was verified against that exact base with
+`git apply --check` (clean, exit 0).
 
 ```bash
-# TVL adapter
-git clone https://github.com/<your-fork>/DefiLlama-Adapters
+# 1. Sync the fork's main. When last checked the fork was 9,333 commits behind
+#    upstream with zero unique commits of its own, so this is a clean
+#    fast-forward and nothing fork-specific is lost.
+git clone https://github.com/naviprotocol/DefiLlama-Adapters
 cd DefiLlama-Adapters
-git checkout -b navi-vaults
+git remote add upstream https://github.com/DefiLlama/DefiLlama-Adapters
+git fetch upstream
+git checkout main && git merge --ff-only upstream/main && git push origin main
+
+# 2. Branch and apply the patch from this directory.
+git checkout -b navi-vaults-tvl
 git am /path/to/integrations/defillama/DefiLlama-Adapters-navi-vaults.patch
 
-# Fees adapter (blocked on a NAVI backend change - see below)
-git clone https://github.com/<your-fork>/dimension-adapters
-cd dimension-adapters
-git checkout -b navi-vaults
-git am /path/to/integrations/defillama/dimension-adapters-navi-vaults.patch
+# 3. Push the branch to the fork.
+git push -u origin navi-vaults-tvl
+
+# 4. Open the PR against DefiLlama/DefiLlama-Adapters (base `main`), using
+#    PR-body-DefiLlama-Adapters.md verbatim as the description, and enable
+#    "Allow edits by maintainers" (the body states that it is on).
+gh pr create --repo DefiLlama/DefiLlama-Adapters \
+  --base main --head naviprotocol:navi-vaults-tvl \
+  --title "navi-vaults: add vault TVL" \
+  --body-file /path/to/integrations/defillama/PR-body-DefiLlama-Adapters.md
 ```
+
+Fill the body's "Current TVL" field before opening it — see "Open items".
+
+### The fees adapter is a separate, later PR
+
+`dimension-adapters-navi-vaults.patch` carries the fees adapter for
+`DefiLlama/dimension-adapters` and was verified with `git apply --check` against
+that repository's `master` at `2f6081e`. **Do not open that PR yet** — it is
+blocked on a NAVI backend change (see "Open items").
+
+Its PR body is no longer in this directory. The file that used to be here
+(`PR-body-dimension-adapters.md`) still described the two withdrawn `navi-prime`
+and `navi-high-yield` listings and so contradicted every other file here; it was
+deleted rather than left to mislead. It needs rewriting for the single
+`navi-vaults` listing when the endpoint ships, with
+`PR-body-DefiLlama-Adapters.md` as the model.
 
 If `git am` rejects a hunk because upstream has moved on, apply with
 `git apply --3way`, or copy the adapter file from the mirrored path here and
 re-add the `helpers/env.ts` line by hand.
-
-`PR-body-DefiLlama-Adapters.md` and `PR-body-dimension-adapters.md` are the PR
-descriptions to paste when opening each pull request. Everything under "Open
-items" below has to be reflected there before either PR is opened.
 
 ## What the adapters do
 
@@ -218,7 +266,7 @@ no fee figure has ever been computed. Nothing was stubbed or weakened to force a
 check to pass.
 
 What *has* been checked, in fresh clones of both upstream repositories at the
-heads named above:
+bases named in the table below:
 
 | Check | Result |
 | --- | --- |
@@ -227,7 +275,8 @@ heads named above:
 | `node test.js projects/navi-vaults/index.js` | **fails on egress only** — execution reaches `tvl()`, so upstream's `checkExportKeys` already passed (valid chain key, no blacklisted root keys, `timetravel`/`doublecounted`/`methodology` all whitelisted), then `Failed to post https://graphql.mainnet.sui.io/graphql` |
 | `pnpm ts-check` (dimension-adapters, with the adapter and the `helpers/env.ts` line in place) | passes (exit 0) |
 | `pnpm test fees navi-vaults` | **fails on egress only** — `getEnv` resolves (no `Unknown env key`), the window is day-aligned, then `Request failed with status code 403` from the proxy |
-| `git apply --check` for both patches against a clean upstream base | passes |
+| `git apply --check`, TVL patch against `DefiLlama-Adapters` `main` at `0e7225715` | passes (exit 0) |
+| `git apply --check`, fees patch against `dimension-adapters` `master` at `2f6081e` | passes |
 
 So the module contracts are proven and the chain read, the endpoint shape, and
 every number remain unproven. Before either PR is merged, someone with Sui RPC
@@ -295,10 +344,29 @@ are open.
    removed, along with every comment about being vendored in this monorepo,
    because neither makes sense in the target repository. **Do not open the fees
    PR before the endpoint serves data.**
-2. **No live validation** (see "Verification status"). The TVL PR needs a real
-   `node test.js` run, and the PR's mandatory "Current TVL" field cannot be
-   filled without one.
-3. **Logo** is required for a new listing and is still outstanding.
+2. **No live validation, and the PR body's "Current TVL" field is empty
+   because of it** (see "Verification status"). No environment available here
+   can reach Sui RPC, so no figure has ever been computed and none is quoted.
+   The one command that fills that field is, from a `DefiLlama-Adapters`
+   checkout with the adapter in place:
+
+   ```bash
+   node test.js projects/navi-vaults/index.js
+   ```
+
+   Its total should be cross-checked against NAVI's Earn page before the field
+   is filled. **While that field is empty this submission is not ready to
+   open** — everything else about the TVL PR is finished.
+3. **Logo — a candidate has been found, but not verified to resolve.** The PR
+   body offers `https://app.naviprotocol.io/imgs/migrate/protocols/navi.svg`,
+   the NAVI mark that NAVI's own committed frontend code serves and references
+   for the protocol (it is a vector file, so resolution is not a concern).
+   **It could not be confirmed to actually resolve**: `app.naviprotocol.io` is
+   proxy-blocked from this environment, so the URL is derived from committed
+   code, not observed to return an image. Someone on a normal network should
+   open it before the PR goes out. The body also explicitly offers maintainers
+   the alternative of reusing the artwork already attached to the existing
+   `navi` listing, which they may well prefer for a same-team listing.
 4. **`parentProtocol` cannot be requested in an adapter PR** — it appears
    nowhere in either adapter repository and is set server-side. Grouping
    `navi-vaults` under NAVI alongside `navi` and `astros-perp` has to be asked
@@ -316,8 +384,17 @@ are open.
    The template says "leave empty if not listed", and the vaults issue no
    transferable token; attaching NAVX to a vault row invites a bogus mcap/TVL
    ratio.
-8. **Audit URLs exist and should be pasted** rather than left as TODO (public
-   Veridise and Certora reports for the vault, plus NAVI's lending audits), as
-   should Treasury, docs link and referral-program answers.
+8. **Audit URLs — done, do not re-derive them.** The two public vault reports
+   are in `PR-body-DefiLlama-Adapters.md` already, taken from what NAVI's own
+   app links to:
+
+   - Veridise: `https://x4rjmmpwhoncvduw.public.blob.vercel-storage.com/uploads/2026-06-16/ktyailgyv4g40r76lq0c-TKYYxZ7ruvrb3X3vpSjhM6bkbxBDfk`
+   - Certora: `https://x4rjmmpwhoncvduw.public.blob.vercel-storage.com/uploads/2026-06-16/bodt8ztf6jex17e4be44-6x9sqrQ9XLMX03xp1EY7vLe2uyTuiu`
+
+   The underlying lending protocol's audits (OtterSec, Veridise, MoveBit,
+   Salus) are linked as
+   `https://github.com/naviprotocol/navi-smart-contracts/tree/main/audits`.
+   Treasury, docs link and the referral-program answer are also answered in the
+   body now.
 9. **The double-counting question above must be put to maintainers**, not
    answered in a PR-body aside.
