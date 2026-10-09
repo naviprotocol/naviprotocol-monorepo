@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mayanSdk = vi.hoisted(() => ({
   createSwapFromSuiMoveCalls: vi.fn(),
+  resolveInputCoin: vi.fn(),
   swapFromSolana: vi.fn(),
   swapFromEvm: vi.fn()
 }))
@@ -15,6 +16,7 @@ const ethersSdk = vi.hoisted(() => ({
 
 vi.mock('@mayanfinance/swap-sdk', () => ({
   createSwapFromSuiMoveCalls: mayanSdk.createSwapFromSuiMoveCalls,
+  resolveInputCoin: mayanSdk.resolveInputCoin,
   swapFromSolana: mayanSdk.swapFromSolana,
   swapFromEvm: mayanSdk.swapFromEvm,
   addresses: {
@@ -149,7 +151,8 @@ describe('mayan provider', () => {
       '0xto',
       undefined,
       null,
-      client
+      client,
+      undefined
     )
     expect(mayanTx.setSenderIfNotSet).toHaveBeenCalledWith('0xfrom')
     expect(mayanTx.setGasBudget).toHaveBeenCalledWith(123456)
@@ -226,7 +229,8 @@ describe('mayan provider', () => {
       '0xto',
       undefined,
       null,
-      client
+      client,
+      undefined
     )
     expect(executeTransaction).toHaveBeenCalledWith({
       transaction: new Uint8Array([1, 2, 3]),
@@ -537,7 +541,8 @@ describe('mayan provider', () => {
       '0xto',
       undefined,
       null,
-      client
+      client,
+      undefined
     )
   })
 
@@ -603,7 +608,8 @@ describe('mayan provider', () => {
       '0xto',
       undefined,
       null,
-      buildClient
+      buildClient,
+      undefined
     )
     expect(mayanTx.build).toHaveBeenCalledWith({ client: buildClient })
     expect(client.executeTransaction).toHaveBeenCalledWith({
@@ -827,5 +833,86 @@ describe('mayan provider', () => {
       hash: '0xevmhash',
       confirmations: 3
     })
+  })
+})
+
+describe('mayan provider Sui pre-swap input', () => {
+  const SUI_USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+  const digest = `0x${'d'.repeat(64)}`
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function suiRoute(fromContract: string) {
+    return {
+      from_token: { chainId: 1999 },
+      to_token: { chainId: 8453 },
+      info_for_bridge: {
+        type: 'MCTP',
+        fromToken: { standard: 'suicoin', contract: fromContract },
+        mctpInputContract: SUI_USDC,
+        effectiveAmountIn64: '3000000000'
+      }
+    }
+  }
+
+  async function runSuiSwap(fromContract: string) {
+    const { swap } = await import('../src/providers/mayan')
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(createMayanTransaction())
+    const client = {
+      core: createSuiCoreApi(),
+      executeTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } })),
+      waitForTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } }))
+    }
+    const signTransaction = vi.fn(async () => ({ bytes: signedBytes, signature: 'sig' }))
+    await settleSwap(
+      swap(suiRoute(fromContract) as any, '0xfrom', '0xto', {
+        sui: { provider: client as any, signTransaction }
+      })
+    )
+    return { client, options: mayanSdk.createSwapFromSuiMoveCalls.mock.calls[0][6] }
+  }
+
+  it('splits a SUI input from the gas coin so Mayan never selects coins server-side', async () => {
+    const { options } = await runSuiSwap(
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+    )
+
+    expect(options.builtTransaction).toBeInstanceOf(Transaction)
+    const [split] = options.builtTransaction.getData().commands
+    expect(split.$kind).toBe('SplitCoins')
+    expect(split.SplitCoins.coin).toEqual({ $kind: 'GasCoin', GasCoin: true })
+    expect(options.inputCoin.result).toMatchObject({ $kind: 'NestedResult', NestedResult: [0, 0] })
+    expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
+  })
+
+  it('selects a non-SUI input locally, including address balance, through Mayan resolveInputCoin', async () => {
+    const DEEP = '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP'
+    const coin = { $kind: 'Result', Result: 0 }
+    mayanSdk.resolveInputCoin.mockResolvedValueOnce(coin)
+
+    const { client, options } = await runSuiSwap(DEEP)
+
+    expect(mayanSdk.resolveInputCoin).toHaveBeenCalledWith(
+      3000000000n,
+      '0xfrom',
+      DEEP,
+      client,
+      options.builtTransaction
+    )
+    expect(options.inputCoin).toEqual({ result: coin })
+  })
+
+  it('leaves a USDC input to Mayan local coin selection', async () => {
+    const { options } = await runSuiSwap(SUI_USDC)
+
+    expect(options).toBeUndefined()
+    expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,7 @@
 import {
   createSwapFromSuiMoveCalls,
+  resolveInputCoin,
+  ComposableSuiMoveCallsOptions,
   Quote as MayanQuote,
   swapFromSolana,
   swapFromEvm,
@@ -12,7 +14,7 @@ import { BridgeSwapQuote, WalletConnection } from '../types'
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
 import { Transaction } from '@mysten/sui/transactions'
-import { fromBase64 } from '@mysten/sui/utils'
+import { fromBase64, normalizeStructTag, SUI_TYPE_ARG } from '@mysten/sui/utils'
 
 const ERC20_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -76,6 +78,39 @@ function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
   }
 
   return parseUnits(String(mayanQuote.effectiveAmountIn), decimals)
+}
+
+/**
+ * When the Sui source token is not the MCTP input token (USDC), Mayan's server builds the
+ * pre-swap into USDC and picks the input coins itself. That server-side selection only sees
+ * `Coin` objects, so a wallet holding the token only as Sui address balance gets `NO_COINS`.
+ * Preparing the input coin locally keeps coin selection on our side: SUI is split from the
+ * gas coin, which is funded from coin objects or address balance alike; other tokens go
+ * through Mayan's own selection, which backfills from the address balance.
+ */
+async function prepareSuiSwapInput(
+  mayanQuote: MayanQuote,
+  owner: string,
+  client: Parameters<typeof resolveInputCoin>[3]
+): Promise<ComposableSuiMoveCallsOptions | undefined> {
+  const { type, fromToken, mctpInputContract, effectiveAmountIn64 } = mayanQuote
+  if (type !== 'MCTP' || !fromToken?.contract || !mctpInputContract || !effectiveAmountIn64) {
+    return undefined
+  }
+  const inputType = normalizeStructTag(fromToken.contract)
+  if (inputType === normalizeStructTag(mctpInputContract)) {
+    return undefined
+  }
+  const amount = BigInt(effectiveAmountIn64)
+  const tx = new Transaction()
+  const inputCoin =
+    inputType === normalizeStructTag(SUI_TYPE_ARG)
+      ? tx.splitCoins(tx.gas, [amount])[0]
+      : await resolveInputCoin(amount, owner, fromToken.contract, client, tx)
+  return {
+    builtTransaction: tx,
+    inputCoin: { result: inputCoin } as ComposableSuiMoveCallsOptions['inputCoin']
+  }
 }
 
 function getSuiExecutionTransaction(resp: SuiExecutionResponse) {
@@ -278,7 +313,8 @@ export async function swap(
       toAddress,
       referrerAddresses,
       null,
-      buildClient as any
+      buildClient as any,
+      await prepareSuiSwapInput(mayanQuote, fromAddress, buildClient as any)
     )
     swapTrx.setSenderIfNotSet(fromAddress)
     if (connection.gasBudget !== undefined) {
