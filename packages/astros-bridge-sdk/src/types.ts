@@ -252,6 +252,17 @@ type SuiWalletConnectionBase = {
    */
   buildClient?: NaviBridgeSuiBuildClient
   gasBudget?: number
+  /**
+   * How a Sui-source pre-swap into USDC is requested from Mayan when a referrer is set.
+   * - `default` (or omitted): unchanged behaviour.
+   * - `mayan`: the pre-swap is requested without the referrer, so Mayan builds it on the same
+   *   router its quote was priced on; the referrer and its fee stay on the order. The full
+   *   transaction is simulated before signing and rebuilt from the same quote (at most three
+   *   builds) when the pre-swap misses the order's minimum middle amount or comes back
+   *   malformed. Quote minimums are never lowered; when retries run out the error has
+   *   `code: 'BRIDGE_QUOTE_EXPIRED'` and the caller should fetch a fresh quote.
+   */
+  preswapRouting?: 'default' | 'mayan'
   signTransaction: (data: { transaction: Transaction }) => Promise<{
     bytes: string
     signature: string

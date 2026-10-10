@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mayanSdk = vi.hoisted(() => ({
   createSwapFromSuiMoveCalls: vi.fn(),
+  getSwapSui: vi.fn(),
+  addInitOrderMoveCalls: vi.fn(),
+  addBridgeLockedFeeMoveCalls: vi.fn(),
+  addBridgeWithFeeMoveCalls: vi.fn(),
+  fetchMayanSuiPackageId: vi.fn(),
+  getQuoteSuitableReferrerAddress: vi.fn(),
   resolveInputCoin: vi.fn(),
   swapFromSolana: vi.fn(),
   swapFromEvm: vi.fn()
@@ -16,11 +22,22 @@ const ethersSdk = vi.hoisted(() => ({
 
 vi.mock('@mayanfinance/swap-sdk', () => ({
   createSwapFromSuiMoveCalls: mayanSdk.createSwapFromSuiMoveCalls,
+  getSwapSui: mayanSdk.getSwapSui,
+  addInitOrderMoveCalls: mayanSdk.addInitOrderMoveCalls,
+  addBridgeLockedFeeMoveCalls: mayanSdk.addBridgeLockedFeeMoveCalls,
+  addBridgeWithFeeMoveCalls: mayanSdk.addBridgeWithFeeMoveCalls,
+  fetchMayanSuiPackageId: mayanSdk.fetchMayanSuiPackageId,
+  getQuoteSuitableReferrerAddress: mayanSdk.getQuoteSuitableReferrerAddress,
+  nativeAddressToHexString: () => `0x${'5'.repeat(64)}`,
+  getWormholeChainIdByName: () => 30,
   resolveInputCoin: mayanSdk.resolveInputCoin,
   swapFromSolana: mayanSdk.swapFromSolana,
   swapFromEvm: mayanSdk.swapFromEvm,
   addresses: {
-    MAYAN_FORWARDER_CONTRACT: '0xforwarder'
+    MAYAN_FORWARDER_CONTRACT: '0xforwarder',
+    SUI_MCTP_STATE: `0x${'6'.repeat(64)}`,
+    SUI_MCTP_FEE_MANAGER_STATE: `0x${'7'.repeat(64)}`,
+    SUI_LOGGER_PACKAGE_ID: `0x${'8'.repeat(64)}`
   }
 }))
 
@@ -914,5 +931,225 @@ describe('mayan provider Sui pre-swap input', () => {
 
     expect(options).toBeUndefined()
     expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
+  })
+})
+
+describe('mayan provider Sui pre-swap routing', () => {
+  const SUI = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+  const SUI_USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+  const REFERRERS = { sui: '0xsuiref', evm: '0xevmref', solana: 'solref' }
+  const digest = `0x${'d'.repeat(64)}`
+  const MIN_MIDDLE_ABORT =
+    "Transaction resolution failed: MoveAbort in 12th command, abort code: 4, in '0xb5bd::init_order::prepare_initialize_order' (instruction 7)"
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    mayanSdk.getQuoteSuitableReferrerAddress.mockReturnValue('0xevmref')
+    mayanSdk.fetchMayanSuiPackageId.mockResolvedValue(`0x${'9'.repeat(64)}`)
+    mayanSdk.getSwapSui.mockImplementation(async () => ({
+      tx: await new Transaction().toJSON(),
+      outCoin: { $kind: 'Result', Result: 0 },
+      whFeeCoin: { $kind: 'Result', Result: 1 }
+    }))
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  function route(fromContract: string, overrides: Record<string, unknown> = {}) {
+    return {
+      from_token: { chainId: 1999 },
+      to_token: { chainId: 8453 },
+      info_for_bridge: {
+        type: 'MCTP',
+        fromChain: 'sui',
+        toChain: 'base',
+        hasAuction: true,
+        cheaperChain: 'base',
+        slippageBps: 50,
+        referrerBps: 10,
+        minMiddleAmount: 1.627692,
+        fromToken: {
+          standard: 'suicoin',
+          contract: fromContract,
+          verifiedAddress: `0x${'4'.repeat(64)}`
+        },
+        mctpInputContract: SUI_USDC,
+        effectiveAmountIn64: '1500000000',
+        ...overrides
+      }
+    }
+  }
+
+  const simulated = (status: Record<string, unknown>) => ({
+    $kind: 'Transaction',
+    Transaction: { digest, status }
+  })
+
+  async function run(
+    fromContract: string,
+    simulations: Array<Record<string, unknown> | Error>,
+    preswapRouting?: 'default' | 'mayan',
+    referrers: typeof REFERRERS | undefined = REFERRERS,
+    overrides: Record<string, unknown> = {}
+  ) {
+    const { swap } = await import('../src/providers/mayan')
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValue(createMayanTransaction())
+    const core = createSuiCoreApi()
+    for (const result of simulations) {
+      if (result instanceof Error) core.simulateTransaction.mockRejectedValueOnce(result)
+      else core.simulateTransaction.mockResolvedValueOnce(result)
+    }
+    const client = {
+      core,
+      executeTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } })),
+      waitForTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } }))
+    }
+    const signTransaction = vi.fn(async () => ({ bytes: signedBytes, signature: 'sig' }))
+    const promise = swap(
+      route(fromContract, overrides) as any,
+      '0xfrom',
+      '0xto',
+      { sui: { provider: client as any, signTransaction, preswapRouting } },
+      referrers
+    )
+    promise.catch(() => undefined)
+    return { promise: settleSwap(promise), client, signTransaction }
+  }
+
+  it('keeps the existing Mayan path when the routing option is not set', async () => {
+    const { promise, client } = await run(SUI, [])
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
+      expect.anything(),
+      '0xfrom',
+      '0xto',
+      REFERRERS,
+      null,
+      client,
+      expect.objectContaining({ builtTransaction: expect.any(Transaction) })
+    )
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
+  })
+
+  it('requests the pre-swap without the referrer and keeps the referrer on the order', async () => {
+    const { promise, client, signTransaction } = await run(
+      SUI,
+      [simulated({ success: true })],
+      'mayan'
+    )
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
+    const [request] = mayanSdk.getSwapSui.mock.calls[0]
+    expect(request).not.toHaveProperty('referrerAddress')
+    expect(request).toMatchObject({
+      amountIn64: '1500000000',
+      inputCoinType: SUI,
+      middleCoinType: SUI_USDC,
+      userWallet: '0xfrom',
+      withWhFee: true,
+      slippageBps: 50,
+      chainName: 'sui'
+    })
+    expect(request.inputCoin.result).toMatchObject({ $kind: 'NestedResult' })
+
+    const [quote, , , referrer, , , , options] = mayanSdk.addInitOrderMoveCalls.mock.calls[0]
+    expect(referrer).toBe('0xevmref')
+    expect(quote.minMiddleAmount).toBe(1.627692)
+    expect(quote.referrerBps).toBe(10)
+    expect(options.inputCoin).toEqual({ result: { $kind: 'Result', Result: 0 } })
+    expect(options.whFeeCoin).toEqual({ result: { $kind: 'Result', Result: 1 } })
+    expect(client.core.simulateTransaction).toHaveBeenCalledTimes(1)
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the non-auction bridge calls when the quote has no auction', async () => {
+    const { promise } = await run(SUI, [simulated({ success: true })], 'mayan', REFERRERS, {
+      hasAuction: false,
+      cheaperChain: 'sui'
+    })
+    await promise
+
+    expect(mayanSdk.addInitOrderMoveCalls).not.toHaveBeenCalled()
+    expect(mayanSdk.addBridgeLockedFeeMoveCalls).toHaveBeenCalledTimes(1)
+    expect(mayanSdk.getSwapSui.mock.calls[0][0].withWhFee).toBe(false)
+  })
+
+  it('rebuilds from the same quote when the pre-swap misses the order minimum', async () => {
+    const { promise, signTransaction } = await run(
+      SUI,
+      [
+        simulated({ success: false, error: { message: MIN_MIDDLE_ABORT } }),
+        simulated({ success: true })
+      ],
+      'mayan'
+    )
+    await promise
+
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(2)
+    for (const [quote] of mayanSdk.addInitOrderMoveCalls.mock.calls) {
+      expect(quote.minMiddleAmount).toBe(1.627692)
+    }
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a malformed pre-swap transaction thrown during resolution', async () => {
+    const { promise } = await run(
+      SUI,
+      [
+        new Error('CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 8'),
+        simulated({ success: true })
+      ],
+      'mayan'
+    )
+    await promise
+
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks for a fresh quote after three builds miss the order minimum, without signing', async () => {
+    const miss = simulated({ success: false, error: { message: MIN_MIDDLE_ABORT } })
+    const { promise, signTransaction } = await run(SUI, [miss, miss, miss], 'mayan')
+
+    await expect(promise).rejects.toMatchObject({ code: 'BRIDGE_QUOTE_EXPIRED' })
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(3)
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it('surfaces other simulation failures immediately', async () => {
+    const { promise, signTransaction } = await run(
+      SUI,
+      [simulated({ success: false, error: { message: 'InsufficientCoinBalance in command 0' } })],
+      'mayan'
+    )
+
+    await expect(promise).rejects.toThrow('InsufficientCoinBalance')
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(1)
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it('keeps the existing path for a USDC source, which has no pre-swap', async () => {
+    const { promise, client } = await run(SUI_USDC, [], 'mayan')
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledTimes(1)
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
+  })
+
+  it('keeps the existing path when no referrer applies', async () => {
+    mayanSdk.getQuoteSuitableReferrerAddress.mockReturnValue(null)
+    const { promise } = await run(SUI, [], 'mayan', undefined)
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledTimes(1)
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
   })
 })
