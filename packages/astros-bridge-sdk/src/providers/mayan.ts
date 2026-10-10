@@ -549,6 +549,9 @@ export async function swap(
       buildClient === client
         ? swapTrx
         : Transaction.from(await swapTrx.build({ client: buildClient as any }))
+    if (preSwapReferrer) {
+      assertQuoteNotExpired(mayanQuote)
+    }
     const signed: {
       bytes: string
       signature: string

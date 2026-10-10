@@ -1154,6 +1154,46 @@ describe('mayan provider Sui pre-swap routing', () => {
     expect(signTransaction).not.toHaveBeenCalled()
   })
 
+  it('checks the quote deadline again after the final build, before the wallet', async () => {
+    const { swap } = await import('../src/providers/mayan')
+    const core = createSuiCoreApi()
+    core.simulateTransaction.mockResolvedValueOnce(simulated({ success: true }))
+    const client = {
+      core,
+      executeTransaction: vi.fn(),
+      waitForTransaction: vi.fn()
+    }
+    const deadline = Math.floor(Date.now() / 1000) + 600
+    const buildClient = { core: createSuiCoreApi() }
+    // The simulated build passes; the separate build client's final conversion build, after
+    // simulation, crosses the quote deadline.
+    let builds = 0
+    vi.mocked(Transaction.prototype.build).mockImplementation(async (options?: any) => {
+      if (options?.client === buildClient && ++builds === 2) vi.setSystemTime((deadline + 1) * 1000)
+      return new Uint8Array([1, 2, 3])
+    })
+    vi.spyOn(Transaction, 'from').mockReturnValue(new Transaction())
+    const signTransaction = vi.fn(async () => ({ bytes: signedBytes, signature: 'sig' }))
+    const promise = swap(
+      route(SUI, { deadline64: String(deadline) }) as any,
+      '0xfrom',
+      '0xto',
+      {
+        sui: {
+          provider: client as any,
+          buildClient: buildClient as any,
+          signTransaction,
+          preswapRouting: 'mayan'
+        }
+      },
+      REFERRERS
+    )
+    promise.catch(() => undefined)
+
+    await expect(settleSwap(promise)).rejects.toMatchObject({ code: 'BRIDGE_QUOTE_EXPIRED' })
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
   it('asks for a fresh quote after three builds miss the order minimum, without signing', async () => {
     const miss = simulated({ success: false, error: { message: MIN_MIDDLE_ABORT } })
     const { promise, signTransaction } = await run(SUI, [miss, miss, miss], 'mayan')
