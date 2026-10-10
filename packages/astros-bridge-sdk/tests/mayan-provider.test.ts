@@ -1076,17 +1076,34 @@ describe('mayan provider Sui pre-swap routing', () => {
     expect(signTransaction).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the existing path for a non-auction order, whose fee is not on the order', async () => {
-    const { promise, client } = await run(SUI, [], 'mayan', REFERRERS, {
-      hasAuction: false,
-      cheaperChain: 'sui'
-    })
-    await promise
+  it.each([
+    ['sui', 'addBridgeLockedFeeMoveCalls', false],
+    ['base', 'addBridgeWithFeeMoveCalls', true]
+  ] as const)(
+    'requests a non-auction pre-swap without the referrer and keeps the %s-cheaper bridge call',
+    async (cheaperChain, bridgeCall, withWhFee) => {
+      const { promise, client } = await run(
+        SUI,
+        [simulated({ success: true })],
+        'mayan',
+        REFERRERS,
+        {
+          hasAuction: false,
+          cheaperChain
+        }
+      )
+      await promise
 
-    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledTimes(1)
-    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
-    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
-  })
+      expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
+      const [request] = mayanSdk.getSwapSui.mock.calls[0]
+      expect(request).not.toHaveProperty('referrerAddress')
+      expect(request.withWhFee).toBe(withWhFee)
+      expect(mayanSdk.addInitOrderMoveCalls).not.toHaveBeenCalled()
+      expect(mayanSdk[bridgeCall]).toHaveBeenCalledTimes(1)
+      expect(mayanSdk[bridgeCall].mock.calls[0][0].minMiddleAmount).toBe(1.627692)
+      expect(client.core.simulateTransaction).toHaveBeenCalledTimes(1)
+    }
+  )
 
   it('rebuilds from the same quote when the pre-swap misses the order minimum', async () => {
     const { promise, signTransaction } = await run(
