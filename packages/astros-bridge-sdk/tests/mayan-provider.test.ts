@@ -939,19 +939,24 @@ describe('mayan provider Sui pre-swap routing', () => {
   const SUI_USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
   const REFERRERS = { sui: '0xsuiref', evm: '0xevmref', solana: 'solref' }
   const digest = `0x${'d'.repeat(64)}`
-  const MIN_MIDDLE_ABORT =
-    "Transaction resolution failed: MoveAbort in 12th command, abort code: 4, in '0xb5bd::init_order::prepare_initialize_order' (instruction 7)"
+  const MCTP_PACKAGE = `0x${'9'.repeat(64)}`
+  const MIN_MIDDLE_ABORT = `Transaction resolution failed: MoveAbort in 12th command, abort code: 4, in '${MCTP_PACKAGE}::init_order::prepare_initialize_order' (instruction 7)`
 
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     mayanSdk.getQuoteSuitableReferrerAddress.mockReturnValue('0xevmref')
-    mayanSdk.fetchMayanSuiPackageId.mockResolvedValue(`0x${'9'.repeat(64)}`)
-    mayanSdk.getSwapSui.mockImplementation(async () => ({
-      tx: await new Transaction().toJSON(),
-      outCoin: { $kind: 'Result', Result: 0 },
-      whFeeCoin: { $kind: 'Result', Result: 1 }
-    }))
+    mayanSdk.fetchMayanSuiPackageId.mockResolvedValue(MCTP_PACKAGE)
+    mayanSdk.getSwapSui.mockImplementation(async () => {
+      const preSwap = new Transaction()
+      preSwap.splitCoins(preSwap.gas, [1])
+      preSwap.splitCoins(preSwap.gas, [2])
+      return {
+        tx: await preSwap.toJSON(),
+        outCoin: { $kind: 'Result', Result: 0 },
+        whFeeCoin: { $kind: 'Result', Result: 1 }
+      }
+    })
     vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]))
   })
 
@@ -973,6 +978,7 @@ describe('mayan provider Sui pre-swap routing', () => {
         slippageBps: 50,
         referrerBps: 10,
         minMiddleAmount: 1.627692,
+        deadline64: String(Math.floor(Date.now() / 1000) + 600),
         fromToken: {
           standard: 'suicoin',
           contract: fromContract,
@@ -1070,16 +1076,16 @@ describe('mayan provider Sui pre-swap routing', () => {
     expect(signTransaction).toHaveBeenCalledTimes(1)
   })
 
-  it('uses the non-auction bridge calls when the quote has no auction', async () => {
-    const { promise } = await run(SUI, [simulated({ success: true })], 'mayan', REFERRERS, {
+  it('keeps the existing path for a non-auction order, whose fee is not on the order', async () => {
+    const { promise, client } = await run(SUI, [], 'mayan', REFERRERS, {
       hasAuction: false,
       cheaperChain: 'sui'
     })
     await promise
 
-    expect(mayanSdk.addInitOrderMoveCalls).not.toHaveBeenCalled()
-    expect(mayanSdk.addBridgeLockedFeeMoveCalls).toHaveBeenCalledTimes(1)
-    expect(mayanSdk.getSwapSui.mock.calls[0][0].withWhFee).toBe(false)
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledTimes(1)
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
   })
 
   it('rebuilds from the same quote when the pre-swap misses the order minimum', async () => {
@@ -1104,7 +1110,7 @@ describe('mayan provider Sui pre-swap routing', () => {
     const { promise } = await run(
       SUI,
       [
-        new Error('CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 8'),
+        new Error('CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 1'),
         simulated({ success: true })
       ],
       'mayan'
@@ -1112,6 +1118,40 @@ describe('mayan provider Sui pre-swap routing', () => {
     await promise
 
     expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry a missing argument outside the pre-swap Mayan returned', async () => {
+    const { promise, signTransaction } = await run(
+      SUI,
+      [new Error('CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 5')],
+      'mayan'
+    )
+
+    await expect(promise).rejects.toThrow('in command 5')
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(1)
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it('does not retry an abort code 4 from another package', async () => {
+    const other = MIN_MIDDLE_ABORT.replace(MCTP_PACKAGE, `0x${'3'.repeat(64)}`)
+    const { promise } = await run(
+      SUI,
+      [simulated({ success: false, error: { message: other } })],
+      'mayan'
+    )
+
+    await expect(promise).rejects.toThrow('abort code: 4')
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks for a fresh quote once the quote deadline has passed, without building', async () => {
+    const { promise, signTransaction } = await run(SUI, [], 'mayan', REFERRERS, {
+      deadline64: String(Math.floor(Date.now() / 1000) - 1)
+    })
+
+    await expect(promise).rejects.toMatchObject({ code: 'BRIDGE_QUOTE_EXPIRED' })
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(signTransaction).not.toHaveBeenCalled()
   })
 
   it('asks for a fresh quote after three builds miss the order minimum, without signing', async () => {

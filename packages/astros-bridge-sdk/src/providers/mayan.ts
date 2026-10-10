@@ -2,8 +2,6 @@ import {
   createSwapFromSuiMoveCalls,
   getSwapSui,
   addInitOrderMoveCalls,
-  addBridgeLockedFeeMoveCalls,
-  addBridgeWithFeeMoveCalls,
   fetchMayanSuiPackageId,
   getQuoteSuitableReferrerAddress,
   nativeAddressToHexString,
@@ -22,7 +20,12 @@ import { BridgeSwapQuote, NaviBridgeSuiBuildClient, WalletConnection } from '../
 import { Connection, SendOptions } from '@solana/web3.js'
 import { Signer, Overrides, Contract, parseUnits } from 'ethers'
 import { Transaction } from '@mysten/sui/transactions'
-import { fromBase64, normalizeStructTag, SUI_TYPE_ARG } from '@mysten/sui/utils'
+import {
+  fromBase64,
+  normalizeStructTag,
+  normalizeSuiAddress,
+  SUI_TYPE_ARG
+} from '@mysten/sui/utils'
 
 const ERC20_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -122,81 +125,58 @@ async function prepareSuiSwapInput(
 }
 
 /**
- * Builds a Sui-source MCTP bridge whose pre-swap is requested without the referrer.
+ * Builds a Sui-source MCTP auction order whose pre-swap is requested without the referrer.
  *
  * With a referrer attached, Mayan's server routes the pre-swap through a different router
  * than the one its quote was priced on, while the order still enforces the quote's
  * `minMiddleAmount`. That route can land a few bps short and `init_order` aborts (code 4).
- * The referrer only needs to be on the order, where its fee is charged, so this mirrors
- * Mayan's `createMctpFromSuiMoveCalls` with the referrer dropped from the pre-swap request
- * only. The order keeps the referrer, `referrerBps` and every quote minimum unchanged.
+ * On an auction order the referrer and its fee are recorded by `init_order` itself, so this
+ * mirrors Mayan's `createMctpFromSuiMoveCalls` for that case with the referrer dropped from
+ * the pre-swap request only. The order keeps the referrer, `referrerBps` and every quote
+ * minimum unchanged.
  */
-async function createSuiMctpWithUnreferredPreSwap(
+async function createSuiAuctionWithUnreferredPreSwap(
   quote: MayanQuote,
   swapperAddress: string,
   destinationAddress: string,
   referrerAddress: string,
   client: Parameters<typeof fetchMayanSuiPackageId>[1],
   prepared: ComposableSuiMoveCallsOptions
-): Promise<Transaction> {
+) {
   if (!quote.fromToken.verifiedAddress) {
     throw new Error('from token verified address is not provided')
   }
   const [mctpPackageId, feeManagerPackageId] = await Promise.all([
     fetchMayanSuiPackageId(addresses.SUI_MCTP_STATE, client),
-    quote.hasAuction ? fetchMayanSuiPackageId(addresses.SUI_MCTP_FEE_MANAGER_STATE, client) : null
+    fetchMayanSuiPackageId(addresses.SUI_MCTP_FEE_MANAGER_STATE, client)
   ])
   const swap = await getSwapSui({
     amountIn64: quote.effectiveAmountIn64,
     inputCoinType: quote.fromToken.contract,
     middleCoinType: quote.mctpInputContract,
     userWallet: swapperAddress,
-    withWhFee: quote.hasAuction || quote.cheaperChain !== 'sui',
+    withWhFee: true,
     inputCoin: prepared.inputCoin,
     transaction: prepared.builtTransaction ? await prepared.builtTransaction.toJSON() : undefined,
     slippageBps: quote.slippageBps,
     chainName: quote.fromChain
   })
   const tx = Transaction.from(swap.tx)
-  const options = {
-    inputCoin: { result: swap.outCoin },
-    whFeeCoin: swap.whFeeCoin ? { result: swap.whFeeCoin } : null,
-    builtTransaction: tx
-  } as ComposableSuiMoveCallsOptions
-  if (quote.hasAuction) {
-    if (!feeManagerPackageId) {
-      throw new Error('Fee manager package ID is not found for swap quote')
-    }
-    await addInitOrderMoveCalls(
-      quote,
-      swapperAddress,
-      destinationAddress,
-      referrerAddress,
-      mctpPackageId,
-      feeManagerPackageId,
-      client,
-      options
-    )
-  } else if (quote.cheaperChain === 'sui') {
-    await addBridgeLockedFeeMoveCalls(
-      quote,
-      swapperAddress,
-      destinationAddress,
-      mctpPackageId,
-      client,
-      options
-    )
-  } else {
-    await addBridgeWithFeeMoveCalls(
-      quote,
-      swapperAddress,
-      destinationAddress,
-      mctpPackageId,
-      null,
-      client,
-      options
-    )
-  }
+  const preSwapCommandCount = tx.getData().commands.length
+  await addInitOrderMoveCalls(
+    quote,
+    swapperAddress,
+    destinationAddress,
+    referrerAddress,
+    mctpPackageId,
+    feeManagerPackageId,
+    client,
+    {
+      inputCoin: { result: swap.outCoin },
+      whFeeCoin: swap.whFeeCoin ? { result: swap.whFeeCoin } : null,
+      builtTransaction: tx
+    } as ComposableSuiMoveCallsOptions
+  )
   tx.moveCall({
     package: mctpPackageId,
     module: 'init_order',
@@ -219,7 +199,7 @@ async function createSuiMctpWithUnreferredPreSwap(
       tx.pure.u8(quote.referrerBps || 0)
     ]
   })
-  return tx
+  return { tx, mctpPackageId, preSwapCommandCount }
 }
 
 const SUI_PRESWAP_MAX_BUILDS = 3
@@ -235,15 +215,33 @@ function getErrorMessage(error: unknown) {
   }
 }
 
-// The pre-swap output landed below the order's minimum middle amount.
-function isMinMiddleMiss(message: string) {
-  return /init_order::prepare_initialize_order/.test(message) && /abort code: 4\b/.test(message)
+// Mayan's own order check: the pre-swap output landed below the quote's minimum middle amount.
+function isMinMiddleMiss(message: string, mctpPackageId: string) {
+  const location = message.match(
+    /abort code: 4\b, in '(0x[0-9a-f]+)::init_order::prepare_initialize_order'/
+  )
+  return !!location && normalizeSuiAddress(location[1]) === normalizeSuiAddress(mctpPackageId)
 }
 
-// Failures that a rebuild from the same quote can clear: a fresh pre-swap route, or an
-// intermittently malformed pre-swap transaction from Mayan's server.
-function isRetryablePreSwapFailure(message: string) {
-  return isMinMiddleMiss(message) || /ArgumentWithoutValue/.test(message)
+// Mayan's server intermittently returns a pre-swap with an unset argument; only a failure
+// inside the commands it returned is attributed to that.
+function isMalformedPreSwap(message: string, preSwapCommandCount: number) {
+  const command = message.match(/ArgumentWithoutValue.*?in command (\d+)/)
+  return !!command && Number(command[1]) < preSwapCommandCount
+}
+
+function quoteExpiredError(reason: string, cause?: unknown) {
+  return Object.assign(
+    new Error(`Bridge quote is no longer executable: ${reason}. Fetch a new quote.`),
+    { code: 'BRIDGE_QUOTE_EXPIRED', cause }
+  )
+}
+
+function assertQuoteNotExpired(quote: MayanQuote) {
+  const deadline = Number(quote.deadline64)
+  if (Number.isFinite(deadline) && deadline > 0 && Date.now() / 1000 >= deadline) {
+    throw quoteExpiredError('the quote deadline has passed')
+  }
 }
 
 function getSimulationFailure(result: SuiExecutionResponse): string | undefined {
@@ -256,9 +254,11 @@ function getSimulationFailure(result: SuiExecutionResponse): string | undefined 
 }
 
 /**
- * Builds the unreferred pre-swap bridge and simulates it before it reaches the wallet. When
- * the pre-swap misses the order minimum or comes back malformed, the transaction is rebuilt
- * from the same quote; the quote's minimums are never relaxed.
+ * Builds the unreferred pre-swap auction order and simulates it before it reaches the wallet.
+ * Only a pre-swap that misses the order minimum, or comes back malformed from Mayan's server,
+ * is rebuilt from the same quote, for at most three builds and never past the quote deadline.
+ * The quote's minimums are never relaxed. Request and RPC timeouts stay with the caller's
+ * clients; this bounds the number of builds, not wall-clock time.
  */
 async function buildSimulatedUnreferredPreSwap(
   quote: MayanQuote,
@@ -270,51 +270,53 @@ async function buildSimulatedUnreferredPreSwap(
   gasBudget: number | undefined,
   firstInput: ComposableSuiMoveCallsOptions
 ): Promise<Transaction> {
-  let lastError: unknown
+  let lastFailure: unknown
+  let lastWasMinMiddleMiss = false
   for (let attempt = 1; attempt <= SUI_PRESWAP_MAX_BUILDS; attempt++) {
+    assertQuoteNotExpired(quote)
+    const prepared =
+      attempt === 1
+        ? firstInput
+        : await prepareSuiSwapInput(quote, swapperAddress, buildClient as any)
+    const { tx, mctpPackageId, preSwapCommandCount } = await createSuiAuctionWithUnreferredPreSwap(
+      quote,
+      swapperAddress,
+      destinationAddress,
+      referrerAddress,
+      buildClient as any,
+      prepared!
+    )
+    tx.setSenderIfNotSet(swapperAddress)
+    if (gasBudget !== undefined) {
+      tx.setGasBudget(gasBudget)
+    }
+    let failure: unknown
     try {
-      const prepared =
-        attempt === 1
-          ? firstInput
-          : await prepareSuiSwapInput(quote, swapperAddress, buildClient as any)
-      const tx = await createSuiMctpWithUnreferredPreSwap(
-        quote,
-        swapperAddress,
-        destinationAddress,
-        referrerAddress,
-        buildClient as any,
-        prepared!
-      )
-      tx.setSenderIfNotSet(swapperAddress)
-      if (gasBudget !== undefined) {
-        tx.setGasBudget(gasBudget)
-      }
-      const failure = getSimulationFailure(
+      const message = getSimulationFailure(
         await provider.core.simulateTransaction({
           transaction: await tx.build({ client: buildClient as any }),
           include: { effects: true }
         })
       )
-      if (!failure) {
+      if (!message) {
+        assertQuoteNotExpired(quote)
         return tx
       }
-      throw new Error(failure)
+      failure = new Error(message)
     } catch (error) {
-      lastError = error
-      if (!isRetryablePreSwapFailure(getErrorMessage(error))) {
-        throw error
-      }
+      failure = error
     }
+    const message = getErrorMessage(failure)
+    lastWasMinMiddleMiss = isMinMiddleMiss(message, mctpPackageId)
+    if (!lastWasMinMiddleMiss && !isMalformedPreSwap(message, preSwapCommandCount)) {
+      throw failure
+    }
+    lastFailure = failure
   }
-  if (isMinMiddleMiss(getErrorMessage(lastError))) {
-    throw Object.assign(
-      new Error(
-        'Bridge quote is no longer executable: the Sui pre-swap output is below the quote minimum. Fetch a new quote.'
-      ),
-      { code: 'BRIDGE_QUOTE_EXPIRED', cause: lastError }
-    )
+  if (lastWasMinMiddleMiss) {
+    throw quoteExpiredError('the Sui pre-swap output is below the quote minimum', lastFailure)
   }
-  throw lastError
+  throw lastFailure
 }
 
 function getSuiExecutionTransaction(resp: SuiExecutionResponse) {
@@ -513,7 +515,7 @@ export async function swap(
     assertSuiBuildClient(buildClient)
     const prepared = await prepareSuiSwapInput(mayanQuote, fromAddress, buildClient as any)
     const preSwapReferrer =
-      connection.preswapRouting === 'mayan' && prepared
+      connection.preswapRouting === 'mayan' && prepared && mayanQuote.hasAuction === true
         ? getQuoteSuitableReferrerAddress(mayanQuote, referrerAddresses)
         : null
     let swapTrx: Transaction
