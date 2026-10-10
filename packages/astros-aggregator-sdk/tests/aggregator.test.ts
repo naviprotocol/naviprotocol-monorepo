@@ -1,6 +1,6 @@
 import './fetch'
 import { describe, it, expect, vi } from 'vitest'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 
 import { buildSwapPTBFromQuote, getCoinPTB, swapPTB } from '../src/libs/Aggregator/swapPTB'
 import { makeCETUSPTB } from '../src/libs/Aggregator/Dex/cetus'
@@ -633,16 +633,16 @@ describe('swap test', () => {
     async () => {
       const testCaseName = expect.getState().currentTestName || 'test_case'
       const txb = createTransaction(coins.deep.holder)
-      const suiClient = new SuiJsonRpcClient({
+      const suiClient = new SuiGrpcClient({
         network: 'mainnet',
-        url: getJsonRpcFullnodeUrl('mainnet')
+        baseUrl: process.env.RPC_URL || 'https://fullnode.mainnet.sui.io:443'
       })
       // Get DEEP coins owned by the holder
-      const coinInStruct = await suiClient.getCoins({
+      const coinInStruct = await suiClient.core.listCoins({
         owner: coins.deep.holder,
         coinType: coins.deep.address
       })
-      const coinInStructObjectId = coinInStruct.data[0].coinObjectId
+      const coinInStructObjectId = coinInStruct.objects[0].objectId
       const amountIn = '1000000000'
       const quote = await getQuote(coins.deep.address, coins.sui.address, amountIn, apiKey, {
         dexList: [Dex.DEEPBOOK],
