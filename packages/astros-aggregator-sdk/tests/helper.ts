@@ -1,8 +1,9 @@
 import { Transaction } from '@mysten/sui/transactions'
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import * as fs from 'fs'
 import * as path from 'path'
-import { SignAndSubmitTXB } from '../src/libs/PTB/commonFunctions'
+import { dryRunSwapTransaction } from '../src/astros-sdk'
+import { normalizeAggregatorCoreTransactionResult } from '../src/transaction-result'
 import { Keypair } from '@mysten/sui/cryptography'
 
 // Mapping of error codes and function names to user-friendly messages
@@ -30,9 +31,35 @@ const parseErrorMessage = (errorMessage: string) => {
  * @param client The Sui client to interact with the blockchain.
  * @returns The result of the dry run.
  */
-export async function dryRunTXB(txb: Transaction, client: SuiJsonRpcClient) {
-  const txBytes = await txb.build({ client })
-  return await client.dryRunTransactionBlock({ transactionBlock: txBytes })
+export async function dryRunTXB(txb: Transaction, client: SuiGrpcClient) {
+  return await dryRunSwapTransaction(txb, { client: client as any })
+}
+
+/**
+ * Sign and execute a transaction over gRPC (core API).
+ * @param txb The transaction to submit.
+ * @param client The gRPC Sui client.
+ * @param keypair The signer.
+ */
+async function signAndSubmitTXB(txb: Transaction, client: SuiGrpcClient, keypair: Keypair) {
+  const result = await client.core.signAndExecuteTransaction({
+    transaction: txb,
+    signer: keypair,
+    include: { effects: true }
+  })
+  return normalizeAggregatorCoreTransactionResult(result)
+}
+
+/** Read the execution status from gRPC core effects (`status.success`) or legacy effects. */
+function getExecutionStatus(effects: any): { status: 'success' | 'failure'; error?: string } {
+  const status = effects?.status
+  const success =
+    typeof status?.success === 'boolean' ? status.success : status?.status === 'success'
+  const error = status?.error
+  return {
+    status: success ? 'success' : 'failure',
+    error: typeof error === 'string' ? error : error?.message
+  }
 }
 
 /**
@@ -64,8 +91,7 @@ export const createTransaction = (userAddress: string, gasBudget = 1000_000_000)
  * @param testName The name of the test or transaction.
  */
 const logTransactionResultToFile = (txRes: any, testName: string) => {
-  const status = txRes.effects.status.status
-  const errorMessage = txRes.effects.status.error ? txRes.effects.status.error : 'no_error'
+  const { status } = getExecutionStatus(txRes.effects)
 
   // 清理文件名，移除非法字符
   const cleanFileName = testName.replace(/[<>:"/\\|?*]/g, '_')
@@ -95,7 +121,7 @@ const logTransactionResultToFile = (txRes: any, testName: string) => {
  */
 export const handleTransactionResult = async (
   txb: Transaction,
-  client: SuiJsonRpcClient,
+  client: SuiGrpcClient,
   keypair: Keypair,
   testName = '',
   isDryRun = true,
@@ -107,7 +133,7 @@ export const handleTransactionResult = async (
   if (isDryRun) {
     txRes = await dryRunTXB(txb, client)
   } else {
-    txRes = await SignAndSubmitTXB(txb, client, keypair)
+    txRes = await signAndSubmitTXB(txb, client, keypair)
   }
 
   // If logging is enabled, log the transaction result to a file
@@ -116,8 +142,9 @@ export const handleTransactionResult = async (
   }
 
   // If the transaction failed, log the result and throw an error
-  if (txRes.effects.status.status === 'failure') {
-    const errorMessage = txRes.effects.status.error || 'Unknown Error'
+  const { status: finalStatus, error: executionError } = getExecutionStatus(txRes.effects)
+  if (finalStatus === 'failure') {
+    const errorMessage = executionError || 'Unknown Error'
     // Parse the error message to extract the error code
     const errorCode = parseErrorMessage(errorMessage)
     console.log(errorCode)
@@ -135,5 +162,5 @@ export const handleTransactionResult = async (
   }
 
   // Return the transaction status
-  return txRes.effects.status.status
+  return finalStatus
 }

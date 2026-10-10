@@ -1,7 +1,6 @@
 import './fetch'
 import { describe, it, expect } from 'vitest'
 import { WalletClient, WatchSigner } from '../src'
-import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { normalizeStructTag } from '@mysten/sui/utils'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -13,8 +12,8 @@ dotenv.config()
 const testAddress = '0x4a662a70184c9e8f62e9d298c9969318a74cec5e9d3b5e0616a687052e654e57'
 
 const signer = new WatchSigner(testAddress)
-const grpcUrl = process.env.SUI_GRPC_ENDPOINT || 'https://grpc.example'
-const legacyJsonRpcUrl = (process.env.RPC_URL as string) || getJsonRpcFullnodeUrl('mainnet')
+const grpcUrl =
+  process.env.SUI_GRPC_ENDPOINT || process.env.RPC_URL || 'https://fullnode.mainnet.sui.io:443'
 
 const walletClient = new WalletClient({
   signer: signer,
@@ -22,9 +21,6 @@ const walletClient = new WalletClient({
     network: 'mainnet',
     grpc: {
       url: grpcUrl
-    },
-    legacyJsonRpc: {
-      url: legacyJsonRpcUrl
     }
   }
 })
@@ -35,9 +31,6 @@ const suilendWalletClient = new WalletClient({
     network: 'mainnet',
     grpc: {
       url: grpcUrl
-    },
-    legacyJsonRpc: {
-      url: legacyJsonRpcUrl
     }
   }
 })

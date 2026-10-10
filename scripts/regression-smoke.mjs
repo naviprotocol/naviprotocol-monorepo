@@ -7,14 +7,12 @@ const suiPackageRoot = new URL('../packages/lending/node_modules/@mysten/sui/', 
 const [
   { GrpcWebFetchTransport, SuiGrpcClient },
   { SuiGraphQLClient },
-  { SuiJsonRpcClient },
   { Ed25519Keypair },
   { Transaction },
   { fromBase64 }
 ] = await Promise.all([
   import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
   import(new URL('./dist/graphql/index.mjs', suiPackageRoot)),
-  import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
   import(new URL('./dist/keypairs/ed25519/index.mjs', suiPackageRoot)),
   import(new URL('./dist/transactions/index.mjs', suiPackageRoot)),
   import(new URL('./dist/utils/index.mjs', suiPackageRoot))
@@ -178,7 +176,6 @@ function getClients() {
   const grpcEndpoint = normalizeGrpcBaseUrl(requireEnv('SUI_GRPC_ENDPOINT'))
   const grpcHeaders = tokenHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
   const graphqlUrl = env('SUI_GRAPHQL_URL')
-  const legacyJsonRpcUrl = env('SUI_JSON_RPC_URL')
 
   const grpc = new SuiGrpcClient({
     network,
@@ -194,21 +191,13 @@ function getClients() {
         headers: tokenHeaders('SUI_GRAPHQL_TOKEN', 'SUI_GRAPHQL_HEADER_NAME', 'authorization')
       })
     : undefined
-  const legacyJsonRpc = legacyJsonRpcUrl
-    ? new SuiJsonRpcClient({
-        network,
-        url: legacyJsonRpcUrl
-      })
-    : undefined
 
   return {
     network,
     grpc,
     graphql,
-    legacyJsonRpc,
     grpcEndpoint,
-    graphqlUrl,
-    legacyJsonRpcUrl
+    graphqlUrl
   }
 }
 
@@ -222,13 +211,6 @@ function makeNaviClientOptions(clients) {
       ? {
           graphql: {
             client: clients.graphql
-          }
-        }
-      : {}),
-    ...(clients.legacyJsonRpc
-      ? {
-          legacyJsonRpc: {
-            client: clients.legacyJsonRpc
           }
         }
       : {}),
@@ -378,19 +360,6 @@ async function runTransportSmoke(summary, clients, address) {
       return { balances: result.data?.address?.balances?.nodes?.length ?? 0 }
     },
     { optional: !clients.graphql }
-  )
-
-  await runStep(
-    summary,
-    'transport.legacyJsonRpc.explicit.getBalance',
-    async () => {
-      if (!clients.legacyJsonRpc) {
-        throw new Error('missing SUI_JSON_RPC_URL')
-      }
-      const result = await clients.legacyJsonRpc.getBalance({ owner: address, coinType: SUI })
-      return { totalBalance: result.totalBalance }
-    },
-    { optional: !clients.legacyJsonRpc }
   )
 }
 
@@ -633,17 +602,6 @@ async function simulateBridgeRoute({ bridge, clients, wallet, routeConfig }) {
   }
   assertBridgeRouteMatches({ route, routeConfig, fromToken, toToken })
 
-  // Honor the route's buildClientMode: a route configured for legacyJsonRpc must
-  // actually build through the legacy client, otherwise the matrix would pass on
-  // gRPC while production still requires the legacy build client.
-  const routeBuildClient =
-    routeConfig.buildClientMode === 'legacyJsonRpc' ? clients.legacyJsonRpc : undefined
-  if (routeConfig.buildClientMode === 'legacyJsonRpc' && !routeBuildClient) {
-    throw new Error(
-      `${routeConfig.label}: SUI_JSON_RPC_URL is required for legacyJsonRpc buildClient`
-    )
-  }
-
   const captured = { bytesLength: 0, signatures: 0 }
   let lastExecutionResult
   const dryProvider = {
@@ -678,9 +636,8 @@ async function simulateBridgeRoute({ bridge, clients, wallet, routeConfig }) {
   const result = await bridge.swap(route, wallet.address, destination, {
     sui: {
       provider: dryProvider,
-      ...(routeBuildClient ? { buildClient: routeBuildClient } : {}),
       signTransaction: async ({ transaction }) => {
-        const txBytes = await transaction.build({ client: routeBuildClient ?? clients.grpc })
+        const txBytes = await transaction.build({ client: clients.grpc })
         return wallet.keypair.signTransaction(txBytes)
       }
     }
@@ -759,24 +716,12 @@ async function runBridgeSmoke(summary, packages, clients, wallet, smokeMode) {
       )
     }
     const gasBudget = envInt('NAVI_SMOKE_BRIDGE_GAS_BUDGET', 0)
-    const buildClientMode = env('NAVI_SMOKE_BRIDGE_BUILD_CLIENT')
-    if (buildClientMode && buildClientMode !== 'legacyJsonRpc') {
-      throw new Error('NAVI_SMOKE_BRIDGE_BUILD_CLIENT must be legacyJsonRpc when set')
-    }
-    let buildClient
-    if (buildClientMode === 'legacyJsonRpc') {
-      if (!clients.legacyJsonRpc) {
-        throw new Error('NAVI_SMOKE_BRIDGE_BUILD_CLIENT=legacyJsonRpc requires SUI_JSON_RPC_URL')
-      }
-      buildClient = clients.legacyJsonRpc
-    }
     return swap(route, wallet.address, destinationAddress ?? wallet.address, {
       sui: {
         provider,
-        ...(buildClient ? { buildClient } : {}),
         ...(gasBudget > 0 ? { gasBudget } : {}),
         signTransaction: async ({ transaction }) => {
-          const txBytes = await transaction.build({ client: buildClient ?? clients.grpc })
+          const txBytes = await transaction.build({ client: clients.grpc })
           return wallet.keypair.signTransaction(txBytes)
         }
       }
@@ -1156,8 +1101,7 @@ function printPlan(summary, clients, wallet, scopes, smokeMode) {
     walletAddress: wallet.address,
     transports: {
       grpc: Boolean(clients.grpcEndpoint),
-      graphql: Boolean(clients.graphqlUrl),
-      explicitLegacyJsonRpc: Boolean(clients.legacyJsonRpcUrl)
+      graphql: Boolean(clients.graphqlUrl)
     },
     executeEnabled:
       smokeMode === 'execute' && env('NAVI_SMOKE_ENABLE_EXECUTE') === '1'
@@ -1209,7 +1153,7 @@ function printPlan(summary, clients, wallet, scopes, smokeMode) {
             action: 'quote Sui-source bridge route',
             amount: envAmount('NAVI_SMOKE_BRIDGE_AMOUNT', '1'),
             targetChain: Number(env('NAVI_SMOKE_BRIDGE_TO_CHAIN') ?? 42161),
-            buildClient: env('NAVI_SMOKE_BRIDGE_BUILD_CLIENT') ?? 'grpc',
+            buildClient: 'grpc',
             execute: smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE'),
             note:
               smokeMode === 'execute' && envBoolean('NAVI_SMOKE_ENABLE_BRIDGE_EXECUTE')
@@ -1258,9 +1202,7 @@ async function main() {
   }
   log(`mode: ${smokeMode}`)
   log(
-    `transports: grpc=${Boolean(clients.grpcEndpoint)} graphql=${Boolean(
-      clients.graphqlUrl
-    )} legacyJsonRpc=${Boolean(clients.legacyJsonRpcUrl)}`
+    `transports: grpc=${Boolean(clients.grpcEndpoint)} graphql=${Boolean(clients.graphqlUrl)}`
   )
 
   if (smokeMode === 'plan') {

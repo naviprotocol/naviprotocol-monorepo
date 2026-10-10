@@ -1,5 +1,15 @@
 # @naviprotocol/astros-bridge-sdk
 
+## 2.1.0
+
+### Minor Changes
+
+- 41e8f2b: Add opt-in `preswapRouting: 'mayan'` for Sui-source bridges. The Sui pre-swap is requested without the referrer while the bridge calls are unchanged (auction orders keep the referrer and its fee), and the transaction is simulated before signing and rebuilt from the same quote when the pre-swap misses the order minimum or comes back malformed. Quote minimums are unchanged; a missed minimum after retries, or a passed quote deadline, throws `BRIDGE_QUOTE_EXPIRED`.
+
+### Patch Changes
+
+- 72b88ee: Build the Sui pre-swap input locally so wallets holding SUI (or other non-USDC tokens) only as Sui address balance can bridge instead of failing with Mayan `NO_COINS`.
+
 ## 2.0.2
 
 ### Patch Changes

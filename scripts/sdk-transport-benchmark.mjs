@@ -4,12 +4,10 @@ const suiPackageRoot = new URL('../packages/lending/node_modules/@mysten/sui/', 
 const [
   { GrpcWebFetchTransport, SuiGrpcClient },
   { SuiGraphQLClient },
-  { SuiJsonRpcClient },
   { Transaction }
 ] = await Promise.all([
   import(new URL('./dist/grpc/index.mjs', suiPackageRoot)),
   import(new URL('./dist/graphql/index.mjs', suiPackageRoot)),
-  import(new URL('./dist/jsonRpc/index.mjs', suiPackageRoot)),
   import(new URL('./dist/transactions/index.mjs', suiPackageRoot))
 ])
 
@@ -154,37 +152,10 @@ function printTable(rows) {
   }
 }
 
-function compareAgainstJsonRpc(results) {
-  const groups = new Map()
-  for (const row of results) {
-    const key = `${row.case}:${row.mode}`
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(row)
-  }
-
-  return [...groups.values()]
-    .map((rows) => {
-      const jsonRpc = rows.find((row) => row.transport === 'jsonRpc')
-      if (!jsonRpc?.p50Ms) return []
-      return rows
-        .filter((row) => row.transport !== 'jsonRpc' && row.p50Ms)
-        .map((row) => ({
-          case: row.case,
-          mode: row.mode,
-          transport: row.transport,
-          jsonRpcP50Ms: jsonRpc.p50Ms,
-          p50Ms: row.p50Ms,
-          ratio: Number((row.p50Ms / jsonRpc.p50Ms).toFixed(2))
-        }))
-    })
-    .flat()
-}
-
 async function main() {
   const network = env('SUI_NETWORK') ?? 'mainnet'
   const owner = env('SUI_SMOKE_ADDRESS') ?? DEFAULT_OWNER
   const grpcEndpoint = env('SUI_GRPC_ENDPOINT') ?? 'fullnode.mainnet.sui.io:443'
-  const jsonRpcUrl = env('SUI_JSON_RPC_URL') ?? 'https://fullnode.mainnet.sui.io:443'
   const graphqlUrl = env('SUI_GRAPHQL_URL') ?? 'https://graphql.mainnet.sui.io/graphql'
   const iterations = envInt('NAVI_BENCH_ITERATIONS', 12)
   const concurrentIterations = envInt('NAVI_BENCH_CONCURRENT_ITERATIONS', 20)
@@ -199,7 +170,6 @@ async function main() {
       meta: tokenHeaders('SUI_GRPC_TOKEN', 'SUI_GRPC_HEADER_NAME', 'authorization')
     })
   })
-  const jsonRpc = new SuiJsonRpcClient({ network, url: jsonRpcUrl })
   const graphql = new SuiGraphQLClient({
     network,
     url: graphqlUrl,
@@ -216,7 +186,6 @@ async function main() {
         owner,
         transports: {
           grpc: normalizeGrpcBaseUrl(grpcEndpoint),
-          jsonRpc: jsonRpcUrl,
           graphql: graphqlUrl
         },
         iterations,
@@ -263,7 +232,6 @@ async function main() {
       case: 'balance.sui',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.getBalance({ owner, coinType: SUI }) },
-        { transport: 'jsonRpc', fn: () => jsonRpc.getBalance({ owner, coinType: SUI }) },
         { transport: 'graphql', fn: () => graphql.core.getBalance({ owner, coinType: SUI }) }
       ]
     },
@@ -271,7 +239,6 @@ async function main() {
       case: 'balances.list',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.listBalances({ owner, limit: 20 }) },
-        { transport: 'jsonRpc', fn: () => jsonRpc.getAllBalances({ owner }) },
         { transport: 'graphql', fn: () => graphql.core.listBalances({ owner, limit: 20 }) }
       ]
     },
@@ -279,7 +246,6 @@ async function main() {
       case: 'coins.sui.limit5',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.listCoins({ owner, coinType: SUI, limit: 5 }) },
-        { transport: 'jsonRpc', fn: () => jsonRpc.getCoins({ owner, coinType: SUI, limit: 5 }) },
         {
           transport: 'graphql',
           fn: () => graphql.core.listCoins({ owner, coinType: SUI, limit: 5 })
@@ -290,10 +256,6 @@ async function main() {
       case: 'ownedObjects.limit10',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.listOwnedObjects({ owner, limit: 10 }) },
-        {
-          transport: 'jsonRpc',
-          fn: () => jsonRpc.getOwnedObjects({ owner, limit: 10, options: { showType: true } })
-        },
         { transport: 'graphql', fn: () => graphql.core.listOwnedObjects({ owner, limit: 10 }) }
       ]
     },
@@ -301,11 +263,6 @@ async function main() {
       case: 'object.single',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.getObject({ objectId: objectIds[0] }) },
-        {
-          transport: 'jsonRpc',
-          fn: () =>
-            jsonRpc.getObject({ id: objectIds[0], options: { showType: true, showOwner: true } })
-        },
         { transport: 'graphql', fn: () => graphql.core.getObject({ objectId: objectIds[0] }) }
       ]
     },
@@ -313,14 +270,6 @@ async function main() {
       case: 'objects.multi',
       variants: [
         { transport: 'grpc', fn: () => grpc.core.getObjects({ objectIds }) },
-        {
-          transport: 'jsonRpc',
-          fn: () =>
-            jsonRpc.multiGetObjects({
-              ids: objectIds,
-              options: { showType: true, showOwner: true }
-            })
-        },
         { transport: 'graphql', fn: () => graphql.core.getObjects({ objectIds }) }
       ]
     },
@@ -334,10 +283,6 @@ async function main() {
               transaction: txBytes,
               include: { effects: true, events: true, balanceChanges: true }
             })
-        },
-        {
-          transport: 'jsonRpc',
-          fn: () => jsonRpc.dryRunTransactionBlock({ transactionBlock: txBytes })
         },
         {
           transport: 'graphql',
@@ -381,10 +326,6 @@ async function main() {
           fn: () => grpc.core.getTransaction({ digest, include: { effects: true } })
         },
         {
-          transport: 'jsonRpc',
-          fn: () => jsonRpc.getTransactionBlock({ digest, options: { showEffects: true } })
-        },
-        {
           transport: 'graphql',
           fn: () => graphql.core.getTransaction({ digest, include: { effects: true } })
         }
@@ -418,8 +359,6 @@ async function main() {
   }
 
   printTable(rows)
-  console.log('\nratio_vs_jsonRpc_p50')
-  console.log(JSON.stringify(compareAgainstJsonRpc(rows), null, 2))
   console.log('\njson')
   console.log(JSON.stringify({ rows }, null, 2))
 }

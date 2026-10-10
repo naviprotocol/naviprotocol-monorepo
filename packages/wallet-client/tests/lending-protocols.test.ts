@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { WalletClient, WatchSigner } from '../src'
 
 const testAddress = '0x4a662a70184c9e8f62e9d298c9969318a74cec5e9d3b5e0616a687052e654e57'
@@ -18,9 +17,6 @@ function createWalletClient(configs?: ConstructorParameters<typeof WalletClient>
       network: 'mainnet',
       grpc: {
         url: 'https://grpc.example'
-      },
-      legacyJsonRpc: {
-        url: getJsonRpcFullnodeUrl('mainnet')
       }
     },
     configs
