@@ -30,9 +30,10 @@ export const AggregatorConfig = {
   slippageConfig: '0xd2aaed9e264080e9725992af038e882e28fe17fd9bc98a52a25e71206e5c16f5',
 
   // Cetus DEX configuration
-  // Cetus integrate package v16. The previous package aborts with code 10 in
-  // config::checked_package_version after the on-chain protocol upgrade.
-  cetusPackageId: '0xae9c208cf58fd5ba36737c9ee5dcfa7f152d0fb5a5a99eebb7c881ebc2fe59e0',
+  // Cetus integrate package v17 (links CLMM v15). It must track the CLMM GlobalConfig
+  // package_version (currently 15): integrate v16 links CLMM v14 and aborts with code 10
+  // in config::checked_package_version.
+  cetusPackageId: '0x9ee0534b703b14457aee7698ea3a07a5080f954ed2b7e9910fbb7a55506824fa',
   cetusConfigId: '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f',
 
   // Turbos DEX configuration
