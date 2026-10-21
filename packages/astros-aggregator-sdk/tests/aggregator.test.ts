@@ -50,7 +50,7 @@ const coins = {
 }
 
 describe('swap test', () => {
-  it('targets the Cetus v16 integrate package', async () => {
+  it('targets the Cetus v17 integrate package', async () => {
     const txb = createTransaction(coins.sui.holder)
     const amount = txb.pure.u64(1)
 
@@ -61,7 +61,7 @@ describe('swap test', () => {
 
     expect(txb.getData().commands.at(-1)).toMatchObject({
       MoveCall: {
-        package: '0xae9c208cf58fd5ba36737c9ee5dcfa7f152d0fb5a5a99eebb7c881ebc2fe59e0',
+        package: '0x9ee0534b703b14457aee7698ea3a07a5080f954ed2b7e9910fbb7a55506824fa',
         module: 'router',
         function: 'swap'
       }

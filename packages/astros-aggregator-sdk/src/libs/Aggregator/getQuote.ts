@@ -57,10 +57,10 @@ export async function getQuoteInternal(
     by_amount_in:
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
-    // Version 14 added the Magma v4 integrate package. Version 15 adds the Cetus v16
-    // integrate package so the router API can keep incompatible Cetus routes away from
-    // older clients once the corresponding backend capability gate is enabled.
-    version: '15'
+    // Version 14 added the Magma v4 integrate package, 15 the Cetus v16 integrate package,
+    // and 16 the Cetus v17 integrate package, so the router API can keep incompatible Cetus
+    // routes away from older clients once the corresponding backend capability gate is enabled.
+    version: '16'
   }).toString()
 
   // Construct dex provider string if dexList is provided
