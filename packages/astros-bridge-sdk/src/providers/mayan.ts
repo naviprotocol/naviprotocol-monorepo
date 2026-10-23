@@ -4,6 +4,8 @@ import {
   addInitOrderMoveCalls,
   addBridgeLockedFeeMoveCalls,
   addBridgeWithFeeMoveCalls,
+  addFastMctpBridgeMoveCalls,
+  addFastMctpCreateOrderMoveCalls,
   fetchMayanSuiPackageId,
   getQuoteSuitableReferrerAddress,
   nativeAddressToHexString,
@@ -19,8 +21,8 @@ import {
   addresses
 } from '@mayanfinance/swap-sdk'
 import { BridgeSwapQuote, NaviBridgeSuiBuildClient, WalletConnection } from '../types'
-import { Connection, SendOptions } from '@solana/web3.js'
-import { Signer, Overrides, Contract, parseUnits } from 'ethers'
+import { Connection, SendOptions, SystemProgram } from '@solana/web3.js'
+import { Signer, Overrides, Contract, parseUnits, ZeroAddress } from 'ethers'
 import { Transaction } from '@mysten/sui/transactions'
 import {
   fromBase64,
@@ -93,8 +95,15 @@ function getRequiredAllowance(mayanQuote: MayanQuote, decimals: number) {
   return parseUnits(String(mayanQuote.effectiveAmountIn), decimals)
 }
 
+// The token a Sui-source Mayan order bridges through: USDC for MCTP and Fast MCTP alike.
+function getSuiMiddleContract(quote: MayanQuote) {
+  if (quote.type === 'MCTP') return quote.mctpInputContract
+  if (quote.type === 'FAST_MCTP') return quote.fastMctpInputContract
+  return undefined
+}
+
 /**
- * When the Sui source token is not the MCTP input token (USDC), Mayan's server builds the
+ * When the Sui source token is not the MCTP / Fast MCTP input token (USDC), Mayan's server builds the
  * pre-swap into USDC and picks the input coins itself. That server-side selection only sees
  * `Coin` objects, so a wallet holding the token only as Sui address balance gets `NO_COINS`.
  * Preparing the input coin locally keeps coin selection on our side: SUI is split from the
@@ -106,12 +115,13 @@ async function prepareSuiSwapInput(
   owner: string,
   client: Parameters<typeof resolveInputCoin>[3]
 ): Promise<ComposableSuiMoveCallsOptions | undefined> {
-  const { type, fromToken, mctpInputContract, effectiveAmountIn64 } = mayanQuote
-  if (type !== 'MCTP' || !fromToken?.contract || !mctpInputContract || !effectiveAmountIn64) {
+  const { fromToken, effectiveAmountIn64 } = mayanQuote
+  const middleContract = getSuiMiddleContract(mayanQuote)
+  if (!fromToken?.contract || !middleContract || !effectiveAmountIn64) {
     return undefined
   }
   const inputType = normalizeStructTag(fromToken.contract)
-  if (inputType === normalizeStructTag(mctpInputContract)) {
+  if (inputType === normalizeStructTag(middleContract)) {
     return undefined
   }
   const amount = BigInt(effectiveAmountIn64)
@@ -226,7 +236,101 @@ async function createSuiMctpWithUnreferredPreSwap(
       tx.pure.u8(quote.referrerBps || 0)
     ]
   })
-  return { tx, mctpPackageId, preSwapCommandCount }
+  return {
+    tx,
+    preSwapCommandCount,
+    isMinMiddleMiss: (message: string) =>
+      isMoveAbort(message, mctpPackageId, ['init_order::prepare_initialize_order'], 4)
+  }
+}
+
+/**
+ * The Fast MCTP (Circle CCTP v2) counterpart of `createSuiMctpWithUnreferredPreSwap`. It makes
+ * the calls Mayan's `createFastMctpFromSuiMoveCalls` makes, except that the pre-swap is requested
+ * without the referrer. Fast MCTP carries the referrer and `referrerBps` on the order whether or
+ * not it is an auction, so both order calls still receive the referrer.
+ */
+async function createSuiFastMctpWithUnreferredPreSwap(
+  quote: MayanQuote,
+  swapperAddress: string,
+  destinationAddress: string,
+  referrerAddress: string,
+  client: Parameters<typeof fetchMayanSuiPackageId>[1],
+  prepared: ComposableSuiMoveCallsOptions
+) {
+  const currencyId = quote.fromToken.currencyId
+  if (!currencyId || !quote.fastMctpInputCurrencyId) {
+    throw new Error('from token or fast mctp input currency id is not provided')
+  }
+  if (
+    !destinationAddress ||
+    destinationAddress === ZeroAddress ||
+    destinationAddress === SystemProgram.programId.toString()
+  ) {
+    throw new Error('Invalid destination address for fast mctp')
+  }
+  const fastMctpPackageId = await fetchMayanSuiPackageId(addresses.SUI_FAST_MCTP_STATE, client)
+  const swap = await getSwapSui({
+    amountIn64: quote.effectiveAmountIn64,
+    inputCoinType: quote.fromToken.contract,
+    middleCoinType: quote.fastMctpInputContract,
+    userWallet: swapperAddress,
+    withWhFee: false,
+    inputCoin: prepared.inputCoin,
+    transaction: prepared.builtTransaction ? await prepared.builtTransaction.toJSON() : undefined,
+    slippageBps: quote.slippageBps,
+    chainName: quote.fromChain
+  })
+  const tx = Transaction.from(swap.tx)
+  const preSwapCommandCount = tx.getData().commands.length
+  const options = {
+    inputCoin: { result: swap.outCoin },
+    builtTransaction: tx
+  } as ComposableSuiMoveCallsOptions
+  if (quote.hasAuction) {
+    await addFastMctpCreateOrderMoveCalls(
+      quote,
+      swapperAddress,
+      destinationAddress,
+      referrerAddress,
+      fastMctpPackageId,
+      client,
+      options
+    )
+  } else {
+    await addFastMctpBridgeMoveCalls(
+      quote,
+      swapperAddress,
+      destinationAddress,
+      referrerAddress,
+      fastMctpPackageId,
+      null,
+      client,
+      options
+    )
+  }
+  tx.moveCall({
+    package: fastMctpPackageId,
+    module: 'bridge',
+    function: 'log_initialize_fast_mctp',
+    typeArguments: [quote.fromToken.contract],
+    arguments: [
+      tx.pure.u64(BigInt(quote.effectiveAmountIn64)),
+      tx.object(currencyId),
+      tx.pure.vector('u8', [])
+    ]
+  })
+  return {
+    tx,
+    preSwapCommandCount,
+    isMinMiddleMiss: (message: string) =>
+      isMoveAbort(
+        message,
+        fastMctpPackageId,
+        ['bridge::prepare_bridge', 'create_order::prepare_create_order'],
+        1
+      )
+  }
 }
 
 const SUI_PRESWAP_MAX_BUILDS = 3
@@ -243,11 +347,16 @@ function getErrorMessage(error: unknown) {
 }
 
 // Mayan's own order check: the pre-swap output landed below the quote's minimum middle amount.
-function isMinMiddleMiss(message: string, mctpPackageId: string) {
-  const location = message.match(
-    /abort code: 4\b, in '(0x[0-9a-f]+)::init_order::prepare_initialize_order'/
+// MCTP aborts with code 4 in `init_order::prepare_initialize_order`; Fast MCTP with code 1 in
+// `bridge::prepare_bridge` or `create_order::prepare_create_order`.
+function isMoveAbort(message: string, packageId: string, functions: string[], code: number) {
+  const location = message.match(/abort code: (\d+), in '(0x[0-9a-f]+)::(\w+::\w+)'/)
+  return (
+    !!location &&
+    Number(location[1]) === code &&
+    functions.includes(location[3]) &&
+    normalizeSuiAddress(location[2]) === normalizeSuiAddress(packageId)
   )
-  return !!location && normalizeSuiAddress(location[1]) === normalizeSuiAddress(mctpPackageId)
 }
 
 // Mayan's server intermittently returns a pre-swap with an unset argument; only a failure
@@ -305,7 +414,11 @@ async function buildSimulatedUnreferredPreSwap(
       attempt === 1
         ? firstInput
         : await prepareSuiSwapInput(quote, swapperAddress, buildClient as any)
-    const { tx, mctpPackageId, preSwapCommandCount } = await createSuiMctpWithUnreferredPreSwap(
+    const buildUnreferredPreSwap =
+      quote.type === 'FAST_MCTP'
+        ? createSuiFastMctpWithUnreferredPreSwap
+        : createSuiMctpWithUnreferredPreSwap
+    const { tx, preSwapCommandCount, isMinMiddleMiss } = await buildUnreferredPreSwap(
       quote,
       swapperAddress,
       destinationAddress,
@@ -334,7 +447,7 @@ async function buildSimulatedUnreferredPreSwap(
       failure = error
     }
     const message = getErrorMessage(failure)
-    lastWasMinMiddleMiss = isMinMiddleMiss(message, mctpPackageId)
+    lastWasMinMiddleMiss = isMinMiddleMiss(message)
     if (!lastWasMinMiddleMiss && !isMalformedPreSwap(message, preSwapCommandCount)) {
       throw failure
     }
