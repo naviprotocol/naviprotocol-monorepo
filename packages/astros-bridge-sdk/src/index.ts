@@ -21,6 +21,14 @@ import { apiInstance, config } from './config'
 // Export configuration for the bridge SDK
 export { config }
 
+/**
+ * Quote types this SDK version can execute, declared on bridge quote requests.
+ * The bridge API offers a Sui Fast MCTP (Circle CCTP v2) route only to clients that declare it,
+ * so a client still running an older SDK keeps receiving routes it can build. Clients that call
+ * `/bridge-swap/find_routes` themselves should send these params too.
+ */
+export const BRIDGE_QUOTE_CAPABILITIES = { fastMctp: '1' } as const
+
 export * from './types'
 
 /**
@@ -112,7 +120,8 @@ export async function getQuote(
       toChain: to.chainId,
       amount,
       slippageBps: options?.slippageBps,
-      referrerBps: options?.referrerBps
+      referrerBps: options?.referrerBps,
+      ...BRIDGE_QUOTE_CAPABILITIES
     }
   })
   // Temporary fix for chain ID parsing
