@@ -110,6 +110,33 @@ describe('market registry: loadMarketConfigs', () => {
   })
 })
 
+describe('market registry: request deadline', () => {
+  it('falls back when /navi/markets stalls, and does not keep the stalled request', async () => {
+    vi.useFakeTimers()
+    try {
+      fetchMock.mockImplementationOnce(() => new Promise(() => {}))
+      const pending = market.loadMarketConfigs({ env: 'dev' })
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(await pending).toEqual(Object.values(market.MARKETS))
+      expect(warnSpy).toHaveBeenCalled()
+
+      fetchMock.mockResolvedValueOnce(marketsResponse([NEW_MARKET]))
+      expect(await market.loadMarketConfigs({ env: 'dev' })).toEqual([NEW_MARKET])
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('passes an abort signal to fetch', async () => {
+    fetchMock.mockResolvedValue(marketsResponse([NEW_MARKET]))
+
+    await market.loadMarketConfigs({ env: 'dev' })
+
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
 describe('market registry: names and ids', () => {
   it('keeps built-in id and name for known keys; new keys use the open-api name', async () => {
     fetchMock.mockResolvedValue(
@@ -130,6 +157,36 @@ describe('market registry: names and ids', () => {
       NEW_MARKET
     ])
     expect(warnSpy.mock.calls.some((args) => String(args[0]).includes('sui-usdc'))).toBe(true)
+  })
+})
+
+describe('market registry: id conflicts', () => {
+  it('rejects a new key that reuses a built-in id', () => {
+    const configs = market.registerMarketConfigs(
+      [{ id: 0, key: 'new-market', name: 'New' }, NEW_MARKET],
+      { env: 'dev' }
+    )
+
+    expect(configs).toEqual([NEW_MARKET])
+    expect(() => market.getMarketConfig('new-market')).toThrow('Market not found')
+    expect(warnSpy.mock.calls.some((args) => String(args[0]).includes('new-market'))).toBe(true)
+  })
+
+  it('rejects a new key that reuses an id earlier in the same list', () => {
+    const configs = market.registerMarketConfigs(
+      [NEW_MARKET, { id: 99, key: 'y-usdc', name: 'Y / USDC Market' }],
+      { env: 'dev' }
+    )
+
+    expect(configs).toEqual([NEW_MARKET])
+  })
+
+  it('resolves number, string and object identity of a new market to the same config', () => {
+    market.registerMarketConfigs([NEW_MARKET], { env: 'dev' })
+
+    expect(market.getMarketConfig(99)).toEqual(NEW_MARKET)
+    expect(market.getMarketConfig('x-usdc')).toEqual(NEW_MARKET)
+    expect(market.getMarketConfig(market.getMarketConfig('x-usdc'))).toEqual(NEW_MARKET)
   })
 })
 
@@ -183,6 +240,22 @@ describe('market registry: registerMarketConfigs', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(configs).toEqual([NEW_MARKET])
+  })
+
+  it('an authoritative registration during an in-flight load is not overwritten', async () => {
+    let resolveFetch: (value: Response) => void = () => {}
+    fetchMock.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => (resolveFetch = resolve))
+    )
+
+    const pending = market.loadMarketConfigs({ env: 'dev' })
+    market.registerMarketConfigs([NEW_MARKET], { env: 'dev', authoritative: true })
+    resolveFetch(marketsResponse([{ id: 0, key: 'main', name: 'Main Market' }]))
+
+    expect(await pending).toEqual([NEW_MARKET])
+    expect(market.getMarketConfigs({ env: 'dev' })).toEqual([NEW_MARKET])
+    expect(await market.loadMarketConfigs({ env: 'dev' })).toEqual([NEW_MARKET])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('ignores an empty list', () => {

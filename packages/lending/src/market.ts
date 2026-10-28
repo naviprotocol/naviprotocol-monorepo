@@ -253,6 +253,9 @@ export type RegisterMarketConfigsOptions = {
 
 const DEFAULT_MARKET_ENV: MarketEnv = 'prod'
 const MARKET_CONFIGS_CACHE_TIME = 1000 * 60 * 5
+// Callers (pools, positions, rewards) await the market list, so a stalled
+// /navi/markets must fall back instead of blocking them.
+const MARKET_CONFIGS_TIMEOUT = 5000
 const LOG_PREFIX = '[@naviprotocol/lending]'
 
 const BUILTIN_MARKET_CONFIGS: MarketConfig[] = Object.values(MARKETS)
@@ -289,6 +292,7 @@ const isMarketConfig = (value: any): value is MarketConfig => {
 const normalizeMarketConfigs = (configs: unknown[]): MarketConfig[] => {
   const normalized: MarketConfig[] = []
   const seenKeys = new Set<string>()
+  const seenIds = new Set<number>()
   configs.forEach((item) => {
     if (!isMarketConfig(item)) {
       console.warn(`${LOG_PREFIX} Ignoring invalid market config`, item)
@@ -297,7 +301,6 @@ const normalizeMarketConfigs = (configs: unknown[]): MarketConfig[] => {
     if (seenKeys.has(item.key)) {
       return
     }
-    seenKeys.add(item.key)
     const builtin = BUILTIN_MARKET_CONFIGS.find((config) => config.key === item.key)
     if (builtin) {
       if (builtin.id !== item.id) {
@@ -305,9 +308,24 @@ const normalizeMarketConfigs = (configs: unknown[]): MarketConfig[] => {
           `${LOG_PREFIX} Market "${item.key}" id ${item.id} conflicts with built-in id ${builtin.id}; using built-in`
         )
       }
+      seenKeys.add(builtin.key)
+      seenIds.add(builtin.id)
       normalized.push({ id: builtin.id, key: builtin.key, name: builtin.name })
       return
     }
+    // A new key must not reuse an id that already identifies another market:
+    // id lookups (number or object identity) would resolve to the wrong one.
+    const idOwner =
+      BUILTIN_MARKET_CONFIGS.find((config) => config.id === item.id) ||
+      (seenIds.has(item.id) ? normalized.find((config) => config.id === item.id) : undefined)
+    if (idOwner) {
+      console.warn(
+        `${LOG_PREFIX} Ignoring market "${item.key}": id ${item.id} already belongs to "${idOwner.key}"`
+      )
+      return
+    }
+    seenKeys.add(item.key)
+    seenIds.add(item.id)
     normalized.push({ id: item.id, key: item.key, name: item.name })
   })
   return normalized
@@ -352,11 +370,27 @@ const fetchMarketConfigs = withCache(
       `/navi/markets?env=${options.env}&sdk=${packageJson.version}`,
       options
     )
-    const res = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) })
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-    const json = await res.json()
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller?.abort()
+        reject(new Error(`Timed out after ${MARKET_CONFIGS_TIMEOUT}ms`))
+      }, MARKET_CONFIGS_TIMEOUT)
+    })
+    const request = (async () => {
+      const res = await fetch(url, {
+        headers: mergeServiceHeaders(requestHeaders, endpoint),
+        signal: controller?.signal
+      })
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+      return res.json()
+    })()
+    // The losing side of the race must not surface as an unhandled rejection.
+    request.catch(() => undefined)
+    const json = await Promise.race([request, timeout]).finally(() => clearTimeout(timer))
     const markets = json?.data?.markets
     if (!Array.isArray(markets)) {
       throw new Error('Invalid /navi/markets response')
@@ -391,6 +425,11 @@ export const loadMarketConfigs = async (
       ...(options?.cacheTime !== undefined ? { cacheTime: options.cacheTime } : {}),
       env
     })
+    // An authoritative registration that landed while the request was in
+    // flight wins over the fetched list.
+    if (authoritativeEnvs.has(env)) {
+      return getMarketConfigs({ env })
+    }
     marketConfigsByEnv[env] = configs
     return configs
   } catch (error) {
