@@ -277,7 +277,9 @@ const matchesIdentity = (marketConfig: MarketConfig, marketIdentity: MarketIdent
   if (typeof marketIdentity === 'string') {
     return marketConfig.key === marketIdentity
   }
-  return marketConfig.id === marketIdentity.id
+  // A config carries both: the key tells apart two envs' markets that share
+  // an id.
+  return marketConfig.id === marketIdentity.id && marketConfig.key === marketIdentity.key
 }
 
 const isMarketConfig = (value: any): value is MarketConfig => {
@@ -448,15 +450,19 @@ export const loadMarketConfigs = async (
 
 /**
  * Resolves a market by id, key or config. Searches the built-in MARKETS first
- * (unchanged behavior for every existing market), then every loaded or
- * registered env list, so a market that only exists in open-api resolves too.
+ * (unchanged behavior for every existing market), then the loaded or
+ * registered list of `options.env`, so a market that only exists in open-api
+ * resolves too. Without an env it searches every env's list.
  */
-export const getMarketConfig = (marketIdentity: MarketIdentity) => {
+export const getMarketConfig = (marketIdentity: MarketIdentity, options?: { env?: MarketEnv }) => {
   let config = BUILTIN_MARKET_CONFIGS.find((marketConfig) =>
     matchesIdentity(marketConfig, marketIdentity)
   )
   if (!config) {
-    for (const configs of Object.values(marketConfigsByEnv)) {
+    const envLists = options?.env
+      ? [marketConfigsByEnv[options.env]]
+      : Object.values(marketConfigsByEnv)
+    for (const configs of envLists) {
       config = configs?.find((marketConfig) => matchesIdentity(marketConfig, marketIdentity))
       if (config) {
         break

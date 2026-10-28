@@ -79,7 +79,9 @@ export async function createEModeCapPTB(
     ...options,
     accountCap: accountCap
   })
-  const market = await getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
+  const market = await getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY, {
+    env: options?.env || 'prod'
+  })
   const accountCapOwner = await getAccountCapOwnerPTB(tx, accountCap, options)
   tx.moveCall({
     target: `${config.emode.contract.registryPackage}::registry::register_emode_for_account_cap`,

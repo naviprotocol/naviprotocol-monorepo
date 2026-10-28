@@ -77,15 +77,15 @@ export const getPools = withCache(
     async (
       options?: Partial<
         EnvOption &
-        CacheOption &
-        MarketsOption &
-        ServiceOption & {
-          pools: string[]
-        }
+          CacheOption &
+          MarketsOption &
+          ServiceOption & {
+            pools: string[]
+          }
       >
     ): Promise<Pool[]> => {
       const markets = (options?.markets || [MARKETS.main]).map((identity) => {
-        return getMarketConfig(identity)
+        return getMarketConfig(identity, { env: options?.env || 'prod' })
       })
       const endpoint = resolveNaviOpenApiEndpoint(options)
       const poolsFilter = (options?.pools || []).join(',')
@@ -108,7 +108,7 @@ export const getPools = withCache(
 
       res.data.forEach((pool) => {
         const filterEmodes = (res?.meta?.emodes || []).filter((emode) => {
-          const market = getMarketConfig(emode.marketId)
+          const market = getMarketConfig(emode.marketId, { env: options?.env || 'prod' })
           return pool.market === market.key && emode.isActive
         })
         const emodes = filterEmodes.filter((emode) => {
@@ -297,11 +297,11 @@ export async function depositCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-    AccountCapOption &
-    ServiceOption &
-    MarketOption & {
-      amount: number | TransactionResult
-    }
+      AccountCapOption &
+      ServiceOption &
+      MarketOption & {
+        amount: number | TransactionResult
+      }
   >
 ): Promise<Transaction> {
   const config = await getConfig({
@@ -629,11 +629,11 @@ export async function repayCoinPTB(
   coinObject: CoinObject,
   options?: Partial<
     EnvOption &
-    AccountCapOption &
-    ServiceOption &
-    MarketOption & {
-      amount: number | TransactionResult
-    }
+      AccountCapOption &
+      ServiceOption &
+      MarketOption & {
+        amount: number | TransactionResult
+      }
   >
 ): Promise<Transaction | TransactionResult> {
   const config = await getConfig({

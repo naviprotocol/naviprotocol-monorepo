@@ -188,6 +188,20 @@ describe('market registry: id conflicts', () => {
     expect(market.getMarketConfig('x-usdc')).toEqual(NEW_MARKET)
     expect(market.getMarketConfig(market.getMarketConfig('x-usdc'))).toEqual(NEW_MARKET)
   })
+  it('resolves within the requested env when two envs reuse an id for different markets', () => {
+    const devOnly = { id: 99, key: 'dev-only', name: 'Dev' }
+    const prodOnly = { id: 99, key: 'prod-only', name: 'Prod' }
+    market.registerMarketConfigs([devOnly], { env: 'dev' })
+    market.registerMarketConfigs([prodOnly], { env: 'prod' })
+
+    // A config resolves to itself, whichever env registered first.
+    expect(market.getMarketConfig(market.getMarketConfigs({ env: 'prod' })[0])).toEqual(prodOnly)
+    expect(market.getMarketConfig(market.getMarketConfigs({ env: 'dev' })[0])).toEqual(devOnly)
+    // A bare id resolves within the given env.
+    expect(market.getMarketConfig(99, { env: 'prod' })).toEqual(prodOnly)
+    expect(market.getMarketConfig(99, { env: 'dev' })).toEqual(devOnly)
+    expect(() => market.getMarketConfig('dev-only', { env: 'prod' })).toThrow('Market not found')
+  })
 })
 
 describe('market registry: env isolation and replacement', () => {

@@ -185,7 +185,7 @@ export async function getUserAvailableLendingRewards(
   options?: Partial<SuiClientOption & EnvOption & MarketsOption & ServiceOption>
 ): Promise<LendingReward[]> {
   const markets = (options?.markets || [MARKETS.main]).map((identity) => {
-    return getMarketConfig(identity)
+    return getMarketConfig(identity, { env: options?.env || 'prod' })
   })
 
   // Do not silently swallow E-Mode cap failures: the previous catch fell back to
@@ -208,7 +208,7 @@ export async function getUserAvailableLendingRewards(
           return !!markets.find((market) => market.id === cap.marketId)
         })
         .map((cap) => {
-          const market = getMarketConfig(cap.marketId)
+          const market = getMarketConfig(cap.marketId, { env: options?.env || 'prod' })
           return {
             address: cap.accountCap,
             owner: address,
