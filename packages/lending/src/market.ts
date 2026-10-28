@@ -76,6 +76,11 @@ export const MARKETS = {
     id: 11,
     key: 'eearn-usdc',
     name: 'eEARN / USDC Market'
+  },
+  'hbtc-usdc': {
+    id: 12,
+    key: 'hbtc-usdc',
+    name: 'hBTC / USDC Market'
   }
 }
 
