@@ -487,11 +487,13 @@ export const getMarkets = withCache(
         markets
       })
       return markets.map((market) => {
-        const marketConfig = getMarketConfig(market)
+        const marketConfig = getMarketConfig(market, { env: options?.env || 'prod' })
         const marketPools = pools.filter((pool) => {
           return pool.market === marketConfig.key
         })
-        return new Market(market, marketPools)
+        // Pass the resolved config: a config identity (id + key) cannot pick
+        // up another env's market that shares the id.
+        return new Market(marketConfig, marketPools)
       })
     }
   )

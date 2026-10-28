@@ -202,6 +202,20 @@ describe('market registry: id conflicts', () => {
     expect(market.getMarketConfig(99, { env: 'dev' })).toEqual(devOnly)
     expect(() => market.getMarketConfig('dev-only', { env: 'prod' })).toThrow('Market not found')
   })
+
+  it('builds a Market of the requested env when two envs reuse an id', async () => {
+    market.registerMarketConfigs([{ id: 99, key: 'dev-only', name: 'Dev' }], { env: 'dev' })
+    market.registerMarketConfigs([{ id: 99, key: 'prod-only', name: 'Prod' }], { env: 'prod' })
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ code: 0, data: [] }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+
+    const [prodMarket] = await market.getMarkets([99], { env: 'prod', disableCache: true })
+
+    expect(prodMarket.config.key).toBe('prod-only')
+  })
 })
 
 describe('market registry: env isolation and replacement', () => {
