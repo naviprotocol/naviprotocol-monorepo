@@ -38,7 +38,7 @@ import { getPriceFeeds } from './oracle'
 import { getPools, depositCoinPTB } from './pool'
 import BigNumber from 'bignumber.js'
 import packageJson from '../package.json'
-import { DEFAULT_MARKET_IDENTITY, getMarketConfig, MARKETS } from './market'
+import { DEFAULT_MARKET_IDENTITY, getMarketConfig, loadMarketConfigs, MARKETS } from './market'
 import { getUserEModeCaps } from './emode'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
@@ -56,7 +56,10 @@ async function getLendingRewardsBatch(
 
   const pools = await getPools({
     ...options,
-    markets: Object.values(MARKETS),
+    markets: await loadMarketConfigs({
+      env: options?.env,
+      services: (options as Partial<ServiceOption>)?.services
+    }),
     cacheTime: DEFAULT_CACHE_TIME
   })
 
@@ -378,7 +381,10 @@ export async function claimLendingRewardsPTB(
 ) {
   const pools = await getPools({
     ...options,
-    markets: Object.values(MARKETS),
+    markets: await loadMarketConfigs({
+      env: options?.env,
+      services: (options as Partial<ServiceOption>)?.services
+    }),
     cacheTime: DEFAULT_CACHE_TIME
   })
 

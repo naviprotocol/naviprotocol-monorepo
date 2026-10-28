@@ -50,7 +50,7 @@ import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'
 import BigNumber from 'bignumber.js'
-import { getMarketConfig, MARKETS } from './market'
+import { getMarketConfig, loadMarketConfigs } from './market'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 function getCoreCoinType(coin: any, fallbackCoinType?: string) {
@@ -327,7 +327,10 @@ async function getLendingStateBatch(
   const client = options?.client ?? suiClient
   const pools = await getPools({
     ...options,
-    markets: Object.values(MARKETS)
+    markets: await loadMarketConfigs({
+      env: options?.env,
+      services: (options as Partial<ServiceOption>)?.services
+    })
   })
   const poolsMap = getPoolsMap(pools)
 
@@ -477,7 +480,13 @@ export const getLendingState = withCache(
     address: string | AccountCap,
     options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
   ): Promise<UserLendingInfo[]> => {
-    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
+    const markets = (
+      options?.markets ||
+      (await loadMarketConfigs({
+        env: options?.env,
+        services: (options as Partial<ServiceOption>)?.services
+      }))
+    ).map((item) => {
       return getMarketConfig(item)
     })
 
@@ -757,7 +766,13 @@ export const getLendingPositions = withCache(
     >
   ): Promise<LendingPosition[]> => {
     const positions: LendingPosition[] = []
-    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
+    const markets = (
+      options?.markets ||
+      (await loadMarketConfigs({
+        env: options?.env,
+        services: (options as Partial<ServiceOption>)?.services
+      }))
+    ).map((item) => {
       return getMarketConfig(item)
     })
 

@@ -1,4 +1,4 @@
-import { withCache, withSingleton, getPoolsMap, getEmodesMap } from './utils'
+import { withCache, withSingleton, getPoolsMap, getEmodesMap, requestHeaders } from './utils'
 import type {
   MarketIdentity,
   EnvOption,
@@ -6,10 +6,13 @@ import type {
   EMode,
   MarketConfig,
   Pool,
-  EModePool
+  EModePool,
+  ServiceOption
 } from './types'
 import { getPools } from './pool'
 import BigNumber from 'bignumber.js'
+import packageJson from '../package.json'
+import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 export const DEFAULT_MARKET_IDENTITY = 'main'
 
@@ -34,45 +37,45 @@ export const MARKETS = {
     key: 'sui-eco',
     name: 'Sui Eco Market'
   },
-  "sui-usdc": {
+  'sui-usdc': {
     id: 4,
-    key: "sui-usdc",
-    name: "SUI / USDC Market"
+    key: 'sui-usdc',
+    name: 'SUI / USDC Market'
   },
-  "wbtc-usdc": {
+  'wbtc-usdc': {
     id: 5,
-    key: "wbtc-usdc",
-    name: "WBTC / USDC Market"
+    key: 'wbtc-usdc',
+    name: 'WBTC / USDC Market'
   },
-  "xbtc-usdc": {
+  'xbtc-usdc': {
     id: 6,
-    key: "xbtc-usdc",
-    name: "xBTC / USDC Market"
+    key: 'xbtc-usdc',
+    name: 'xBTC / USDC Market'
   },
-  "vsui-usdc": {
+  'vsui-usdc': {
     id: 7,
-    key: "vsui-usdc",
-    name: "vSUI / USDC Market"
+    key: 'vsui-usdc',
+    name: 'vSUI / USDC Market'
   },
-  "vsui-sui": {
+  'vsui-sui': {
     id: 8,
-    key: "vsui-sui",
-    name: "vSUI / SUI Market"
+    key: 'vsui-sui',
+    name: 'vSUI / SUI Market'
   },
-  "hasui-sui": {
+  'hasui-sui': {
     id: 9,
-    key: "hasui-sui",
-    name: "haSUI / SUI Market"
+    key: 'hasui-sui',
+    name: 'haSUI / SUI Market'
   },
-  "high-usdc": {
+  'high-usdc': {
     id: 10,
-    key: "high-usdc",
-    name: "HIGH / USDC Market"
+    key: 'high-usdc',
+    name: 'HIGH / USDC Market'
   },
-  "eearn-usdc": {
+  'eearn-usdc': {
     id: 11,
-    key: "eearn-usdc",
-    name: "eEARN / USDC Market"
+    key: 'eearn-usdc',
+    name: 'eEARN / USDC Market'
   }
 }
 
@@ -234,17 +237,188 @@ export class Market {
   }
 }
 
-export const getMarketConfig = (marketIdentity: MarketIdentity) => {
-  const configs = Object.values(MARKETS)
-  const config = configs.find((marketConfig) => {
-    if (typeof marketIdentity === 'number') {
-      return marketConfig.id === marketIdentity
+export type MarketEnv = EnvOption['env']
+
+export type MarketConfigsOptions = Partial<EnvOption & CacheOption & ServiceOption>
+
+export type RegisterMarketConfigsOptions = {
+  env?: MarketEnv
+  /**
+   * The caller is itself the source of truth for this env's market list (e.g.
+   * open-api registering its own config). `loadMarketConfigs` then returns the
+   * registered list without an HTTP round trip.
+   */
+  authoritative?: boolean
+}
+
+const DEFAULT_MARKET_ENV: MarketEnv = 'prod'
+const MARKET_CONFIGS_CACHE_TIME = 1000 * 60 * 5
+const LOG_PREFIX = '[@naviprotocol/lending]'
+
+const BUILTIN_MARKET_CONFIGS: MarketConfig[] = Object.values(MARKETS)
+
+// Per-env market lists loaded from open-api or registered by the caller. The
+// built-in MARKETS stay as the fallback when an env has nothing loaded yet.
+const marketConfigsByEnv: Partial<Record<MarketEnv, MarketConfig[]>> = {}
+const authoritativeEnvs = new Set<MarketEnv>()
+
+const matchesIdentity = (marketConfig: MarketConfig, marketIdentity: MarketIdentity) => {
+  if (typeof marketIdentity === 'number') {
+    return marketConfig.id === marketIdentity
+  }
+  if (typeof marketIdentity === 'string') {
+    return marketConfig.key === marketIdentity
+  }
+  return marketConfig.id === marketIdentity.id
+}
+
+const isMarketConfig = (value: any): value is MarketConfig => {
+  return (
+    typeof value?.id === 'number' &&
+    typeof value?.key === 'string' &&
+    !!value.key &&
+    typeof value?.name === 'string'
+  )
+}
+
+/**
+ * Validates a market list and keeps the built-in identity for known markets:
+ * a known key keeps its built-in id and display name, so switching the source
+ * to open-api never changes what an existing market resolves to or shows.
+ */
+const normalizeMarketConfigs = (configs: unknown[]): MarketConfig[] => {
+  const normalized: MarketConfig[] = []
+  const seenKeys = new Set<string>()
+  configs.forEach((item) => {
+    if (!isMarketConfig(item)) {
+      console.warn(`${LOG_PREFIX} Ignoring invalid market config`, item)
+      return
     }
-    if (typeof marketIdentity === 'string') {
-      return marketConfig.key === marketIdentity
+    if (seenKeys.has(item.key)) {
+      return
     }
-    return marketConfig.id === marketIdentity.id
+    seenKeys.add(item.key)
+    const builtin = BUILTIN_MARKET_CONFIGS.find((config) => config.key === item.key)
+    if (builtin) {
+      if (builtin.id !== item.id) {
+        console.warn(
+          `${LOG_PREFIX} Market "${item.key}" id ${item.id} conflicts with built-in id ${builtin.id}; using built-in`
+        )
+      }
+      normalized.push({ id: builtin.id, key: builtin.key, name: builtin.name })
+      return
+    }
+    normalized.push({ id: item.id, key: item.key, name: item.name })
   })
+  return normalized
+}
+
+/**
+ * Replaces the market list of an env with the given configs.
+ *
+ * Registration only seeds the list: unless `authoritative` is set, a later
+ * `loadMarketConfigs` still fetches from open-api and replaces it.
+ */
+export const registerMarketConfigs = (
+  configs: MarketConfig[],
+  options?: RegisterMarketConfigsOptions
+): MarketConfig[] => {
+  const env = options?.env || DEFAULT_MARKET_ENV
+  const normalized = normalizeMarketConfigs(configs || [])
+  if (normalized.length === 0) {
+    console.warn(`${LOG_PREFIX} Ignoring empty market list for env "${env}"`)
+    return getMarketConfigs({ env })
+  }
+  marketConfigsByEnv[env] = normalized
+  if (options?.authoritative) {
+    authoritativeEnvs.add(env)
+  }
+  return normalized
+}
+
+/**
+ * Returns the market list of an env: the loaded/registered list when present,
+ * otherwise the built-in MARKETS.
+ */
+export const getMarketConfigs = (options?: { env?: MarketEnv }): MarketConfig[] => {
+  const env = options?.env || DEFAULT_MARKET_ENV
+  return marketConfigsByEnv[env] || BUILTIN_MARKET_CONFIGS
+}
+
+const fetchMarketConfigs = withCache(
+  withSingleton(async (options: MarketConfigsOptions): Promise<MarketConfig[]> => {
+    const endpoint = resolveNaviOpenApiEndpoint(options)
+    const url = buildNaviOpenApiUrl(
+      `/navi/markets?env=${options.env}&sdk=${packageJson.version}`,
+      options
+    )
+    const res = await fetch(url, { headers: mergeServiceHeaders(requestHeaders, endpoint) })
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    const json = await res.json()
+    const markets = json?.data?.markets
+    if (!Array.isArray(markets)) {
+      throw new Error('Invalid /navi/markets response')
+    }
+    const normalized = normalizeMarketConfigs(markets)
+    if (normalized.length === 0) {
+      throw new Error('Empty /navi/markets response')
+    }
+    return normalized
+  })
+)
+
+/**
+ * Loads the market list of an env from open-api (`/navi/markets`) and stores
+ * it for `getMarketConfigs` / `getMarketConfig`.
+ *
+ * Never throws: on any failure it keeps whatever the env already has (the
+ * built-in MARKETS by default) and logs a warning.
+ */
+export const loadMarketConfigs = async (
+  options?: MarketConfigsOptions
+): Promise<MarketConfig[]> => {
+  const env = options?.env || DEFAULT_MARKET_ENV
+  if (authoritativeEnvs.has(env)) {
+    return getMarketConfigs({ env })
+  }
+  try {
+    const configs = await fetchMarketConfigs({
+      cacheTime: MARKET_CONFIGS_CACHE_TIME,
+      ...(options?.services ? { services: options.services } : {}),
+      ...(options?.disableCache ? { disableCache: true } : {}),
+      ...(options?.cacheTime !== undefined ? { cacheTime: options.cacheTime } : {}),
+      env
+    })
+    marketConfigsByEnv[env] = configs
+    return configs
+  } catch (error) {
+    console.warn(
+      `${LOG_PREFIX} Failed to load markets for env "${env}", using the current list`,
+      error
+    )
+    return getMarketConfigs({ env })
+  }
+}
+
+/**
+ * Resolves a market by id, key or config. Searches the built-in MARKETS first
+ * (unchanged behavior for every existing market), then every loaded or
+ * registered env list, so a market that only exists in open-api resolves too.
+ */
+export const getMarketConfig = (marketIdentity: MarketIdentity) => {
+  let config = BUILTIN_MARKET_CONFIGS.find((marketConfig) =>
+    matchesIdentity(marketConfig, marketIdentity)
+  )
+  if (!config) {
+    for (const configs of Object.values(marketConfigsByEnv)) {
+      config = configs?.find((marketConfig) => matchesIdentity(marketConfig, marketIdentity))
+      if (config) {
+        break
+      }
+    }
+  }
   if (!config) {
     throw new Error(`Market not found`)
   }
