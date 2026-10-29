@@ -68,12 +68,13 @@ try {
     return result
   }
   async function buildOpen(strat = strategy, instance = engine) {
-    const quote = await instance.quote(address, strat, { type: 'open', amount: '10000000000', targetLeverage: '2' }, constraints)
+    const amount = strat.id === sdk.strategies.hasuiSui.id ? '1000000000' : '10000000000'
+    const quote = await instance.quote(address, strat, { type: 'open', amount, targetLeverage: '2' }, constraints)
     assert.equal(quote.execution.accountCap.kind, 'create')
     assert(quote.execution.conversions.length > 0)
     assert(Number(quote.estimate.healthFactor) >= Number(constraints.minHealthFactor))
     const tx = new Transaction()
-    const coin = tx.splitCoins(tx.gas, ['10000000000'])[0]
+    const coin = tx.splitCoins(tx.gas, [amount])[0]
     const built = await instance.buildPTB(tx, JSON.parse(JSON.stringify(quote)), { coins: [{ coinType: strat.principalCoinType, coin }] })
     assert(built.createdAccountCap)
     assert(!JSON.stringify(tx.getData()).includes('register_emode_for_account_cap'))
@@ -135,7 +136,7 @@ try {
     const tx = Transaction.from(seed.tx)
     const owner = tx.moveCall({ target: `${market.config.package}::account::account_owner`, arguments: [seed.built.createdAccountCap] })
     const reservesIndex = tx.getData().commands.length
-    tx.moveCall({ target: `${market.config.uiGetter}::getter::get_reserve_data`, arguments: [tx.object(market.config.storage), tx.object(market.config.priceOracle), tx.object('0x6')] })
+    tx.moveCall({ target: `${market.config.uiGetter}::getter::get_reserve_data`, arguments: [tx.object(market.config.storage)] })
     const stateIndex = tx.getData().commands.length
     tx.moveCall({ target: `${market.config.uiGetter}::getter_unchecked::get_user_state`, arguments: [tx.object(market.config.storage), owner] })
     finish(tx, seed.built)
@@ -148,7 +149,7 @@ try {
       const row = states.find(s => s.asset_id === id)
       const reserve = reserves.find(r => r.id === id || r.asset_id === id)
       assert(row && reserve, `Missing state/reserve for ${id}`)
-      const index = reserve[kind === 'supply' ? 'current_supply_index' : 'current_borrow_index']
+      const index = reserve[kind === 'supply' ? 'supply_index' : 'borrow_index']
       return ((BigInt(row[`${kind}_balance`]) * BigInt(index) + 10n ** 27n / 2n) / 10n ** 27n).toString()
     }
     const position = { collateralAmount: scaled(market.collateral.id, 'supply'), debtAmount: scaled(market.debt.id, 'borrow') }
