@@ -52,7 +52,17 @@ await writeFile(
   path.join(consumer, 'package.json'),
   JSON.stringify(consumerPackage, null, 2) + '\n'
 )
+// Before Changesets assigns new versions, transitive semver ranges still resolve to
+// published packages. Pin every local tarball explicitly, including transitive uses.
+await writeFile(
+  path.join(consumer, 'pnpm-workspace.yaml'),
+  JSON.stringify({ packages: [], overrides: dependencies }, null, 2) + '\n'
+)
 run('pnpm', ['install', '--ignore-scripts', '--no-frozen-lockfile'], consumer)
+await copyFile(
+  path.join(consumer, 'pnpm-workspace.yaml'),
+  path.join(bundle, 'consumer-workspace.yaml')
+)
 await copyFile(path.join(consumer, 'pnpm-lock.yaml'), path.join(bundle, 'consumer-lock.yaml'))
 await copyFile(path.join(consumer, 'package.json'), path.join(bundle, 'consumer-package.json'))
 const provenance = {

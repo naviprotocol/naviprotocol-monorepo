@@ -25,6 +25,12 @@ checking and packaging are build prerequisites, not unit tests.
    now refreshes indices, reads the actual balance in the same PTB, converts it
    safely to u64, withdraws it, and checks that collateral/debt are both zero.
 
+3. The first clean consumer resolved a published Astros transitive dependency
+   despite a direct local tarball dependency. Its missing composable capability
+   marker correctly caused import failure. The consumer runner now records explicit
+   pnpm overrides for all local tarballs. These are prerelease source artifacts;
+   Changesets must advance the dependency range before public npm publication.
+
 ## Reproducibility boundaries
 
 All full transactions are simulated with checks enabled. Read-only getter probes
