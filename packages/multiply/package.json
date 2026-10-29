@@ -1,0 +1,53 @@
+{
+  "name": "@naviprotocol/multiply",
+  "version": "0.1.0",
+  "description": "Composable AccountCap-based NAVI Multiply strategy engine",
+  "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naviprotocol/naviprotocol-monorepo.git",
+    "directory": "packages/multiply"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "node e2e/run.mjs",
+    "test:e2e:package": "node e2e/package-run.mjs",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@naviprotocol/lending": "workspace:^",
+    "@naviprotocol/astros-aggregator-sdk": "workspace:^",
+    "bignumber.js": "9.1.2"
+  },
+  "peerDependencies": {
+    "@mysten/sui": ">=2.20.2 <3"
+  },
+  "devDependencies": {
+    "@mysten/sui": "2.20.2",
+    "@types/node": "22.7.5",
+    "typescript": "5.8.3"
+  }
+}

@@ -225,6 +225,13 @@ export type FeeOption = {
  * DEX selection, routing depth, and fee handling.
  */
 export type SwapOptions = {
+  /** Collect route change instead of transferring it, for composable PTBs. */
+  onCoinChange?: (
+    coin: import('@mysten/sui/transactions').TransactionObjectArgument,
+    coinType: string
+  ) => void
+  /** False disables optional positive-slippage fees; default keeps existing behavior. */
+  positiveSlippage?: boolean
   /** Custom base URL for the aggregator API */
   baseUrl?: string
   /** List of DEXes to use for routing */
