@@ -26,6 +26,7 @@ const required = [
   'invalid-inputs',
   'open-volo',
   'open-haedal',
+  'small-haedal-fallback',
   'default-fallback',
   'quote-guards',
   'custom-fallback',

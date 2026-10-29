@@ -54,3 +54,16 @@ Optional: `MULTIPLY_E2E_ADDRESS` (public funded address used for simulation only
 
 All full transactions use checks enabled; getter probes use checks disabled to
 retrieve command results. Both are saved and labelled separately.
+
+## Browser-discovered Haedal minimum regression (2026-10-30)
+
+Before changing the converter, add `small-haedal-fallback`: open with 0.01 SUI
+through the default public engine, build the complete NAVI PTB, and simulate it
+with all checks enabled. The previous native quote succeeds but the real Haedal
+`request_stake_coin` aborts with code 4. This case must fall back to Astros and
+complete, while `open-haedal` continues to exercise native Haedal at 1 SUI principal.
+Protocol constraints must be checked per conversion input, not per wallet principal.
+The official interface declares `MIN_STAKING_THRESHOLD = 1_000_000_000` and
+`EStakeNotEnoughSui = 4`:
+https://github.com/haedallsd/haedal-protocol-interface/blob/main/sources/staking.move
+This is an E2E regression through live protocols, not an isolated converter test.

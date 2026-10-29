@@ -260,8 +260,8 @@ try {
     const result = await simulate(name, tx)
     await assertOutcome(name, result, probe, quote)
   }
-  async function buildOpen(strat = strategy, instance = engine) {
-    const amount = strat.id === sdk.strategies.hasuiSui.id ? '1000000000' : '10000000000'
+  async function buildOpen(strat = strategy, instance = engine, inputAmount) {
+    const amount = inputAmount ?? (strat.id === sdk.strategies.hasuiSui.id ? '1000000000' : '10000000000')
     const quote = await instance.quote(
       address,
       strat,
@@ -323,6 +323,13 @@ try {
     assert(quote.execution.conversions.every((q) => q.converterId === 'haedal'))
     await save('open-haedal.quote.json', quote)
     await executeAndCheck('open-haedal', tx, built, quote)
+  })
+  await scenario('small-haedal-fallback', async () => {
+    const { tx, built, quote } = await buildOpen(sdk.strategies.hasuiSui, engine, '10000000')
+    await save('small-haedal-fallback.quote.json', quote)
+    // Exercise the entire public strategy engine and real VM before route assertions.
+    await executeAndCheck('small-haedal-fallback', tx, built, quote)
+    assert(quote.execution.conversions.every((q) => q.converterId === 'astros'))
   })
   await scenario('default-fallback', async () => {
     const fallbackEngine = sdk.createMultiplyClient({ client, dataSource: source, converters: [] })

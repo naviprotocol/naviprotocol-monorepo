@@ -1,0 +1,33 @@
+{
+  "kind": "mainnet-e2e-simulation",
+  "broadcast": false,
+  "startedAt": "2026-10-29T16:12:10.232Z",
+  "commit": "bdb8a2c1c6434c87fd534473d181887d944de2b5",
+  "scenarios": [
+    {
+      "name": "small-haedal-fallback",
+      "status": "failed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "failed",
+          "transportFailure": false,
+          "error": "Error: Transaction resolution failed: MoveAbort in 11th command, abort code: 4, in '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c::staking::request_stake_coin' (instruction 32)\n    at resolveTransactionData (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/grpc/core.mjs:437:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:452:6\n    at async #runPlugins (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:462:4)\n    at async #prepareBuild (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:441:3)\n    at async Transaction.build (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:426:3)\n    at async simulate (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:168:19)\n    at async executeAndCheck (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:260:20)\n    at async file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:331:5\n    at async scenario (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:54:7)"
+        }
+      ],
+      "durationMs": 14724,
+      "error": "Error: Transaction resolution failed: MoveAbort in 11th command, abort code: 4, in '0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c::staking::request_stake_coin' (instruction 32)\n    at resolveTransactionData (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/grpc/core.mjs:437:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:452:6\n    at async #runPlugins (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:462:4)\n    at async #prepareBuild (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:441:3)\n    at async Transaction.build (file:///Users/zado/code/navi/naviprotocol-monorepo/node_modules/.pnpm/@mysten+sui@2.20.2_typescript@5.8.3/node_modules/@mysten/sui/dist/transactions/Transaction.mjs:426:3)\n    at async simulate (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:168:19)\n    at async executeAndCheck (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:260:20)\n    at async file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:331:5\n    at async scenario (file:///Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs:54:7)"
+    }
+  ],
+  "fullSuite": false,
+  "selectedScenarios": [
+    "small-haedal-fallback"
+  ],
+  "workingTree": "M packages/multiply/e2e/FAILURE-MATRIX.md\n M packages/multiply/e2e/run.mjs\n M packages/multiply/e2e/verify-evidence.mjs",
+  "address": "0x39c70d4ce3ce769a46f46ad80184a88bc25be9b49545751f5425796ef0c3d9ba",
+  "network": {
+    "chainIdentifier": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S"
+  },
+  "finishedAt": "2026-10-29T16:12:26.415Z",
+  "success": false
+}
