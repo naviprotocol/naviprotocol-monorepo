@@ -46,7 +46,8 @@ const consumerPackage = {
   private: true,
   type: 'module',
   packageManager: 'pnpm@10.1.0',
-  dependencies
+  dependencies,
+  pnpm: { overrides: dependencies }
 }
 await writeFile(
   path.join(consumer, 'package.json'),

@@ -41,7 +41,8 @@ export async function buildSwapWithoutServiceFee(
   swapOptions?: Pick<SwapOptions, 'services' | 'onCoinChange' | 'positiveSlippage'>
 ): Promise<SingleCoinTransactionResult> {
   const returnChange = (coin: Parameters<typeof moveCallTransferNonzero>[1], type: string) => {
-    if (swapOptions?.onCoinChange) swapOptions.onCoinChange(coin, type)
+    if (swapOptions?.onCoinChange)
+      swapOptions.onCoinChange(typeof coin === 'string' ? txb.object(coin) : coin, type)
     else moveCallTransferNonzero(txb, coin, userAddress, type)
   }
   const tokenA = quote.from
