@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -47,18 +47,46 @@ report.selectedScenarios = [...only]
 async function scenario(name, fn) {
   if (only.size && !only.has(name)) return
   const start = Date.now()
-  try {
-    await fn()
-    report.scenarios.push({ name, status: 'passed', durationMs: Date.now() - start })
-    console.log(`PASS ${name}`)
-  } catch (error) {
-    report.scenarios.push({
-      name,
-      status: 'failed',
-      durationMs: Date.now() - start,
-      error: error.stack ?? String(error)
-    })
-    console.error(`FAIL ${name}: ${error.message}`)
+  const attempts = []
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const artifactStart = artifacts.length
+    try {
+      await fn()
+      attempts.push({ attempt, status: 'passed' })
+      report.scenarios.push({ name, status: 'passed', attempts, durationMs: Date.now() - start })
+      console.log(`PASS ${name}${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`)
+      return
+    } catch (error) {
+      const transportFailure = error instanceof TypeError && error.message === 'fetch failed'
+      const failure = {
+        attempt,
+        status: 'failed',
+        transportFailure,
+        error: error.stack ?? String(error),
+        cause: error.cause?.message
+      }
+      attempts.push(failure)
+      if (transportFailure && attempt === 1) {
+        // Preserve the failed attempt. Never overwrite it or retry VM/assertion failures.
+        for (const item of artifacts.slice(artifactStart)) {
+          const archived = `${name}.attempt-${attempt}.${item.file}`
+          await rename(path.join(out, item.file), path.join(out, archived))
+          item.file = archived
+        }
+        console.error(`RETRY ${name}: fetch failed; first-attempt evidence retained`)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        continue
+      }
+      report.scenarios.push({
+        name,
+        status: 'failed',
+        attempts,
+        durationMs: Date.now() - start,
+        error: failure.error
+      })
+      console.error(`FAIL ${name}: ${error.message}`)
+      return
+    }
   }
 }
 try {

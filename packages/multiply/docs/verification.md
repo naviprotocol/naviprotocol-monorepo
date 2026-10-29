@@ -31,6 +31,11 @@ checking and packaging are build prerequisites, not unit tests.
    pnpm overrides for all local tarballs. These are prerelease source artifacts;
    Changesets must advance the dependency range before public npm publication.
 
+4. Public RPC/API connections occasionally returned `TypeError: fetch failed`.
+   The runner permits one fresh scenario attempt for exactly that transport error.
+   Failed-attempt artifacts are renamed and retained; the report records every
+   attempt. Assertions and Move/build errors are never retried as transport failures.
+
 ## Reproducibility boundaries
 
 All full transactions are simulated with checks enabled. Read-only getter probes
