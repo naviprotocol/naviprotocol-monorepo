@@ -53,9 +53,8 @@ funded test accounts/registry before claiming those guarantees.
 
 ## Evidence and package replay
 
-The final report and packed artifact hashes are recorded here after the complete
-suite and clean consumer run finish. See the root `out/multiply/` directories for
-all raw intermediate responses, including failures.
+The final report and packed artifact hashes are recorded below. See the root
+`out/multiply/` directories for all raw intermediate responses, including failures.
 
 Offline artifact verification:
 
@@ -78,3 +77,40 @@ Its output bundle includes three `.tgz` files, package hashes, consumer package
 manifest and lockfile, and the complete E2E evidence directory. Run the offline
 verifier on its `e2e/` subdirectory. Package release uses Changesets; no npm
 publication is part of this verification command.
+
+## Final result — 2026-10-29
+
+- Verified source: `40895847f026e63f88b36dbbee617d67941b513e`; working tree was clean when the run began.
+- Final run: **15/15 passed, zero retries**, loaded from a clean tarball consumer.
+- Began: `2026-10-29T14:34:54.003Z`; finished: `2026-10-29T14:43:45.961Z`.
+- **96 E2E artifact hashes verified**. Both Volo and Haedal close outcomes have
+  collateral = 0 and debt = 0. No transactions were signed or broadcast.
+- Multiply and Astros TypeScript checks passed; changed implementation files passed
+  repository ESLint. These are static build checks, not unit tests.
+- All three package tarballs were byte-identical across two separate builds with
+  unchanged production source. Their exact hashes are in `evidence/final-packages.json`
+  (relative to the `e2e/` directory) and the bundle's `packages.json`.
+
+The complete local artifact is:
+
+`out/multiply/multiply-4089584-e2e-bundle.tar.gz`
+
+Its directory before archiving is:
+
+`out/multiply/package-2026-10-29T14-34-33-445Z/`
+
+The bundle includes a Git bundle of the test-first history and verified source,
+three npm tarballs, clean-consumer manifests/lockfiles, an offline verifier, all
+raw E2E evidence, and `REPRODUCE.md`. Git bundle verification passed; its base
+prerequisite is `a05557682fe3945114c269531f51f8e055016e31`.
+
+Changesets status was checked without applying versions or publishing. The pending
+release plan advances Multiply to 0.2.0 and Astros to 2.1.0. Current tarballs are
+local prerelease artifacts, installed together using the recorded overrides.
+
+Archive SHA-256:
+
+`f127d0f11480b60efd32b175a3282d67a635831cf1c9799214f02cf0597d13a3`
+
+The archive is approximately 2.4 MiB. All 110 files in its `SHA256SUMS` passed
+verification, and the standalone E2E verifier passed from the bundle directory.

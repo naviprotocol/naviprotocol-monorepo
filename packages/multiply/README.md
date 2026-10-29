@@ -49,7 +49,7 @@ the current estimated leverage. `close` takes no amount.
 per type; the builder splits only the quoted amount and returns its remainder.
 Repay overpayment is returned. Removing principal guarantees **at least** the
 requested output; any surplus also returns to the caller. `healthFactor: null`
-means no debt; `leverage: null` means an empty position. These ratios use NAVI's
+means no debt; `leverage: null` means an empty position or non-positive equity; inspect the returned balances. These ratios use NAVI's
 oracle valuation, which can differ from a token's market or redemption value.
 
 `execution` is opaque to callers. Do not modify it, reroute during build or cache
