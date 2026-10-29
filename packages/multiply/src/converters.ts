@@ -144,6 +144,13 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
         'CONVERTER_UNAVAILABLE',
         'Unsupported Haedal pair'
       )
+      // Haedal staking::MIN_STAKING_THRESHOLD (EStakeNotEnoughSui = 4).
+      // The rate getter accepts smaller amounts, but request_stake_coin does not.
+      check(
+        !stake || BigInt(req.amountIn) >= 1_000_000_000n,
+        'CONVERTER_UNAVAILABLE',
+        'Haedal requires at least 1 SUI staking input'
+      )
       const { object } = await client.core.getObject({
         objectId: HAEDAL.config,
         include: { json: true }
