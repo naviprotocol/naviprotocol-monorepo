@@ -7,6 +7,8 @@ const mayanSdk = vi.hoisted(() => ({
   addInitOrderMoveCalls: vi.fn(),
   addBridgeLockedFeeMoveCalls: vi.fn(),
   addBridgeWithFeeMoveCalls: vi.fn(),
+  addFastMctpBridgeMoveCalls: vi.fn(),
+  addFastMctpCreateOrderMoveCalls: vi.fn(),
   fetchMayanSuiPackageId: vi.fn(),
   getQuoteSuitableReferrerAddress: vi.fn(),
   resolveInputCoin: vi.fn(),
@@ -26,6 +28,8 @@ vi.mock('@mayanfinance/swap-sdk', () => ({
   addInitOrderMoveCalls: mayanSdk.addInitOrderMoveCalls,
   addBridgeLockedFeeMoveCalls: mayanSdk.addBridgeLockedFeeMoveCalls,
   addBridgeWithFeeMoveCalls: mayanSdk.addBridgeWithFeeMoveCalls,
+  addFastMctpBridgeMoveCalls: mayanSdk.addFastMctpBridgeMoveCalls,
+  addFastMctpCreateOrderMoveCalls: mayanSdk.addFastMctpCreateOrderMoveCalls,
   fetchMayanSuiPackageId: mayanSdk.fetchMayanSuiPackageId,
   getQuoteSuitableReferrerAddress: mayanSdk.getQuoteSuitableReferrerAddress,
   nativeAddressToHexString: () => `0x${'5'.repeat(64)}`,
@@ -37,6 +41,7 @@ vi.mock('@mayanfinance/swap-sdk', () => ({
     MAYAN_FORWARDER_CONTRACT: '0xforwarder',
     SUI_MCTP_STATE: `0x${'6'.repeat(64)}`,
     SUI_MCTP_FEE_MANAGER_STATE: `0x${'7'.repeat(64)}`,
+    SUI_FAST_MCTP_STATE: `0x${'a'.repeat(64)}`,
     SUI_LOGGER_PACKAGE_ID: `0x${'8'.repeat(64)}`
   }
 }))
@@ -48,7 +53,8 @@ vi.mock('ethers', () => ({
     allowance = ethersSdk.allowance
     approve = ethersSdk.approve
   },
-  parseUnits: ethersSdk.parseUnits
+  parseUnits: ethersSdk.parseUnits,
+  ZeroAddress: '0x0000000000000000000000000000000000000000'
 }))
 
 function createMayanTransaction() {
@@ -866,20 +872,22 @@ describe('mayan provider Sui pre-swap input', () => {
     vi.useRealTimers()
   })
 
-  function suiRoute(fromContract: string) {
+  function suiRoute(fromContract: string, type: 'MCTP' | 'FAST_MCTP') {
     return {
       from_token: { chainId: 1999 },
       to_token: { chainId: 8453 },
       info_for_bridge: {
-        type: 'MCTP',
+        type,
         fromToken: { standard: 'suicoin', contract: fromContract },
-        mctpInputContract: SUI_USDC,
+        ...(type === 'MCTP'
+          ? { mctpInputContract: SUI_USDC }
+          : { fastMctpInputContract: SUI_USDC }),
         effectiveAmountIn64: '3000000000'
       }
     }
   }
 
-  async function runSuiSwap(fromContract: string) {
+  async function runSuiSwap(fromContract: string, type: 'MCTP' | 'FAST_MCTP' = 'MCTP') {
     const { swap } = await import('../src/providers/mayan')
     mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValueOnce(createMayanTransaction())
     const client = {
@@ -889,7 +897,7 @@ describe('mayan provider Sui pre-swap input', () => {
     }
     const signTransaction = vi.fn(async () => ({ bytes: signedBytes, signature: 'sig' }))
     await settleSwap(
-      swap(suiRoute(fromContract) as any, '0xfrom', '0xto', {
+      swap(suiRoute(fromContract, type) as any, '0xfrom', '0xto', {
         sui: { provider: client as any, signTransaction }
       })
     )
@@ -928,6 +936,42 @@ describe('mayan provider Sui pre-swap input', () => {
 
   it('leaves a USDC input to Mayan local coin selection', async () => {
     const { options } = await runSuiSwap(SUI_USDC)
+
+    expect(options).toBeUndefined()
+    expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
+  })
+
+  it('prepares a Fast MCTP SUI input from the gas coin too', async () => {
+    const { options } = await runSuiSwap(
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
+      'FAST_MCTP'
+    )
+
+    const [split] = options.builtTransaction.getData().commands
+    expect(split.$kind).toBe('SplitCoins')
+    expect(split.SplitCoins.coin).toEqual({ $kind: 'GasCoin', GasCoin: true })
+    expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
+  })
+
+  it('selects a non-SUI Fast MCTP input locally through Mayan resolveInputCoin', async () => {
+    const DEEP = '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP'
+    const coin = { $kind: 'Result', Result: 0 }
+    mayanSdk.resolveInputCoin.mockResolvedValueOnce(coin)
+
+    const { client, options } = await runSuiSwap(DEEP, 'FAST_MCTP')
+
+    expect(mayanSdk.resolveInputCoin).toHaveBeenCalledWith(
+      3000000000n,
+      '0xfrom',
+      DEEP,
+      client,
+      options.builtTransaction
+    )
+    expect(options.inputCoin).toEqual({ result: coin })
+  })
+
+  it('leaves a Fast MCTP USDC input to Mayan local coin selection', async () => {
+    const { options } = await runSuiSwap(SUI_USDC, 'FAST_MCTP')
 
     expect(options).toBeUndefined()
     expect(mayanSdk.resolveInputCoin).not.toHaveBeenCalled()
@@ -1248,5 +1292,271 @@ describe('mayan provider Sui pre-swap routing', () => {
 
     expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledTimes(1)
     expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+  })
+})
+
+describe('mayan provider Sui Fast MCTP pre-swap routing', () => {
+  const SUI = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+  const SUI_USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+  const REFERRERS = { sui: '0xsuiref', evm: '0xevmref', solana: 'solref' }
+  const digest = `0x${'d'.repeat(64)}`
+  const FAST_PACKAGE = `0x${'b'.repeat(64)}`
+  const MCTP_PACKAGE = `0x${'9'.repeat(64)}`
+  const SUI_CURRENCY = `0x${'c'.repeat(64)}`
+  const FROM = `0x${'f'.repeat(64)}`
+  const abort = (pkg: string, location: string, code: number) =>
+    `Transaction resolution failed: MoveAbort in 11th command, abort code: ${code}, in '${pkg}::${location}' (instruction 7)`
+  const BRIDGE_MISS = abort(FAST_PACKAGE, 'bridge::prepare_bridge', 1)
+  const ORDER_MISS = abort(FAST_PACKAGE, 'create_order::prepare_create_order', 1)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    mayanSdk.getQuoteSuitableReferrerAddress.mockReturnValue('0xevmref')
+    mayanSdk.fetchMayanSuiPackageId.mockImplementation(async (state: string) =>
+      state === `0x${'a'.repeat(64)}` ? FAST_PACKAGE : MCTP_PACKAGE
+    )
+    mayanSdk.getSwapSui.mockImplementation(async () => {
+      const preSwap = new Transaction()
+      preSwap.splitCoins(preSwap.gas, [1])
+      preSwap.splitCoins(preSwap.gas, [2])
+      return {
+        tx: await preSwap.toJSON(),
+        outCoin: { $kind: 'Result', Result: 0 }
+      }
+    })
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  function route(fromContract: string, overrides: Record<string, unknown> = {}) {
+    return {
+      from_token: { chainId: 1999 },
+      to_token: { chainId: 8453 },
+      info_for_bridge: {
+        type: 'FAST_MCTP',
+        fromChain: 'sui',
+        toChain: 'base',
+        hasAuction: false,
+        slippageBps: 50,
+        referrerBps: 10,
+        minMiddleAmount: 4.967281,
+        deadline64: String(Math.floor(Date.now() / 1000) + 600),
+        fromToken: { standard: 'suicoin', contract: fromContract, currencyId: SUI_CURRENCY },
+        fastMctpInputContract: SUI_USDC,
+        fastMctpInputCurrencyId: `0x${'e'.repeat(64)}`,
+        effectiveAmountIn64: '5000000000',
+        ...overrides
+      }
+    }
+  }
+
+  const simulated = (status: Record<string, unknown>) => ({
+    $kind: 'Transaction',
+    Transaction: { digest, status }
+  })
+
+  async function run(
+    fromContract: string,
+    simulations: Array<Record<string, unknown> | Error>,
+    overrides: Record<string, unknown> = {},
+    toAddress = '0xto'
+  ) {
+    const { swap } = await import('../src/providers/mayan')
+    mayanSdk.createSwapFromSuiMoveCalls.mockResolvedValue(createMayanTransaction())
+    const core = createSuiCoreApi()
+    for (const result of simulations) {
+      if (result instanceof Error) core.simulateTransaction.mockRejectedValueOnce(result)
+      else core.simulateTransaction.mockResolvedValueOnce(result)
+    }
+    const client = {
+      core,
+      executeTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } })),
+      waitForTransaction: vi.fn(async () => ({ $kind: 'Transaction', Transaction: { digest } }))
+    }
+    const signTransaction = vi.fn(async () => ({ bytes: signedBytes, signature: 'sig' }))
+    const promise = swap(
+      route(fromContract, overrides) as any,
+      FROM,
+      toAddress,
+      { sui: { provider: client as any, signTransaction, preswapRouting: 'mayan' } },
+      REFERRERS
+    )
+    promise.catch(() => undefined)
+    return { promise: settleSwap(promise), client, signTransaction }
+  }
+
+  function lastOptions(call: typeof mayanSdk.addFastMctpBridgeMoveCalls) {
+    const args = call.mock.calls[call.mock.calls.length - 1]
+    return args[args.length - 1]
+  }
+
+  it('requests the pre-swap without the referrer and keeps the referrer on a Fast MCTP bridge', async () => {
+    const { promise, client, signTransaction } = await run(SUI, [simulated({ success: true })])
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).not.toHaveBeenCalled()
+    expect(mayanSdk.fetchMayanSuiPackageId).toHaveBeenCalledWith(`0x${'a'.repeat(64)}`, client)
+    const [request] = mayanSdk.getSwapSui.mock.calls[0]
+    expect(request).not.toHaveProperty('referrerAddress')
+    expect(request).toMatchObject({
+      amountIn64: '5000000000',
+      inputCoinType: SUI,
+      middleCoinType: SUI_USDC,
+      userWallet: FROM,
+      withWhFee: false,
+      slippageBps: 50,
+      chainName: 'sui'
+    })
+    expect(request.inputCoin.result).toMatchObject({ $kind: 'NestedResult' })
+
+    expect(mayanSdk.addFastMctpCreateOrderMoveCalls).not.toHaveBeenCalled()
+    const [quote, swapper, destination, referrer, packageId, payload, buildClient, options] =
+      mayanSdk.addFastMctpBridgeMoveCalls.mock.calls[0]
+    expect(quote.minMiddleAmount).toBe(4.967281)
+    expect(quote.referrerBps).toBe(10)
+    expect([swapper, destination, referrer, packageId, payload, buildClient]).toEqual([
+      FROM,
+      '0xto',
+      '0xevmref',
+      FAST_PACKAGE,
+      null,
+      client
+    ])
+    expect(options.inputCoin).toEqual({ result: { $kind: 'Result', Result: 0 } })
+
+    const calls = (options.builtTransaction as Transaction)
+      .getData()
+      .commands.filter((command) => command.$kind === 'MoveCall')
+      .map((command) => command.MoveCall!)
+    expect(calls.map((call) => `${call.module}::${call.function}`)).toEqual([
+      'bridge::log_initialize_fast_mctp'
+    ])
+    expect(calls[0].package).toBe(FAST_PACKAGE)
+    expect(calls[0].typeArguments).toEqual([SUI])
+    expect(mayanSdk.addInitOrderMoveCalls).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).toHaveBeenCalledTimes(1)
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the referrer on a Fast MCTP auction order', async () => {
+    const { promise } = await run(SUI, [simulated({ success: true })], { hasAuction: true })
+    await promise
+
+    expect(mayanSdk.addFastMctpBridgeMoveCalls).not.toHaveBeenCalled()
+    const [, swapper, destination, referrer, packageId] =
+      mayanSdk.addFastMctpCreateOrderMoveCalls.mock.calls[0]
+    expect([swapper, destination, referrer, packageId]).toEqual([
+      FROM,
+      '0xto',
+      '0xevmref',
+      FAST_PACKAGE
+    ])
+    const [request] = mayanSdk.getSwapSui.mock.calls[0]
+    expect(request).not.toHaveProperty('referrerAddress')
+  })
+
+  it.each([
+    ['bridge', {}, BRIDGE_MISS],
+    ['auction order', { hasAuction: true }, ORDER_MISS]
+  ] as const)(
+    'rebuilds a Fast MCTP %s from the same quote when the pre-swap misses the minimum',
+    async (_, overrides, miss) => {
+      const { promise, signTransaction } = await run(
+        SUI,
+        [simulated({ success: false, error: { message: miss } }), simulated({ success: true })],
+        overrides
+      )
+      await promise
+
+      expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(2)
+      expect(signTransaction).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('retries a malformed Fast MCTP pre-swap thrown during resolution', async () => {
+    const { promise } = await run(SUI, [
+      new Error('CommandArgumentError { arg_idx: 0, kind: ArgumentWithoutValue } in command 1'),
+      simulated({ success: true })
+    ])
+    await promise
+
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['another package', abort(MCTP_PACKAGE, 'bridge::prepare_bridge', 1)],
+    ['another function', abort(FAST_PACKAGE, 'bridge::bridge', 1)],
+    ['another code', abort(FAST_PACKAGE, 'bridge::prepare_bridge', 2)],
+    ['the MCTP minimum check', abort(FAST_PACKAGE, 'init_order::prepare_initialize_order', 4)]
+  ])('does not retry a Fast MCTP abort from %s', async (_, message) => {
+    const { promise, signTransaction } = await run(SUI, [
+      simulated({ success: false, error: { message } })
+    ])
+
+    await expect(promise).rejects.toThrow('abort code')
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(1)
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it('asks for a fresh quote after three Fast MCTP builds miss the minimum, without signing', async () => {
+    const miss = simulated({ success: false, error: { message: BRIDGE_MISS } })
+    const { promise, signTransaction } = await run(SUI, [miss, miss, miss])
+
+    await expect(promise).rejects.toMatchObject({ code: 'BRIDGE_QUOTE_EXPIRED' })
+    expect(mayanSdk.getSwapSui).toHaveBeenCalledTimes(3)
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it('asks for a fresh Fast MCTP quote once its deadline has passed, without building', async () => {
+    const { promise, signTransaction } = await run(SUI, [], {
+      deadline64: String(Math.floor(Date.now() / 1000) - 1)
+    })
+
+    await expect(promise).rejects.toMatchObject({ code: 'BRIDGE_QUOTE_EXPIRED' })
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(signTransaction).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the from token currency id', { fromToken: { standard: 'suicoin', contract: SUI } }],
+    ['the input currency id', { fastMctpInputCurrencyId: undefined }]
+  ])(
+    'refuses a Fast MCTP quote without %s before requesting the pre-swap',
+    async (_, overrides) => {
+      const { promise, signTransaction } = await run(SUI, [], overrides)
+
+      await expect(promise).rejects.toThrow('currency id is not provided')
+      expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+      expect(signTransaction).not.toHaveBeenCalled()
+    }
+  )
+
+  it('refuses a zero Fast MCTP destination before requesting the pre-swap', async () => {
+    const { promise } = await run(SUI, [], {}, '0x0000000000000000000000000000000000000000')
+
+    await expect(promise).rejects.toThrow('Invalid destination address for fast mctp')
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+  })
+
+  it('keeps Mayan building a Fast MCTP USDC source, which has no pre-swap', async () => {
+    const { promise, client } = await run(SUI_USDC, [])
+    await promise
+
+    expect(mayanSdk.createSwapFromSuiMoveCalls).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'FAST_MCTP' }),
+      FROM,
+      '0xto',
+      REFERRERS,
+      null,
+      client,
+      undefined
+    )
+    expect(mayanSdk.getSwapSui).not.toHaveBeenCalled()
+    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
   })
 })

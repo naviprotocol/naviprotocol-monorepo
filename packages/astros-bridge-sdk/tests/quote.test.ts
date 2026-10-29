@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { AxiosAdapter, AxiosResponse } from 'axios'
 import { apiInstance } from '../src/config'
-import { getQuote, getTransaction, getWalletTransactions } from '../src'
+import { BRIDGE_QUOTE_CAPABILITIES, getQuote, getTransaction, getWalletTransactions } from '../src'
 
 const suiToken = {
   address: '0xsui',
@@ -46,6 +46,10 @@ afterEach(() => {
 })
 
 describe('bridge API DTOs', () => {
+  it('declares the quote types this SDK can execute', () => {
+    expect(BRIDGE_QUOTE_CAPABILITIES).toEqual({ fastMctp: '1' })
+  })
+
   it('requests quotes with v2 token params and normalizes string chain ids', async () => {
     apiInstance.defaults.adapter = async (config) => {
       expect(config.url).toBe('/bridge-swap/find_routes')
@@ -56,7 +60,8 @@ describe('bridge API DTOs', () => {
         toChain: 1,
         amount: '1000000000',
         slippageBps: 50,
-        referrerBps: 3
+        referrerBps: 3,
+        fastMctp: '1'
       })
 
       return jsonResponse(config, {
