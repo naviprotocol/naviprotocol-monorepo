@@ -67,3 +67,21 @@ The official interface declares `MIN_STAKING_THRESHOLD = 1_000_000_000` and
 `EStakeNotEnoughSui = 4`:
 https://github.com/haedallsd/haedal-protocol-interface/blob/main/sources/staking.move
 This is an E2E regression through live protocols, not an isolated converter test.
+
+## Persisted AccountCap discovery regression (2026-10-30)
+
+Before changing discovery, `persisted-position.mjs` reads a real wallet-owned
+mainnet Cap through the public built package. It must return that strategy and
+Cap exactly once with positive collateral/debt, support the strategy filter,
+reject opening a duplicate position, and build/simulate repayment using the
+existing Cap. No source or protocol is isolated or mocked. Failure boundaries:
+wrong type origin filter, wrong owner or transferred fixture, missing/invalid
+metadata, E-Mode exclusion, duplicate strategy binding, RPC/getter failure,
+empty/closed fixture, existing-Cap ownership/PTB failure. RPC errors fail the run.
+
+Set `MULTIPLY_E2E_POSITION_ADDRESS` and `MULTIPLY_E2E_CAP_ID` to an active vSUI/SUI
+Multiply position, then run `node packages/multiply/e2e/persisted-position.mjs`.
+Optional `MULTIPLY_E2E_PACKAGE` points to an installed tarball entry. The fixture
+is live and must remain active and wallet-owned; no transaction is broadcast.
+Evidence uses a fresh output directory with inputs, package hash, chain Cap,
+positions, unsigned repayment/simulation and SHA-256 manifest.
