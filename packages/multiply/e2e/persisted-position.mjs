@@ -2,9 +2,9 @@
 // No mocked source, private key, signing or broadcast. Fixture must remain active/owned.
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Transaction } from '@mysten/sui/transactions'
@@ -18,6 +18,16 @@ const entry = process.env.MULTIPLY_E2E_PACKAGE
   ? pathToFileURL(path.resolve(process.env.MULTIPLY_E2E_PACKAGE))
   : new URL('../dist/index.js', import.meta.url)
 const hash = (data) => createHash('sha256').update(data).digest('hex')
+const dist = path.dirname(fileURLToPath(entry))
+const distributionFiles = await Promise.all(
+  (await readdir(dist, { recursive: true, withFileTypes: true }))
+    .filter((item) => item.isFile())
+    .map(async (item) => {
+      const filename = path.join(item.parentPath, item.name)
+      return { file: path.relative(dist, filename), sha256: hash(await readFile(filename)) }
+    })
+)
+distributionFiles.sort((a, b) => a.file.localeCompare(b.file))
 const artifacts = []
 async function save(file, value) {
   const text = JSON.stringify(value, (_, v) => typeof v === 'bigint' ? String(v) : v, 2) + '\n'
@@ -26,8 +36,10 @@ async function save(file, value) {
 }
 const report = { broadcast: false, signed: false, startedAt: new Date().toISOString(),
   commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-  packageSha256: hash(await readFile(entry)), address, capId, checks: [] }
+  workingTree: execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(),
+  distributionSha256: hash(JSON.stringify(distributionFiles)), address, capId, checks: [] }
 try {
+  await save('distribution-files.json', distributionFiles)
   const sdk = await import(entry.href)
   const client = new SuiGrpcClient({ network: 'mainnet', baseUrl: process.env.SUI_GRPC_URL ?? 'https://fullnode.mainnet.sui.io:443' })
   const { object } = await client.core.getObject({ objectId: capId, include: { json: true } })
