@@ -14,8 +14,10 @@ import {
 import type { AccountCap, DataSource, MarketSnapshot, MultiplySuiClient, Strategy } from './types'
 import { BN, RAY, address, check, inspect, sameCoin } from './utils'
 
+// AccountCap's canonical type origin, preserved across lending package upgrades.
+// This differs from the current callable package and the AccountField type origin.
 export const ACCOUNT_CAP_TYPE =
-  '0xd899cf7d2b5db716bd2cf55599fb0d5ee38a3061e7b6bb6eebf73fa5bc4c81ca::account::AccountCap'
+  '0x66c91a8560cd64d73d93dd1ec7b61f3f21ad2f66553dd3d7038ca69255479bb7::account::AccountCap'
 export const defaultClient = () =>
   new SuiGrpcClient({ network: 'mainnet', baseUrl: 'https://fullnode.mainnet.sui.io:443' })
 export function createNaviDataSource(
