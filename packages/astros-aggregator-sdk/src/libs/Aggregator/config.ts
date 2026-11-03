@@ -61,11 +61,11 @@ export const AggregatorConfig = {
 
   // DeepBook DEX configuration
   deepbookPackageId: '0x2c8d603bc51326b8c13cef9dd07031a408a48dddb541963357661df5d3204809',
-  // DeepBook v3 execution package v8. sponsored_deep (below) links DeepBook v1, whose
-  // pool::load_inner aborts with code 12 now; calling any v8 function in the same PTB
-  // upgrades the whole transaction's DeepBook linkage to v8. Must stay in the pool's
+  // DeepBook v3 execution package v9. sponsored_deep (below) links DeepBook v1, whose
+  // pool::load_inner aborts with code 12 now; calling any v9 function in the same PTB
+  // upgrades the whole transaction's DeepBook linkage to v9. Must stay in the pool's
   // allowed_versions, otherwise load_inner aborts with code 11.
-  deepbookLinkagePackageId: '0x0e735f8c93a95722efd73521aca7a7652c0bb71ed1daf41b26dfd7d1ff71f748',
+  deepbookLinkagePackageId: '0xbca0cefe720330e7bb4f2283438b68de6a0e656688db4ac90d61e71fe6151fe8',
   deepSponsoredPackageId: '0x5871cfe2f6a5e432caea0a894aa51fc423fba798dfed540859abdf17ecc61219',
   deepSponsoredPoolConfig: '0x0b5e88bb54746b94bc5c7912f279cba30e0c4bd0241b935ba1d0d0c032218b6f',
   deepTokenAddress:

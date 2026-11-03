@@ -4,10 +4,10 @@
 
 ### Patch Changes
 
-- Add a read-only DeepBook v8 call (`pool::pool_book_params`) before the
+- Add a read-only DeepBook v9 call (`pool::pool_book_params`) before the
   `sponsored_deep` swap. `sponsored_deep` links DeepBook v1, which now aborts in
   `pool::load_inner` with code 12; the extra call upgrades the PTB's DeepBook linkage
-  to v8 so sponsored DeepBook swaps execute again. Bump the `find_routes` client
+  to v9 so sponsored DeepBook swaps execute again. Bump the `find_routes` client
   version from 16 to 17 for backend capability gating.
 
 ## 2.0.7
