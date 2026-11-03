@@ -11,7 +11,7 @@ import { Transaction } from '@mysten/sui/transactions'
 
 const address = process.env.MULTIPLY_E2E_POSITION_ADDRESS
 const capId = process.env.MULTIPLY_E2E_CAP_ID
-assert(address && capId, 'Set MULTIPLY_E2E_POSITION_ADDRESS and MULTIPLY_E2E_CAP_ID to an active vSUI Multiply position')
+assert(address && capId, 'Set MULTIPLY_E2E_POSITION_ADDRESS and MULTIPLY_E2E_CAP_ID to an active Registry-registered vSUI Multiply position')
 const out = path.resolve(process.env.MULTIPLY_E2E_OUT ?? `/tmp/multiply-persisted-${Date.now()}`)
 await mkdir(out, { recursive: false })
 const entry = process.env.MULTIPLY_E2E_PACKAGE
@@ -54,7 +54,7 @@ try {
   const p = matches[0]
   assert.equal(p.accountCap.id, capId)
   assert.equal(p.accountCap.accountOwner, object.json.owner)
-  assert.equal(p.accountCap.name, `navi:multiply:v1:${strategy.id}`)
+  assert.deepEqual(p.accountCap.registryKey, strategy.registryKey)
   assert(BigInt(p.collateralAmount) > 0n && BigInt(p.debtAmount) > 0n)
   assert(Number(p.healthFactor) > 1 && Number(p.leverage) > 1)
   const filtered = await engine.getPosition(address, { strategy })

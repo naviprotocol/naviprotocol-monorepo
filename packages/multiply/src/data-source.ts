@@ -11,19 +11,52 @@ import {
   UserStateInfo,
   type NaviSdkServiceOptions
 } from '@naviprotocol/lending'
-import type { AccountCap, DataSource, MarketSnapshot, MultiplySuiClient, Strategy } from './types'
-import { BN, RAY, address, check, inspect, sameCoin } from './utils'
+import type {
+  AccountCap,
+  CapRegistryConfig,
+  DataSource,
+  MarketSnapshot,
+  MultiplySuiClient,
+  Strategy
+} from './types'
+import {
+  BN,
+  RAY,
+  address,
+  check,
+  inspect,
+  sameCoin,
+  coinType,
+  jsonCopy,
+  MultiplyError
+} from './utils'
+import { lendingToRaw, tokenDecimals } from './amounts'
 
-// AccountCap's canonical type origin, preserved across lending package upgrades.
-// This differs from the current callable package and the AccountField type origin.
-export const ACCOUNT_CAP_TYPE =
-  '0x66c91a8560cd64d73d93dd1ec7b61f3f21ad2f66553dd3d7038ca69255479bb7::account::AccountCap'
+import {
+  ACCOUNT_CAP_TYPE,
+  MAINNET_CAP_REGISTRY,
+  normalizeCapRegistry,
+  decodeRegistryEntries,
+  indexRegistryStrategies
+} from './cap-registry'
+import { strategies as builtInStrategies } from './strategies'
+export { ACCOUNT_CAP_TYPE } from './cap-registry'
+
 export const defaultClient = () =>
   new SuiGrpcClient({ network: 'mainnet', baseUrl: 'https://fullnode.mainnet.sui.io:443' })
 export function createNaviDataSource(
-  options: { client?: MultiplySuiClient; services?: NaviSdkServiceOptions } = {}
+  options: {
+    client?: MultiplySuiClient
+    services?: NaviSdkServiceOptions
+    capRegistry?: CapRegistryConfig
+    strategies?: Strategy[]
+  } = {}
 ): DataSource {
   const client = options.client ?? defaultClient()
+  const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
+  const byKey = indexRegistryStrategies(
+    jsonCopy(options.strategies ?? Object.values(builtInStrategies))
+  )
   const opts = { services: options.services, disableCache: true }
   async function prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot) {
     const feeds = market.config.oracle.feeds.filter(
@@ -41,81 +74,128 @@ export function createNaviDataSource(
   }
   const source: DataSource = {
     prepareOracle,
+    capRegistry,
     async listAccountCaps(owner) {
-      address(owner)
-      const config = await getConfig(opts)
-      const registry = new Transaction()
-      registry.moveCall({
-        target: `${config.emode.contract.registryPackage}::registry::find_user_emode_account_caps`,
-        arguments: [
-          registry.object(config.emode.contract.registryObject),
-          registry.pure.address(owner)
-        ]
-      })
-      const registered = await inspect(client, registry)
-      const emodeOwners = new Set(bcs.vector(bcs.Address).parse(registered[0].returnValues[2].bcs))
-      const caps: AccountCap[] = []
-      const cursors = new Set<string>()
-      let cursor: string | null = null
-      do {
-        const page: SuiClientTypes.ListOwnedObjectsResponse<{ json: true }> =
-          await client.core.listOwnedObjects({
-            owner,
-            type: ACCOUNT_CAP_TYPE,
-            include: { json: true },
-            cursor,
-            limit: 50
-          })
-        for (const object of page.objects) {
-          const accountOwner = address(String(object.json?.owner))
-          // Product E-Mode Caps remain excluded even if externally renamed.
-          if (emodeOwners.has(accountOwner)) continue
-          const fields = await client.core.listDynamicFields({
-            parentId: object.objectId,
-            limit: 50
-          })
-          check(!fields.hasNextPage, 'READ_FAILED', 'Unexpected AccountCap metadata size')
-          const field = fields.dynamicFields.find((f) =>
-            f.name.type.endsWith('::account::AccountFieldKey')
-          )
-          if (!field) continue
-          const metadata = await client.core.getDynamicField({
-            parentId: object.objectId,
-            name: field.name
-          })
-          const schema = bcs.struct('AccountField', {
-            name: bcs.string(),
-            description: bcs.string(),
-            last_update_time: bcs.string(),
-            market_balance: bcs.string()
-          })
-          const value = schema.parse(metadata.dynamicField.value.bcs)
-          const prefix = 'navi:multiply:v1:'
-          if (!value.name.startsWith(prefix)) continue
-          const strategy = JSON.parse(value.description) as Strategy
-          check(
-            strategy?.id === value.name.slice(prefix.length),
-            'INVALID_ACCOUNT_CAP',
-            'Multiply Cap metadata has no matching strategy binding'
-          )
-          caps.push({
-            id: object.objectId,
-            accountOwner,
-            strategyId: strategy.id,
-            name: value.name,
-            strategy
-          })
-        }
-        if (!page.hasNextPage) break
+      owner = address(owner)
+      try {
+        const config = await getConfig(opts)
+        const registry = new Transaction()
+        registry.setSender(owner)
+        registry.moveCall({
+          target: `${capRegistry.packageId}::multiply_registry::find_user_mul_account_caps`,
+          arguments: [registry.object(capRegistry.objectId), registry.pure.address(owner)]
+        })
+        registry.moveCall({
+          target: `${config.emode.contract.registryPackage}::registry::find_user_emode_account_caps`,
+          arguments: [
+            registry.object(config.emode.contract.registryObject),
+            registry.pure.address(owner)
+          ]
+        })
+        const registered = await inspect(client, registry)
+        const entries = decodeRegistryEntries(registered[0]?.returnValues)
         check(
-          page.cursor && !cursors.has(page.cursor),
+          registered[1]?.returnValues?.length === 3,
           'READ_FAILED',
-          'AccountCap pagination did not advance'
+          'Incomplete E-Mode registry response'
         )
-        cursor = page.cursor
-        cursors.add(cursor)
-      } while (true)
-      return caps
+        const emodeOwners = new Set(
+          bcs.vector(bcs.Address).parse(registered[1].returnValues[2].bcs)
+        )
+        const definitions = entries.map((entry) => {
+          const key = `${entry.registryKey.strategyNumericId}:${entry.registryKey.strategyVersion}`
+          const strategy = byKey.get(key)
+          check(
+            strategy,
+            'UNSUPPORTED_REGISTRY_STRATEGY',
+            `Unknown Multiply Registry strategy: ${key}`
+          )
+          check(
+            entry.capId !== address('0x0'),
+            'INVALID_ACCOUNT_CAP',
+            'Registry contains a zero Cap'
+          )
+          return strategy
+        })
+        check(
+          new Set(entries.map((e) => e.capId)).size === entries.length,
+          'DUPLICATE_ACCOUNT_CAP',
+          'One Cap is registered to multiple strategies'
+        )
+        const objects = new Map<string, SuiClientTypes.Object<{ content: true }>>()
+        for (let start = 0; start < entries.length; start += 50) {
+          const ids = entries.slice(start, start + 50).map((e) => e.capId)
+          const response = await client.core.getObjects({
+            objectIds: ids,
+            include: { content: true }
+          })
+          check(
+            response.objects.length === ids.length,
+            'READ_FAILED',
+            'Incomplete Cap object response'
+          )
+          for (const object of response.objects) {
+            check(
+              !(object instanceof Error),
+              'INVALID_ACCOUNT_CAP',
+              'Registered Cap is unavailable'
+            )
+            const id = address(object.objectId)
+            check(
+              ids.includes(id) && !objects.has(id),
+              'READ_FAILED',
+              'Unexpected or duplicate Cap response'
+            )
+            objects.set(id, object)
+          }
+        }
+        const accountOwners = new Set<string>()
+        const schema = bcs.struct('AccountCap', { id: bcs.Address, owner: bcs.Address })
+        return entries.map((entry, i): AccountCap => {
+          const object = objects.get(entry.capId)
+          check(
+            object && coinType(object.type) === ACCOUNT_CAP_TYPE,
+            'INVALID_ACCOUNT_CAP',
+            'Registry object is not an AccountCap'
+          )
+          check(
+            object.owner.$kind === 'AddressOwner' && address(object.owner.AddressOwner) === owner,
+            'INVALID_ACCOUNT_CAP',
+            'Registered Cap is not owned by this wallet'
+          )
+          let fields: { id: string; owner: string }
+          try {
+            fields = schema.parse(object.content)
+          } catch {
+            throw new MultiplyError('INVALID_ACCOUNT_CAP', 'Invalid AccountCap content')
+          }
+          check(
+            fields.id === entry.capId && fields.owner !== address('0x0'),
+            'INVALID_ACCOUNT_CAP',
+            'Invalid AccountCap identity'
+          )
+          check(
+            !emodeOwners.has(fields.owner),
+            'INVALID_ACCOUNT_CAP',
+            'E-Mode Cap cannot be used for Multiply'
+          )
+          check(
+            !accountOwners.has(fields.owner),
+            'DUPLICATE_ACCOUNT_CAP',
+            'Multiple strategies share one lending account'
+          )
+          accountOwners.add(fields.owner)
+          return {
+            id: entry.capId,
+            accountOwner: fields.owner,
+            strategyId: definitions[i].id,
+            registryKey: { ...entry.registryKey }
+          }
+        })
+      } catch (error) {
+        if (error instanceof MultiplyError) throw error
+        throw new MultiplyError('READ_FAILED', 'Unable to read complete Multiply Registry snapshot')
+      }
     },
     async readMarket(strategy) {
       const [config, pools, flashConfig, flashAssets] = await Promise.all([
@@ -137,11 +217,8 @@ export function createNaviDataSource(
         'MARKET_UNSUPPORTED',
         'Requires lending v2 and an on-chain HF limiter'
       )
-      check(
-        collateral.token.decimals === 9 && debt.token.decimals === 9,
-        'MARKET_UNSUPPORTED',
-        'Initial release supports nine-decimal pools'
-      )
+      tokenDecimals(collateral)
+      tokenDecimals(debt)
       const market: MarketSnapshot = {
         config,
         collateral,
@@ -272,7 +349,13 @@ export function createNaviDataSource(
             RAY
           ).toString()
       }
-      return { collateralAmount, debtAmount }
+      // NAVI's balances are normalized to 9 decimals. Coins, swaps, flash loans,
+      // and all public Multiply amounts use each token's native precision.
+      // Round available collateral down and liabilities up to avoid overstating equity.
+      return {
+        collateralAmount: lendingToRaw(collateralAmount, tokenDecimals(market.collateral)),
+        debtAmount: lendingToRaw(debtAmount, tokenDecimals(market.debt), true)
+      }
     },
     async readBorrowFeeBps(market, accountOwner) {
       const tx = new Transaction()

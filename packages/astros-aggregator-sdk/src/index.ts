@@ -15,6 +15,3 @@ export * from './libs/Aggregator'
 
 // Export type definitions for the aggregator SDK
 export * from './types'
-
-/** Capability marker for change collection and positive-slippage opt-out. */
-export const COMPOSABLE_SWAP_API_VERSION = 1 as const

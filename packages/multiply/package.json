@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/multiply",
-  "version": "0.1.0",
+  "version": "0.2.0-preview.20261103.1",
   "description": "Composable AccountCap-based NAVI Multiply strategy engine",
   "type": "module",
   "license": "MIT",
@@ -33,13 +33,14 @@
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run tests",
     "test:e2e": "node e2e/run.mjs",
     "test:e2e:package": "node e2e/package-run.mjs",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@naviprotocol/lending": "workspace:^",
-    "@naviprotocol/astros-aggregator-sdk": "workspace:^",
+    "@naviprotocol/lending": "2.1.0",
+    "@naviprotocol/astros-aggregator-sdk": "2.0.7",
     "bignumber.js": "9.1.2"
   },
   "peerDependencies": {

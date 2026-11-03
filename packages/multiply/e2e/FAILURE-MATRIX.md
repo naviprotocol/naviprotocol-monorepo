@@ -1,8 +1,8 @@
-# Multiply E2E contract (written before implementation)
+# Multiply verification contract
 
 The public package, real NAVI / Volo / Haedal / Astros endpoints and Sui Move VM
-are the verification boundary. No unit tests or mocked protocol implementations
-are added. This is mainnet **simulation**, never a signed/broadcast transaction.
+are the live-simulation verification boundary. Registry/quote failure cases also
+have deterministic unit coverage; API/frontend fixtures are separate evidence. This is mainnet **simulation**, never a signed/broadcast transaction.
 
 The runner imports the built distribution (or an unpacked npm tarball), saves its
 input, quote, unsigned TransactionData bytes, command data and full simulation
@@ -13,23 +13,23 @@ evidence, not an executable frozen fork.
 ## Failure inventory before implementation
 
 This partitions the finite API / lifecycle boundary; it is not a claim that all
-possible remote failures can be enumerated. No isolated subsystem test is planned.
+possible remote failures can be enumerated. Registry parsing, bindings and malformed-response handling also have unit tests.
 
 | Boundary | Failure classes | Required behavior / E2E coverage |
 | --- | --- | --- |
 | Package | Missing dist/export/types, broken workspace dependencies, tarball cannot import | First red run fails on missing dist; final consumer imports tarball |
 | Inputs | Invalid address/type, zero/negative/fractional/overflow amount, invalid leverage/HF/slippage, unknown action/strategy | Typed error before PTB mutation |
-| Discovery | Pagination, absent metadata, renamed/duplicate Caps, E-Mode registration, transferred/wrapped Cap, upstream failure | Empty is distinct from failure; duplicates/conflicts fail; injectable resolver supports Vault |
+| Discovery | Unknown numeric keys, incomplete BCS arrays/objects, duplicate Cap/account, E-Mode registration, transferred Cap, upstream failure | Registry only; no metadata or legacy scans; unknown/conflicting records fail rather than empty |
 | Snapshot | Missing pools/config, stale/invalid oracle, unknown risk parameters, non-strategy assets, negative equity, wrong market/E-Mode | Reject incomplete or incompatible state |
 | Integer math | u64 overflow, unsafe JS number, decimals mismatch, fee rounding, nonconvergence, dust, debt interest drift | Exact arithmetic, bounded solver, conservative output and debt bounds |
 | Liquidity | Supply/borrow/flash capacity exhausted, amount below protocol minimum, disabled market | No executable quote outside limits |
 | Converter | Unsupported pair/direction, no route, upstream error, expired/malformed quote, wrong token/amount, fee/positive-slippage loss, insufficient minimum, delayed claim | Validate identity/amount/output; native candidates first; fallback preserves constraints |
 | Multi-leg plan | Per-leg slippage exceeds total budget, costs double-counted, solver uses ideal instead of net conversion, flash repayment shortfall | Compose actual minimum outputs; fail infeasible plans |
 | Quote | Expired, serialized/reloaded, changed identity/strategy/action/constraints/plan, converter replaced, state changed since quote | Validate and re-plan against current data without silently changing route |
-| PTB | Wrong/missing input coin, over-consuming input, wrong Cap binding, Cap not returned, leftovers lost, missing limiter/oracle update | Caller owns lifecycle; return all results; chain guards; full-PTB simulation |
+| PTB | Wrong/missing input coin, over-consuming input, wrong Cap binding, Cap not returned, leftovers lost, missing limiter/oracle update | Astros route change goes to quote.address; remaining results returned to caller; chain guards; full-PTB simulation |
 | Lifecycle | First open, empty Cap reuse, add/remove principal, lever up/down, repay, add collateral, full close, missing position | End-to-end action scenarios using real VM state; unsupported paths explicit |
 | Atomicity | Swap succeeds but borrow/repay/HF check fails, native instant redemption unavailable, pending assets misused as cash | Whole PTB aborts; delayed settlement unsupported in initial release |
-| Uniqueness | Concurrent create, external rename/transfer, direct contract bypass | SDK detection only; no claim of chain uniqueness without a registry |
+| Uniqueness | Concurrent create, changed registration/owner, duplicate account across keys | Fixed sender/key registration rejects a concurrent duplicate atomically; names are irrelevant; invalid bindings fail |
 | Evidence | Missing artifacts, failed simulation marked passed, skipped RPC treated empty, existing output overwritten | Nonzero exit on any required failure; fresh run dir; SHA-256 manifest |
 
 ## Lifecycle fixture
@@ -85,3 +85,18 @@ Optional `MULTIPLY_E2E_PACKAGE` points to an installed tarball entry. The fixtur
 is live and must remain active and wallet-owned; no transaction is broadcast.
 Evidence uses a fresh output directory with inputs, package hash, chain Cap,
 positions, unsigned repayment/simulation and SHA-256 manifest.
+
+## Direct Astros refund policy (2026-11-02)
+
+The clean package consumer uses published Astros 2.0.7 and Lending 2.1.0 without
+overrides. `small-haedal-fallback` and `default-fallback` decode every route-refund
+recipient and require it to match the Multiply quote owner, even when the PTB has
+a different sender configured at build time. Missing, malformed and zero converter
+recipients must fail before appending any commands. The rest of the lifecycle
+continues to run against the real VM with Astros default fee behavior.
+
+The release bundle also includes `refund-proof.mjs`: a live Astros quote is built
+with an additional 1,234,567 MIST input and a recipient distinct from the sender.
+Unsigned simulation balance changes must show at least that amount reaching the
+recipient. This verifies actual nonzero refund delivery, beyond inspecting command
+arguments; it does not broadcast a transaction.

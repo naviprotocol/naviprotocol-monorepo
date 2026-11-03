@@ -38,13 +38,8 @@ export async function buildSwapWithoutServiceFee(
   minAmountOut: number,
   referral: number = 0,
   ifPrint: boolean = true,
-  swapOptions?: Pick<SwapOptions, 'services' | 'onCoinChange' | 'positiveSlippage'>
+  swapOptions?: Pick<SwapOptions, 'services'>
 ): Promise<SingleCoinTransactionResult> {
-  const returnChange = (coin: Parameters<typeof moveCallTransferNonzero>[1], type: string) => {
-    if (swapOptions?.onCoinChange)
-      swapOptions.onCoinChange(typeof coin === 'string' ? txb.object(coin) : coin, type)
-    else moveCallTransferNonzero(txb, coin, userAddress, type)
-  }
   const tokenA = quote.from
   const tokenB = quote.target
   const allPaths = JSON.parse(JSON.stringify(quote.routes))
@@ -157,10 +152,10 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            returnChange(coinABs[0], coinAtype)
+            moveCallTransferNonzero(txb, coinABs[0], userAddress, coinAtype)
             pathTempCoin = coinABs[1]
           } else {
-            returnChange(coinABs[1], coinBtype)
+            moveCallTransferNonzero(txb, coinABs[1], userAddress, coinBtype)
             pathTempCoin = coinABs[0]
           }
           break
@@ -181,9 +176,9 @@ export async function buildSwapWithoutServiceFee(
             tuborsVersion
           )
           if (a2b) {
-            returnChange(turbosCoinA, coinAtype)
+            moveCallTransferNonzero(txb, turbosCoinA, userAddress, coinAtype)
           } else {
-            returnChange(turbosCoinA, coinBtype)
+            moveCallTransferNonzero(txb, turbosCoinA, userAddress, coinBtype)
           }
 
           pathTempCoin = turbosCoinB
@@ -237,10 +232,10 @@ export async function buildSwapWithoutServiceFee(
           )
           if (a2b) {
             pathTempCoin = quoteCoinOut
-            returnChange(baseCoinOut, coinAtype)
+            moveCallTransferNonzero(txb, baseCoinOut, userAddress, coinAtype)
           } else {
             pathTempCoin = baseCoinOut
-            returnChange(quoteCoinOut, coinBtype)
+            moveCallTransferNonzero(txb, quoteCoinOut, userAddress, coinBtype)
           }
           break
         }
@@ -254,10 +249,10 @@ export async function buildSwapWithoutServiceFee(
             typeArguments
           )
           if (a2b) {
-            returnChange(coinAOut, coinAtype)
+            moveCallTransferNonzero(txb, coinAOut, userAddress, coinAtype)
             pathTempCoin = coinBOut
           } else {
-            returnChange(coinBOut, coinBtype)
+            moveCallTransferNonzero(txb, coinBOut, userAddress, coinBtype)
             pathTempCoin = coinAOut
           }
           break
@@ -285,10 +280,10 @@ export async function buildSwapWithoutServiceFee(
           ])
 
           if (a2b) {
-            returnChange(coinABs[0], coinAtype)
+            moveCallTransferNonzero(txb, coinABs[0], userAddress, coinAtype)
             pathTempCoin = coinABs[1]
           } else {
-            returnChange(coinABs[1], coinBtype)
+            moveCallTransferNonzero(txb, coinABs[1], userAddress, coinBtype)
             pathTempCoin = coinABs[0]
           }
           break
@@ -311,9 +306,9 @@ export async function buildSwapWithoutServiceFee(
             typeArguments
           )
           if (a2b) {
-            returnChange(pathTempCoin, coinAtype)
+            moveCallTransferNonzero(txb, pathTempCoin, userAddress, coinAtype)
           } else {
-            returnChange(pathTempCoin, coinBtype)
+            moveCallTransferNonzero(txb, pathTempCoin, userAddress, coinBtype)
           }
           pathTempCoin = outputCoin
           break
@@ -360,10 +355,10 @@ export async function buildSwapWithoutServiceFee(
             userAddress
           )
           if (a2b) {
-            returnChange(coinAOut, coinAtype)
+            moveCallTransferNonzero(txb, coinAOut, userAddress, coinAtype)
             pathTempCoin = coinBOut
           } else {
-            returnChange(coinBOut, coinBtype)
+            moveCallTransferNonzero(txb, coinBOut, userAddress, coinBtype)
             pathTempCoin = coinAOut
           }
           break
@@ -377,15 +372,12 @@ export async function buildSwapWithoutServiceFee(
     txb.mergeCoins(finalCoinB, [pathTempCoin])
   }
 
-  const remotePositiveSlippageSetting =
-    swapOptions?.positiveSlippage === false
-      ? false
-      : await getRemotePositiveSlippageSetting({
-          cacheTime: Date.now() + 5 * 60 * 1000, // 5 minutes
-          service: swapOptions?.services?.naviOpenApi
-        })
+  const remotePositiveSlippageSetting = await getRemotePositiveSlippageSetting({
+    cacheTime: Date.now() + 5 * 60 * 1000, // 5 minutes
+    service: swapOptions?.services?.naviOpenApi
+  })
 
-  returnChange(coinIn, tokenA)
+  moveCallTransferNonzero(txb, coinIn, userAddress, tokenA)
   const amountInValue = quote.from_token
     ? (Number(quote.amount_in) / Math.pow(10, quote.from_token.decimals)) *
       (quote.from_token.price ?? 0) *

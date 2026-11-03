@@ -1,5 +1,64 @@
 # Multiply verification record
 
+## Numeric Registry adaptation — 2026-11-03
+
+Published package: `0.2.0-preview.20261103.1`, npm dist-tag `preview`; `latest` remains `0.2.0-preview.20261102.1`. The downloaded registry tarball exactly matches the tested artifact.
+API pins the published npm version and is deployed to [Vercel Preview](https://navi-open-6pzzj8t2y-navi-fd9a1df6.vercel.app) (`dpl_7bNtZmwgobJBYYbbvx9srmKHLjoG`, READY). Three strategy quote/build simulations, numeric Registry PTB checks, cached rebuilds, catalogues, positions and 5 HTTP contract groups passed. No signing or broadcast.
+Artifact SHA-256
+`c46b0e65292b54b50d8b62e46b016e1aaf7fdd575d1a93d498ac9d0354e5de5d`.
+
+- SDK: 113 tests passed (`vitest run tests` from this package), TypeScript,
+  source ESLint and Vite distribution/types build passed.
+- API: 73 Multiply tests passed with this installed artifact; changed-file ESLint
+  passed. Full tsc has 9 unrelated errors reproduced in the pre-change snapshot.
+- Frontend: typecheck and 49 targeted tests passed; desktop/mobile fixture browser
+  coverage passed 4 cases. ESLint has 0 errors and 2 pre-existing warnings.
+- `node e2e/registry.mjs`: mainnet read-only simulation passed empty discovery,
+  metadata-free create/register/read, duplicate-key abort, and final empty lookup.
+  Evidence: `/tmp/multiply-registry-adaptation-evidence/report.json`.
+- Full mainnet lifecycle E2E: **16/16 scenarios passed**, including vSUI/haSUI
+  opens, fallback swaps, add/remove principal, leverage adjustments, repay,
+  collateral addition and both full closes. Registry lookup in each simulated
+  PTB verifies the numeric key points to its actual newly created Cap.
+  Evidence: `/tmp/multiply-registry-full-e2e/report.json`; artifact hash verifier passed.
+- Independent cross-review found no actionable issue in the task delta.
+
+Only registered numeric keys are discovered. Unregistered Caps are intentionally
+excluded. Every new creation binds sender and registers atomically; no Cap metadata
+getter or setter is needed. The deployed Registry/helper ABI was exercised by the
+read-only VM check. No signing/broadcast or persisted chain mutation occurred.
+
+Earlier records below describe earlier versions and must not be treated as
+acceptance evidence for the numeric Registry change.
+
+## Current refund and dependency policy — 2026-11-02
+
+Multiply now uses published Lending 2.1.0 and Astros 2.0.7. Astros keeps its default
+fee behavior and refunds route change directly to the address in the Multiply quote.
+The converter receives that address explicitly; missing, malformed and zero recipients
+are rejected. Other engine coins remain caller-managed through `built.coins`.
+
+The clean-consumer runner packs only Multiply and installs its dependencies from npm
+without overrides. E2E assertions decode every `transfer_nonzero` recipient and compare
+it with `quote.address`, including builds with a different preconfigured sender. The
+2026-10-29 results below describe the previous implementation, not this refund policy.
+
+### Verified preview result
+
+- Package: `@naviprotocol/multiply@0.2.0-preview.20261102.1`.
+- Clean npm consumer: **16/16 mainnet simulation scenarios passed, zero retries**.
+- Run: `2026-11-02T07:13:53.580Z` to `2026-11-02T07:17:15.066Z`.
+- The offline verifier passed all **101 artifact hashes**.
+- Extra live-route simulation returned **1,234,567 MIST** of unused input to a
+  recipient distinct from the transaction sender; saved balance changes confirm receipt.
+- Build, TypeScript and changed-source ESLint checks passed. All 30 installed
+  distribution files match the workspace build byte for byte.
+- Tarball SHA-256: `81e61ce04591a6efe2d91d8b56a6548ad32f8b7d4d24f689e5df88b5d97358fb`.
+- Bundle: `out/multiply/preview-20261102-1/`, including npm consumer lockfile,
+  E2E evidence and `refund-proof.mjs` / `refund-proof.json`.
+- No blockchain signing or broadcast. Published to npm on 2026-11-02 with the
+  `preview` tag; an anonymous registry download matches the tested tarball SHA-256.
+
 ## Scope and provenance
 
 This release uses E2E as the only behavioral verification mechanism. TypeScript
@@ -66,15 +125,15 @@ The verifier rejects duplicate/missing artifacts, altered hashes, subset runs or
 any failed/missing scenario. A passing archived response is historical evidence;
 this verifier does not contact the network or claim a fresh simulation succeeded.
 
-Clean packed consumer (builds and packs all three modified/local dependencies;
-installs into a fresh OS temporary directory with no workspace links):
+Clean packed consumer (packs Multiply and installs its published dependencies into a
+fresh OS temporary directory with no workspace links or dependency overrides):
 
 ```sh
 pnpm --filter @naviprotocol/multiply test:e2e:package
 ```
 
-Its output bundle includes three `.tgz` files, package hashes, consumer package
-manifest and lockfile, and the complete E2E evidence directory. Run the offline
+Its output bundle includes the Multiply `.tgz`, package hashes, consumer package
+manifest and npm lockfile, and the complete E2E evidence directory. Run the offline
 verifier on its `e2e/` subdirectory. Package release uses Changesets; no npm
 publication is part of this verification command.
 
@@ -114,3 +173,51 @@ Archive SHA-256:
 
 The archive is approximately 2.4 MiB. All 110 files in its `SHA256SUMS` passed
 verification, and the standalone E2E verifier passed from the bundle directory.
+
+## API-owned registry and mixed precision (2026-11-02)
+
+`0.2.0-preview.20261102.2` keeps the SDK preset list unchanged. The API supplies
+strategy definitions through `createMultiplyClient({ strategies })`; the SDK
+supports mixed native token precision and freezes a copy of the discovery
+registry. Duplicate IDs and unsupported principal/E-Mode capabilities fail
+explicitly. Execution plans use version 2, and version 1 quotes require renewal.
+
+The amount contract was checked against lending source: reserve/user balances and
+`availableBorrow` are normalized to nine decimals; `leftSupply` is whole tokens;
+coins, flash loans and withdraw/borrow calls use native atoms. Position conversion
+rounds collateral down and debt up. Full close converts its execution-time
+collateral balance back to native units and rounds the requested withdrawal up
+when needed, so the lending contract can clip it to the complete accrued balance.
+
+Verification performed:
+
+- TypeScript no-emit check, Vite package build, changed-source ESLint, and
+  `git diff --check` passed.
+- `tests/generic.test.ts`: 89 passing deterministic cases across injected 9/6,
+  6/9, 8/6 and 9/9 pairs. Coverage includes discovery, all actions' quote/build,
+  normalized BCS balance decoding, native capacity, changed prices/decimals,
+  precision-impossible targets, registry mutation/duplicates, old-plan rejection,
+  and risk reduction after borrowing LTV/capacity is reduced to zero. HF checks
+  remain enforced for reducing actions. The supported token precision range is 0–18.
+- A deterministic moving-route regression reproduces the stale-bracket solver
+  failure and passes after refreshing both endpoints on stalled progress or a
+  collapsed interval. The solver permits two refreshes, at most 32 conversion
+  evaluations and 45 seconds total; every accepted quote still meets the existing
+  1 bp target-leverage tolerance and final risk checks. Stalled converters and
+  routes with no achievable target fail explicitly. Representable tiny amounts
+  are no longer mistaken for 1x by a price-residual shortcut. Both solver
+  directions stop on actual target leverage; withdrawing 90–99% of equity with
+  conversion costs is covered for both 6/9 and 9/6 pairs.
+- Read-only mainnet market reads passed for both SUI/USDC directions, confirming
+  lending v2, limiter, both oracle feeds and both debt-token flash configurations.
+- Unsigned mainnet open simulations passed for SUI collateral/USDC debt and
+  USDC collateral/SUI debt.
+- Composed open→close mainnet simulations passed in both directions (147 and
+  135 commands respectively), including on-chain zero collateral and debt
+  assertions. The six-decimal collateral test exercises normalized-to-native
+  withdrawal and clipping. Simulations use the existing public E2E address; the
+  USDC-principal test obtains USDC from a SUI swap inside the simulated PTB.
+
+Raw local evidence: `/private/tmp/multiply-sdk-directional-smoke/`. No signing,
+broadcast, package publication or live position change occurred. Market values
+are point-in-time observations, not fixed product risk settings.

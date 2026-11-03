@@ -163,59 +163,28 @@ await multiply.buildPTB(tx, quote, inputs)
 
 ## 5. AccountCap 生命周期
 
-### 5.1 身份与命名
+### 5.1 数字策略身份
 
-Multiply 使用独立的 NAVI AccountCap，命名规则为：
+只从 MultiplyRegistry 发现 Cap，两个 u64 为数字策略 ID 与版本：vSUI/SUI=(1,1)，haSUI/SUI=(2,1)，API short SUI=(3,1)。不读取或设置 name/description，不兼容未登记旧 Cap。
 
-```text
-navi:multiply:v1:<strategyId>
-
-navi:multiply:v1:main-vsui-sui
-navi:multiply:v1:isolated-eearn-usdc
-```
-
-- `v1` 是命名格式版本，不是 npm 包版本。
-- 不同命名格式版本仍按同一个 `strategyId` 检查重复。
-- `account_description` 可作为说明，不承担权威身份或唯一性保证。
-- Cap 的对象 ID、`account_owner` 返回的借贷账户地址、当前对象持有人是三个概念，解析时不能混用。
-
-截至本次核查，当前主网配置指向的 AccountCap 模块支持 `set_account_name`、`set_account_description`、`get_account_info`，没有独立标签接口。名称和描述均可修改。
+Registry 存储 Cap 对象 ID；借贷使用其 accountOwner；交易 sender 是登记钱包。三者分别校验。
 
 ### 5.2 与 E-Mode Cap 的区别
 
-Multiply 不接管 Lending 产品已注册的 E-Mode Cap。按策略需要，可以让 Multiply Cap 进入 E-Mode，但不将其注册为 Lending 产品的 E-Mode Cap。
+保留 E-Mode 产品登记冲突和目标账本检查；当前执行引擎不支持 E-Mode 风险模型。
 
-内部组合普通 Cap 创建、命名和 `enterEModePTB`；不直接使用自动注册到 E-Mode registry 的 `createEModeCapPTB`。
+### 5.3 每钱包每数字组合一个登记
 
-解析时结合类型、命名规则、策略定义以及 E-Mode 产品注册信息。出现交叉归属时报告冲突，不自动改名或接管。
+合约拒绝相同 sender 的重复组合。创建 Cap、登记和开仓在同一 PTB 内完成，close 保留登记和空 Cap。SDK 仍校验实际对象、持有者、Cap/accountOwner 重复绑定与仓位。
 
-### 5.3 每钱包每策略一个 Cap
-
-产品要求：一个钱包针对一个策略只创建一个 Multiply Cap；空仓和关仓后都保留复用。
-
-| 解析结果 | 行为 |
-| --- | --- |
-| 无 Cap | `open` 可报价，并记录需要创建 |
-| 一个 Cap | 读取并复用，包括已有空 Cap |
-| 多个 Cap | 返回 `DUPLICATE_MULTIPLY_CAP`，附候选 ID，不任意选择 |
-| E-Mode 产品归属冲突 | 返回明确冲突，不接管 |
-
-**命名筛选只能支持发现和 SDK/API 检查，无法保证链上唯一。** 并发创建、直接调用合约、改名或转移均可能使当前钱包扫描不足以证明“从未创建过”。
-
-若要求链上严格保证正式注册关系，需要在同一笔交易中通过 `MultiplyRegistry` 完成检查、创建和登记：
-
-```text
-(wallet, strategyId) → accountCapId
-```
-
-关仓不删除登记，后续复用。Registry 是否纳入首版尚未决定。普通 AccountCap 的自由转移与“当前钱包最多持有一个”的关系也需要单独定义，不能声称一个创建登记表自动解决所有转移场景。
+报价保存 version 3 执行计划、数字 key 与部署；build 重读绑定和仓位，拒绝过期报价。不同钱包写入不按全局对象版本使报价失效。
 
 ### 5.4 首次创建与开仓
 
 ```text
 quote：查询无 Cap → 按空仓计算 → 保存 create 意图
 
-build：创建 Cap → 设置名称 → 按需进入 E-Mode → 追加开仓操作
+build：创建 Cap → 按固定数字 key 注册 → 追加开仓操作
 ```
 
 Quote 不创建链上对象。新 Cap 的真实 ID 在执行后确定，quote 中只保存创建意图。
@@ -381,6 +350,7 @@ interface Converter {
     tx: Transaction,
     quote: ConversionQuote,
     coinIn: TransactionObjectArgument,
+    context?: { changeRecipient: string },
   ): Promise<{
     coinOut: TransactionObjectArgument
     change: PtbCoin[]
@@ -417,7 +387,7 @@ type ConversionQuote = {
 
 若容量、汇率、路线或报价有效性发生不兼容变化，返回 `QUOTE_STALE` 或相应错误，重新执行完整 Multiply quote。
 
-Astros 的适配层需要核对并控制底层 SDK 的重新报价、费用扣除和零钱转账行为。尤其在 Auto Vault 场景中，零钱不能意外转给操作员钱包；必要时调整 SDK 接口或限制路线后再启用。
+2026-11-02 更新：Astros 使用已发布的 2.0.7 和默认收费行为。找零直接退给 Multiply 报价中的 `quote.address`，通过 converter 的 `context.changeRecipient` 传递，不从交易 sender 或 gas sponsor 推断。缺失、非法或零地址必须拒绝。Astros 找零不包含在 `built.coins` 中；Auto Vault 接入需要核算此退款规则，或注入符合自身托管规则的 converter。
 
 ### 8.5 延迟赎回
 

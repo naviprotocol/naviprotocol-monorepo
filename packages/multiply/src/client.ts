@@ -14,8 +14,23 @@ import type {
 } from './types'
 import { astrosConverter, haedalConverter, voloConverter, validateConversion } from './converters'
 import { createNaviDataSource, defaultClient } from './data-source'
-import { capName, strategies as builtInStrategies } from './strategies'
+import { strategies as builtInStrategies } from './strategies'
+import {
+  MAINNET_CAP_REGISTRY,
+  normalizeCapRegistry,
+  registryKeyString,
+  indexRegistryStrategies,
+  registerCreatedCapPTB
+} from './cap-registry'
 import { chooseConversion, metrics, plan, validateAction } from './planner'
+import {
+  amountCushion,
+  atomPrices,
+  borrowCapacity,
+  supplyCapacity,
+  tokenDecimals,
+  withinLtv
+} from './amounts'
 import {
   BN,
   address,
@@ -30,8 +45,6 @@ import {
 
 export function createMultiplyClient(options: MultiplyOptions = {}) {
   const client = options.client ?? defaultClient()
-  const source: DataSource =
-    options.dataSource ?? createNaviDataSource({ client, services: options.services })
   const converters = options.converters ?? [voloConverter({ client }), haedalConverter({ client })]
   const fallback = options.fallbackConverter ?? astrosConverter({ services: options.services })
   const registry = new Map<string, Converter>()
@@ -39,7 +52,44 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     check(!registry.has(c.id), 'INVALID_ARGUMENT', `Duplicate converter id: ${c.id}`)
     registry.set(c.id, c)
   }
-  const strategyRegistry = options.strategies ?? Object.values(builtInStrategies)
+  // Snapshot caller configuration: later mutations must not silently rebind discovery.
+  const strategyRegistry = (options.strategies ?? Object.values(builtInStrategies)).map(
+    (strategy) => validateStrategy(jsonCopy(strategy))
+  )
+  check(
+    new Set(strategyRegistry.map((strategy) => strategy.id)).size === strategyRegistry.length,
+    'INVALID_ARGUMENT',
+    'Strategy registry contains duplicate ids'
+  )
+  const byKey = indexRegistryStrategies(strategyRegistry)
+  const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
+  const source: DataSource =
+    options.dataSource ??
+    createNaviDataSource({
+      client,
+      services: options.services,
+      capRegistry,
+      strategies: strategyRegistry
+    })
+  function assertSourceBinding(code = 'INVALID_ARGUMENT') {
+    check(
+      source.capRegistry &&
+        JSON.stringify(normalizeCapRegistry(source.capRegistry)) === JSON.stringify(capRegistry),
+      code,
+      'DataSource Registry deployment differs from the execution deployment'
+    )
+  }
+  assertSourceBinding()
+  async function resolveStrategy(input: Strategy, code = 'INVALID_ARGUMENT'): Promise<Strategy> {
+    const supplied = validateStrategy(jsonCopy(input))
+    const configured = byKey.get(registryKeyString(supplied.registryKey))
+    check(
+      configured && (await checksum(configured)) === (await checksum(supplied)),
+      code,
+      'Strategy differs from the configured Registry binding'
+    )
+    return supplied
+  }
   function validateStrategy(input: Strategy): Strategy {
     check(
       typeof input?.id === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(input.id),
@@ -56,8 +106,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'STRATEGY_UNSUPPORTED',
       'E-Mode risk overrides are not supported in this release'
     )
+    registryKeyString(input.registryKey)
     const s = {
       ...input,
+      registryKey: { ...input.registryKey },
       principalCoinType: coinType(input.principalCoinType),
       collateralCoinType: coinType(input.collateralCoinType),
       debtCoinType: coinType(input.debtCoinType)
@@ -70,30 +122,42 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     )
     return s
   }
-  async function findCap(owner: string, strategy: Strategy) {
-    const caps = (await source.listAccountCaps(owner)).filter((c) => c.strategyId === strategy.id)
-    check(
-      caps.length <= 1,
-      'DUPLICATE_ACCOUNT_CAP',
-      'More than one Multiply Cap exists for this wallet and strategy'
-    )
-    const cap = caps[0]
-    if (cap) {
-      address(cap.id)
-      address(cap.accountOwner)
+  async function loadCaps(owner: string) {
+    assertSourceBinding('STALE_QUOTE')
+    const caps = await source.listAccountCaps(owner)
+    const keys = new Set<string>(),
+      ids = new Set<string>(),
+      owners = new Set<string>()
+    return caps.map((cap) => {
+      const key = registryKeyString(cap.registryKey)
+      const configured = byKey.get(key)
+      check(configured, 'UNSUPPORTED_REGISTRY_STRATEGY', 'Unknown registered Multiply strategy')
       check(
-        cap.name === capName(strategy.id),
+        configured.id === cap.strategyId,
         'INVALID_ACCOUNT_CAP',
-        'Cap name does not match strategy'
+        'Cap numeric binding differs from strategy ID'
       )
-      if (cap.strategy)
-        check(
-          (await checksum(validateStrategy(cap.strategy))) === (await checksum(strategy)),
-          'INVALID_ACCOUNT_CAP',
-          'Stored strategy definition differs from the requested market or tokens'
-        )
-    }
-    return cap
+      const id = address(cap.id),
+        accountOwner = address(cap.accountOwner)
+      check(
+        id !== address('0x0') && accountOwner !== address('0x0'),
+        'INVALID_ACCOUNT_CAP',
+        'Zero Cap identity'
+      )
+      check(
+        !keys.has(key) && !ids.has(id) && !owners.has(accountOwner),
+        'DUPLICATE_ACCOUNT_CAP',
+        'Duplicate strategy, Cap or lending account in Registry'
+      )
+      keys.add(key)
+      ids.add(id)
+      owners.add(accountOwner)
+      return { ...cap, id, accountOwner, registryKey: { ...cap.registryKey } }
+    })
+  }
+  function findCap(caps: AccountCap[], strategy: Strategy) {
+    const key = registryKeyString(strategy.registryKey)
+    return caps.find((cap) => registryKeyString(cap.registryKey) === key)
   }
   async function getPosition(
     owner: string,
@@ -101,10 +165,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
   ): Promise<Position[]> {
     owner = address(owner)
     const result: Position[] = []
-    for (const strategy of (query.strategy ? [query.strategy] : strategyRegistry).map(
-      validateStrategy
-    )) {
-      const cap = await findCap(owner, strategy)
+    const caps = await loadCaps(owner)
+    for (const supplied of query.strategy ? [query.strategy] : strategyRegistry) {
+      const strategy = await resolveStrategy(supplied)
+      const cap = findCap(caps, strategy)
       if (!cap) continue
       const market = await source.readMarket(strategy),
         amounts = await source.readPosition(cap, strategy, market)
@@ -127,9 +191,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     constraints: Constraints
   ): Promise<MultiplyQuote> {
     owner = address(owner)
+    check(owner !== address('0x0'), 'INVALID_ARGUMENT', 'Multiply owner cannot be zero')
     validateAction(action, constraints)
-    const strategy = validateStrategy(suppliedStrategy)
-    const cap = await findCap(owner, strategy)
+    const strategy = await resolveStrategy(suppliedStrategy)
+    const cap = findCap(await loadCaps(owner), strategy)
     check(
       cap || action.type === 'open',
       'POSITION_NOT_FOUND',
@@ -153,15 +218,20 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'Empty position; use open to reuse this Cap'
     )
     if ('targetLeverage' in action && action.targetLeverage) {
-      const maxRatio = BN.minimum(
-        new BN(market.ltv).div(market.borrowWeight),
-        new BN(market.liquidationThreshold).div(
-          new BN(market.borrowWeight).times(constraints.minHealthFactor)
-        )
+      const healthRatio = new BN(market.liquidationThreshold).div(
+        new BN(market.borrowWeight).times(constraints.minHealthFactor)
       )
       const ratio = new BN(1).minus(new BN(1).div(action.targetLeverage))
+      const prices = atomPrices(market)
+      const reducing =
+        !['open', 'add_principal'].includes(action.type) &&
+        ratio
+          .times(snapshot.collateralAmount)
+          .times(prices.collateral)
+          .lte(new BN(snapshot.debtAmount).times(prices.debt))
       check(
-        ratio.lte(maxRatio),
+        ratio.lte(healthRatio) &&
+          (ratio.lte(new BN(market.ltv).div(market.borrowWeight)) || reducing),
         'CONSTRAINT_VIOLATION',
         'Target leverage exceeds protocol or health factor limits'
       )
@@ -182,9 +252,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       estimate: planned.estimate,
       execution: {
         ...planned.execution,
+        capRegistry: { ...capRegistry },
         accountCap: cap
           ? { kind: 'existing', ...cap }
-          : { kind: 'create', name: capName(strategy.id) },
+          : { kind: 'create', registryKey: { ...strategy.registryKey } },
         checksum: ''
       }
     }
@@ -197,7 +268,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     inputs: BuildInputs
   ): Promise<BuildResult> {
     const q = jsonCopy(suppliedQuote)
-    check(q.execution?.version === 1, 'INVALID_QUOTE', 'Unknown quote version')
+    check(
+      q.execution?.version === 3,
+      'INVALID_QUOTE',
+      'Unknown quote version; request a fresh quote'
+    )
     const expectedHash = q.execution.checksum
     q.execution.checksum = ''
     check(
@@ -211,8 +286,29 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'QUOTE_EXPIRED',
       'Multiply quote expired'
     )
-    address(q.address)
-    validateStrategy(q.strategy)
+    check(
+      address(q.address) !== address('0x0'),
+      'INVALID_ARGUMENT',
+      'Multiply owner cannot be zero'
+    )
+    await resolveStrategy(q.strategy, 'STALE_QUOTE')
+    check(
+      (await checksum(q.execution.capRegistry)) === (await checksum(capRegistry)),
+      'STALE_QUOTE',
+      'Registry deployment changed since quote'
+    )
+    check(
+      registryKeyString(q.execution.accountCap.registryKey) ===
+        registryKeyString(q.strategy.registryKey),
+      'INVALID_QUOTE',
+      'Quote Cap key differs from strategy'
+    )
+    const sender = tx.getData().sender
+    check(
+      !sender || address(sender) === address(q.address),
+      'INVALID_INPUTS',
+      'Transaction sender differs from quote wallet'
+    )
     validateAction(q.action, q.constraints)
     const e = q.execution,
       s = q.strategy
@@ -245,7 +341,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         conversion.converterId
       )
     }
-    const cap = await findCap(q.address, s)
+    const cap = findCap(await loadCaps(q.address), s)
     if (e.accountCap.kind === 'create')
       check(
         !cap && !inputs.accountCap,
@@ -274,7 +370,9 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     check(
       fresh.collateral.contract.pool === e.market.collateral.contract.pool &&
         fresh.debt.contract.pool === e.market.debt.contract.pool &&
-        fresh.flash.poolId === e.market.flash.poolId,
+        fresh.flash.poolId === e.market.flash.poolId &&
+        tokenDecimals(fresh.collateral) === tokenDecimals(e.market.collateral) &&
+        tokenDecimals(fresh.debt) === tokenDecimals(e.market.debt),
       'STALE_QUOTE',
       'Pool configuration changed'
     )
@@ -286,9 +384,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     const debtDelta = new BN(now.debtAmount).minus(e.snapshot.debtAmount)
     check(
       collateralDelta.gte(0) &&
-        collateralDelta.lte(new BN(e.snapshot.collateralAmount).times('0.0001').plus(1000)) &&
+        collateralDelta.lte(
+          new BN(e.snapshot.collateralAmount).times('0.0001').plus(amountCushion(fresh.collateral))
+        ) &&
         debtDelta.gte(0) &&
-        debtDelta.lte(new BN(e.snapshot.debtAmount).times('0.0001').plus(1000)),
+        debtDelta.lte(
+          new BN(e.snapshot.debtAmount).times('0.0001').plus(amountCushion(fresh.debt))
+        ),
       'STALE_QUOTE',
       'Position changed since quote'
     )
@@ -321,10 +423,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         'Updated market exceeds maximum leverage'
       )
     check(
-      new BN(projected.debtAmount)
-        .times(fresh.debtPrice)
-        .times(fresh.borrowWeight)
-        .lte(new BN(projected.collateralAmount).times(fresh.collateralPrice).times(fresh.ltv)),
+      withinLtv(projected, now, fresh, e.direction !== 'increase'),
       'STALE_QUOTE',
       'Updated market exceeds LTV'
     )
@@ -335,18 +434,17 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'Flash capacity changed'
     )
     check(
-      new BN(e.collateralAfter)
-        .minus(e.snapshot.collateralAmount)
-        .lte(new BN(fresh.collateral.leftSupply).shiftedBy(9)),
+      new BN(e.collateralAfter).minus(e.snapshot.collateralAmount).lte(supplyCapacity(fresh)),
       'CAPACITY_EXCEEDED',
       'Supply capacity changed'
     )
     check(
-      new BN(e.borrowAmount).plus(e.borrowFee).lte(fresh.debt.availableBorrow),
+      new BN(e.borrowAmount).plus(e.borrowFee).lte(borrowCapacity(fresh)),
       'CAPACITY_EXCEEDED',
       'Borrow liquidity changed'
     )
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
+    tx.setSenderIfNotSet(q.address)
     await source.prepareOracle(tx, s, fresh)
     const config = fresh.config
     const createdAccountCap =
@@ -355,16 +453,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         : undefined
     const accountCap =
       createdAccountCap ?? inputs.accountCap ?? tx.object((e.accountCap as AccountCap).id)
-    if (createdAccountCap) {
-      tx.moveCall({
-        target: `${config.package}::account::set_account_name`,
-        arguments: [createdAccountCap, tx.pure.string(capName(s.id))]
-      })
-      tx.moveCall({
-        target: `${config.package}::account::set_account_description`,
-        arguments: [createdAccountCap, tx.pure.string(JSON.stringify(s))]
-      })
-    }
+    if (createdAccountCap) registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry)
     const change: BuildResult['coins'] = []
     const exact = (type: string, amount: string) => {
       const supplied = coins.find((c) => sameCoin(c.coinType, type))!
@@ -449,7 +538,9 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         : coin
     const convert = async (coin: TransactionObjectArgument) => {
       const conversion = e.conversions[0]
-      const built = await registry.get(conversion.converterId)!.buildPTB(tx, conversion, coin)
+      const built = await registry.get(conversion.converterId)!.buildPTB(tx, conversion, coin, {
+        changeRecipient: q.address
+      })
       // Injected converters must honor the same bound; enforce it independently as well.
       minOutputGuard(tx, built.coinOut, conversion.minOutput.amount)
       change.push(...built.change)
@@ -514,6 +605,26 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
           typeArguments: ['u64'],
           arguments: [optional]
         })
+        if (tokenDecimals(fresh.collateral) !== 9) {
+          withdrawAmount = tx.moveCall({
+            target: `${config.package}::pool::unnormal_amount`,
+            typeArguments: [s.collateralCoinType],
+            arguments: [tx.object(fresh.collateral.contract.pool), withdrawAmount]
+          })
+          if (tokenDecimals(fresh.collateral) < 9) {
+            // Request at least the full normalized balance, including sub-atom
+            // interest. NAVI clips withdrawals to that balance, then emits native coins.
+            const rounded = tx.moveCall({
+              target: '0x1::u64::checked_add',
+              arguments: [withdrawAmount, tx.pure.u64('1')]
+            })
+            withdrawAmount = tx.moveCall({
+              target: '0x1::option::destroy_some',
+              typeArguments: ['u64'],
+              arguments: [rounded]
+            })
+          }
+        }
       }
       const collateral = asCoin(
         tx.moveCall({

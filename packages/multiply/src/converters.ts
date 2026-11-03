@@ -3,17 +3,10 @@ import { bcs } from '@mysten/sui/bcs'
 import {
   getQuote,
   buildSwapPTBFromQuote,
-  COMPOSABLE_SWAP_API_VERSION,
   type Quote as AstrosQuote,
   type SwapOptions
 } from '@naviprotocol/astros-aggregator-sdk'
-import type {
-  Converter,
-  ConversionQuote,
-  ConversionRequest,
-  CoinInput,
-  MultiplySuiClient
-} from './types'
+import type { Converter, ConversionQuote, ConversionRequest, MultiplySuiClient } from './types'
 import { defaultClient } from './data-source'
 import { SUI, VSUI, HASUI } from './strategies'
 import { address, check, coinType, inspect, minOutputGuard, sameCoin, uint } from './utils'
@@ -215,11 +208,6 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
 export function astrosConverter(
   options: { apiKey?: string; baseUrl?: string; services?: SwapOptions['services'] } = {}
 ): Converter {
-  check(
-    COMPOSABLE_SWAP_API_VERSION === 1,
-    'CONVERTER_UNAVAILABLE',
-    'Astros dependency does not support composable swaps'
-  )
   const safe = (v: unknown) => {
     const n = uint(String(v), false)
     check(
@@ -257,7 +245,10 @@ export function astrosConverter(
       )
       return quoted('astros', req, String(route.amount_out), { version: 1, route })
     },
-    async buildPTB(tx, q, coinIn) {
+    async buildPTB(tx, q, coinIn, context) {
+      check(context?.changeRecipient, 'INVALID_ARGUMENT', 'Astros requires a change recipient')
+      const recipient = address(context.changeRecipient)
+      check(recipient !== address('0x0'), 'INVALID_ARGUMENT', 'Change recipient cannot be zero')
       check(
         q.converterId === 'astros' && q.expiresAt > Date.now(),
         'INVALID_CONVERSION',
@@ -275,9 +266,8 @@ export function astrosConverter(
         'INVALID_CONVERSION',
         'Astros payload differs from the frozen quote'
       )
-      const change: CoinInput[] = []
       const coinOut = await buildSwapPTBFromQuote(
-        address('0x0'),
+        recipient,
         tx,
         safe(q.minOutput.amount),
         coinIn as Parameters<typeof buildSwapPTBFromQuote>[3],
@@ -285,14 +275,10 @@ export function astrosConverter(
         0,
         false,
         options.apiKey,
-        {
-          services: options.services,
-          positiveSlippage: false,
-          onCoinChange: (coin, type) => change.push({ coinType: coinType(type), coin })
-        }
+        { services: options.services }
       )
       minOutputGuard(tx, coinOut, q.minOutput.amount)
-      return { coinOut, change }
+      return { coinOut, change: [] }
     }
   }
 }

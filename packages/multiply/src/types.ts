@@ -5,8 +5,18 @@ import type { getConfig, Pool, NaviSdkServiceOptions } from '@naviprotocol/lendi
 export type MultiplySuiClient = Pick<SuiGrpcClient, 'core'>
 export type CoinAmount = { coinType: string; amount: string }
 export type CoinInput = { coinType: string; coin: TransactionObjectArgument }
+export interface RegistryKey {
+  strategyNumericId: string
+  strategyVersion: string
+}
+export interface CapRegistryConfig {
+  network: 'sui:mainnet'
+  packageId: string
+  objectId: string
+}
 export interface Strategy {
   id: string
+  registryKey: RegistryKey
   market: string
   principalCoinType: string
   collateralCoinType: string
@@ -30,11 +40,10 @@ export interface AccountCap {
   id: string
   accountOwner: string
   strategyId: string
-  name: string
-  /** Persisted strategy identity; custom resolvers must verify the binding themselves if omitted. */
-  strategy?: Strategy
+  registryKey: RegistryKey
 }
 export interface PositionAmounts {
+  /** Native Coin<T> atoms, not NAVI's normalized lending balance units. */
   collateralAmount: string
   debtAmount: string
 }
@@ -50,6 +59,7 @@ export interface MarketSnapshot {
   config: LendingConfig
   collateral: Pool
   debt: Pool
+  /** USD per whole token. Pool capacities retain the lending SDK's documented units. */
   collateralPrice: string
   debtPrice: string
   ltv: string
@@ -60,6 +70,8 @@ export interface MarketSnapshot {
 }
 /** Implementations must fail closed on incomplete reads; these methods never sign or broadcast. */
 export interface DataSource {
+  /** Deployment used for discovery. A custom source must declare its binding. */
+  capRegistry: CapRegistryConfig
   listAccountCaps(address: string): Promise<AccountCap[]>
   readMarket(strategy: Strategy): Promise<MarketSnapshot>
   readPosition(
@@ -92,12 +104,15 @@ export interface Converter {
   buildPTB(
     tx: Transaction,
     quote: ConversionQuote,
-    coinIn: TransactionObjectArgument
+    coinIn: TransactionObjectArgument,
+    /** Multiply binds this to quote.address; required by the Astros converter. */
+    context?: { changeRecipient: string }
   ): Promise<{ coinOut: TransactionObjectArgument; change: CoinInput[] }>
 }
 export interface ExecutionPlan {
-  version: 1
-  accountCap: { kind: 'create'; name: string } | ({ kind: 'existing' } & AccountCap)
+  version: 3
+  capRegistry: CapRegistryConfig
+  accountCap: { kind: 'create'; registryKey: RegistryKey } | ({ kind: 'existing' } & AccountCap)
   snapshot: PositionAmounts
   market: MarketSnapshot
   conversions: ConversionQuote[]
@@ -133,12 +148,14 @@ export interface BuildInputs {
   accountCap?: TransactionObjectArgument
 }
 export interface BuildResult {
+  /** Remaining engine coins. Astros route change is transferred to quote.address directly. */
   coins: CoinInput[]
   accountCap: TransactionObjectArgument
   createdAccountCap?: TransactionObjectArgument
 }
 export interface MultiplyOptions {
   client?: MultiplySuiClient
+  capRegistry?: CapRegistryConfig
   dataSource?: DataSource
   strategies?: Strategy[]
   converters?: Converter[]

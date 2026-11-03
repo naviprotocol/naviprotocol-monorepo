@@ -11,12 +11,14 @@ import type {
 } from './types'
 import { BN, ceil, check, decimal, floor, uint, MultiplyError } from './utils'
 import { validateConversion } from './converters'
+import { amountCushion, atomPrices, borrowCapacity, supplyCapacity, withinLtv } from './amounts'
 
 type N = InstanceType<typeof BN>
 const n = (v: string | number) => new BN(v)
 export function metrics(position: PositionAmounts, market: MarketSnapshot) {
-  const c = n(position.collateralAmount).times(market.collateralPrice)
-  const d = n(position.debtAmount).times(market.debtPrice)
+  const prices = atomPrices(market)
+  const c = n(position.collateralAmount).times(prices.collateral)
+  const d = n(position.debtAmount).times(prices.debt)
   const equity = c.minus(d)
   return {
     healthFactor: d.isZero()
@@ -105,8 +107,7 @@ export async function plan(
 ) {
   const C = n(snapshot.collateralAmount),
     D = n(snapshot.debtAmount)
-  const pc = decimal(market.collateralPrice),
-    pd = decimal(market.debtPrice)
+  const { collateral: pc, debt: pd } = atomPrices(market)
   check(
     pc.gt(0) &&
       pd.gt(0) &&
@@ -148,8 +149,8 @@ export async function plan(
   const inputs: { coinType: string; amount: string }[] = [],
     outputs: typeof inputs = [],
     minOutputs: typeof inputs = []
-  const result: Omit<ExecutionPlan, 'accountCap' | 'checksum'> = {
-    version: 1,
+  const result: Omit<ExecutionPlan, 'accountCap' | 'capRegistry' | 'checksum'> = {
+    version: 3,
     snapshot,
     market,
     conversions: [],
@@ -165,13 +166,43 @@ export async function plan(
   }
   const flashRepay = (v: N) => n(ceil(v.times(n(market.flash.feeBps).div(10000).plus(1))))
   const borrowFee = (v: N) => n(floor(v.times(borrowFeeBps).div(10000)))
-  const request = (amount: string, increase: boolean) =>
-    convert({
-      amountIn: amount,
-      coinIn: increase ? strategy.debtCoinType : strategy.collateralCoinType,
-      coinOut: increase ? strategy.collateralCoinType : strategy.debtCoinType,
-      slippageBps: constraints.maxSlippageBps
-    })
+  const targetReached = (c: N, d: N) => {
+    const value = c.times(pc),
+      net = value.minus(d.times(pd))
+    return net.gt(0) && value.div(net).minus(target).abs().lte(target.times('0.0001'))
+  }
+  // Leave time for the API's other reads within its quote deadline. An abandoned
+  // converter promise is read-only; late results are never used in the plan.
+  const conversionDeadline = Date.now() + 45_000
+  let conversionCount = 0
+  const request = async (amount: string, increase: boolean) => {
+    const remaining = conversionDeadline - Date.now()
+    check(
+      ++conversionCount <= 32 && remaining > 0,
+      'NO_CONVERGENCE',
+      'Conversion quote budget exhausted'
+    )
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        convert({
+          amountIn: amount,
+          coinIn: increase ? strategy.debtCoinType : strategy.collateralCoinType,
+          coinOut: increase ? strategy.collateralCoinType : strategy.debtCoinType,
+          slippageBps: constraints.maxSlippageBps
+        }),
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(
+            () =>
+              reject(new MultiplyError('NO_CONVERGENCE', 'Conversion quote time budget exhausted')),
+            remaining
+          )
+        })
+      ])
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
   const input = (coinType: string, amount: string) => inputs.push({ coinType, amount })
   if (action.type === 'repay' || action.type === 'add_collateral') {
     result.direction = action.type
@@ -207,50 +238,83 @@ export async function plan(
         residual: d.times(pd).minus(c.times(pc).times(target.minus(1)).div(target))
       }
     }
+    const initialHi = n(
+      ceil(equity.plus(P.times(pd)).times(target.minus(1)).div(pd).times(2).plus(1))
+    )
     let lo = n(0),
-      hi = n(ceil(equity.plus(P.times(pd)).times(target.minus(1)).div(pd).times(2).plus(1)))
-    let best = P.gt(0) ? await evaluation(lo) : undefined
-    if (best && best.residual.abs().lt(1000)) hi = lo
-    else {
+      hi = initialHi
+    let best: Awaited<ReturnType<typeof evaluation>> | undefined
+    let upper: Awaited<ReturnType<typeof evaluation>>
+    let lowerResidual = n(0)
+    const bracket = async () => {
+      lo = n(0)
+      hi = initialHi
+      best = P.gt(0) ? await evaluation(lo) : undefined
+      if (best && targetReached(best.c, best.d)) return true
       check(
         !best || best.residual.lt(0),
         'ACTION_UNSUPPORTED',
         'This contribution requires deleveraging; use set_leverage separately'
       )
-      let upper = await evaluation(hi)
+      lowerResidual =
+        best?.residual ?? D.times(pd).minus(C.times(pc).times(target.minus(1)).div(target))
+      upper = await evaluation(hi)
       for (let i = 0; upper.residual.lt(0) && i < 4; i++) {
+        if (targetReached(upper.c, upper.d)) break
         hi = hi.times(2)
         upper = await evaluation(hi)
       }
+      if (targetReached(upper.c, upper.d)) {
+        best = upper
+        return true
+      }
       check(upper.residual.gte(0), 'NO_CONVERGENCE', 'Could not bracket leverage')
-      // Secant steps with a bounded bracket, followed by integer bisection if necessary.
-      let lowerResidual =
-        best?.residual ?? D.times(pd).minus(C.times(pc).times(target.minus(1)).div(target))
-      for (let i = 0; i < 24; i++) {
-        const span = hi.minus(lo)
-        const guess = n(
-          floor(
-            lo.plus(span.times(lowerResidual.negated()).div(upper.residual.minus(lowerResidual)))
-          )
+      return false
+    }
+    let converged = await bracket()
+    let refreshes = 0,
+      stagnant = 0,
+      previousResidual: N | undefined
+    for (let i = 0; !converged && i < 24; i++) {
+      const span = hi.minus(lo)
+      const guess = n(
+        floor(
+          lo.plus(span.times(lowerResidual.negated()).div(upper!.residual.minus(lowerResidual)))
         )
-        const F = BN.maximum(lo.plus(1), BN.minimum(hi, guess))
-        best = await evaluation(F)
-        if (
-          best.residual.abs().lte(BN.maximum(1000, best.c.times(pc).times('0.00001'))) ||
-          span.lte(1)
+      )
+      const F = BN.maximum(lo.plus(1), BN.minimum(hi, guess))
+      best = await evaluation(F)
+      converged = targetReached(best.c, best.d)
+      if (converged) break
+      const residual = best.residual.abs()
+      stagnant = previousResidual && residual.gte(previousResidual.times('0.9')) ? stagnant + 1 : 0
+      previousResidual = residual
+      // Quotes sampled at different times can bracket a root that no longer
+      // exists. Never accept a one-atom interval without checking the actual
+      // latest quote; refresh both endpoints on collapse or stalled progress.
+      if (span.lte(1) || stagnant >= 3) {
+        check(
+          refreshes < 2,
+          'NO_CONVERGENCE',
+          'Conversion quotes could not achieve the requested leverage within tolerance'
         )
-          break
-        if (best.residual.lt(0)) {
-          lo = F
-          lowerResidual = best.residual
-        } else {
-          hi = F
-          upper = best
-        }
-        check(i < 23, 'NO_CONVERGENCE', 'Leverage solver did not converge')
+        refreshes++
+        converged = await bracket()
+        stagnant = 0
+        previousResidual = undefined
+      } else if (best.residual.lt(0)) {
+        lo = F
+        lowerResidual = best.residual
+      } else {
+        hi = F
+        upper = best
       }
     }
-    check(best, 'NO_CONVERGENCE', 'Missing increase plan')
+    check(
+      converged && best,
+      'NO_CONVERGENCE',
+      'Conversion quotes could not achieve the requested leverage within tolerance'
+    )
     result.conversions = [best.q]
     result.flashAmount = best.F.toFixed(0)
     result.flashRepayment = result.borrowAmount = best.repayment.toFixed(0)
@@ -269,7 +333,7 @@ export async function plan(
       'Withdrawal consumes all equity; use close'
     )
     // Repay a small interest reserve when clearing debt. Actual excess is returned by NAVI.
-    const fullRepay = D.isZero() ? D : n(ceil(D.times('1.0001').plus(1000)))
+    const fullRepay = D.isZero() ? D : n(ceil(D.times('1.0001').plus(amountCushion(market.debt))))
     const evaluation = async (W: N) => {
       const q = await request(W.toFixed(0), false)
       const available = n(q.minOutput.amount).minus(payout)
@@ -309,19 +373,15 @@ export async function plan(
         best = await evaluation(W)
         const shortfall = best.repayment.plus(payout).minus(best.q.minOutput.amount)
 
-        const tolerance = BN.maximum(1000, C.times(pc).times('0.00001'))
-        if (
-          best.R.gte(0) &&
-          shortfall.lte(0) &&
-          (target.eq(1) || best.residual.abs().lte(tolerance))
-        )
-          break
+        // Use remaining equity, as large withdrawals can make the original
+        // position's value-based residual tolerance far too permissive.
+        if (best.R.gte(0) && shortfall.lte(0) && targetReached(best.c, best.d)) break
         const delta = target.eq(1)
           ? shortfall.times(pd).div(pc)
           : best.residual.times(target).div(pc)
         const next = BN.maximum(
           1,
-          n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1000 : 0)))
+          n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1 : 0)))
         )
         check(
           next.lt(C) && !next.eq(W) && i < 19,
@@ -367,12 +427,12 @@ export async function plan(
     'Flash liquidity limit exceeded'
   )
   check(
-    n(result.borrowAmount).plus(result.borrowFee).lte(market.debt.availableBorrow),
+    n(result.borrowAmount).plus(result.borrowFee).lte(borrowCapacity(market)),
     'CAPACITY_EXCEEDED',
     'Borrow liquidity limit exceeded'
   )
   check(
-    n(result.collateralAfter).minus(C).lte(n(market.collateral.leftSupply).shiftedBy(9)),
+    n(result.collateralAfter).minus(C).lte(supplyCapacity(market)),
     'CAPACITY_EXCEEDED',
     'Supply capacity exceeded'
   )
@@ -388,10 +448,12 @@ export async function plan(
     'Minimum output does not meet health factor constraint'
   )
   check(
-    n(result.debtAfter)
-      .times(pd)
-      .times(market.borrowWeight)
-      .lte(n(result.minCollateralAfter).times(pc).times(market.ltv)),
+    withinLtv(
+      { ...projected, collateralAmount: result.minCollateralAfter },
+      snapshot,
+      market,
+      result.direction !== 'increase'
+    ),
     'CONSTRAINT_VIOLATION',
     'Projected debt exceeds collateral LTV'
   )
@@ -401,8 +463,16 @@ export async function plan(
       'CONSTRAINT_VIOLATION',
       'Maximum leverage exceeded'
     )
+  const estimate = metrics(projected, market)
+  if (['open', 'add_principal', 'remove_principal', 'set_leverage'].includes(action.type))
+    check(
+      estimate.leverage !== null &&
+        n(estimate.leverage).minus(target).abs().lte(target.times('0.0001')),
+      'NO_CONVERGENCE',
+      'Conversion quote cannot achieve the requested leverage within tolerance'
+    )
   return {
     execution: result,
-    estimate: { inputs, outputs, minOutputs, ...metrics(projected, market) }
+    estimate: { inputs, outputs, minOutputs, ...estimate }
   }
 }

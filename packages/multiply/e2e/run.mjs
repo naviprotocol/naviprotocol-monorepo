@@ -123,12 +123,16 @@ try {
     ? pathToFileURL(path.resolve(process.env.MULTIPLY_E2E_PACKAGE))
     : new URL('../dist/index.js', import.meta.url)
   const sdk = await import(entry.href)
-  const sui = new URL('../../lending/node_modules/@mysten/sui/dist/', import.meta.url)
+  const sui = process.env.MULTIPLY_E2E_SUI_DIST
+    ? pathToFileURL(path.resolve(process.env.MULTIPLY_E2E_SUI_DIST) + path.sep)
+    : new URL('../../lending/node_modules/@mysten/sui/dist/', import.meta.url)
   const [{ SuiGrpcClient }, { Transaction }, { bcs }, lending] = await Promise.all([
     import(new URL('grpc/index.mjs', sui)),
     import(new URL('transactions/index.mjs', sui)),
     import(new URL('bcs/index.mjs', sui)),
-    import(new URL('../../lending/dist/index.js', import.meta.url))
+    import(process.env.MULTIPLY_E2E_LENDING
+      ? pathToFileURL(path.resolve(process.env.MULTIPLY_E2E_LENDING)).href
+      : new URL('../../lending/dist/index.js', import.meta.url).href)
   ])
   const client = new SuiGrpcClient({
     network: 'mainnet',
@@ -202,9 +206,12 @@ try {
         owner
       ]
     })
-    const metadata = tx.getData().commands.length
-    tx.moveCall({ target: `${market.config.package}::account::get_account_info`, arguments: [cap] })
-    return { reserves, state, hf, metadata }
+    const capId = tx.getData().commands.length
+    tx.moveCall({ target: '0x2::object::id_address', typeArguments: [sdk.ACCOUNT_CAP_TYPE], arguments: [cap] })
+    const registry = tx.getData().commands.length
+    tx.moveCall({ target: `${sdk.MAINNET_CAP_REGISTRY.packageId}::multiply_registry::find_user_mul_account_caps`,
+      arguments: [tx.object(sdk.MAINNET_CAP_REGISTRY.objectId), tx.pure.address(tx.getData().sender)] })
+    return { reserves, state, hf, capId, registry }
   }
   async function assertOutcome(name, response, probe, quote) {
     const value = (index, field = 0) => response.commandResults[index].returnValues[field].bcs
@@ -223,9 +230,13 @@ try {
     const collateral = amount(quote.execution.market.collateral.id, 'supply')
     const debt = amount(quote.execution.market.debt.id, 'borrow')
     const hfRay = BigInt(bcs.u256().parse(value(probe.hf)))
-    const capName = bcs.string().parse(value(probe.metadata))
-    assert.equal(capName, `navi:multiply:v1:${quote.strategy.id}`)
-    assert.deepEqual(JSON.parse(bcs.string().parse(value(probe.metadata, 1))), quote.strategy)
+    const capId = bcs.Address.parse(value(probe.capId))
+    const ids = bcs.vector(bcs.u64()).parse(value(probe.registry, 0))
+    const versions = bcs.vector(bcs.u64()).parse(value(probe.registry, 1))
+    const caps = bcs.vector(bcs.Address).parse(value(probe.registry, 2))
+    const registration = ids.findIndex((id, i) => id === quote.strategy.registryKey.strategyNumericId && versions[i] === quote.strategy.registryKey.strategyVersion)
+    assert(registration >= 0, 'Strategy must be registered in the same PTB')
+    assert.equal(caps[registration], capId)
     assert(hfRay >= BigInt(Math.ceil(Number(quote.constraints.minHealthFactor) * 1e6)) * 10n ** 21n)
     if (quote.action.type === 'close') {
       assert.equal(collateral, 0n, 'Close must clear collateral on chain')
@@ -242,11 +253,28 @@ try {
       )
       assert(debt + 1000n >= expectedDebt, 'Debt action did not execute')
     }
-    await save(`${name}.outcome.json`, { collateral, debt, hfRay, capName, reserves, states })
+    await save(`${name}.outcome.json`, { collateral, debt, hfRay, capId, registryKey: quote.strategy.registryKey, reserves, states })
   }
   async function executeAndCheck(name, tx, built, quote) {
-    const before = JSON.stringify(tx.getData())
-    assert(!before.includes('transfer_nonzero'), 'Builder must return all change coins')
+    const data = tx.getData()
+    const refunds = data.commands.filter(
+      (c) => c.$kind === 'MoveCall' && c.MoveCall.module === 'coin_utils' &&
+        c.MoveCall.function === 'transfer_nonzero'
+    )
+    if (quote.execution.conversions.some((q) => q.converterId === 'astros')) {
+      assert(refunds.length > 0, 'Astros must return route change directly')
+    }
+    for (const refund of refunds) {
+      const recipient = refund.MoveCall.arguments[1]
+      assert.equal(recipient.$kind, 'Input', 'Refund recipient must be the quoted address')
+      const input = data.inputs[recipient.Input]
+      assert.equal(input.$kind, 'Pure')
+      assert.equal(
+        bcs.Address.parse(Buffer.from(input.Pure.bytes, 'base64')),
+        quote.address,
+        'Route change must go to the quote owner, not the sender or zero address'
+      )
+    }
     assert(
       !tx.getData().commands.some((c) => c.$kind === 'TransferObjects'),
       'Engine must not transfer final assets'
@@ -272,7 +300,15 @@ try {
     assert(quote.execution.conversions.length > 0)
     assert(Number(quote.estimate.healthFactor) >= Number(constraints.minHealthFactor))
     const tx = new Transaction()
+    // Registry ownership follows sender: reject another executor before PTB mutation.
+    tx.setSender('0x42')
     const coin = tx.splitCoins(tx.gas, [amount])[0]
+    const before = JSON.stringify(tx.getData())
+    await assert.rejects(instance.buildPTB(tx, quote, {
+      coins: [{ coinType: strat.principalCoinType, coin }]
+    }), errorCode('INVALID_INPUTS'))
+    assert.equal(JSON.stringify(tx.getData()), before)
+    tx.setSender(address)
     const built = await instance.buildPTB(tx, JSON.parse(JSON.stringify(quote)), {
       coins: [{ coinType: strat.principalCoinType, coin }]
     })
@@ -286,6 +322,10 @@ try {
     assert(Array.isArray(positions))
   })
   await scenario('invalid-inputs', async () => {
+    await assert.rejects(
+      engine.quote('0x0', strategy, { type: 'open', amount: '1000000000', targetLeverage: '2' }, constraints),
+      errorCode('INVALID_ARGUMENT')
+    )
     for (const amount of ['0', '-1', '1.5', '18446744073709551616']) {
       await assert.rejects(
         engine.quote(address, strategy, { type: 'open', amount, targetLeverage: '2' }, constraints),
@@ -335,6 +375,17 @@ try {
     const fallbackEngine = sdk.createMultiplyClient({ client, dataSource: source, converters: [] })
     const { tx, built, quote } = await buildOpen(strategy, fallbackEngine)
     assert(quote.execution.conversions.every((q) => q.converterId === 'astros'))
+    const converter = sdk.astrosConverter()
+    for (const context of [undefined, { changeRecipient: 'bad' }, { changeRecipient: '0x0' }]) {
+      const invalidTx = new Transaction()
+      const coin = invalidTx.splitCoins(invalidTx.gas, ['10000000000'])[0]
+      const before = JSON.stringify(invalidTx.getData())
+      await assert.rejects(
+        converter.buildPTB(invalidTx, quote.execution.conversions[0], coin, context),
+        errorCode('INVALID_ARGUMENT')
+      )
+      assert.equal(JSON.stringify(invalidTx.getData()), before, 'Invalid recipient must not mutate PTB')
+    }
     await save('default-fallback.quote.json', quote)
     await executeAndCheck('default-fallback', tx, built, quote)
   })
@@ -423,8 +474,7 @@ try {
       id: '0x' + '1'.repeat(64),
       accountOwner: '0x' + '1'.repeat(64),
       strategyId: strat.id,
-      name: `navi:multiply:v1:${strat.id}`,
-      strategy: strat
+      registryKey: strat.registryKey
     }
     const scoped = {
       ...source,

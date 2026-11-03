@@ -24,7 +24,7 @@ const input = tx.splitCoins(tx.gas, ['10000000000'])[0]
 const built = await multiply.buildPTB(tx, quote, {
   coins: [{ coinType: strategies.vsuiSui.principalCoinType, coin: input }],
 })
-// Wallet example: the caller chooses custody, sender, gas and submission.
+// Astros route change goes directly to address; the caller handles the remaining assets.
 if (built.createdAccountCap) tx.transferObjects([built.createdAccountCap], address)
 if (built.coins.length) tx.transferObjects(built.coins.map(c => c.coin), address)
 tx.setSender(address)
@@ -40,6 +40,12 @@ tx.setSender(address)
 
 Actions: `open`, `add_principal`, `remove_principal`, `set_leverage`, `repay`,
 `add_collateral`, `close`. Amounts are **raw integer strings**, never JS numbers.
+They use each token's native decimals (supported range: 0–18), including mixed-precision pairs. The
+default data source converts NAVI's normalized nine-decimal balances into native
+atoms (collateral down, debt up). `MarketSnapshot` prices are USD per whole token;
+`Pool.availableBorrow` remains NAVI-normalized units and `Pool.leftSupply` remains
+whole tokens. Injected data sources must follow the same contract. Frozen execution
+plans now use version 3; earlier quotes must be requested again before building.
 Leverage/HF use decimal strings; slippage uses integer basis points. An action
 with an `amount` requires a positive u64 value. `set_leverage` takes
 `targetLeverage`; add/remove principal optionally take it and otherwise preserve
@@ -59,6 +65,25 @@ fees. One atomic conversion leg is used per initial-release plan, so the total
 slippage budget applies to that leg. Exact integer arithmetic is used throughout.
 
 ## Converters and injection
+
+Product strategy registration belongs to the calling application or API. Pass its
+validated registry into the client; adding another supported token pair does not
+require changing or publishing Multiply. The bundled `strategies` export remains
+an optional compatibility preset, not a required allowlist.
+
+```ts
+const multiply = createMultiplyClient({ strategies: apiOwnedStrategies })
+// Discovery enumerates exactly this registry. quote() accepts a Strategy definition.
+const positions = await multiply.getPosition(address)
+```
+
+Registry IDs must be unique. The client snapshots the registry on initialization.
+Strategies bind a stable ID, market and token types to an AccountCap. Keep mutable
+names, display labels and product policies outside that definition. The supported
+execution model remains one collateral token, a distinct debt token and principal
+equal to debt, with lending v2, a health-factor limiter, main-market flash liquidity
+and an immediate converter route. Unsupported capabilities fail explicitly; new
+protocol mechanisms require an appropriate adapter rather than a new product ID.
 
 ```ts
 import {
@@ -81,10 +106,18 @@ live conversion views and configured fees. Only immediate Coin → Coin conversi
 is supported. Native instant redemption can become unavailable; requesting a new
 quote can select the fallback. A build never silently selects another route.
 
-Astros disables optional positive-slippage fees for Multiply and returns all route
-change through its new `onCoinChange` option. Its current numeric route builder
-limits supported amounts to safe JS integers; larger routes are explicitly rejected.
-Other SDK consumers retain the previous Astros behavior by default.
+Astros uses the published `@naviprotocol/astros-aggregator-sdk@2.0.7` with its default
+fee and positive-slippage behavior. Route change is transferred directly to the
+user in `quote.address`, independently of the transaction sender or gas sponsor.
+It is not included in `built.coins`. The engine's other remaining coins are still
+returned to the caller. Its numeric route builder limits supported amounts to safe
+JS integers; larger routes are explicitly rejected. Minimum output, health factor
+and flash repayment checks remain enforced; extra fees can cause a PTB to abort
+if those bounds cannot be met.
+
+When calling the exported Astros converter directly, pass the real user address as
+the fourth build argument: `converter.buildPTB(tx, quote, coin, { changeRecipient: address })`.
+A missing, malformed or zero recipient is rejected before appending swap commands.
 
 A custom `DataSource` must supply complete, coherent, verified Cap/position/risk/
 price/fee data and prepare the oracle commands for its network. Failures must not
@@ -94,22 +127,31 @@ testnet client alone does not switch their contract addresses.
 
 ## AccountCap and Vault integration
 
-New Caps use `navi:multiply:v1:<strategyId>` as the name and the strategy definition
-as the description. Existing Caps are reused after close. A default reader
-excludes Caps registered to the Lending E-Mode product, validates strategy
-metadata, and rejects duplicates. It never registers a Multiply Cap as an E-Mode
-product Cap.
+Caps are discovered exclusively through the mainnet Multiply Registry. Fixed keys
+`(strategyNumericId, strategyVersion)` bind vSUI/SUI to `(1,1)`, haSUI/SUI to `(2,1)`;
+Open API additionally configures short SUI as `(3,1)`. Every custom Strategy must
+supply a unique `registryKey` with canonical integer strings. The version is below
+100000 and the combined key must fit u64; never reassign a key to different assets.
 
-**One wallet/strategy is enforced by discovery and SDK checks only.** Two concurrent
-transactions or direct contract calls can create duplicate names; renaming or
-transferring a Cap can bypass this convention. A contract registry is needed for
-a chain-enforced uniqueness guarantee. Names/descriptions are not authorization.
+New Caps are created and registered atomically in the opening PTB. The registry
+rejects a duplicate key for the same sender. The reader verifies object type,
+ownership and accountOwner, rejects duplicate Cap/accounts and E-Mode product Caps.
+Names/descriptions are neither read nor written. Unregistered Caps are intentionally
+excluded, with no migration or wallet-scan fallback. Close retains the registered Cap.
+Invalid or transferred registered Caps fail explicitly rather than creating replacements.
+
+`createNaviDataSource({ client, capRegistry, strategies })` and the engine must share
+the same deployment and definitions. A custom DataSource declares its `capRegistry`.
+Quote/build bind these settings and the fixed numeric key; transaction sender must
+match quote.address. Unknown keys fail with `UNSUPPORTED_REGISTRY_STRATEGY`.
 
 Auto Vault can inject a resolver for wrapped Caps and pass a PTB result through
 `inputs.accountCap`. The resolver/caller is responsible for binding that transaction
 result to the quoted Cap and snapshot; a transaction result cannot be authenticated
 by its JS handle. Plain object-ID overrides must match the quoted ID. The engine
-keeps Cap transfer/wrapping and final Coin custody with the caller.
+keeps Cap transfer/wrapping and final Coin custody with the caller, except for
+Astros route change, which is refunded directly to `quote.address`. Vault integrations
+must account for that refund policy or inject a converter with their custody policy.
 
 Open API should retain quotes server-side or authenticate its quote envelope.
 The SHA-256 checksum detects accidental mutation; it is **not** a signature or
@@ -161,7 +203,6 @@ it does not prove persisted discovery or concurrent uniqueness.
 
 The packed-package consumer replay is documented in the verification report.
 
-For this prerelease, pack/install the modified Astros workspace package alongside
-Multiply. The `COMPOSABLE_SWAP_API_VERSION` import prevents older published Astros
-builds from silently ignoring change collection. Run Changesets versioning before
-publication so the new Astros minor and Multiply dependency range advance together.
+The package pins published Lending 2.1.0 and Astros 2.0.7 dependencies. The clean
+package consumer installs only the Multiply tarball locally and resolves these
+dependencies from npm, without workspace links or dependency overrides.

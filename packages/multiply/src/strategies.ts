@@ -7,6 +7,7 @@ export const HASUI =
 export const strategies = {
   vsuiSui: {
     id: 'vsui-sui',
+    registryKey: { strategyNumericId: '1', strategyVersion: '1' },
     market: 'vsui-sui',
     principalCoinType: SUI,
     collateralCoinType: VSUI,
@@ -14,10 +15,10 @@ export const strategies = {
   },
   hasuiSui: {
     id: 'hasui-sui',
+    registryKey: { strategyNumericId: '2', strategyVersion: '1' },
     market: 'hasui-sui',
     principalCoinType: SUI,
     collateralCoinType: HASUI,
     debtCoinType: SUI
   }
 } satisfies Record<string, Strategy>
-export const capName = (id: string) => `navi:multiply:v1:${id}`
