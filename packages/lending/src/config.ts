@@ -35,7 +35,9 @@ export const getConfig = withCache(
     async (
       options?: Partial<EnvOption & CacheOption & MarketOption & ServiceOption>
     ): Promise<LendingConfig> => {
-      const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY)
+      const market = getMarketConfig(options?.market || DEFAULT_MARKET_IDENTITY, {
+        env: options?.env || 'prod'
+      })
       const endpoint = resolveNaviOpenApiEndpoint(options)
       const url = buildNaviOpenApiUrl(
         `/navi/config?env=${options?.env || 'prod'}&sdk=${packageJson.version}&market=${market.key}`,

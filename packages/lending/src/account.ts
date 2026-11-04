@@ -50,7 +50,7 @@ import { getPool, PoolOperator, getPools } from './pool'
 import packageJson from '../package.json'
 import { getUserEModeCaps } from './emode'
 import BigNumber from 'bignumber.js'
-import { getMarketConfig, MARKETS } from './market'
+import { getMarketConfig, loadMarketConfigs } from './market'
 import { buildNaviOpenApiUrl, mergeServiceHeaders, resolveNaviOpenApiEndpoint } from './services'
 
 function getCoreCoinType(coin: any, fallbackCoinType?: string) {
@@ -327,7 +327,10 @@ async function getLendingStateBatch(
   const client = options?.client ?? suiClient
   const pools = await getPools({
     ...options,
-    markets: Object.values(MARKETS)
+    markets: await loadMarketConfigs({
+      env: options?.env,
+      services: (options as Partial<ServiceOption>)?.services
+    })
   })
   const poolsMap = getPoolsMap(pools)
 
@@ -339,7 +342,9 @@ async function getLendingStateBatch(
   // chain by seconds to minutes), so right after a deposit/withdraw the
   // displayed amount can drift by the interest accrued in between.
   const uniqueMarketKeys = Array.from(new Set(tasks.map((task) => task.market)))
-  const uniqueMarkets = uniqueMarketKeys.map((key) => getMarketConfig(key))
+  const uniqueMarkets = uniqueMarketKeys.map((key) =>
+    getMarketConfig(key, { env: options?.env || 'prod' })
+  )
 
   for (const market of uniqueMarkets) {
     const config = await getConfig({
@@ -424,7 +429,7 @@ async function getLendingStateBatch(
 
   stateList.forEach((states, index) => {
     const task = tasks[index]
-    const market = getMarketConfig(task.market)
+    const market = getMarketConfig(task.market, { env: options?.env || 'prod' })
     const marketReserves = reserveIndicesByMarket[market.key] || {}
     states.forEach((state) => {
       if (state.supply_balance === '0' && state.borrow_balance === '0') {
@@ -477,8 +482,14 @@ export const getLendingState = withCache(
     address: string | AccountCap,
     options?: Partial<SuiClientOption & EnvOption & CacheOption & MarketsOption>
   ): Promise<UserLendingInfo[]> => {
-    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
-      return getMarketConfig(item)
+    const markets = (
+      options?.markets ||
+      (await loadMarketConfigs({
+        env: options?.env,
+        services: (options as Partial<ServiceOption>)?.services
+      }))
+    ).map((item) => {
+      return getMarketConfig(item, { env: options?.env || 'prod' })
     })
 
     const tasks = markets.map((market) => {
@@ -757,8 +768,14 @@ export const getLendingPositions = withCache(
     >
   ): Promise<LendingPosition[]> => {
     const positions: LendingPosition[] = []
-    const markets = (options?.markets || Object.keys(MARKETS)).map((item) => {
-      return getMarketConfig(item)
+    const markets = (
+      options?.markets ||
+      (await loadMarketConfigs({
+        env: options?.env,
+        services: (options as Partial<ServiceOption>)?.services
+      }))
+    ).map((item) => {
+      return getMarketConfig(item, { env: options?.env || 'prod' })
     })
 
     // Do not silently swallow E-Mode cap failures: the previous catch fell back
@@ -782,7 +799,7 @@ export const getLendingPositions = withCache(
           .map((emodeCap) => {
             return {
               address: emodeCap.accountCap,
-              market: getMarketConfig(emodeCap.marketId).key,
+              market: getMarketConfig(emodeCap.marketId, { env: options?.env || 'prod' }).key,
               emodeId: emodeCap.emodeId
             }
           })
@@ -794,7 +811,7 @@ export const getLendingPositions = withCache(
       const emodeCap =
         typeof lendingState.emodeId === 'number'
           ? emodeCaps.find((cap) => {
-              const market = getMarketConfig(lendingState.market)
+              const market = getMarketConfig(lendingState.market, { env: options?.env || 'prod' })
               return cap.emodeId === lendingState.emodeId && cap.marketId === market.id
             })
           : undefined
