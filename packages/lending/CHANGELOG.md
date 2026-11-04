@@ -1,5 +1,18 @@
 # @naviprotocol/lending
 
+## 2.2.0
+
+### Minor Changes
+
+- b311c44: Register the hBTC isolated market (`hbtc-usdc`, market id 12) in `MARKETS`. hBTC (Hashi, Sui's native-BTC bridge) is the supply-only collateral asset and native USDC the debt asset. Deployed on stage_v2 (`env: 'dev'`) 2026-10-26; without this entry `getMarketConfig`/`getMarket` throw `Market not found` for id 12 even though the open-api serves its config.
+- b311c44: Load the market list from open-api instead of relying only on the built-in `MARKETS`.
+
+  - New `loadMarketConfigs({ env })` fetches `/navi/markets` and stores the list per env; it never throws and falls back to the built-in list on failure.
+  - New `getMarketConfigs({ env })` (sync) and `registerMarketConfigs(configs, { env, authoritative })`.
+  - `getMarketConfig` now also resolves markets from loaded/registered lists, so a market added to open-api works without an SDK release. Known markets keep their built-in id and name. An optional `{ env }` limits the lookup to that env's list; SDK functions pass their `env`, so two envs that reuse an id for different markets do not mix.
+  - `getLendingState` and `getLendingPositions` enumerate the env's loaded list when `markets` is not passed; the reward batch and claim helpers look up pools across that list. `getUserAvailableLendingRewards` still defaults to the main market.
+  - The `/navi/markets` request is bounded (5s); a stall falls back to the current list.
+
 ## 2.1.0
 
 ### Minor Changes
