@@ -323,10 +323,23 @@ export async function getPriceFeeds(
 }
 
 /**
+ * Whether a price feed is a composite ratio feed (it carries `ratioOracleId`) rather than an
+ * asset's own price feed. Use it to pick the asset's own feed when looking one up by oracle id or
+ * coin type: a composite asset has two entries under its oracle id.
+ */
+export function isRatioPriceFeed(feed: Pick<OraclePriceFeed, 'ratioOracleId'>): boolean {
+  return feed.ratioOracleId !== undefined && feed.ratioOracleId !== null
+}
+
+/**
  * Filter price feeds based on lending state and pools
  *
  * This function filters price feeds to only include those that are relevant
  * to the current lending state or available pools.
+ *
+ * A composite asset (e.g. vSUI priced at SUI/USD x VSUI/SUI.RR) lists its ratio feed under the
+ * asset's own oracle id, so the ratio feed is kept whenever the asset is: the contract reads the
+ * asset's price as valid only while both feeds are fresh.
  *
  * @param feeds - Array of price feeds to filter
  * @param filters - Filter criteria including lending state and pools
