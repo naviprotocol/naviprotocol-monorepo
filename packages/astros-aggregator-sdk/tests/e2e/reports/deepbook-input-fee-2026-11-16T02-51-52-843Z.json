@@ -1,0 +1,58 @@
+{
+ "agApi": "https://open-aggregator-api.naviprotocol.io",
+ "sender": "0x03b61aa716ed743fe9c0a58b8e7cc9e1b8d8b4f63bb955d19fe28e7b7d5de72e",
+ "time": "2026-11-16T02-51-52-843Z",
+ "rows": [
+  {
+   "case": "SUI->USDC 20 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "14551245",
+   "sdkOk": false,
+   "sdkError": "{\"$kind\":\"MoveAbort\",\"message\":\"MoveAbort in 6th command, abort code: 2, in '0x0000000000000000000000000000000000000000000000000000000000000002::balance::split' (instruction 10)\",\"command\":5,\"MoveAbort\":{\"abortCode\":\"2\",\"location\":{\"package\":\"0x0000000000000000000000000000000000000000000000000000000",
+   "touchesDeepPool": true,
+   "received": "0",
+   "referenceOut": "14506572",
+   "sameState": false,
+   "result": "fail"
+  },
+  {
+   "case": "SUI->USDC 3000 SUI",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "2186065181",
+   "sdkOk": false,
+   "sdkError": "{\"$kind\":\"MoveAbort\",\"message\":\"MoveAbort in 6th command, abort code: 2, in '0x0000000000000000000000000000000000000000000000000000000000000002::balance::split' (instruction 10)\",\"command\":5,\"MoveAbort\":{\"abortCode\":\"2\",\"location\":{\"package\":\"0x0000000000000000000000000000000000000000000000000000000",
+   "touchesDeepPool": true,
+   "received": "0",
+   "referenceOut": "2184350768",
+   "sameState": true,
+   "result": "fail"
+  },
+  {
+   "case": "SUI->DEEP 50 SUI",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "2879000000",
+   "sdkOk": true,
+   "touchesDeepPool": true,
+   "received": "2879000000",
+   "referenceOut": "2879000000",
+   "sameState": true,
+   "result": "fail"
+  },
+  {
+   "case": "SUI->hBTC 500 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "559469",
+   "sdkOk": false,
+   "sdkError": "{\"$kind\":\"MoveAbort\",\"message\":\"MoveAbort in 6th command, abort code: 2, in '0x0000000000000000000000000000000000000000000000000000000000000002::balance::split' (instruction 10)\",\"command\":5,\"MoveAbort\":{\"abortCode\":\"2\",\"location\":{\"package\":\"0x0000000000000000000000000000000000000000000000000000000",
+   "touchesDeepPool": true,
+   "received": "0",
+   "referenceOut": "559000",
+   "sameState": true,
+   "result": "fail"
+  }
+ ]
+}

@@ -222,7 +222,7 @@ export async function buildSwapWithoutServiceFee(
         }
         case Dex.DEEPBOOK: {
           const amountLimit = route.info_for_ptb.amountLimit
-          const { baseCoinOut, quoteCoinOut } = await makeDeepbookPTB(
+          const { baseCoinOut, quoteCoinOut, deepCoinOut } = await makeDeepbookPTB(
             txb,
             poolId,
             pathTempCoin,
@@ -237,6 +237,8 @@ export async function buildSwapWithoutServiceFee(
             pathTempCoin = baseCoinOut
             moveCallTransferNonzero(txb, quoteCoinOut, userAddress, coinBtype)
           }
+          // DeepBook always returns a DEEP coin; it is zero when the fee is paid from the input.
+          moveCallTransferNonzero(txb, deepCoinOut, userAddress, AggregatorConfig.deepTokenAddress)
           break
         }
         case Dex.BLUEFIN: {
