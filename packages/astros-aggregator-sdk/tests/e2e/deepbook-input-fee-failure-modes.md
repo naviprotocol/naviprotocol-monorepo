@@ -25,4 +25,4 @@
 
 ## E2E
 
-`tests/e2e/deepbook-input-fee.ts`：向后端要 version 18、providers=deepbook 的报价（只读），用本 SDK 的 `buildSwapWithoutServiceFee` 拼整笔交易，用持有 SUI 的地址打开检查在主网 simulate（不签名、不广播）。同时 simulate 一笔参考交易（同一路由，每跳 v9 直接调用、DEEP 传 0），比较用户最终收到的目标币数量。判据：SDK 交易成功、没有触碰 DeepPool、收到数量与参考相等（两笔读到的池子版本相同时）。
+`tests/e2e/deepbook-input-fee.ts`：向后端要 version 18、providers=deepbook 的报价（只读），用本 SDK 的 `buildSwapWithoutServiceFee` 拼整笔交易，用持币地址（同时持有 SUI / USDC / DEEP）打开检查在主网 simulate（不签名、不广播）。覆盖 SUI、USDC、DEEP 作输入（DEEP 既是输入币又是手续费币），a2b / b2a，单路由与多路由。同时 simulate 一笔参考交易（同一路由，每跳 v9 直接调用、DEEP 传 0），比较用户最终收到的目标币数量。判据：SDK 交易成功、没有触碰 DeepPool、收到数量与参考相等（两笔读到的池子版本相同时）。

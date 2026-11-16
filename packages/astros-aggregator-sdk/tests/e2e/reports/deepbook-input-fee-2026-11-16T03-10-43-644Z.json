@@ -1,0 +1,104 @@
+{
+ "agApi": "https://open-aggregator-api.naviprotocol.io",
+ "sender": "0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d",
+ "receiver": "0x000000000000000000000000000000000000000000000000000000000000beef",
+ "time": "2026-11-16T03-10-43-644Z",
+ "rows": [
+  {
+   "case": "SUI->USDC 20 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "14549639",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "13639614",
+   "referenceOut": "13639614",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->USDC 3000 SUI",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "2186199275",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "2186570024",
+   "referenceOut": "2186570024",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->DEEP 50 SUI",
+   "routes": 2,
+   "hops": 4,
+   "quoteOut": "2881763219",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "2781000000",
+   "referenceOut": "2781000000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->hBTC 500 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "559515",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "559000",
+   "referenceOut": "559000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "USDC->SUI 5000 USDC",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "6857885000109",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "6850700000000",
+   "referenceOut": "6850700000000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "USDC->hBTC 5000 USDC",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "7683340",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "7682000",
+   "referenceOut": "7682000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "DEEP->SUI 20000 DEEP",
+   "routes": 2,
+   "hops": 3,
+   "quoteOut": "345357953772",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "345290000000",
+   "referenceOut": "345290000000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "DEEP->USDC 20000 DEEP",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "252000000",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "252000000",
+   "referenceOut": "252000000",
+   "sameState": true,
+   "result": "pass"
+  }
+ ]
+}
