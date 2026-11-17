@@ -58,10 +58,11 @@ export async function getQuoteInternal(
       swapOptions?.byAmountIn !== undefined ? swapOptions.byAmountIn.toString() : 'true',
     depth: swapOptions?.depth !== undefined ? swapOptions.depth.toString() : '3',
     // Version 14 added the Magma v4 integrate package, 15 the Cetus v16 integrate package,
-    // 16 the Cetus v17 integrate package, and 17 the DeepBook v9 linkage call, so the router
-    // API can keep incompatible Cetus/DeepBook routes away from older clients once the
-    // corresponding backend capability gate is enabled.
-    version: '17'
+    // 16 the Cetus v17 integrate package, 17 the DeepBook v9 linkage call, and 18 DeepBook
+    // swaps that pay the taker fee from the input coin instead of NAVI's sponsored DEEP, so
+    // the router API can keep incompatible Cetus/DeepBook routes away from older clients once
+    // the corresponding backend capability gate is enabled.
+    version: '18'
   }).toString()
 
   // Construct dex provider string if dexList is provided

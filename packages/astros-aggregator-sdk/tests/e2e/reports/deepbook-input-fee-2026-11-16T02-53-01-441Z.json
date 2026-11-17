@@ -1,0 +1,55 @@
+{
+ "agApi": "https://open-aggregator-api.naviprotocol.io",
+ "sender": "0x03b61aa716ed743fe9c0a58b8e7cc9e1b8d8b4f63bb955d19fe28e7b7d5de72e",
+ "time": "2026-11-16T02-53-01-441Z",
+ "rows": [
+  {
+   "case": "SUI->USDC 20 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "14563815",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "14541144",
+   "referenceOut": "14541144",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->USDC 3000 SUI",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "2189417208",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "2188730008",
+   "referenceOut": "2188730008",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->DEEP 50 SUI",
+   "routes": 1,
+   "hops": 1,
+   "quoteOut": "2878000000",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "2878000000",
+   "referenceOut": "2878000000",
+   "sameState": true,
+   "result": "pass"
+  },
+  {
+   "case": "SUI->hBTC 500 SUI",
+   "routes": 1,
+   "hops": 2,
+   "quoteOut": "560347",
+   "sdkOk": true,
+   "touchesDeepPool": false,
+   "received": "560000",
+   "referenceOut": "560000",
+   "sameState": true,
+   "result": "pass"
+  }
+ ]
+}

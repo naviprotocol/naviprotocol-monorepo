@@ -1,5 +1,16 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.9
+
+### Patch Changes
+
+- DeepBook swaps no longer go through NAVI's `sponsored_deep` (its DEEP pool was drained
+  and is retired). `makeDeepbookPTB` now calls DeepBook v9 `pool::swap_exact_base_for_quote`
+  / `swap_exact_quote_for_base` directly with a zero DEEP coin, so the taker fee is paid
+  from the input coin (taker fee x 1.25). The returned DEEP coin (always zero) is sent to
+  the user with `transfer_nonzero`. Bump the `find_routes` client version from 17 to 18
+  for backend capability gating.
+
 ## 2.0.8
 
 ### Patch Changes
