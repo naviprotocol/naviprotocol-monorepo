@@ -17,6 +17,7 @@ import type {
   DataSource,
   MarketSnapshot,
   MultiplySuiClient,
+  NaviEnv,
   Strategy,
   RegistryKey
 } from './types'
@@ -36,8 +37,10 @@ import { lendingToRaw, tokenDecimals } from './amounts'
 import { resolveEMode } from './emode'
 
 import {
-  ACCOUNT_CAP_TYPE,
   MAINNET_CAP_REGISTRY,
+  accountCapType,
+  assertRegistryUsable,
+  normalizeEnv,
   normalizeCapRegistry,
   decodeRegistryEntries,
   indexRegistryStrategies,
@@ -45,6 +48,40 @@ import {
 } from './cap-registry'
 import { strategies as builtInStrategies } from './strategies'
 export { ACCOUNT_CAP_TYPE } from './cap-registry'
+
+type FeedLike = { coinType: string; ratioOracleId?: number | null }
+/** A composite ratio feed (e.g. `VSUI/SUI.RR`) is listed under its asset's coin type with `ratioOracleId`. */
+export const isRatioFeed = (feed: FeedLike) =>
+  feed.ratioOracleId !== undefined && feed.ratioOracleId !== null
+
+/**
+ * Feeds a strategy PTB must push: each strategy coin's own feed, plus its ratio feed when the
+ * asset is composite-priced (price = own feed x ratio, valid only while both are fresh; abort 1502
+ * otherwise). Anything ambiguous fails closed (ST-07..ST-10).
+ */
+export function selectStrategyFeeds<F extends FeedLike>(feeds: F[], strategy: Strategy): F[] {
+  const selected: F[] = []
+  for (const coin of new Set([
+    coinType(strategy.collateralCoinType),
+    coinType(strategy.debtCoinType)
+  ])) {
+    const forCoin = feeds.filter((f) => sameCoin(f.coinType, coin))
+    const own = forCoin.filter((f) => !isRatioFeed(f))
+    const ratio = forCoin.filter(isRatioFeed)
+    check(
+      own.length === 1,
+      'MARKET_UNSUPPORTED',
+      `Expected one own price feed for ${coin}, found ${own.length}`
+    )
+    check(
+      ratio.length <= 1,
+      'MARKET_UNSUPPORTED',
+      `Expected at most one ratio feed for ${coin}, found ${ratio.length}`
+    )
+    selected.push(own[0], ...ratio)
+  }
+  return selected
+}
 
 export const defaultClient = () =>
   new SuiGrpcClient({ network: 'mainnet', baseUrl: 'https://fullnode.mainnet.sui.io:443' })
@@ -59,9 +96,13 @@ export function createNaviDataSource(
     onReadEvidence?: (kind: 'caps' | 'position', versions: Record<string, string>) => void
     /** Optional request-scoped instrumentation. The wrapper must run each read exactly once. */
     measure?: <T>(stage: string, read: () => Promise<T>) => Promise<T>
+    /** NAVI deployment for every read and PTB. Omitted means `prod`. */
+    env?: NaviEnv
   } = {}
 ): DataSource {
+  const env = normalizeEnv(options.env)
   const client = options.client ?? defaultClient()
+  const explicitRegistry = options.capRegistry !== undefined
   const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
   const byKey = indexRegistryStrategies(
     jsonCopy(options.strategies ?? Object.values(builtInStrategies))
@@ -73,14 +114,9 @@ export function createNaviDataSource(
     'Active and retired Registry keys overlap'
   )
   const measure = options.measure ?? (<T>(_stage: string, read: () => Promise<T>) => read())
-  const opts = { services: options.services, disableCache: true }
+  const opts = { services: options.services, disableCache: true, env }
   async function prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot) {
-    const feeds = market.config.oracle.feeds.filter(
-      (f) =>
-        sameCoin(f.coinType, strategy.collateralCoinType) ||
-        sameCoin(f.coinType, strategy.debtCoinType)
-    )
-    check(feeds.length === 2, 'MARKET_UNSUPPORTED', 'Both strategy price feeds are required')
+    const feeds = selectStrategyFeeds(market.config.oracle.feeds, strategy)
     await updateOraclePricesPTB(tx, feeds, {
       ...opts,
       market: strategy.market,
@@ -91,8 +127,11 @@ export function createNaviDataSource(
   const source: DataSource = {
     prepareOracle,
     capRegistry,
+    env,
     async listAccountCaps(owner) {
       owner = address(owner)
+      assertRegistryUsable(env, explicitRegistry)
+      const capType = accountCapType(env)
       try {
         const registry = new Transaction()
         registry.setSender(owner)
@@ -168,7 +207,7 @@ export function createNaviDataSource(
         const caps = entries.map((entry, i): AccountCap => {
           const object = objects.get(entry.capId)
           check(
-            object && coinType(object.type) === ACCOUNT_CAP_TYPE,
+            object && coinType(object.type) === capType,
             'INVALID_ACCOUNT_CAP',
             'Registry object is not an AccountCap'
           )

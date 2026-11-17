@@ -3,6 +3,8 @@ import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import type { getConfig, Pool, NaviSdkServiceOptions } from '@naviprotocol/lending'
 
 export type MultiplySuiClient = Pick<SuiGrpcClient, 'core'>
+/** NAVI deployment the open-api serves: `prod`, or the stage deployments `dev` (stage_v2) / `test`. */
+export type NaviEnv = 'prod' | 'dev' | 'test'
 export type CoinAmount = { coinType: string; amount: string }
 export type CoinInput = { coinType: string; coin: TransactionObjectArgument }
 export interface RegistryKey {
@@ -82,6 +84,8 @@ export interface MarketSnapshot {
 export interface DataSource {
   /** Deployment used for discovery. A custom source must declare its binding. */
   capRegistry: CapRegistryConfig
+  /** NAVI deployment every read and PTB of this source targets. Omitted means `prod`. */
+  env?: NaviEnv
   listAccountCaps(address: string): Promise<AccountCap[]>
   readMarket(strategy: Strategy): Promise<MarketSnapshot>
   readPosition(
@@ -212,4 +216,10 @@ export interface MultiplyOptions {
   /** Omitted: Astros. Used only when no eligible primary converter can quote. */
   fallbackConverter?: Converter
   services?: NaviSdkServiceOptions
+  /**
+   * NAVI deployment for the default data source. Omitted means `prod`. Not combinable with a
+   * custom `dataSource`, which declares its own `env`. `dev` and `test` have no Multiply Registry:
+   * Cap creation and Registry discovery need an explicit `capRegistry` there.
+   */
+  env?: NaviEnv
 }

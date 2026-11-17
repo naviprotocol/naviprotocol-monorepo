@@ -1,10 +1,44 @@
 import { bcs } from '@mysten/sui/bcs'
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions'
-import type { CapRegistryConfig, RegistryKey, Strategy } from './types'
+import type { CapRegistryConfig, NaviEnv, RegistryKey, Strategy } from './types'
 import { address, check, U64_MAX, uint } from './utils'
 
 export const ACCOUNT_CAP_TYPE =
   '0x66c91a8560cd64d73d93dd1ec7b61f3f21ad2f66553dd3d7038ca69255479bb7::account::AccountCap'
+
+/** Lending `AccountCap` type of each NAVI deployment (stage_v2 is a separate lending package). */
+export const ACCOUNT_CAP_TYPES: Readonly<Partial<Record<NaviEnv, string>>> = Object.freeze({
+  prod: ACCOUNT_CAP_TYPE,
+  dev: '0x51e18f149666eff167d6bcaf59d0b9edcf6affe7650bb2bc3d5167a8c9f6f6d0::account::AccountCap'
+})
+
+export function normalizeEnv(env: unknown): NaviEnv {
+  if (env === undefined) return 'prod'
+  check(
+    env === 'prod' || env === 'dev' || env === 'test',
+    'INVALID_ARGUMENT',
+    `Unsupported NAVI env: ${String(env)}`
+  )
+  return env
+}
+
+export function accountCapType(env: NaviEnv): string {
+  const type = ACCOUNT_CAP_TYPES[env]
+  check(type, 'MARKET_UNSUPPORTED', `No known lending AccountCap type for NAVI env ${env}`)
+  return type
+}
+
+/**
+ * The default Registry is a prod deployment. Off prod it would bind a stage Cap into the prod
+ * Registry, so Cap creation and Registry discovery there need a Registry the caller names.
+ */
+export function assertRegistryUsable(env: NaviEnv, explicitRegistry: boolean) {
+  check(
+    env === 'prod' || explicitRegistry,
+    'MARKET_UNSUPPORTED',
+    `NAVI env ${env} has no Multiply Registry: pass capRegistry, or supply an existing Cap through a custom data source`
+  )
+}
 
 export const MAINNET_CAP_REGISTRY: Readonly<CapRegistryConfig> = Object.freeze({
   network: 'sui:mainnet',
@@ -94,13 +128,14 @@ export function registerCreatedCapPTB(
   tx: Transaction,
   cap: TransactionObjectArgument,
   key: RegistryKey,
-  deployment: CapRegistryConfig
+  deployment: CapRegistryConfig,
+  capType: string = ACCOUNT_CAP_TYPE
 ) {
   registryKeyString(key)
   const config = normalizeCapRegistry(deployment)
   const capAddress = tx.moveCall({
     target: '0x2::object::id_address',
-    typeArguments: [ACCOUNT_CAP_TYPE],
+    typeArguments: [capType],
     arguments: [cap]
   })
   tx.moveCall({

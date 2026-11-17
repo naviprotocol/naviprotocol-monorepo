@@ -18,6 +18,9 @@ import { createNaviDataSource, defaultClient } from './data-source'
 import { strategies as builtInStrategies } from './strategies'
 import {
   MAINNET_CAP_REGISTRY,
+  accountCapType,
+  assertRegistryUsable,
+  normalizeEnv,
   normalizeCapRegistry,
   registryKeyString,
   indexRegistryStrategies,
@@ -74,15 +77,24 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     'Active and retired Registry keys overlap'
   )
   const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
+  // ST-04: the data source owns the env; a second, possibly different env is refused.
+  check(
+    !(options.dataSource && options.env !== undefined),
+    'INVALID_ARGUMENT',
+    'env cannot be combined with a custom dataSource; set env on the data source'
+  )
   const source: DataSource =
     options.dataSource ??
     createNaviDataSource({
       client,
       services: options.services,
-      capRegistry,
+      capRegistry: options.capRegistry === undefined ? undefined : capRegistry,
       strategies: strategyRegistry,
-      retiredRegistryKeys: options.retiredRegistryKeys
+      retiredRegistryKeys: options.retiredRegistryKeys,
+      env: normalizeEnv(options.env)
     })
+  const env = normalizeEnv(source.env)
+  const explicitRegistry = options.capRegistry !== undefined
   function assertSourceBinding(code = 'INVALID_ARGUMENT') {
     check(
       source.capRegistry &&
@@ -279,6 +291,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     const planned = await plan(strategy, action, constraints, snapshot, market, fee, (req) =>
       chooseConversion(req, converters, fallback)
     )
+    if (!cap) {
+      // ST-05/ST-06: a new Cap is registered with the env's Cap type in a Registry valid for it.
+      assertRegistryUsable(env, explicitRegistry)
+      accountCapType(env)
+    }
     const q: MultiplyQuote = {
       address: owner,
       strategy,
@@ -539,12 +556,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     const accountCap =
       createdAccountCap ?? inputs.accountCap ?? tx.object((e.accountCap as AccountCap).id)
     if (createdAccountCap) {
+      assertRegistryUsable(env, explicitRegistry)
       if (s.emodeId !== undefined)
         tx.moveCall({
           target: `${config.package}::lending::enter_emode_with_account_cap`,
           arguments: [tx.object(config.storage), tx.pure.u64(s.emodeId), createdAccountCap]
         })
-      registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry)
+      registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry, accountCapType(env))
     }
     const change: BuildResult['coins'] = []
     const exact = (type: string, amount: string) => {

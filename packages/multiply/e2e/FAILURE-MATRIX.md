@@ -116,3 +116,42 @@ not a passing scenario. A missing catalogue group exercises targeted configurati
 reading from Storage using the actual field type origin, never an account-mode
 mapping or the independent E-Mode Registry. Persisted new-version Cap management
 and paused-group operations still need chain fixtures; unit/PTB coverage is separate.
+
+## NAVI stage_v2 environment and composite LST prices (2026-11-17)
+
+stage_v2 is a separate NAVI deployment on Sui mainnet (lending original
+`0x51e18f…`, v3 `0x64d899…`; oracle original `0x63862c…`, v3 `0xe64be9…`;
+limiter v2 `0x7fb801…`). Its `vsui-sui` isolated market (id 8) prices vSUI as
+SUI/USD × `VSUI/SUI.RR` (ratio oracle 200). open-api `env=dev` lists the RR
+feed under vSUI's own oracle id and coin type, with an extra `ratioOracleId`.
+Prod will switch to composite pricing later, so the feed rule applies to prod too.
+
+Listed before implementation:
+
+| ID | Failure | Required behaviour |
+|----|---------|--------------------|
+| ST-01 | `env` omitted | Exactly the prod reads as before (`run.mjs`, `emode.mjs` unchanged) |
+| ST-02 | `env: 'dev'` but one read (market config, pools, main flash config, flash assets, oracle config, configured E-Mode group) still goes to prod | Every read uses the same env; a dev PTB references no prod lending/oracle package or object |
+| ST-03 | `env` is not `prod`/`dev`/`test` | `INVALID_ARGUMENT` before any read |
+| ST-04 | A custom `dataSource` plus a client `env` (two sources of truth) | `INVALID_ARGUMENT`; env belongs to the data source |
+| ST-05 | dev Cap discovery compares against the prod `AccountCap` type | Cap type follows the env (dev `0x51e18f…::account::AccountCap`) |
+| ST-06 | dev has no Multiply Registry; creating a Cap would register a stage Cap in the prod registry, or discovery would read the prod registry | Without an explicit `capRegistry`, dev refuses Cap creation and Registry discovery (`MARKET_UNSUPPORTED`); an existing Cap supplied by a custom data source still works |
+| ST-07 | Composite asset: only its own feed pushed | Push own feed and its RR feed; without the RR the chain aborts 1502 (shown on stage) |
+| ST-08 | Non-composite market (prod today) | Exactly the two own feeds, as before |
+| ST-09 | Collateral or debt has no own feed, or two own feeds | `MARKET_UNSUPPORTED` |
+| ST-10 | RR entry without the asset's own entry, or two RR entries for one asset | `MARKET_UNSUPPORTED` |
+| ST-11 | RR entry carries Pyth fields | Its Pyth feed is refreshed with the others when stale |
+| ST-12 | Isolated market reserve ids differ from oracle ids (vSUI reserve 0, oracle 5) | Lending calls use reserve ids, oracle pushes use feed ids; HF and leverage read back correctly |
+| ST-13 | stage outflow limit (10 USD/h per market, borrow + withdraw) exhausted | Abort 3200 is reported as an environment limit, never as a pass; amounts kept to about 1–2 SUI |
+| ST-14 | Volo stake/unstake below 1 SUI | Covered by the existing converter minimum; amounts chosen above it |
+| ST-15 | No SUI flash liquidity on dev main market | `MARKET_UNSUPPORTED` from the existing check |
+| ST-16 | Found while running: the Hermes update for the RR feed is published a moment after the checkpoint a simulation runs at; NAVI's `is_oracle_price_fresh` treats a publish time later than the Clock as stale, skips the RR write and the composite read aborts 1502 (measured 2026-11-17: 3 of 10 pushes had a Pyth publish time 26–1122 ms after the Clock; each emitted `oracle_pro::OracleUnavailable` and left ratio 200 unwritten, the other 7 wrote it) | Not an SDK defect and not fixable in Multiply (a fix would fetch Hermes updates a few seconds in the past, inside the lending SDK). E2E runs every simulation 2.5 s after assembling the PTB (`MULTIPLY_E2E_EXEC_DELAY_MS`), as a signed transaction executes after sign + broadcast; it still retries this abort and Hermes 429 at most 8 times and records each retry. Real executions sign and broadcast seconds later, after the Clock has passed the publish time; a pre-sign dry run can still hit it and should be retried once |
+
+### stage_v2 results (2026-11-17, `node e2e/stage.mjs`, 10 pass / 0 fail, no retries)
+
+Report: `e2e/evidence/stage-v2-report.json`. Open 1.2 SUI at 1.5x on `vsui-sui` (stage):
+chain HF 2.7900000088 vs quoted 2.790000003; collateral 1.682 vSUI, debt 0.600 SUI; every
+call goes to stage lending/oracle/limiter, no prod NAVI id in any PTB. The same open without
+the RR push aborts 1502. add_principal keeps HF 2.79 (leverage unchanged), remove_principal
+and close succeed (close leaves 0/0). Regression with `env` omitted: `run.mjs` 16/16,
+`emode.mjs` 18/18.
