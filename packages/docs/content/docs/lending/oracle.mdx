@@ -49,6 +49,8 @@ const marketPriceFeeds = await getPriceFeeds({
 
 Filter price feeds based on lending state and pools. See [documentation](/typedoc/functions/_naviprotocol_lending.filterPriceFeeds.html) for details.
 
+A composite asset, priced at its own feed times a ratio feed (for example vSUI at SUI/USD × `Crypto.VSUI/SUI.RR`), has a second entry under its oracle id, marked by `ratioOracleId`. `filterPriceFeeds` keeps both entries whenever the asset is relevant, and `updateOraclePricesPTB` pushes both. The contract reads the asset's price as valid only while both feeds are fresh. To pick an asset's own feed, skip entries for which `isRatioPriceFeed(feed)` is true.
+
 **Usage Example**
 
 ```typescript

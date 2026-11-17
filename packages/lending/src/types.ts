@@ -471,6 +471,15 @@ export type OraclePriceFeed = {
   priceDecimal: number
   /** Supra pair identifier */
   supraPairId: number
+  /**
+   * Set only on a composite ratio feed, e.g. Pyth `Crypto.VSUI/SUI.RR`. Its value is the ratio's
+   * own on-chain oracle id (200..=255). Once `oracle::set_composite(asset, ratio)` is on chain, the
+   * asset is priced at own feed x ratio and its price is valid only while both feeds are fresh.
+   * `oracleId` (and `coinType`) are the asset's, so {@link filterPriceFeeds} selects the ratio feed
+   * together with the asset's own feed and {@link updateOraclePricesPTB} pushes both.
+   * Absent on an asset's own price feed.
+   */
+  ratioOracleId?: number
 }
 
 /**
