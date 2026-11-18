@@ -71,7 +71,9 @@ export function decodeRegistryEntries(values: { bcs: Uint8Array }[]): RegistryEn
       const version = versions[i],
         key = `${id}:${version}`
       check(
-        BigInt(version) < 100000n &&
+        BigInt(id) > 0n &&
+          BigInt(version) > 0n &&
+          BigInt(version) < 100000n &&
           BigInt(id) * 100000n + BigInt(version) <= U64_MAX &&
           !keys.has(key),
         'READ_FAILED',

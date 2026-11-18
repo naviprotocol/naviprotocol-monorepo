@@ -356,8 +356,8 @@ importers:
         specifier: 2.0.7
         version: 2.0.7(@mysten/sui@2.20.2(typescript@5.8.3))
       '@naviprotocol/lending':
-        specifier: 2.1.0
-        version: 2.1.0(@mysten/sui@2.20.2(typescript@5.8.3))
+        specifier: 2.2.0
+        version: 2.2.0(@mysten/sui@2.20.2(typescript@5.8.3))
       bignumber.js:
         specifier: 9.1.2
         version: 9.1.2
@@ -2060,8 +2060,8 @@ packages:
     peerDependencies:
       '@mysten/sui': '>=2.0.0'
 
-  '@naviprotocol/lending@2.1.0':
-    resolution: {integrity: sha512-t3vZkYF3t9F3Yr4JPu3ONdhr67s9Eif+hsSeJNBgG8i4/UAVi04whc0SPZSRufQj1jySyKJrNDQ3nymK9xXJ1g==}
+  '@naviprotocol/lending@2.2.0':
+    resolution: {integrity: sha512-TdjfCqSZOQvyH3WYn3BCkkHkQNL+gcI2lJgsko3bcguZ318BIiwaTBZyl2D0iClkfnT3e8K+BXXW7/WxN894cQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mysten/sui': '>=2.0.0'
@@ -8801,7 +8801,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@naviprotocol/lending@2.1.0(@mysten/sui@2.20.2(typescript@5.8.3))':
+  '@naviprotocol/lending@2.2.0(@mysten/sui@2.20.2(typescript@5.8.3))':
     dependencies:
       '@mysten/sui': 2.20.2(typescript@5.8.3)
       bignumber.js: 9.1.2

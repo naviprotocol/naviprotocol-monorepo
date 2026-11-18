@@ -17,7 +17,8 @@ import type {
   DataSource,
   MarketSnapshot,
   MultiplySuiClient,
-  Strategy
+  Strategy,
+  RegistryKey
 } from './types'
 import {
   BN,
@@ -37,7 +38,8 @@ import {
   MAINNET_CAP_REGISTRY,
   normalizeCapRegistry,
   decodeRegistryEntries,
-  indexRegistryStrategies
+  indexRegistryStrategies,
+  registryKeyString
 } from './cap-registry'
 import { strategies as builtInStrategies } from './strategies'
 export { ACCOUNT_CAP_TYPE } from './cap-registry'
@@ -50,12 +52,19 @@ export function createNaviDataSource(
     services?: NaviSdkServiceOptions
     capRegistry?: CapRegistryConfig
     strategies?: Strategy[]
+    retiredRegistryKeys?: RegistryKey[]
   } = {}
 ): DataSource {
   const client = options.client ?? defaultClient()
   const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
   const byKey = indexRegistryStrategies(
     jsonCopy(options.strategies ?? Object.values(builtInStrategies))
+  )
+  const retired = new Set((options.retiredRegistryKeys ?? []).map(registryKeyString))
+  check(
+    [...retired].every((key) => !byKey.has(key)),
+    'INVALID_ARGUMENT',
+    'Active and retired Registry keys overlap'
   )
   const opts = { services: options.services, disableCache: true }
   async function prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot) {
@@ -93,7 +102,20 @@ export function createNaviDataSource(
           ]
         })
         const registered = await inspect(client, registry)
-        const entries = decodeRegistryEntries(registered[0]?.returnValues)
+        const allEntries = decodeRegistryEntries(registered[0]?.returnValues)
+        check(
+          allEntries.every((entry) => entry.capId !== address('0x0')),
+          'INVALID_ACCOUNT_CAP',
+          'Registry contains a zero Cap'
+        )
+        check(
+          new Set(allEntries.map((entry) => entry.capId)).size === allEntries.length,
+          'DUPLICATE_ACCOUNT_CAP',
+          'One Cap is registered to multiple strategies'
+        )
+        const entries = allEntries.filter(
+          (entry) => !retired.has(registryKeyString(entry.registryKey))
+        )
         check(
           registered[1]?.returnValues?.length === 3,
           'READ_FAILED',

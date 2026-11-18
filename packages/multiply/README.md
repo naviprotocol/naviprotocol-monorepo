@@ -1,208 +1,163 @@
 # @naviprotocol/multiply
 
-AccountCap-based NAVI Multiply strategy engine for wallets, Auto Vault and Open API.
-Default NAVI reads, native Volo/Haedal quotes and Astros fallback are included.
-The package builds composable Sui PTBs. It never signs or broadcasts transactions.
+Composable NAVI Multiply PTBs using a Registry-bound AccountCap. The SDK reads,
+quotes and builds transactions; it never signs or broadcasts them.
+
+## Phase 1 model
+
+The application owns product registration. Supply its validated `Strategy[]` to
+`createMultiplyClient`; the API's phase 1 directory uses four main-market pairs:
+vSUI/SUI, haSUI/SUI, SUI/USDC (long SUI), and USDSUI/USDC. This SDK release adds
+execution support; it does not approve their production risk policy.
+
+A strategy has distinct collateral and debt tokens. `principalCoinType` can equal
+either. It is the accounting/default withdrawal unit, independent of the selected
+opening input. `acceptedInputCoinTypes` defaults to `[principalCoinType]` and may
+contain either or both pair assets. No third-token principal or input is supported.
 
 ```ts
 import { Transaction } from '@mysten/sui/transactions'
-import { createMultiplyClient, strategies } from '@naviprotocol/multiply'
+import { createMultiplyClient } from '@naviprotocol/multiply'
 
-const multiply = createMultiplyClient()
-const positions = await multiply.getPosition(address, {
-  strategy: strategies.vsuiSui, // omit to read all configured strategies
+// Values come from your reviewed application registry, not wallet input.
+const multiply = createMultiplyClient({
+  strategies: productStrategies,
+  retiredRegistryKeys: retiredProductKeys,
 })
+const strategy = productStrategies.find(s => s.id === 'long-sui')!
 const quote = await multiply.quote(
   address,
-  strategies.vsuiSui,
-  { type: 'open', amount: '10000000000', targetLeverage: '2' },
-  { minHealthFactor: '1.15', maxSlippageBps: 50, maxLeverage: '3' },
+  strategy,
+  { type: 'open', inputCoinType: strategy.collateralCoinType,
+    amount: '1000000000', targetLeverage: '2' },
+  { minHealthFactor: '1.6', maxSlippageBps: 50 }, // example, not approved risk policy
 )
-
 const tx = new Transaction()
-const input = tx.splitCoins(tx.gas, ['10000000000'])[0]
 const built = await multiply.buildPTB(tx, quote, {
-  coins: [{ coinType: strategies.vsuiSui.principalCoinType, coin: input }],
+  coins: [{ coinType: strategy.collateralCoinType, coin: suppliedSuiCoin }],
 })
-// Astros route change goes directly to address; the caller handles the remaining assets.
 if (built.createdAccountCap) tx.transferObjects([built.createdAccountCap], address)
 if (built.coins.length) tx.transferObjects(built.coins.map(c => c.coin), address)
 tx.setSender(address)
+// Caller must simulate before signing. Do not ignore any returned Coin or Cap.
 ```
 
-## Public API
+## API and amount units
 
 | Method | Behavior |
 | --- | --- |
-| `getPosition(address, { strategy? })` | Always returns an array. Missing Cap → `[]`; existing empty Cap → zero position. Returns Cap, amounts, HF and leverage. |
-| `quote(address, strategy, action, constraints)` | Resolves the Cap and reads the snapshot internally. Does not create chain objects. Produces a JSON-serializable estimate and a frozen, versioned execution plan. |
-| `buildPTB(tx, quote, inputs)` | Rechecks Cap, market, fees, state drift and expiry, then appends commands. Returns Cap and every remaining Coin for the caller to use. |
+| `getPosition(address, { strategy? })` | Array of registered positions; missing Cap returns `[]`, retained empty Cap returns zero balances. Invalid reads throw. |
+| `quote(address, strategy, action, constraints)` | Resolves Cap, reads current market/position and freezes a JSON execution plan. Creates no chain objects. |
+| `buildPTB(tx, quote, inputs)` | Rechecks state, fees, Registry, policy constraints and expiry before appending commands. Returns Cap and remaining Coins. |
 
-Actions: `open`, `add_principal`, `remove_principal`, `set_leverage`, `repay`,
-`add_collateral`, `close`. Amounts are **raw integer strings**, never JS numbers.
-They use each token's native decimals (supported range: 0–18), including mixed-precision pairs. The
-default data source converts NAVI's normalized nine-decimal balances into native
-atoms (collateral down, debt up). `MarketSnapshot` prices are USD per whole token;
-`Pool.availableBorrow` remains NAVI-normalized units and `Pool.leftSupply` remains
-whole tokens. Injected data sources must follow the same contract. Frozen execution
-plans now use version 3; earlier quotes must be requested again before building.
-Leverage/HF use decimal strings; slippage uses integer basis points. An action
-with an `amount` requires a positive u64 value. `set_leverage` takes
-`targetLeverage`; add/remove principal optionally take it and otherwise preserve
-the current estimated leverage. `close` takes no amount.
+Amounts are native-precision positive u64 **integer strings**, never JS numbers.
+The default source converts NAVI nine-decimal balances into token atoms, rounding
+collateral down and debt up. Token decimals 0–18 are supported. Market prices are
+USD per whole token; `availableBorrow` remains NAVI-normalized units and
+`leftSupply` remains whole tokens. Custom sources must preserve these units.
 
-`estimate.inputs` defines the required Coin types and amounts. Supply one Coin
-per type; the builder splits only the quoted amount and returns its remainder.
-Repay overpayment is returned. Removing principal guarantees **at least** the
-requested output; any surplus also returns to the caller. `healthFactor: null`
-means no debt; `leverage: null` means an empty position or non-positive equity; inspect the returned balances. These ratios use NAVI's
-oracle valuation, which can differ from a token's market or redemption value.
+| Action | Amount unit / output |
+| --- | --- |
+| `open` | Selected `inputCoinType`, default principal; target leverage required. |
+| `add_principal` | Selected SDK `inputCoinType`, default principal; API phase 1 exposes only principal. |
+| `remove_principal` | Minimum net principal output, excluding wallet gas; optional target leverage. |
+| `set_leverage` | Target leverage only. Returns any route surplus. |
+| `repay` | Debt atoms; unused input returned. |
+| `add_collateral` | Collateral atoms. |
+| `close` | All remaining principal and explicit per-token dust; no amount parameter. |
 
-`execution` is opaque to callers. Do not modify it, reroute during build or cache
-it beyond `expiresAt`. Min outputs include conversion wear/fees before slippage.
-The solver recomputes leverage with conversion quotes, flash fees and NAVI borrow
-fees. One atomic conversion leg is used per initial-release plan, so the total
-slippage budget applies to that leg. Exact integer arithmetic is used throughout.
+HF, LTV and solver leverage use **NAVI risk oracle values**. Economic display
+valuation belongs to the API and may differ for LST backing. Zero debt has null
+HF; empty/non-positive equity has null leverage.
 
-## Converters and injection
+## Execution plan v4
 
-Product strategy registration belongs to the calling application or API. Pass its
-validated registry into the client; adding another supported token pair does not
-require changing or publishing Multiply. The bundled `strategies` export remains
-an optional compatibility preset, not a required allowlist.
+Older plans must be re-quoted. `funding` identifies wallet collateral/debt or no
+input. Each `PlannedConversion` extends `ConversionQuote` with `id`, `purpose`
+(`input | leverage | repayment | output`) and `source`. Quote fields remain flat.
+The current two-asset flows have at most one conversion; arbitrary instruction
+graphs and serial multi-leg conversions are rejected. A DEX route may itself have
+multiple hops, bounded by the single quoted minimum output.
 
-```ts
-const multiply = createMultiplyClient({ strategies: apiOwnedStrategies })
-// Discovery enumerates exactly this registry. quote() accepts a Strategy definition.
-const positions = await multiply.getPosition(address)
-```
+Collateral input is supplied directly; only borrowed debt is converted. Debt
+input may merge with debt flash funding before conversion. A 1x collateral opening
+needs no conversion or flash loan. On a collateral-principal withdrawal/close,
+only the collateral required for debt repayment is sold; the remainder is returned
+as principal. Debt dust remains a separate output. Long SUI therefore exits in SUI.
 
-Registry IDs must be unique. The client snapshots the registry on initialization.
-Strategies bind a stable ID, market and token types to an AccountCap. Keep mutable
-names, display labels and product policies outside that definition. The supported
-execution model remains one collateral token, a distinct debt token and principal
-equal to debt, with lending v2, a health-factor limiter, main-market flash liquidity
-and an immediate converter route. Unsupported capabilities fail explicitly; new
-protocol mechanisms require an appropriate adapter rather than a new product ID.
+The builder independently validates funding, conversion roles, projected balances,
+repayment math and minimum principal output. Different token types never merge.
+`estimate.inputs` defines caller funding. Do not change execution data or reuse an
+expired/partially built plan. The checksum detects mutation; it is **not** a
+signature or permission to accept untrusted client plans. Open API stores quotes
+server-side. The caller must simulate the final composed PTB before signing.
 
-```ts
-import {
-  createMultiplyClient, createNaviDataSource, voloConverter, haedalConverter,
-} from '@naviprotocol/multiply'
+## Converters
 
-const multiply = createMultiplyClient({
-  client,
-  dataSource: createNaviDataSource({ client }), // optional, or your DataSource
-  converters: [voloConverter({ client }), haedalConverter({ client })],
-  // fallbackConverter: customConverter, // optional; default is Astros
-})
-```
+Volo and Haedal use live contract getters. Eligible routes are compared by minimum
+net output. Astros is the fallback only for explicit route unavailability or
+minimum-amount errors; malformed quotes, invalid inputs and read failures propagate.
+A build never silently switches routes. Haedal instant redemption requires gross
+SUI equivalent >= 1 SUI **before** its service fee in the pinned staking module.
+Unknown conversion fees are omitted, never fabricated as zero. Known fees are
+marked `includedInExpectedOutput: true`. Optional route metadata describes provider,
+hops, pools/DEX and observation time; it is separate from opaque executable data.
 
-A strategy describes tokens and lending market, not a converter. Eligible primary
-converters are compared by minimum net output, then stable ID. If none can quote,
-the fallback is used. A malformed primary quote fails instead of becoming a
-silently accepted route. Volo uses its live `get_amount_out` view; Haedal uses
-live conversion views and configured fees. Only immediate Coin → Coin conversion
-is supported. Native instant redemption can become unavailable; requesting a new
-quote can select the fallback. A build never silently selects another route.
+Astros is pinned to 2.0.7. Its route change goes directly to `quote.address`, not
+the gas sponsor or `built.coins`. Vault integrations must account for that custody
+policy or supply another converter. Its numeric builder rejects amounts above JS
+safe integer range. When using the converter directly, pass a validated
+`{ changeRecipient: address }` as the fourth `buildPTB` argument.
 
-Astros uses the published `@naviprotocol/astros-aggregator-sdk@2.0.7` with its default
-fee and positive-slippage behavior. Route change is transferred directly to the
-user in `quote.address`, independently of the transaction sender or gas sponsor.
-It is not included in `built.coins`. The engine's other remaining coins are still
-returned to the caller. Its numeric route builder limits supported amounts to safe
-JS integers; larger routes are explicitly rejected. Minimum output, health factor
-and flash repayment checks remain enforced; extra fees can cause a PTB to abort
-if those bounds cannot be met.
+## Registry and injected sources
 
-When calling the exported Astros converter directly, pass the real user address as
-the fourth build argument: `converter.buildPTB(tx, quote, coin, { changeRecipient: address })`.
-A missing, malformed or zero recipient is rejected before appending swap commands.
+Keys `(strategyNumericId, strategyVersion)` are permanent execution identities,
+unique per registry definition. Never reassign a deployed key to different assets
+or market. New Caps are created and registered atomically; close retains the Cap.
+Invalid ownership, duplicate Caps/accounts, unsupported E-Mode and unknown keys
+fail explicitly. Only **explicit** `retiredRegistryKeys` may be skipped; structural,
+identity and duplicate checks still run first. Retiring a key does not move funds.
 
-A custom `DataSource` must supply complete, coherent, verified Cap/position/risk/
-price/fee data and prepare the oracle commands for its network. Failures must not
-be converted to empty positions. Custom converters and data sources execute
-trusted application code. Built-in deployments target **Sui mainnet**; passing a
-testnet client alone does not switch their contract addresses.
+The source and engine must receive identical strategies, retired keys and
+`capRegistry`. Custom sources declare `capRegistry`; wrapped Cap resolvers must
+bind any supplied transaction-result Cap to the quoted identity/state. Object-ID
+overrides must match. Sender must equal quote.address. No wallet scan fallback or
+migration of unregistered Caps is performed.
 
-## AccountCap and Vault integration
+The optional `DataSource.readConsistentPosition(cap, strategy, signal)` capability
+is for proven historical valuation: it returns native amounts, accountCapId,
+accountOwner, marketKey, stateCheckpoint, stable stateId, completed:true and the
+market snapshot. The amounts and accrued interest must come from one completed
+chain view, not independent latest reads with an attached checkpoint number.
+Respect cancellation. **The default NAVI source does not implement this capability.**
+The API consequently reports lifetime yield unavailable until a conforming source
+and complete history watermark are available. Basic positions and risk still work.
 
-Caps are discovered exclusively through the mainnet Multiply Registry. Fixed keys
-`(strategyNumericId, strategyVersion)` bind vSUI/SUI to `(1,1)`, haSUI/SUI to `(2,1)`;
-Open API additionally configures short SUI as `(3,1)`. Every custom Strategy must
-supply a unique `registryKey` with canonical integer strings. The version is below
-100000 and the combined key must fit u64; never reassign a key to different assets.
+Custom adapters are trusted application code. Built-in contract deployments target
+Sui mainnet; changing only the client URL does not switch those addresses. E-Mode,
+isolated phase 2, third-token inputs and delayed redemption are out of scope.
+The exported `strategies.vsuiSui`/`hasuiSui` remain legacy dedicated-market presets
+(keys 1:1/2:1); phase 1 products must use the API-owned main-market registry.
 
-New Caps are created and registered atomically in the opening PTB. The registry
-rejects a duplicate key for the same sender. The reader verifies object type,
-ownership and accountOwner, rejects duplicate Cap/accounts and E-Mode product Caps.
-Names/descriptions are neither read nor written. Unregistered Caps are intentionally
-excluded, with no migration or wallet-scan fallback. Close retains the registered Cap.
-Invalid or transferred registered Caps fail explicitly rather than creating replacements.
+## Verification and release
 
-`createNaviDataSource({ client, capRegistry, strategies })` and the engine must share
-the same deployment and definitions. A custom DataSource declares its `capRegistry`.
-Quote/build bind these settings and the fixed numeric key; transaction sender must
-match quote.address. Unknown keys fail with `UNSUPPORTED_REGISTRY_STRATEGY`.
-
-Auto Vault can inject a resolver for wrapped Caps and pass a PTB result through
-`inputs.accountCap`. The resolver/caller is responsible for binding that transaction
-result to the quoted Cap and snapshot; a transaction result cannot be authenticated
-by its JS handle. Plain object-ID overrides must match the quoted ID. The engine
-keeps Cap transfer/wrapping and final Coin custody with the caller, except for
-Astros route change, which is refunded directly to `quote.address`. Vault integrations
-must account for that refund policy or inject a converter with their custody policy.
-
-Open API should retain quotes server-side or authenticate its quote envelope.
-The SHA-256 checksum detects accidental mutation; it is **not** a signature or
-permission to trust arbitrary client-supplied routes. A composed PTB must be
-simulated by its caller before signing. HF, minimum conversion output, requested
-principal output and optional maximum leverage are also enforced on chain. Close
-reads the current balance in the PTB and asserts that both balances are zero.
-
-## Initial release boundaries
-
-- Built-in strategies: `vsuiSui`, `hasuiSui`, in their dedicated NAVI markets.
-  Main-market flash liquidity is independent of the position market.
-- Principal must equal debt; collateral must be distinct. The default reader
-  currently supports nine-decimal pools. An unsupported E-Mode override is rejected.
-- Delayed redemption/claim workflows, generic mixed-asset positions, cross-market
-  position aggregation, APY/history and on-chain unique-Cap registration are not
-  implemented. The data source checks assets in the selected market; it cannot
-  establish exclusive use of a Cap across every other market.
-- Source reads and quote→build checks do not lock chain state. Changed liquidity,
-  prices or fees can make the transaction abort. Discard a partially built PTB
-  after a builder/network error; obtain a fresh quote rather than reuse it.
-- Package publication is a separate release step. The implementation is accompanied
-  by mainnet simulation evidence, not signed/persisted chain transactions.
-
-## Reproduce
-
-From the monorepo root (Node 24 and pnpm 10.1.0 used for the recorded run):
+From the monorepo root (Node 24, pnpm 10.1.0):
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm --filter @naviprotocol/lending --filter @naviprotocol/astros-aggregator-sdk build
+pnpm --filter @naviprotocol/multiply test
 pnpm --filter @naviprotocol/multiply typecheck
+pnpm --filter @naviprotocol/multiply lint
 pnpm --filter @naviprotocol/multiply build
-pnpm --filter @naviprotocol/multiply test:e2e
 ```
 
-The test runner was committed before implementation (`57804f1`, with live-schema
-fixture corrections in `fba268f`). No unit tests or mocked protocol implementations
-were added. See [failure inventory](e2e/FAILURE-MATRIX.md) and [verification notes](docs/verification.md).
+This preview pins published Lending 2.2.0 and Astros 2.0.7. Package it with `npm pack`
+after building; API integration uses an exact local tarball plus lockfile integrity
+until npm publication. A local package is not an npm release.
 
-Each run writes input, frozen quotes, unsigned transaction bytes, commands, actual
-post-operation balances/HF, simulation responses, a report and SHA-256 manifest
-under `out/multiply/`. `MULTIPLY_E2E_ADDRESS` selects a **public funded simulation
-address**; its key is neither read nor required. Defaults use the public NAVI
-oracle sender. `MULTIPLY_E2E_ONLY` selects scenarios; only a complete run constitutes
-full-suite evidence. Live chain state and service availability can change results.
-The lifecycle fixture is real VM execution with a transient injected snapshot;
-it does not prove persisted discovery or concurrent uniqueness.
-
-The packed-package consumer replay is documented in the verification report.
-
-The package pins published Lending 2.1.0 and Astros 2.0.7 dependencies. The clean
-package consumer installs only the Multiply tarball locally and resolves these
-dependencies from npm, without workspace links or dependency overrides.
+The phase 1 tests exercise both funding relationships, management/close outputs,
+threshold fallback and malformed/retired identities. Historical documents under
+`docs/` and the existing `e2e/` results concern earlier presets: they do not prove
+phase 1 hosted simulation or signed-wallet acceptance. Each product must progress
+through open simulation → human sample creation → management simulation → human
+management/close, with matching Registry keys and source/artifact revisions.

@@ -18,12 +18,20 @@ const raw = (value: string | number, decimals: number) =>
   new BN(value).shiftedBy(decimals).toFixed(0)
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
-function fixture(collateralDecimals: number, debtDecimals: number, existing = false) {
+function fixture(
+  collateralDecimals: number,
+  debtDecimals: number,
+  existing = false,
+  collateralPrincipal = false
+) {
   const strategy: Strategy = {
     id: `external-pair-${collateralDecimals}-${debtDecimals}`,
     market: 'external-market',
     registryKey: { strategyNumericId: '100', strategyVersion: '1' },
-    principalCoinType: debtType,
+    principalCoinType: collateralPrincipal ? collateralType : debtType,
+    acceptedInputCoinTypes: collateralPrincipal
+      ? [collateralType, debtType]
+      : [debtType, collateralType],
     collateralCoinType: collateralType,
     debtCoinType: debtType
   }
@@ -157,7 +165,7 @@ describe.each([
       { type: 'open', amount: raw(100, dd), targetLeverage: '2' },
       constraints
     )
-    expect(q.execution.version).toBe(3)
+    expect(q.execution.version).toBe(4)
     expect(new BN(q.execution.collateralAfter).minus(raw(100, cd)).abs().lte(2)).toBe(true)
     expect(new BN(q.execution.debtAfter).minus(raw(100, dd)).abs().lte(2)).toBe(true)
     expect(Number(q.estimate.leverage)).toBeCloseTo(2, 6)
@@ -301,8 +309,10 @@ it('converts normalized fractional interest conservatively and scales the drift 
 it('rejects unsupported principal and E-Mode capabilities without hardcoding pair IDs', () => {
   const f = fixture(9, 6)
   expect(() =>
-    createMultiplyClient({ strategies: [{ ...f.strategy, principalCoinType: collateralType }] })
-  ).toThrow('principal = debt')
+    createMultiplyClient({
+      strategies: [{ ...f.strategy, principalCoinType: '0x33::fixture::THIRD' }]
+    })
+  ).toThrow('Principal must equal collateral or debt')
   expect(() => createMultiplyClient({ strategies: [{ ...f.strategy, emodeId: 1 }] })).toThrow(
     'E-Mode'
   )
@@ -683,4 +693,294 @@ it('discovers all configured positions once per operation and rejects custom-sou
   expect(read).toHaveBeenCalledTimes(1)
   f.cap.strategyId = 'another'
   await expect(engine.getPosition(owner)).rejects.toMatchObject({ code: 'INVALID_ACCOUNT_CAP' })
+})
+
+// Phase 1: independent numeric expectations plus actual PTB coin-type inspection.
+describe.each([
+  [9, 6],
+  [6, 9]
+])('phase 1 principal=collateral %i/%i', (cd, dd) => {
+  it.each(['collateral', 'debt'])('opens with %s at 1x and 2x', async (kind) => {
+    for (const targetLeverage of ['1', '2']) {
+      const f = fixture(cd, dd, false, true)
+      const coin = kind === 'collateral' ? collateralType : debtType
+      const amount = kind === 'collateral' ? raw(50, cd) : raw(100, dd)
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount, inputCoinType: coin, targetLeverage },
+        constraints
+      )
+      expect(q.estimate.inputs).toEqual([{ coinType: coin, amount }])
+      expect(new BN(q.execution.collateralAfter).shiftedBy(-cd).toNumber()).toBeCloseTo(
+        targetLeverage === '1' ? 50 : 100,
+        5
+      )
+      expect(new BN(q.execution.debtAfter).shiftedBy(-dd).toNumber()).toBeCloseTo(
+        targetLeverage === '1' ? 0 : 100,
+        5
+      )
+      expect(q.execution.conversions.length).toBe(
+        kind === 'collateral' && targetLeverage === '1' ? 0 : 1
+      )
+      const { tx } = await build(f, q)
+      const swaps = tx
+        .getData()
+        .commands.filter((c) => c.$kind === 'MoveCall' && c.MoveCall.function === 'swap')
+      expect(swaps.length).toBe(q.execution.conversions.length)
+      for (const call of swaps)
+        if (call.$kind === 'MoveCall')
+          expect(call.MoveCall.typeArguments).toEqual([debtType, collateralType])
+    }
+  })
+  it.each([
+    'add_principal',
+    'remove_principal',
+    'repay',
+    'add_collateral',
+    'close',
+    'up',
+    'down',
+    'debt_free'
+  ])('manages %s and preserves output coin types', async (type) => {
+    const f = fixture(cd, dd, true, true)
+    const action: Action =
+      type === 'up' || type === 'down' || type === 'debt_free'
+        ? {
+            type: 'set_leverage',
+            targetLeverage: type === 'up' ? '2.5' : type === 'down' ? '1.5' : '1'
+          }
+        : type === 'close'
+          ? { type: 'close' }
+          : {
+              type: type as 'add_principal' | 'remove_principal' | 'repay' | 'add_collateral',
+              amount: raw(10, type === 'repay' ? dd : cd)
+            }
+    const q = await f.engine.quote(owner, f.strategy, action, constraints)
+    if (type === 'remove_principal') {
+      expect(q.estimate.minOutputs).toContainEqual({
+        coinType: collateralType,
+        amount: raw(10, cd)
+      })
+      expect(Number(q.estimate.leverage)).toBeCloseTo(2, 4)
+    }
+    if (type === 'close') {
+      expect(q.execution.collateralAfter).toBe('0')
+      expect(q.execution.debtAfter).toBe('0')
+      expect(q.estimate.outputs[0].coinType).toBe(collateralType)
+      expect(new BN(q.estimate.outputs[0].amount).shiftedBy(-cd).toNumber()).toBeCloseTo(50, 1)
+      expect(BigInt(q.execution.conversions[0].input.amount)).toBeLessThan(
+        BigInt(q.execution.withdrawAmount)
+      )
+    }
+    const { tx } = await build(f, q)
+    const swaps = tx
+      .getData()
+      .commands.filter((c) => c.$kind === 'MoveCall' && c.MoveCall.function === 'swap')
+    if (['close', 'remove_principal', 'down', 'debt_free'].includes(type))
+      for (const call of swaps)
+        if (call.$kind === 'MoveCall')
+          expect(call.MoveCall.typeArguments).toEqual([collateralType, debtType])
+  })
+  it('closes an unlevered collateral position without conversion or flash loan', async () => {
+    const f = fixture(cd, dd, true, true)
+    f.setPosition({ collateralAmount: raw(100, cd), debtAmount: '0' })
+    const q = await f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+    expect(q.execution.conversions).toEqual([])
+    expect(q.execution.flashAmount).toBe('0')
+    expect(q.estimate.minOutputs).toEqual([{ coinType: collateralType, amount: raw(100, cd) }])
+    await build(f, q)
+  })
+})
+
+it('rejects changed funding roles even with a recomputed checksum, before mutating a PTB', async () => {
+  const { checksum } = await import('../src/utils')
+  const f = fixture(9, 6, false, true)
+  const q = await f.engine.quote(
+    owner,
+    f.strategy,
+    { type: 'open', inputCoinType: collateralType, amount: raw(50, 9), targetLeverage: '2' },
+    constraints
+  )
+  q.execution.conversions[0].source = 'wallet-and-flash'
+  q.execution.checksum = ''
+  q.execution.checksum = await checksum(q)
+  const tx = new Transaction()
+  const coin = tx.object('0x100')
+  await expect(
+    f.engine.buildPTB(tx, q, { coins: [{ coinType: collateralType, coin }] })
+  ).rejects.toMatchObject({ code: 'INVALID_QUOTE' })
+  expect(tx.getData().commands).toEqual([])
+})
+it('filters explicitly retired custom-source Caps only after duplicate identity checks', async () => {
+  const f = fixture(9, 6, true)
+  const retiredKey = { strategyNumericId: '1', strategyVersion: '1' }
+  const retired = {
+    ...f.cap,
+    id: '0x' + 'c'.repeat(64),
+    accountOwner: '0x' + 'd'.repeat(64),
+    strategyId: 'retired',
+    registryKey: retiredKey
+  }
+  f.source.listAccountCaps = async () => [retired, f.cap]
+  const engine = createMultiplyClient({
+    dataSource: f.source,
+    strategies: [f.strategy],
+    retiredRegistryKeys: [retiredKey]
+  })
+  expect((await engine.getPosition(owner)).map((p) => p.strategy.id)).toEqual([f.strategy.id])
+  f.source.listAccountCaps = async () => [retired, { ...f.cap, id: retired.id }]
+  await expect(engine.getPosition(owner)).rejects.toMatchObject({ code: 'DUPLICATE_ACCOUNT_CAP' })
+})
+
+describe.each([
+  [9, 6],
+  [6, 9]
+])('bounded collateral-principal exits (%i/%i decimals)', (cd, dd) => {
+  it.each(['close', 'one'])(
+    'clears distressed positive-equity debt with %s, fees and slippage',
+    async (kind) => {
+      for (const [feeBps, slippage] of [
+        [0, 0],
+        [9, 20]
+      ]) {
+        const f = fixture(cd, dd, true, true)
+        f.setPosition({ collateralAmount: raw(100, cd), debtAmount: raw(199, dd) })
+        f.market.flash.feeBps = String(feeBps)
+        const original = f.converter.quote
+        f.converter.quote = vi.fn(async (r) => {
+          expect(new BN(r.amountIn).lte(raw(100, cd))).toBe(true)
+          const q = await original(r)
+          q.minOutput.amount = (
+            (BigInt(q.expectedOutput.amount) * BigInt(10000 - slippage)) /
+            10000n
+          ).toString()
+          return q
+        })
+        const action: Action =
+          kind === 'close' ? { type: 'close' } : { type: 'set_leverage', targetLeverage: '1' }
+        const q = await f.engine.quote(owner, f.strategy, action, {
+          minHealthFactor: '1.2',
+          maxSlippageBps: slippage
+        })
+        expect(q.execution.debtAfter).toBe('0')
+        expect(
+          new BN(q.execution.conversions[0].minOutput.amount).gte(q.execution.flashRepayment)
+        ).toBe(true)
+        const equity = new BN(q.execution.collateralAfter).shiftedBy(-cd).times(2)
+        const output = q.estimate.outputs.reduce(
+          (sum, coin) =>
+            sum.plus(
+              new BN(coin.amount)
+                .shiftedBy(coin.coinType === collateralType ? -cd : -dd)
+                .times(coin.coinType === collateralType ? 2 : 1)
+            ),
+          new BN(0)
+        )
+        const fees = new BN(q.execution.flashRepayment)
+          .minus(q.execution.flashAmount)
+          .shiftedBy(-dd)
+        expect(equity.plus(output).plus(fees).minus(1).abs().toNumber()).toBeLessThanOrEqual(
+          2 / 10 ** Math.min(cd, dd)
+        )
+        if (kind === 'close')
+          expect(
+            q.estimate.outputs.some(
+              (coin) => coin.coinType === collateralType && BigInt(coin.amount) > 0n
+            )
+          ).toBe(true)
+        else expect(BigInt(q.execution.collateralAfter)).toBeGreaterThan(0n)
+        await build(f, q)
+      }
+    }
+  )
+  it.each(['close', 'one'])(
+    'rejects %s when all collateral cannot cover actual minimum output and fees',
+    async (kind) => {
+      const f = fixture(cd, dd, true, true)
+      f.setPosition({ collateralAmount: raw(100, cd), debtAmount: raw(199, dd) })
+      f.market.flash.feeBps = '100'
+      const original = f.converter.quote
+      f.converter.quote = vi.fn(original)
+      const action: Action =
+        kind === 'close' ? { type: 'close' } : { type: 'set_leverage', targetLeverage: '1' }
+      await expect(
+        f.engine.quote(owner, f.strategy, action, { minHealthFactor: '1.2', maxSlippageBps: 0 })
+      ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION' })
+      expect(f.converter.quote).toHaveBeenCalledWith(
+        expect.objectContaining({ amountIn: raw(100, cd) })
+      )
+      expect(vi.mocked(f.converter.quote).mock.calls.length).toBeLessThanOrEqual(20)
+    }
+  )
+})
+
+describe('independent funding checks including nonzero fees', () => {
+  it.each([0, 50, 100])('collateral principal with %i bps slippage', async (slippage) => {
+    for (const [cd, dd] of [
+      [9, 6],
+      [6, 9]
+    ])
+      for (const kind of ['open-c', 'open-d', 'close', 'withdraw', 'down', 'one']) {
+        const f = fixture(cd, dd, !kind.startsWith('open'), true)
+        f.market.flash.feeBps = '9'
+        f.source.readBorrowFeeBps = async () => '30'
+        const original = f.converter.quote
+        f.converter.quote = async (r) => {
+          const q = await original(r)
+          q.minOutput.amount = (
+            (BigInt(q.expectedOutput.amount) * BigInt(10000 - slippage)) /
+            10000n
+          ).toString()
+          return q
+        }
+        const a: Action = kind.startsWith('open')
+          ? {
+              type: 'open',
+              amount: kind === 'open-c' ? raw(50, cd) : raw(100, dd),
+              inputCoinType: kind === 'open-c' ? collateralType : debtType,
+              targetLeverage: '2'
+            }
+          : kind === 'close'
+            ? { type: 'close' }
+            : kind === 'withdraw'
+              ? { type: 'remove_principal', amount: raw(10, cd) }
+              : { type: 'set_leverage', targetLeverage: kind === 'one' ? '1' : '1.5' }
+        const q = await f.engine.quote(owner, f.strategy, a, {
+          minHealthFactor: '1.2',
+          maxSlippageBps: slippage,
+          maxLeverage: '3'
+        })
+        await build(f, q)
+        const e = q.execution
+        const initial = kind.startsWith('open') ? new BN(0) : new BN(100)
+        const walletIn = q.estimate.inputs.reduce(
+          (sum, p) =>
+            sum.plus(
+              new BN(p.amount)
+                .shiftedBy(p.coinType === collateralType ? -cd : -dd)
+                .times(p.coinType === collateralType ? 2 : 1)
+            ),
+          new BN(0)
+        )
+        const equity = new BN(e.collateralAfter)
+          .shiftedBy(-cd)
+          .times(2)
+          .minus(new BN(e.debtAfter).shiftedBy(-dd))
+        const output = q.estimate.outputs.reduce(
+          (sum, p) =>
+            sum.plus(
+              new BN(p.amount)
+                .shiftedBy(p.coinType === collateralType ? -cd : -dd)
+                .times(p.coinType === collateralType ? 2 : 1)
+            ),
+          new BN(0)
+        )
+        const costs = new BN(e.flashRepayment).minus(e.flashAmount).plus(e.borrowFee).shiftedBy(-dd)
+        expect(
+          equity.plus(output).plus(costs).minus(initial).minus(walletIn).abs().toNumber(),
+          `${cd}/${dd} ${kind}`
+        ).toBeLessThanOrEqual(2 / 10 ** Math.min(cd, dd))
+      }
+  })
 })

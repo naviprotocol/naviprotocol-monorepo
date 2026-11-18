@@ -21,12 +21,15 @@ export interface Strategy {
   principalCoinType: string
   collateralCoinType: string
   debtCoinType: string
+  /** Defaults to principal only. Entries must be collateral or debt. */
+  acceptedInputCoinTypes?: string[]
   /** Reserved for strategies with an explicitly supported E-Mode risk model. */
   emodeId?: number
 }
 export type Action =
-  | { type: 'open'; amount: string; targetLeverage: string }
-  | { type: 'add_principal' | 'remove_principal'; amount: string; targetLeverage?: string }
+  | { type: 'open'; amount: string; targetLeverage: string; inputCoinType?: string }
+  | { type: 'add_principal'; amount: string; targetLeverage?: string; inputCoinType?: string }
+  | { type: 'remove_principal'; amount: string; targetLeverage?: string }
   | { type: 'set_leverage'; targetLeverage: string }
   | { type: 'repay' | 'add_collateral'; amount: string }
   | { type: 'close' }
@@ -80,6 +83,22 @@ export interface DataSource {
     market?: MarketSnapshot
   ): Promise<PositionAmounts>
   readBorrowFeeBps(market: MarketSnapshot, accountOwner?: string): Promise<string>
+  /** Optional capability. Never synthesize this from separate latest reads. */
+  readConsistentPosition?(
+    cap: AccountCap,
+    strategy: Strategy,
+    signal: AbortSignal
+  ): Promise<
+    PositionAmounts & {
+      accountCapId: string
+      accountOwner: string
+      marketKey: string
+      stateCheckpoint: string
+      stateId: string
+      completed: true
+      market: MarketSnapshot
+    }
+  >
   prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot): Promise<void>
 }
 export interface ConversionRequest {
@@ -96,6 +115,19 @@ export interface ConversionQuote {
   expiresAt: number
   /** Opaque JSON, interpreted only by the converter that produced it. */
   data: unknown
+  fees?: { coinType: string; amount: string; feeKind: string; includedInExpectedOutput: true }[]
+  route?: {
+    provider: string
+    hops: { coinIn: string; coinOut: string; poolId?: string; dex?: string; feeRate?: string }[]
+    observedAt: number
+  }
+}
+export type Funding = { kind: 'none' } | { kind: 'collateral' | 'debt'; input: CoinAmount }
+/** Fixed flow roles, not a caller-supplied transaction language. */
+export interface PlannedConversion extends ConversionQuote {
+  id: string
+  purpose: 'input' | 'leverage' | 'repayment' | 'output'
+  source: 'wallet' | 'flash' | 'wallet-and-flash' | 'withdrawal' | 'surplus'
 }
 export interface Converter {
   id: string
@@ -110,12 +142,13 @@ export interface Converter {
   ): Promise<{ coinOut: TransactionObjectArgument; change: CoinInput[] }>
 }
 export interface ExecutionPlan {
-  version: 3
+  version: 4
   capRegistry: CapRegistryConfig
   accountCap: { kind: 'create'; registryKey: RegistryKey } | ({ kind: 'existing' } & AccountCap)
   snapshot: PositionAmounts
   market: MarketSnapshot
-  conversions: ConversionQuote[]
+  funding: Funding
+  conversions: PlannedConversion[]
   direction: 'increase' | 'decrease' | 'repay' | 'add_collateral'
   flashAmount: string
   flashRepayment: string
@@ -158,6 +191,8 @@ export interface MultiplyOptions {
   capRegistry?: CapRegistryConfig
   dataSource?: DataSource
   strategies?: Strategy[]
+  /** Explicitly retired keys are skipped only after validating the complete registry. */
+  retiredRegistryKeys?: RegistryKey[]
   converters?: Converter[]
   /** Omitted: Astros. Used only when no eligible primary converter can quote. */
   fallbackConverter?: Converter

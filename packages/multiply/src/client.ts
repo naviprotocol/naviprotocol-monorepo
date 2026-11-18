@@ -42,6 +42,7 @@ import {
   sameCoin,
   uint
 } from './utils'
+import { validateFunding } from './funding'
 
 export function createMultiplyClient(options: MultiplyOptions = {}) {
   const client = options.client ?? defaultClient()
@@ -62,6 +63,12 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     'Strategy registry contains duplicate ids'
   )
   const byKey = indexRegistryStrategies(strategyRegistry)
+  const retired = new Set((options.retiredRegistryKeys ?? []).map(registryKeyString))
+  check(
+    [...retired].every((key) => !byKey.has(key)),
+    'INVALID_ARGUMENT',
+    'Active and retired Registry keys overlap'
+  )
   const capRegistry = normalizeCapRegistry(options.capRegistry ?? MAINNET_CAP_REGISTRY)
   const source: DataSource =
     options.dataSource ??
@@ -69,7 +76,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       client,
       services: options.services,
       capRegistry,
-      strategies: strategyRegistry
+      strategies: strategyRegistry,
+      retiredRegistryKeys: options.retiredRegistryKeys
     })
   function assertSourceBinding(code = 'INVALID_ARGUMENT') {
     check(
@@ -115,10 +123,22 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       debtCoinType: coinType(input.debtCoinType)
     }
     check(
-      sameCoin(s.principalCoinType, s.debtCoinType) &&
+      (sameCoin(s.principalCoinType, s.debtCoinType) ||
+        sameCoin(s.principalCoinType, s.collateralCoinType)) &&
         !sameCoin(s.collateralCoinType, s.debtCoinType),
       'STRATEGY_UNSUPPORTED',
-      'Requires principal = debt and a distinct collateral token'
+      'Principal must equal collateral or debt, with distinct collateral and debt'
+    )
+    s.acceptedInputCoinTypes = (s.acceptedInputCoinTypes ?? [s.principalCoinType]).map(coinType)
+    check(
+      s.acceptedInputCoinTypes.length > 0 &&
+        s.acceptedInputCoinTypes[0] === s.principalCoinType &&
+        new Set(s.acceptedInputCoinTypes).size === s.acceptedInputCoinTypes.length &&
+        s.acceptedInputCoinTypes.every(
+          (type) => type === s.collateralCoinType || type === s.debtCoinType
+        ),
+      'STRATEGY_UNSUPPORTED',
+      'Accepted inputs must be distinct strategy assets with principal first'
     )
     return s
   }
@@ -128,32 +148,35 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     const keys = new Set<string>(),
       ids = new Set<string>(),
       owners = new Set<string>()
-    return caps.map((cap) => {
-      const key = registryKeyString(cap.registryKey)
-      const configured = byKey.get(key)
-      check(configured, 'UNSUPPORTED_REGISTRY_STRATEGY', 'Unknown registered Multiply strategy')
-      check(
-        configured.id === cap.strategyId,
-        'INVALID_ACCOUNT_CAP',
-        'Cap numeric binding differs from strategy ID'
-      )
-      const id = address(cap.id),
-        accountOwner = address(cap.accountOwner)
-      check(
-        id !== address('0x0') && accountOwner !== address('0x0'),
-        'INVALID_ACCOUNT_CAP',
-        'Zero Cap identity'
-      )
-      check(
-        !keys.has(key) && !ids.has(id) && !owners.has(accountOwner),
-        'DUPLICATE_ACCOUNT_CAP',
-        'Duplicate strategy, Cap or lending account in Registry'
-      )
-      keys.add(key)
-      ids.add(id)
-      owners.add(accountOwner)
-      return { ...cap, id, accountOwner, registryKey: { ...cap.registryKey } }
-    })
+    return caps
+      .map((cap) => {
+        const key = registryKeyString(cap.registryKey)
+        const configured = byKey.get(key)
+        const id = address(cap.id),
+          accountOwner = address(cap.accountOwner)
+        check(
+          id !== address('0x0') && accountOwner !== address('0x0'),
+          'INVALID_ACCOUNT_CAP',
+          'Zero Cap identity'
+        )
+        check(
+          !keys.has(key) && !ids.has(id) && !owners.has(accountOwner),
+          'DUPLICATE_ACCOUNT_CAP',
+          'Duplicate strategy, Cap or lending account in Registry'
+        )
+        keys.add(key)
+        ids.add(id)
+        owners.add(accountOwner)
+        if (retired.has(key)) return null
+        check(configured, 'UNSUPPORTED_REGISTRY_STRATEGY', 'Unknown registered Multiply strategy')
+        check(
+          configured.id === cap.strategyId,
+          'INVALID_ACCOUNT_CAP',
+          'Cap numeric binding differs from strategy ID'
+        )
+        return { ...cap, id, accountOwner, registryKey: { ...cap.registryKey } }
+      })
+      .filter((cap): cap is AccountCap => cap !== null)
   }
   function findCap(caps: AccountCap[], strategy: Strategy) {
     const key = registryKeyString(strategy.registryKey)
@@ -194,6 +217,15 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     check(owner !== address('0x0'), 'INVALID_ARGUMENT', 'Multiply owner cannot be zero')
     validateAction(action, constraints)
     const strategy = await resolveStrategy(suppliedStrategy)
+    if (action.type === 'open' || action.type === 'add_principal') {
+      const inputCoinType = coinType(action.inputCoinType ?? strategy.principalCoinType)
+      check(
+        strategy.acceptedInputCoinTypes!.includes(inputCoinType),
+        'UNSUPPORTED_INPUT_COIN',
+        'Input coin is not accepted by this strategy'
+      )
+      action = { ...action, inputCoinType }
+    }
     const cap = findCap(await loadCaps(owner), strategy)
     check(
       cap || action.type === 'open',
@@ -269,7 +301,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
   ): Promise<BuildResult> {
     const q = jsonCopy(suppliedQuote)
     check(
-      q.execution?.version === 3,
+      q.execution?.version === 4,
       'INVALID_QUOTE',
       'Unknown quote version; request a fresh quote'
     )
@@ -312,6 +344,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     validateAction(q.action, q.constraints)
     const e = q.execution,
       s = q.strategy
+    validateFunding(q)
     const coins = inputs.coins ?? []
     check(
       coins.length === q.estimate.inputs.length,
@@ -536,8 +569,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
             s.debtCoinType
           )
         : coin
-    const convert = async (coin: TransactionObjectArgument) => {
-      const conversion = e.conversions[0]
+    const convert = async (
+      coin: TransactionObjectArgument,
+      conversion: (typeof e.conversions)[number]
+    ) => {
       const built = await registry.get(conversion.converterId)!.buildPTB(tx, conversion, coin, {
         changeRecipient: q.address
       })
@@ -555,13 +590,17 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       deposit(exact(s.collateralCoinType, q.estimate.inputs[0].amount))
     else if (e.direction === 'increase') {
       let funds = flashCoin
-      if (q.estimate.inputs.length) {
-        const contribution = exact(s.principalCoinType, q.estimate.inputs[0].amount)
-        if (funds) tx.mergeCoins(funds, [contribution])
+      if (e.funding.kind !== 'none') {
+        const contribution = exact(e.funding.input.coinType, e.funding.input.amount)
+        if (e.funding.kind === 'collateral') deposit(contribution)
+        else if (funds) tx.mergeCoins(funds, [contribution])
         else funds = contribution
       }
-      check(funds, 'INVALID_QUOTE', 'Increase plan has no funds')
-      deposit(await convert(funds))
+      for (const conversion of e.conversions) {
+        check(funds, 'INVALID_QUOTE', 'Missing conversion funding')
+        deposit(await convert(funds, conversion))
+        funds = undefined
+      }
       if (receipt) {
         const balance = tx.moveCall({
           target: `${config.package}::incentive_v3::borrow_with_account_cap_v2`,
@@ -645,15 +684,28 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         }),
         s.collateralCoinType
       )
-      const conversionInput = tx.splitCoins(collateral, [e.withdrawAmount])[0]
+      let debtOutput: TransactionObjectArgument | undefined
+      for (const conversion of e.conversions) {
+        const conversionInput = tx.splitCoins(collateral, [conversion.input.amount])[0]
+        debtOutput = await convert(conversionInput, conversion)
+      }
+      if (repayChange) {
+        if (debtOutput) tx.mergeCoins(debtOutput, [repayChange])
+        else debtOutput = repayChange
+      }
+      if (debtOutput) debtOutput = repayFlash(debtOutput)
+      const principalOutput = sameCoin(s.principalCoinType, s.collateralCoinType)
+        ? collateral
+        : debtOutput
+      check(principalOutput, 'INVALID_QUOTE', 'Missing principal output')
+      if (q.action.type === 'remove_principal') minOutputGuard(tx, principalOutput, q.action.amount)
+      for (const minimum of q.estimate.minOutputs) {
+        const coin = sameCoin(minimum.coinType, s.collateralCoinType) ? collateral : debtOutput
+        check(coin, 'INVALID_QUOTE', 'Missing minimum output coin')
+        minOutputGuard(tx, coin, minimum.amount)
+      }
       change.push({ coinType: s.collateralCoinType, coin: collateral })
-      const output = await convert(conversionInput)
-      if (repayChange) tx.mergeCoins(output, [repayChange])
-      const remaining = repayFlash(output)
-      // Requested principal withdrawal is an on-chain minimum, including all converter/flash costs.
-      if (q.action.type === 'remove_principal') minOutputGuard(tx, remaining, q.action.amount)
-      for (const minimum of q.estimate.minOutputs) minOutputGuard(tx, remaining, minimum.amount)
-      change.push({ coinType: s.principalCoinType, coin: remaining })
+      if (debtOutput) change.push({ coinType: s.debtCoinType, coin: debtOutput })
     }
     const owner = tx.moveCall({
       target: `${config.package}::account::account_owner`,

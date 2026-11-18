@@ -9,7 +9,16 @@ import {
 import type { Converter, ConversionQuote, ConversionRequest, MultiplySuiClient } from './types'
 import { defaultClient } from './data-source'
 import { SUI, VSUI, HASUI } from './strategies'
-import { address, check, coinType, inspect, minOutputGuard, sameCoin, uint } from './utils'
+import {
+  address,
+  check,
+  coinType,
+  inspect,
+  minOutputGuard,
+  sameCoin,
+  uint,
+  MultiplyError
+} from './utils'
 
 const VOLO = {
   package: '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20',
@@ -35,9 +44,10 @@ function quoted(
   amount: string,
   data: unknown
 ): ConversionQuote {
-  uint(amount, false)
-  const min = ((BigInt(amount) * BigInt(10000 - req.slippageBps)) / 10000n).toString()
-  uint(min, false)
+  const expected = responseUint(amount, 'INVALID_CONVERSION')
+  const minimum = (expected * BigInt(10000 - req.slippageBps)) / 10000n
+  check(minimum > 0n, 'CONVERSION_AMOUNT_TOO_SMALL', 'Conversion minimum rounds below one atom')
+  const min = minimum.toString()
   return {
     converterId: id,
     input: { coinType: coinType(req.coinIn), amount: req.amountIn },
@@ -73,6 +83,21 @@ export function validateConversion(q: ConversionQuote, req: ConversionRequest, i
 function pair(lst: string, a: string, b: string) {
   return (sameCoin(a, SUI) && sameCoin(b, lst)) || (sameCoin(a, lst) && sameCoin(b, SUI))
 }
+function poolObject(value: unknown, field: string): Record<string, unknown> {
+  check(
+    value && typeof value === 'object' && !Array.isArray(value),
+    'READ_FAILED',
+    `Invalid ${field}`
+  )
+  return value as Record<string, unknown>
+}
+function responseUint(value: unknown, code: 'READ_FAILED' | 'INVALID_CONVERSION'): bigint {
+  try {
+    return uint(value)
+  } catch {
+    throw new MultiplyError(code, 'Invalid upstream integer amount')
+  }
+}
 export function voloConverter(options: { client?: MultiplySuiClient } = {}): Converter {
   const client = options.client ?? defaultClient()
   return {
@@ -86,8 +111,10 @@ export function voloConverter(options: { client?: MultiplySuiClient } = {}): Con
         objectId: VOLO.pool,
         include: { json: true }
       })
-      const manage = object.json?.manage as { paused?: boolean } | undefined
-      check(manage?.paused === false, 'CONVERTER_UNAVAILABLE', 'Volo is paused or unreadable')
+      const pool = poolObject(object?.json, 'Volo pool')
+      const manage = poolObject(pool.manage, 'Volo management state')
+      check(typeof manage.paused === 'boolean', 'READ_FAILED', 'Invalid Volo pause state')
+      check(!manage.paused, 'CONVERTER_UNAVAILABLE', 'Volo is paused')
       const tx = new Transaction()
       tx.moveCall({
         target: `${VOLO.package}::stake_pool::get_amount_out`,
@@ -102,7 +129,7 @@ export function voloConverter(options: { client?: MultiplySuiClient } = {}): Con
       const amount = bcs.u64().parse(result[0].returnValues[0].bcs)
       check(
         BigInt(stake ? req.amountIn : amount) >= 1_000_000_000n,
-        'CONVERTER_UNAVAILABLE',
+        'CONVERSION_AMOUNT_TOO_SMALL',
         'Volo requires at least 1 SUI input or redemption output'
       )
       return quoted('volo', req, amount, { version: 1, stake })
@@ -141,23 +168,24 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
       // The rate getter accepts smaller amounts, but request_stake_coin does not.
       check(
         !stake || BigInt(req.amountIn) >= 1_000_000_000n,
-        'CONVERTER_UNAVAILABLE',
+        'CONVERSION_AMOUNT_TOO_SMALL',
         'Haedal requires at least 1 SUI staking input'
       )
       const { object } = await client.core.getObject({
         objectId: HAEDAL.config,
         include: { json: true }
       })
-      const state = object.json
-      check(
-        state && state[stake ? 'pause_stake' : 'pause_unstake'] === false,
-        'CONVERTER_UNAVAILABLE',
-        'Haedal is paused or unreadable'
-      )
-      const config = state.config as Record<string, string>
-      const feeRate = uint(config[stake ? 'deposit_fee' : 'service_fee'])
+      const state = poolObject(object?.json, 'Haedal state')
+      const paused = state[stake ? 'pause_stake' : 'pause_unstake']
+      check(typeof paused === 'boolean', 'READ_FAILED', 'Invalid Haedal pause state')
+      const config = poolObject(state.config, 'Haedal fee configuration')
+      const feeRate = responseUint(config[stake ? 'deposit_fee' : 'service_fee'], 'READ_FAILED')
       const denominator = 10_000_000n // Haedal FEE_DENOMINATOR, independent of exchange-rate scale.
-      check(feeRate < denominator, 'CONVERTER_UNAVAILABLE', 'Invalid Haedal fee')
+      check(feeRate < denominator, 'READ_FAILED', 'Invalid Haedal fee')
+      const liquidity = stake
+        ? null
+        : responseUint(poolObject(state.sui_vault, 'Haedal vault').cache_pool, 'READ_FAILED')
+      check(!paused, 'CONVERTER_UNAVAILABLE', 'Haedal is paused')
       const amountIn = BigInt(req.amountIn)
       const tx = new Transaction()
       tx.moveCall({
@@ -171,19 +199,34 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
       const gross = BigInt(bcs.u64().parse(result[0].returnValues[0].bcs))
       const net = stake ? gross : gross - (gross * feeRate) / denominator
       if (!stake) {
-        const vault = state.sui_vault as { cache_pool?: string }
+        // Pinned 0x19e6…967c::staking::request_unstake_instant_coin compares
+        // get_sui_by_stsui(input) >= 1e9 BEFORE withdrawing and charging service_fee.
         check(
-          vault && gross <= uint(vault.cache_pool),
+          gross >= 1_000_000_000n,
+          'CONVERSION_AMOUNT_TOO_SMALL',
+          'Haedal requires at least 1 SUI gross redemption output'
+        )
+        check(
+          liquidity !== null && gross <= liquidity,
           'CONVERTER_UNAVAILABLE',
           'Haedal instant redemption liquidity is insufficient'
         )
       }
-      return quoted('haedal', req, net.toString(), {
+      const quote = quoted('haedal', req, net.toString(), {
         version: 1,
         stake,
         feeRate: feeRate.toString(),
         feeDenominator: denominator.toString()
       })
+      quote.fees = [
+        {
+          coinType: coinType(SUI),
+          amount: (((stake ? amountIn : gross) * feeRate) / denominator).toString(),
+          feeKind: stake ? 'deposit' : 'redemption',
+          includedInExpectedOutput: true
+        }
+      ]
+      return quote
     },
     async buildPTB(tx, q, coinIn) {
       check(
@@ -217,14 +260,40 @@ export function astrosConverter(
     )
     return Number(n)
   }
-  function validateRoute(route: AstrosQuote) {
-    safe(route.amount_in)
-    safe(route.amount_out)
-    check(route.routes?.length > 0, 'CONVERTER_UNAVAILABLE', 'Astros returned no routes')
-    for (const r of route.routes) {
-      safe(r.amount_in)
-      safe(r.amount_out)
+  function validateRoute(route: AstrosQuote, amountIn: string) {
+    check(
+      route && Array.isArray(route.routes),
+      'INVALID_CONVERSION',
+      'Invalid Astros route structure'
+    )
+    const amount = (value: unknown, allowZero = false) => {
+      check(
+        typeof value === 'string' || (typeof value === 'number' && Number.isSafeInteger(value)),
+        'INVALID_CONVERSION',
+        'Invalid Astros amount type'
+      )
+      const parsed = responseUint(String(value), 'INVALID_CONVERSION')
+      check(allowZero || parsed > 0n, 'INVALID_CONVERSION', 'Invalid Astros route amount')
+      check(
+        parsed <= BigInt(Number.MAX_SAFE_INTEGER),
+        'CONVERTER_UNAVAILABLE',
+        'Astros route exceeds the SDK safe-integer limit'
+      )
+      return parsed
     }
+    amount(route.amount_in)
+    check(String(route.amount_in) === amountIn, 'INVALID_CONVERSION', 'Astros changed input amount')
+    const output = amount(route.amount_out, true)
+    for (const r of route.routes) {
+      check(r && typeof r === 'object', 'INVALID_CONVERSION', 'Invalid Astros route leg')
+      amount(r.amount_in)
+      amount(r.amount_out)
+    }
+    check(
+      route.routes.length > 0 && output > 0n,
+      'CONVERTER_UNAVAILABLE',
+      'Astros returned no executable routes'
+    )
   }
   return {
     id: 'astros',
@@ -237,13 +306,28 @@ export function astrosConverter(
         services: options.services,
         byAmountIn: true
       })
-      validateRoute(route)
-      check(
-        String(route.amount_in) === req.amountIn,
-        'INVALID_CONVERSION',
-        'Astros changed input amount'
-      )
-      return quoted('astros', req, String(route.amount_out), { version: 1, route })
+      validateRoute(route, req.amountIn)
+      const result = quoted('astros', req, String(route.amount_out), { version: 1, route })
+      result.route = {
+        provider: 'astros',
+        observedAt: Date.now(),
+        hops: route.routes.flatMap((r) =>
+          (r.path ?? []).flatMap((hop) =>
+            typeof hop.from === 'string' && typeof hop.target === 'string'
+              ? [
+                  {
+                    coinIn: coinType(hop.from),
+                    coinOut: coinType(hop.target),
+                    ...(typeof hop.id === 'string' ? { poolId: hop.id } : {}),
+                    ...(typeof hop.provider === 'string' ? { dex: hop.provider } : {}),
+                    ...(hop.fee_rate !== undefined ? { feeRate: String(hop.fee_rate) } : {})
+                  }
+                ]
+              : []
+          )
+        )
+      }
+      return result
     },
     async buildPTB(tx, q, coinIn, context) {
       check(context?.changeRecipient, 'INVALID_ARGUMENT', 'Astros requires a change recipient')
@@ -257,7 +341,7 @@ export function astrosConverter(
       const data = q.data as { version: number; route: AstrosQuote }
       check(data?.version === 1, 'INVALID_CONVERSION', 'Unknown Astros quote version')
       const route = data.route
-      validateRoute(route)
+      validateRoute(route, q.input.amount)
       check(
         sameCoin(route.from, q.input.coinType) &&
           sameCoin(route.target, q.expectedOutput.coinType) &&

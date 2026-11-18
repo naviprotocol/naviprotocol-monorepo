@@ -9,7 +9,7 @@ import type {
   PositionAmounts,
   Strategy
 } from './types'
-import { BN, ceil, check, decimal, floor, uint, MultiplyError } from './utils'
+import { BN, ceil, check, decimal, floor, uint, MultiplyError, sameCoin } from './utils'
 import { validateConversion } from './converters'
 import { amountCushion, atomPrices, borrowCapacity, supplyCapacity, withinLtv } from './amounts'
 
@@ -73,6 +73,13 @@ export async function chooseConversion(
     if (result.status === 'fulfilled') {
       validateConversion(result.value, req, eligible[i].id)
       quotes.push(result.value)
+    } else if (
+      !(result.reason instanceof MultiplyError) ||
+      !['CONVERTER_UNAVAILABLE', 'CONVERSION_AMOUNT_TOO_SMALL', 'NO_CONVERSION_ROUTE'].includes(
+        result.reason.code
+      )
+    ) {
+      throw result.reason
     }
   }
   if (quotes.length)
@@ -90,9 +97,24 @@ export async function chooseConversion(
     validateConversion(q, req, fallback.id)
     return q
   } catch (error) {
+    if (
+      !(error instanceof MultiplyError) ||
+      !['CONVERTER_UNAVAILABLE', 'CONVERSION_AMOUNT_TOO_SMALL', 'NO_CONVERSION_ROUTE'].includes(
+        error.code
+      )
+    )
+      throw error
+    const tooSmall =
+      error.code === 'CONVERSION_AMOUNT_TOO_SMALL' &&
+      results.every(
+        (result) =>
+          result.status === 'rejected' &&
+          result.reason instanceof MultiplyError &&
+          result.reason.code === 'CONVERSION_AMOUNT_TOO_SMALL'
+      )
     throw new MultiplyError(
-      'NO_CONVERSION_ROUTE',
-      `All eligible converters failed; fallback: ${error instanceof Error ? error.message : String(error)}`
+      tooSmall ? 'CONVERSION_AMOUNT_TOO_SMALL' : 'NO_CONVERSION_ROUTE',
+      'No eligible executable conversion route'
     )
   }
 }
@@ -150,7 +172,8 @@ export async function plan(
     outputs: typeof inputs = [],
     minOutputs: typeof inputs = []
   const result: Omit<ExecutionPlan, 'accountCap' | 'capRegistry' | 'checksum'> = {
-    version: 3,
+    version: 4,
+    funding: { kind: 'none' },
     snapshot,
     market,
     conversions: [],
@@ -221,12 +244,20 @@ export async function plan(
     (action.type === 'set_leverage' && target.gt(current.leverage ?? '1'))
   ) {
     const P = n('amount' in action ? action.amount : '0')
-    if (P.gt(0)) input(strategy.principalCoinType, P.toFixed(0))
+    const inputType =
+      'inputCoinType' in action && action.inputCoinType
+        ? action.inputCoinType
+        : strategy.principalCoinType
+    const direct = sameCoin(inputType, strategy.collateralCoinType)
+    if (P.gt(0)) input(inputType, P.toFixed(0))
     const evaluation = async (F: N) => {
-      const q = await request(P.plus(F).toFixed(0), true)
+      const conversionAmount = F.plus(direct ? 0 : P)
+      const q = conversionAmount.gt(0)
+        ? await request(conversionAmount.toFixed(0), true)
+        : undefined
       const repayment = flashRepay(F),
         fee = borrowFee(repayment)
-      const c = C.plus(q.expectedOutput.amount),
+      const c = C.plus(direct ? P : 0).plus(q?.expectedOutput.amount ?? 0),
         d = D.plus(repayment).plus(fee)
       return {
         q,
@@ -239,7 +270,14 @@ export async function plan(
       }
     }
     const initialHi = n(
-      ceil(equity.plus(P.times(pd)).times(target.minus(1)).div(pd).times(2).plus(1))
+      ceil(
+        equity
+          .plus(P.times(direct ? pc : pd))
+          .times(target.minus(1))
+          .div(pd)
+          .times(2)
+          .plus(1)
+      )
     )
     let lo = n(0),
       hi = initialHi
@@ -315,13 +353,126 @@ export async function plan(
       'NO_CONVERGENCE',
       'Conversion quotes could not achieve the requested leverage within tolerance'
     )
-    result.conversions = [best.q]
+    result.conversions = best.q
+      ? [
+          {
+            ...best.q,
+            id: 'increase',
+            purpose: best.F.gt(0) ? 'leverage' : 'input',
+            source: direct || P.isZero() ? 'flash' : best.F.gt(0) ? 'wallet-and-flash' : 'wallet'
+          }
+        ]
+      : []
     result.flashAmount = best.F.toFixed(0)
     result.flashRepayment = result.borrowAmount = best.repayment.toFixed(0)
     result.borrowFee = best.fee.toFixed(0)
     result.collateralAfter = best.c.toFixed(0)
-    result.minCollateralAfter = C.plus(best.q.minOutput.amount).toFixed(0)
+    result.minCollateralAfter = C.plus(direct ? P : 0)
+      .plus(best.q?.minOutput.amount ?? 0)
+      .toFixed(0)
     result.debtAfter = best.d.toFixed(0)
+  } else if (sameCoin(strategy.principalCoinType, strategy.collateralCoinType)) {
+    result.direction = 'decrease'
+    check(C.gt(0), 'POSITION_NOT_FOUND', 'No collateral to withdraw')
+    const close = action.type === 'close'
+    const payout = n(action.type === 'remove_principal' ? action.amount : 0)
+    check(
+      close || payout.times(pc).lt(equity),
+      'CONSTRAINT_VIOLATION',
+      'Withdrawal consumes all equity; use close'
+    )
+    const fullRepay = D.isZero() ? D : n(ceil(D.times('1.0001').plus(amountCushion(market.debt))))
+    const evaluate = async (W: N) => {
+      const q = W.gt(0) ? await request(W.toFixed(0), false) : undefined
+      const available = n(q?.minOutput.amount ?? 0)
+      const R =
+        close || target.eq(1)
+          ? fullRepay
+          : BN.minimum(D, n(floor(available.div(n(market.flash.feeBps).div(10000).plus(1)))))
+      const total = close ? C : W.plus(payout)
+      const c = C.minus(total),
+        d = BN.maximum(0, D.minus(R))
+      return {
+        q,
+        W,
+        R,
+        total,
+        c,
+        d,
+        repayment: flashRepay(R),
+        available,
+        residual: d.times(pd).minus(c.times(pc).times(target.minus(1)).div(target))
+      }
+    }
+    const clearingDebt = close || target.eq(1)
+    const maxConversion = C.minus(payout)
+    let W = D.isZero()
+      ? n(0)
+      : close || target.eq(1)
+        ? n(ceil(flashRepay(fullRepay).times(pd).div(pc).times('1.01')))
+        : n(
+            ceil(
+              D.times(pd)
+                .minus(C.minus(payout).times(pc).times(target.minus(1)).div(target))
+                .times(target)
+                .div(pc)
+            )
+          )
+    // The oracle cushion is only a search estimate, not proof of insufficient
+    // collateral. Test the executable minimum at the available balance first.
+    if (clearingDebt) W = BN.minimum(W, maxConversion)
+    let best: Awaited<ReturnType<typeof evaluate>> | undefined
+    for (let i = 0; i < 20; i++) {
+      check(
+        W.gte(0) && W.plus(close ? 0 : payout).lte(C),
+        'CONSTRAINT_VIOLATION',
+        'Insufficient collateral to repay debt and withdraw principal'
+      )
+      best = await evaluate(W)
+      const shortfall = best.repayment.minus(best.available)
+      check(
+        !clearingDebt || W.lt(maxConversion) || shortfall.lte(0),
+        'CONSTRAINT_VIOLATION',
+        'Insufficient collateral to repay debt and withdraw principal'
+      )
+      // Trim the initial price cushion; keep only the collateral needed for debt repayment.
+      if ((close || target.eq(1)) && shortfall.lt(0) && W.gt(0) && i < 2) {
+        const trimmed = n(ceil(W.times(best.repayment).div(best.available)))
+        if (trimmed.gt(0) && trimmed.lt(W)) {
+          W = trimmed
+          continue
+        }
+      }
+      if (shortfall.lte(0) && (close || targetReached(best.c, best.d))) break
+      const delta =
+        close || target.eq(1) ? shortfall.times(pd).div(pc) : best.residual.times(target).div(pc)
+      let next = BN.maximum(1, n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1 : 0))))
+      if (clearingDebt) next = BN.minimum(next, maxConversion)
+      check(i < 19 && !next.eq(W), 'NO_CONVERGENCE', 'No feasible collateral-principal decrease')
+      W = next
+    }
+    check(
+      best && best.repayment.lte(best.available),
+      'NO_CONVERGENCE',
+      'Missing collateral-principal decrease plan'
+    )
+    result.conversions = best.q
+      ? [{ ...best.q, id: 'repayment', purpose: 'repayment', source: 'withdrawal' }]
+      : []
+    result.flashAmount = best.R.toFixed(0)
+    result.flashRepayment = best.repayment.toFixed(0)
+    result.withdrawAmount = best.total.toFixed(0)
+    result.collateralAfter = result.minCollateralAfter = best.c.toFixed(0)
+    result.debtAfter = best.d.toFixed(0)
+    const principalOut = best.total.minus(best.W)
+    if (principalOut.gt(0)) {
+      outputs.push({ coinType: strategy.principalCoinType, amount: principalOut.toFixed(0) })
+      minOutputs.push({ coinType: strategy.principalCoinType, amount: principalOut.toFixed(0) })
+    }
+    const debtOut = n(best.q?.expectedOutput.amount ?? 0)
+      .minus(best.repayment)
+      .plus(BN.maximum(0, best.R.minus(D)))
+    if (debtOut.gt(0)) outputs.push({ coinType: strategy.debtCoinType, amount: floor(debtOut) })
   } else {
     result.direction = 'decrease'
     check(C.gt(0), 'POSITION_NOT_FOUND', 'No collateral to withdraw')
@@ -400,7 +551,9 @@ export async function plan(
       'CONSTRAINT_VIOLATION',
       'Conversion cannot cover flash repayment and withdrawal'
     )
-    result.conversions = [best.q]
+    result.conversions = [
+      { ...best.q, id: 'withdrawal', purpose: 'repayment', source: 'withdrawal' }
+    ]
     result.flashAmount = best.R.toFixed(0)
     result.flashRepayment = best.repayment.toFixed(0)
     result.withdrawAmount = best.W.toFixed(0)
@@ -410,6 +563,11 @@ export async function plan(
     if (minOutput.gt(0))
       minOutputs.push({ coinType: strategy.principalCoinType, amount: floor(minOutput) })
   }
+  if (inputs.length)
+    result.funding = {
+      kind: sameCoin(inputs[0].coinType, strategy.collateralCoinType) ? 'collateral' : 'debt',
+      input: inputs[0]
+    }
   for (const amount of [
     result.flashAmount,
     result.flashRepayment,

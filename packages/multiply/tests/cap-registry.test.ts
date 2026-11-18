@@ -10,7 +10,7 @@ import {
   registerCreatedCapPTB
 } from '../src/cap-registry'
 import { address } from '../src/utils'
-import type { MultiplySuiClient, Strategy } from '../src/types'
+import type { MultiplySuiClient, RegistryKey, Strategy } from '../src/types'
 
 vi.mock('@naviprotocol/lending', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@naviprotocol/lending')>()),
@@ -34,7 +34,8 @@ function fixture(
   ids = ['1'],
   versions = ['1'],
   caps = [cap1],
-  configured = Object.values(strategies) as Strategy[]
+  configured = Object.values(strategies) as Strategy[],
+  retiredRegistryKeys: RegistryKey[] = []
 ) {
   const results = [returns(ids, versions, caps), returns([], [], [])]
   const objects = caps.map((id) => ({
@@ -62,7 +63,8 @@ function fixture(
   }
   const source = createNaviDataSource({
     client: { core } as unknown as MultiplySuiClient,
-    strategies: configured
+    strategies: configured,
+    retiredRegistryKeys
   })
   return { source, core, objects, results }
 }
@@ -114,7 +116,7 @@ it.each([
   ['0', '0']
 ])('rejects unknown complete key %s:%s', async (id, version) => {
   await expect(fixture([id], [version]).source.listAccountCaps(wallet)).rejects.toMatchObject({
-    code: 'UNSUPPORTED_REGISTRY_STRATEGY'
+    code: id === '0' ? 'READ_FAILED' : 'UNSUPPORTED_REGISTRY_STRATEGY'
   })
 })
 
@@ -200,4 +202,41 @@ it('registers the new Cap object address as a PTB result with the fixed key', ()
   ])
   expect(calls[1].typeArguments).toEqual([ACCOUNT_CAP_TYPE])
   expect(calls[2].arguments[1]).toMatchObject({ Result: 1 })
+})
+
+describe('explicit retired Registry discovery', () => {
+  const current: Strategy = {
+    ...strategies.vsuiSui,
+    id: 'main-vsui-sui',
+    market: 'main',
+    registryKey: { strategyNumericId: '4', strategyVersion: '1' }
+  }
+  const retired = [{ strategyNumericId: '1', strategyVersion: '1' }]
+  it('skips only retired keys before hydrating current objects', async () => {
+    const f = fixture(['1', '4'], ['1', '1'], [cap1, cap2], [current], retired)
+    expect(await f.source.listAccountCaps(wallet)).toMatchObject([
+      { id: cap2, strategyId: current.id }
+    ])
+    expect(f.core.getObjects).toHaveBeenCalledWith(expect.objectContaining({ objectIds: [cap2] }))
+  })
+  it('returns empty for only retired keys without hydrating them', async () => {
+    const f = fixture(['1'], ['1'], [cap1], [current], retired)
+    expect(await f.source.listAccountCaps(wallet)).toEqual([])
+    expect(f.core.getObjects).not.toHaveBeenCalled()
+  })
+  it('still rejects an unlisted key and corrupt identities shared with a retired key', async () => {
+    await expect(
+      fixture(['1', '99'], ['1', '1'], [cap1, cap2], [current], retired).source.listAccountCaps(
+        wallet
+      )
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_REGISTRY_STRATEGY' })
+    await expect(
+      fixture(['1', '4'], ['1', '1'], [cap1, cap1], [current], retired).source.listAccountCaps(
+        wallet
+      )
+    ).rejects.toMatchObject({ code: 'DUPLICATE_ACCOUNT_CAP' })
+    await expect(
+      fixture(['1'], ['1'], [address('0x0')], [current], retired).source.listAccountCaps(wallet)
+    ).rejects.toMatchObject({ code: 'INVALID_ACCOUNT_CAP' })
+  })
 })
