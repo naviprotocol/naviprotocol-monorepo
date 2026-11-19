@@ -1,0 +1,26 @@
+{
+  "commit": "40895847f026e63f88b36dbbee617d67941b513e",
+  "node": "v24.20.0",
+  "consumer": "/var/folders/ht/n4r7mjqd6w7bl79hfylsvbyw0000gn/T/multiply-consumer-ECTXyk",
+  "packages": [
+    {
+      "name": "@naviprotocol/lending",
+      "version": "2.1.0",
+      "file": "naviprotocol-lending-2.1.0.tgz",
+      "sha256": "996647fed95071f8cea4fc363529ce755021417588ee40d2e464568f286695b4"
+    },
+    {
+      "name": "@naviprotocol/astros-aggregator-sdk",
+      "version": "2.0.7",
+      "file": "naviprotocol-astros-aggregator-sdk-2.0.7.tgz",
+      "sha256": "781e1723073dbad8c18404345530e320394f45e4145034665a6e5eda7ccf59e7"
+    },
+    {
+      "name": "@naviprotocol/multiply",
+      "version": "0.1.0",
+      "file": "naviprotocol-multiply-0.1.0.tgz",
+      "sha256": "b98ac58956454c8700a2128020d3e9608260e89deb21ef9bbc80f2ae47cc3ae6"
+    }
+  ],
+  "broadcast": false
+}

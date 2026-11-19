@@ -350,6 +350,28 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.7.5)(jsdom@27.0.0(bufferutil@4.0.9)(postcss@8.5.6)(utf-8-validate@5.0.10))(lightningcss@1.30.1)
 
+  packages/multiply:
+    dependencies:
+      '@naviprotocol/astros-aggregator-sdk':
+        specifier: 2.0.7
+        version: 2.0.7(@mysten/sui@2.20.2(typescript@5.8.3))
+      '@naviprotocol/lending':
+        specifier: 2.2.0
+        version: 2.2.0(@mysten/sui@2.20.2(typescript@5.8.3))
+      bignumber.js:
+        specifier: 9.1.2
+        version: 9.1.2
+    devDependencies:
+      '@mysten/sui':
+        specifier: 2.20.2
+        version: 2.20.2(typescript@5.8.3)
+      '@types/node':
+        specifier: 22.7.5
+        version: 22.7.5
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   packages/vault:
     dependencies:
       '@naviprotocol/lending':
@@ -2031,6 +2053,18 @@ packages:
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
+
+  '@naviprotocol/astros-aggregator-sdk@2.0.7':
+    resolution: {integrity: sha512-k2+kdkqEZQpa6kbrGXyRVFtZPtczRiLaKPfDa3xzrbC/uXjihG5Z3+6zlZz9K6QE1NhOfSSdjBAgCHvUkVqphA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@mysten/sui': '>=2.0.0'
+
+  '@naviprotocol/lending@2.2.0':
+    resolution: {integrity: sha512-TdjfCqSZOQvyH3WYn3BCkkHkQNL+gcI2lJgsko3bcguZ318BIiwaTBZyl2D0iClkfnT3e8K+BXXW7/WxN894cQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@mysten/sui': '>=2.0.0'
 
   '@next/env@16.0.10':
     resolution: {integrity: sha512-8tuaQkyDVgeONQ1MeT9Mkk8pQmZapMKFh5B+OrFUlG3rVmYTXcXlBetBgTurKXGaIZvkoqRT9JL5K3phXcgang==}
@@ -8755,6 +8789,23 @@ snapshots:
       '@emnapi/runtime': 1.5.0
       '@tybys/wasm-util': 0.10.1
     optional: true
+
+  '@naviprotocol/astros-aggregator-sdk@2.0.7(@mysten/sui@2.20.2(typescript@5.8.3))':
+    dependencies:
+      '@mysten/sui': 2.20.2(typescript@5.8.3)
+      axios: 1.13.2
+      bignumber.js: 9.1.2
+      crypto-js: 4.2.0
+      dotenv: 16.4.7
+      shio-sdk: 1.0.9
+    transitivePeerDependencies:
+      - debug
+
+  '@naviprotocol/lending@2.2.0(@mysten/sui@2.20.2(typescript@5.8.3))':
+    dependencies:
+      '@mysten/sui': 2.20.2(typescript@5.8.3)
+      bignumber.js: 9.1.2
+      lodash.camelcase: 4.3.0
 
   '@next/env@16.0.10': {}
 
