@@ -47,7 +47,8 @@ import { validateFunding } from './funding'
 export function createMultiplyClient(options: MultiplyOptions = {}) {
   const client = options.client ?? defaultClient()
   const converters = options.converters ?? [voloConverter({ client }), haedalConverter({ client })]
-  const fallback = options.fallbackConverter ?? astrosConverter({ services: options.services })
+  const fallback =
+    options.fallbackConverter ?? astrosConverter({ services: options.services, client })
   const registry = new Map<string, Converter>()
   for (const c of [...converters, fallback]) {
     check(!registry.has(c.id), 'INVALID_ARGUMENT', `Duplicate converter id: ${c.id}`)

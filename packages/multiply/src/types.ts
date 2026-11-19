@@ -115,7 +115,15 @@ export interface ConversionQuote {
   expiresAt: number
   /** Opaque JSON, interpreted only by the converter that produced it. */
   data: unknown
-  fees?: { coinType: string; amount: string; feeKind: string; includedInExpectedOutput: true }[]
+  /** Known provider charges only; absent means unavailable, not zero. Never deduct twice. */
+  fees?: {
+    coinType: string
+    amount: string
+    feeKind: string
+    includedInExpectedOutput: true
+    /** Underlying provider when the conversion is routed through an aggregator. */
+    provider?: string
+  }[]
   route?: {
     provider: string
     hops: { coinIn: string; coinOut: string; poolId?: string; dex?: string; feeRate?: string }[]

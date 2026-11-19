@@ -53,6 +53,8 @@ export function createNaviDataSource(
     capRegistry?: CapRegistryConfig
     strategies?: Strategy[]
     retiredRegistryKeys?: RegistryKey[]
+    /** Optional request-scoped instrumentation. The wrapper must run each read exactly once. */
+    measure?: <T>(stage: string, read: () => Promise<T>) => Promise<T>
   } = {}
 ): DataSource {
   const client = options.client ?? defaultClient()
@@ -66,6 +68,7 @@ export function createNaviDataSource(
     'INVALID_ARGUMENT',
     'Active and retired Registry keys overlap'
   )
+  const measure = options.measure ?? (<T>(_stage: string, read: () => Promise<T>) => read())
   const opts = { services: options.services, disableCache: true }
   async function prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot) {
     const feeds = market.config.oracle.feeds.filter(
@@ -221,10 +224,10 @@ export function createNaviDataSource(
     },
     async readMarket(strategy) {
       const [config, pools, flashConfig, flashAssets] = await Promise.all([
-        getConfig({ ...opts, market: strategy.market }),
-        getPools({ ...opts, markets: [strategy.market] }),
-        getConfig({ ...opts, market: 'main' }),
-        getAllFlashLoanAssets({ ...opts, market: 'main' })
+        measure('market_config', () => getConfig({ ...opts, market: strategy.market })),
+        measure('market_pools', () => getPools({ ...opts, markets: [strategy.market] })),
+        measure('flash_config', () => getConfig({ ...opts, market: 'main' })),
+        measure('flash_assets', () => getAllFlashLoanAssets({ ...opts, market: 'main' }))
       ])
       const collateral = pools.find((p) => sameCoin(p.suiCoinType, strategy.collateralCoinType))
       const debt = pools.find((p) => sameCoin(p.suiCoinType, strategy.debtCoinType))
@@ -260,7 +263,7 @@ export function createNaviDataSource(
         observedAt: Date.now()
       }
       const tx = new Transaction()
-      await prepareOracle(tx, strategy, market)
+      await measure('market_oracle', () => prepareOracle(tx, strategy, market))
       const priceIndices = [collateral, debt].map((p) => {
         const i = tx.getData().commands.length
         tx.moveCall({
@@ -288,7 +291,7 @@ export function createNaviDataSource(
         typeArguments: [strategy.debtCoinType],
         arguments: [tx.object(flashConfig.flashloanConfig)]
       })
-      const results = await inspect(client, tx)
+      const results = await measure('market_inspect', () => inspect(client, tx))
       const flashValues = results[riskIndex + 2].returnValues
       check(
         bcs.Address.parse(flashValues[3].bcs) === flash.poolId,

@@ -98,6 +98,85 @@ function responseUint(value: unknown, code: 'READ_FAILED' | 'INVALID_CONVERSION'
     throw new MultiplyError(code, 'Invalid upstream integer amount')
   }
 }
+function appendVoloRedemptionRead(tx: Transaction, amountIn: string) {
+  tx.moveCall({
+    target: `${VOLO.package}::stake_pool::lst_amount_to_sui_amount`,
+    arguments: [tx.object(VOLO.pool), tx.object(VOLO.metadata), tx.pure.u64(amountIn)]
+  })
+  const config = tx.moveCall({
+    target: `${VOLO.package}::stake_pool::fee_config`,
+    arguments: [tx.object(VOLO.pool)]
+  })
+  tx.moveCall({ target: `${VOLO.package}::fee_config::unstake_fee_bps`, arguments: [config] })
+}
+function voloRedemptionFee(result: Awaited<ReturnType<typeof inspect>>, offset = 0) {
+  try {
+    // These getters execute against the same pool state. The pinned 0x68d2…ae20
+    // unstake charges ceil(gross SUI * bps / 10000), including any redistribution.
+    // get_amount_out instead rounds a fee in vSUI first and can differ by atoms.
+    const gross = BigInt(bcs.u64().parse(result[offset].returnValues[0].bcs))
+    const bps = BigInt(bcs.u64().parse(result[offset + 2].returnValues[0].bcs))
+    if (gross <= 0n || bps > 500n) return undefined // deployed MAX_UNSTAKE_FEE_BPS
+    const amount = (gross * bps + 9999n) / 10000n
+    return {
+      net: (gross - amount).toString(),
+      fees: [
+        {
+          provider: 'volo',
+          coinType: coinType(SUI),
+          amount: amount.toString(),
+          feeKind: 'redemption',
+          includedInExpectedOutput: true as const
+        }
+      ]
+    }
+  } catch {
+    // Optional fee details must never turn unavailable data into a displayed zero.
+    return undefined
+  }
+}
+async function readOptionalVoloFee(client: MultiplySuiClient, amountIn: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const tx = new Transaction()
+    appendVoloRedemptionRead(tx, amountIn)
+    // Fee decoration must not hold an otherwise usable aggregator quote open.
+    return await Promise.race([
+      inspect(client, tx).then((result) => voloRedemptionFee(result)),
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), 1500)
+      })
+    ])
+  } catch {
+    return undefined
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+function isSingleVoloRedemption(route: AstrosQuote, req: ConversionRequest) {
+  try {
+    const leg = route.routes[0]
+    const hop = leg?.path?.[0]
+    return (
+      sameCoin(req.coinIn, VSUI) &&
+      sameCoin(req.coinOut, SUI) &&
+      sameCoin(route.from, req.coinIn) &&
+      sameCoin(route.target, req.coinOut) &&
+      route.routes.length === 1 &&
+      leg.path?.length === 1 &&
+      hop?.provider === 'vSui' &&
+      hop.a2b === false &&
+      typeof hop.from === 'string' &&
+      typeof hop.target === 'string' &&
+      sameCoin(hop.from, VSUI) &&
+      sameCoin(hop.target, SUI) &&
+      String(leg.amount_in) === req.amountIn &&
+      String(hop.amount_in) === req.amountIn
+    )
+  } catch {
+    return false
+  }
+}
 export function voloConverter(options: { client?: MultiplySuiClient } = {}): Converter {
   const client = options.client ?? defaultClient()
   return {
@@ -115,24 +194,40 @@ export function voloConverter(options: { client?: MultiplySuiClient } = {}): Con
       const manage = poolObject(pool.manage, 'Volo management state')
       check(typeof manage.paused === 'boolean', 'READ_FAILED', 'Invalid Volo pause state')
       check(!manage.paused, 'CONVERTER_UNAVAILABLE', 'Volo is paused')
-      const tx = new Transaction()
-      tx.moveCall({
-        target: `${VOLO.package}::stake_pool::get_amount_out`,
-        arguments: [
-          tx.object(VOLO.pool),
-          tx.object(VOLO.metadata),
-          tx.pure.u64(req.amountIn),
-          tx.pure.bool(stake)
-        ]
-      })
-      const result = await inspect(client, tx)
-      const amount = bcs.u64().parse(result[0].returnValues[0].bcs)
+      const outputRead = () => {
+        const tx = new Transaction()
+        tx.moveCall({
+          target: `${VOLO.package}::stake_pool::get_amount_out`,
+          arguments: [
+            tx.object(VOLO.pool),
+            tx.object(VOLO.metadata),
+            tx.pure.u64(req.amountIn),
+            tx.pure.bool(stake)
+          ]
+        })
+        return tx
+      }
+      const tx = outputRead()
+      if (!stake) appendVoloRedemptionRead(tx, req.amountIn)
+      let result: Awaited<ReturnType<typeof inspect>>
+      try {
+        result = await inspect(client, tx)
+      } catch (error) {
+        if (stake) throw error
+        // A node that cannot execute the additional getters can still return the
+        // pre-existing quote. If that required read fails too, propagate the error.
+        result = await inspect(client, outputRead())
+      }
+      const redemption = stake ? undefined : voloRedemptionFee(result, 1)
+      const amount = redemption?.net ?? bcs.u64().parse(result[0].returnValues[0].bcs)
       check(
         BigInt(stake ? req.amountIn : amount) >= 1_000_000_000n,
         'CONVERSION_AMOUNT_TOO_SMALL',
         'Volo requires at least 1 SUI input or redemption output'
       )
-      return quoted('volo', req, amount, { version: 1, stake })
+      const quote = quoted('volo', req, amount, { version: 1, stake })
+      if (redemption) quote.fees = redemption.fees
+      return quote
     },
     async buildPTB(tx, q, coinIn) {
       check(
@@ -249,7 +344,12 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
   }
 }
 export function astrosConverter(
-  options: { apiKey?: string; baseUrl?: string; services?: SwapOptions['services'] } = {}
+  options: {
+    apiKey?: string
+    baseUrl?: string
+    services?: SwapOptions['services']
+    client?: MultiplySuiClient
+  } = {}
 ): Converter {
   const safe = (v: unknown) => {
     const n = uint(String(v), false)
@@ -308,6 +408,17 @@ export function astrosConverter(
       })
       validateRoute(route, req.amountIn)
       const result = quoted('astros', req, String(route.amount_out), { version: 1, route })
+      if (isSingleVoloRedemption(route, req)) {
+        const redemption = await readOptionalVoloFee(
+          options.client ?? defaultClient(),
+          req.amountIn
+        )
+        // Do not rewrite the frozen aggregator output or infer any fee from its
+        // fee_rate, slippage or price difference. Mixed/ambiguous routes stay unknown.
+        if (redemption && BigInt(result.expectedOutput.amount) <= BigInt(redemption.net)) {
+          result.fees = redemption.fees
+        }
+      }
       result.route = {
         provider: 'astros',
         observedAt: Date.now(),
