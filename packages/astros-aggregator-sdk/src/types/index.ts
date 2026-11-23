@@ -137,7 +137,13 @@ export enum Dex {
   /** Magma ALMM DEX protocol */
   MAGMA_ALMM = 'magmaAlmm',
   /** Cetus DLMM DEX protocol */
-  CETUS_DLMM = 'cetusDlmm'
+  CETUS_DLMM = 'cetusDlmm',
+  /** stSUI（AlphaFi 质押） */
+  ALPHAFI = 'alphafi',
+  /** haWAL（Haedal WAL 质押） */
+  HAWAL = 'haWal',
+  /** afSUI（Aftermath 质押） */
+  AFSUI = 'afSui'
 }
 
 /**

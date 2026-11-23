@@ -17,6 +17,21 @@
  * - System contracts and utilities
  */
 export const AggregatorConfig = {
+  // stSUI（AlphaFi 质押）：执行包 v2、LiquidStakingInfo<STSUI>
+  alphafiPackageId: '0x059f94b85c07eb74d2847f8255d8cc0a67c9a8dcc039eabf9f8b9e23a0de2700',
+  alphafiLiquidStakingInfo: '0x1adb343ab351458e151bc392fbf1558b3332467f23bda45ae67cd355a57fd5f5',
+  stSuiCoinType: '0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI',
+  // haWAL（Haedal WAL 质押）：Haedal 包 v6、Walrus Staking、Haedal walstaking::Staking
+  haWalPackageId: '0xd59779c4cbc3dc0bd53ce0a518116903623a6f2f30ee25bdfb5693691c82235d',
+  walrusStaking: '0x10b9d30c28448939ce6c4d6c6e0ffce4a7f8a4ada8248bdad09ef8b70e4a3904',
+  haWalStaking: '0x9e5f6537be1a5b658ec7eed23160df0b28c799563f6c41e9becc9ad633cb592b',
+  // afSUI（Aftermath 质押）：LSD 包 v2 及其共享对象（注意 treasury / referral 是 LSD 的，不是 Aftermath AMM 的）
+  afSuiPackageId: '0x1575034d2729907aefca1ac757d6ccfcd3fc7e9e77927523c06007d8353ad836',
+  afSuiVault: '0x2f8f6d5da7f13ea37daa397724280483ed062769813b6f31e9788e59cc88994d',
+  afSuiSafe: '0xeb685899830dd5837b47007809c76d91a098d52aabbf61e8ac467c59e5cc4610',
+  afSuiReferralVault: '0x4ce9a19b594599536c53edb25d22532f82f18038dc8ef618afd00fbbfb9845ef',
+  afSuiTreasury: '0xd2b95022244757b0ab9f74e2ee2fb2c3bf29dce5590fa6993a85d64bd219d7e8',
+  afSuiValidator: '0xd30018ec3f5ff1a3c75656abf927a87d7f0529e6dc89c7ddd1bd27ecb05e3db2',
   // Aggregator API endpoint
   aggregatorBaseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes',
 

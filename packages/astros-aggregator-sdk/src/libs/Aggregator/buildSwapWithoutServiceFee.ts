@@ -11,6 +11,9 @@ import { makeDeepbookPTB } from './Dex/deepbook'
 import { makeBluefinPTB } from './Dex/bluefin'
 import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
+import { makeAlphafiPTB } from './Dex/alphafi'
+import { makeHaWalPTB } from './Dex/haWal'
+import { makeAfSuiPTB } from './Dex/afSui'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
@@ -298,6 +301,18 @@ export async function buildSwapWithoutServiceFee(
         }
         case Dex.HASUI: {
           pathTempCoin = await makeHASUIPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.ALPHAFI: {
+          pathTempCoin = await makeAlphafiPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.HAWAL: {
+          pathTempCoin = await makeHaWalPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.AFSUI: {
+          pathTempCoin = await makeAfSuiPTB(txb, pathTempCoin, a2b)
           break
         }
         case Dex.MOMENTUM: {
