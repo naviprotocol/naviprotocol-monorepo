@@ -90,6 +90,23 @@ export function borrowCapacity(market: MarketSnapshot) {
   return new BN(lendingToRaw(market.debt.availableBorrow, tokenDecimals(market.debt)))
 }
 
+/**
+ * LQ-01: a main-market strategy flash-loans its debt coin from the same main-market reserve it borrows from, and the
+ * flash is still outstanding when the borrow runs, so the reserve must hold both at once. Isolated markets borrow from
+ * their own reserve (LQ-02): only the separate checks apply there.
+ */
+export function withinSameReserveCapacity(
+  strategy: { market: string },
+  amounts: { flashAmount: string; borrowAmount: string; borrowFee: string },
+  market: MarketSnapshot
+) {
+  if (strategy.market !== 'main') return true
+  return new BN(amounts.flashAmount)
+    .plus(amounts.borrowAmount)
+    .plus(amounts.borrowFee)
+    .lte(borrowCapacity(market))
+}
+
 /** A lowered borrowing cap must still permit repayment, collateral top-up and exit. */
 export function withinLtv(
   projected: PositionAmounts,

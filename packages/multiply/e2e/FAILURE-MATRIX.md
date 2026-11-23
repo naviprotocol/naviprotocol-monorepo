@@ -169,3 +169,8 @@ on 2026-11-23 quoted a 3.70M SUI flash and a 3.70M SUI borrow with 5.15M SUI ava
 | LQ-01 | Main-market strategy: flash + borrow + borrow fee exceed the debt reserve's available borrow | `CAPACITY_EXCEEDED` ("flash and borrow from the same reserve") in the quote and again in the execute preflight, before any command | vault-strategy `e2e/sui-lst-multiply.e2e.ts` LS-15 (real SUI_LST position, SDK quote at the uncapped target) |
 | LQ-02 | Isolated-market strategy (debt reserve in its own market, flash from main) | The two checks stay independent, as before | Unchanged code path (`strategy.market !== 'main'`); stage_v2 isolated E2E `e2e/stage.mjs` regression |
 | LQ-03 | Main-market quote within the combined capacity | Unchanged | vault-strategy LS-02..LS-06 regression |
+
+LQ result (2026-11-23): vault-strategy LS-15 on the live SUI_LST position — an uncapped 3.37x → 4.52x set_leverage
+(3.70M SUI flash + 3.70M borrow, 5.15M available) is refused `CAPACITY_EXCEEDED` "Flash and borrow from the same reserve
+exceed its available liquidity" before any command (before the change the same quote built and aborted on chain).
+Regression: `run.mjs` all pass, `emode.mjs` 18/18, `stage.mjs` 10/10 (the isolated stage_v2 market, LQ-02).

@@ -18,7 +18,8 @@ import {
   atomPrices,
   borrowCapacity,
   supplyCapacity,
-  withinLtv
+  withinLtv,
+  withinSameReserveCapacity
 } from './amounts'
 
 type N = InstanceType<typeof BN>
@@ -609,6 +610,11 @@ export async function plan(
     n(result.borrowAmount).plus(result.borrowFee).lte(borrowCapacity(market)),
     'CAPACITY_EXCEEDED',
     'Borrow liquidity limit exceeded'
+  )
+  check(
+    withinSameReserveCapacity(strategy, result, market),
+    'CAPACITY_EXCEEDED',
+    'Flash and borrow from the same reserve exceed its available liquidity'
   )
   check(
     n(result.collateralAfter).minus(C).lte(supplyCapacity(market)),

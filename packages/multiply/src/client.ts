@@ -33,6 +33,7 @@ import {
   positionSides,
   atomPrices,
   borrowCapacity,
+  withinSameReserveCapacity,
   supplyCapacity,
   tokenDecimals,
   withinLtv
@@ -455,6 +456,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       new BN(e.borrowAmount).plus(e.borrowFee).lte(borrowCapacity(fresh)),
       'CAPACITY_EXCEEDED',
       'Borrow liquidity changed'
+    )
+    check(
+      withinSameReserveCapacity(s, e, fresh),
+      'CAPACITY_EXCEEDED',
+      'Flash and borrow from the same reserve exceed its available liquidity'
     )
     return { fresh, now }
   }
