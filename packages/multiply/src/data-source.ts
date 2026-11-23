@@ -114,7 +114,12 @@ export function createNaviDataSource(
     'Active and retired Registry keys overlap'
   )
   const measure = options.measure ?? (<T>(_stage: string, read: () => Promise<T>) => read())
-  const opts = { services: options.services, disableCache: true, env }
+  // ST-01: with env omitted the lending reads get exactly the options they had before env existed.
+  const opts = {
+    services: options.services,
+    disableCache: true,
+    ...(options.env === undefined ? {} : { env })
+  }
   async function prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot) {
     const feeds = selectStrategyFeeds(market.config.oracle.feeds, strategy)
     await updateOraclePricesPTB(tx, feeds, {
