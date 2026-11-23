@@ -155,3 +155,17 @@ call goes to stage lending/oracle/limiter, no prod NAVI id in any PTB. The same 
 the RR push aborts 1502. add_principal keeps HF 2.79 (leverage unchanged), remove_principal
 and close succeed (close leaves 0/0). Regression with `env` omitted: `run.mjs` 16/16,
 `emode.mjs` 18/18.
+
+## Flash and borrow from the same reserve (2026-11-23, found by vault-strategy SUI_LST LS-07, before the code)
+
+On a main-market strategy the flash loan and the borrow come from the same main-market debt reserve: during an
+`increase` the flash is still outstanding when the borrow runs, so the reserve must hold flash + borrow at once. The two
+capacity checks were independent (flash ≤ `flash.max`, borrow + fee ≤ `availableBorrow`): SUI_LST rebalance 3.37x → 4.52x
+on 2026-11-23 quoted a 3.70M SUI flash and a 3.70M SUI borrow with 5.15M SUI available, and the borrow aborted on chain
+(`balance::split` code 2 inside `borrow_with_account_cap_v2`).
+
+| ID | Failure mode | Expected | E2E |
+|---|---|---|---|
+| LQ-01 | Main-market strategy: flash + borrow + borrow fee exceed the debt reserve's available borrow | `CAPACITY_EXCEEDED` ("flash and borrow from the same reserve") in the quote and again in the execute preflight, before any command | vault-strategy `e2e/sui-lst-multiply.e2e.ts` LS-15 (real SUI_LST position, SDK quote at the uncapped target) |
+| LQ-02 | Isolated-market strategy (debt reserve in its own market, flash from main) | The two checks stay independent, as before | Unchanged code path (`strategy.market !== 'main'`); stage_v2 isolated E2E `e2e/stage.mjs` regression |
+| LQ-03 | Main-market quote within the combined capacity | Unchanged | vault-strategy LS-02..LS-06 regression |
