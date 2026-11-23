@@ -243,10 +243,12 @@ async function openPTB(source = dev) {
 
 try {
   await scenario('ST-03 invalid env', async () => {
-    for (const env of ['stage', 'DEV', '', null, 1])
+    // ST-17: 'test' is not an env until its deployment (AccountCap type, Registry) is known.
+    for (const env of ['stage', 'DEV', '', null, 1, 'test'])
       assert.throws(() => sdk.createNaviDataSource({ client, env }), code('INVALID_ARGUMENT'))
     assert.throws(() => sdk.createMultiplyClient({ client, env: 'stage' }), code('INVALID_ARGUMENT'))
-    return { rejected: 6 }
+    assert.throws(() => sdk.createMultiplyClient({ client, env: 'test' }), code('INVALID_ARGUMENT'))
+    return { rejected: 8 }
   })
 
   await scenario('ST-04 env with a custom dataSource', async () => {
@@ -301,6 +303,22 @@ try {
     const noCap = sdk.createMultiplyClient({ client, dataSource: { ...dev, listAccountCaps: async () => [] }, strategies: [STRATEGY] })
     await rejects(noCap.quote(address, STRATEGY, { type: 'open', amount: PRINCIPAL, targetLeverage: LEVERAGE }, constraints), 'MARKET_UNSUPPORTED')
     return { rejected: 3 }
+  })
+
+  await scenario('ST-19 a refused created-Cap build leaves the PTB untouched', async () => {
+    // A prod create-quote handed to a dev client without capRegistry (same default Registry binding, so every earlier
+    // check passes) through buildPTBForSimulation, which skips the live Cap reads.
+    const prodEngine = sdk.createMultiplyClient({ client, strategies: [STRATEGY] })
+    const quote = await prodEngine.quote(address, STRATEGY, { type: 'open', amount: PRINCIPAL, targetLeverage: LEVERAGE }, constraints)
+    assert.equal(quote.execution.accountCap.kind, 'create')
+    const devEngine = sdk.createMultiplyClient({ client, env: 'dev', strategies: [STRATEGY] })
+    const tx = new Transaction()
+    tx.setSender(address)
+    const coin = tx.splitCoins(tx.gas, [PRINCIPAL])[0]
+    const before = tx.getData().commands.length
+    await rejects(devEngine.buildPTBForSimulation(tx, quote, [{ coinType: STRATEGY.principalCoinType, coin }]), 'MARKET_UNSUPPORTED')
+    assert.equal(tx.getData().commands.length, before, 'commands appended before the refusal')
+    return { commandsBefore: before, commandsAfter: tx.getData().commands.length }
   })
 
   let seed
