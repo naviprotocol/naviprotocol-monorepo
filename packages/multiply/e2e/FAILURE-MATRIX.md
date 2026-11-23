@@ -196,3 +196,9 @@ TL result (2026-11-23): on the live SUI_LST position (3.37x) loop-ins of 2 / 73 
 0. vault-strategy LS-16 (70 SUI, simulated on chain): 3.5227 × principal, leverage 3.3657978 vs target 3.3657978.
 Regression: `emode.mjs` 18/18, `stage.mjs` 10/10, `run.mjs` 15/16 — `close-haedal` expects the Haedal converter and today's
 quotes pick Astros; the same case fails identically with this change reverted (control run), so it is market-dependent.
+
+Rebased onto `zado/multiply-package` 6327773 (2026-11-23). TL-01 now prices the added amount in `inputCoinType` (the
+collateral or the debt). TL-05 result: `add-principal-collateral-target` passes; with the TL-01 bar disabled (control run)
+it fails "a collateral-paid add with a target must borrow". Full regression on the rebased branch: unit 216/216,
+`run.mjs` 17/17 (`close-haedal` passes on today's quotes), `emode.mjs` 18/18, `stage.mjs` 10/10; vault-strategy
+sui-lst-multiply 18/18.
