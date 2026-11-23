@@ -143,7 +143,9 @@ export enum Dex {
   /** haWAL（Haedal WAL 质押） */
   HAWAL = 'haWal',
   /** afSUI（Aftermath 质押） */
-  AFSUI = 'afSui'
+  AFSUI = 'afSui',
+  /** FlowX AMM（v2 恒定乘积；FlowX CLMM 是 FLOWX） */
+  FLOWX_AMM = 'flowxAmm'
 }
 
 /**

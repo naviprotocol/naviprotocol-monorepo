@@ -14,6 +14,7 @@ import { makeVSUIPTB } from './Dex/vSui'
 import { makeAlphafiPTB } from './Dex/alphafi'
 import { makeHaWalPTB } from './Dex/haWal'
 import { makeAfSuiPTB } from './Dex/afSui'
+import { makeFlowxAmmPTB } from './Dex/flowxAmm'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
@@ -313,6 +314,10 @@ export async function buildSwapWithoutServiceFee(
         }
         case Dex.AFSUI: {
           pathTempCoin = await makeAfSuiPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.FLOWX_AMM: {
+          pathTempCoin = await makeFlowxAmmPTB(txb, pathTempCoin, tempTokenA, tempTokenB)
           break
         }
         case Dex.MOMENTUM: {

@@ -32,6 +32,9 @@ export const AggregatorConfig = {
   afSuiReferralVault: '0x4ce9a19b594599536c53edb25d22532f82f18038dc8ef618afd00fbbfb9845ef',
   afSuiTreasury: '0xd2b95022244757b0ab9f74e2ee2fb2c3bf29dce5590fa6993a85d64bd219d7e8',
   afSuiValidator: '0xd30018ec3f5ff1a3c75656abf927a87d7f0529e6dc89c7ddd1bd27ecb05e3db2',
+  // FlowX AMM（v2 恒定乘积）：包只有 v1；所有 pair 都在这个共享 Container 的 Bag 里
+  flowxAmmPackageId: '0xba153169476e8c3114962261d1edc70de5ad9781b83cc617ecc8c1923191cae0',
+  flowxAmmContainer: '0xb65dcbf63fd3ad5d0ebfbf334780dc9f785eff38a4459e37ab08fa79576ee511',
   // Aggregator API endpoint
   aggregatorBaseUrl: 'https://open-aggregator-api.naviprotocol.io/find_routes',
 
