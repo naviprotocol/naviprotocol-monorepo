@@ -199,10 +199,30 @@ export async function plan(
   }
   const flashRepay = (v: N) => n(ceil(v.times(n(market.flash.feeBps).div(10000).plus(1))))
   const borrowFee = (v: N) => n(floor(v.times(borrowFeeBps).div(10000)))
+  // TL-01: an add_principal with an explicit target is judged against the principal it adds, not the whole position
+  // (a small principal on a large position would otherwise be "reached" unlevered, at F = 0). The residual is the
+  // debt-side distance to the target, the same quantity the bracket search drives to zero. The amount is priced in the
+  // coin actually supplied (inputCoinType, else the principal), which is the collateral or the debt.
+  const principalValue =
+    action.type === 'add_principal' && specified !== undefined
+      ? n(action.amount).times(
+          sameCoin(action.inputCoinType || strategy.principalCoinType, strategy.collateralCoinType)
+            ? pc
+            : pd
+        )
+      : undefined
   const targetReached = (c: N, d: N) => {
     const value = c.times(pc),
       net = value.minus(d.times(pd))
-    return net.gt(0) && value.div(net).minus(target).abs().lte(target.times('0.0001'))
+    if (!net.gt(0)) return false
+    if (principalValue && principalValue.gt(0)) {
+      const residual = d
+        .times(pd)
+        .minus(value.times(target.minus(1)).div(target))
+        .abs()
+      return residual.lte(BN.maximum(principalValue.times('0.0001'), pd))
+    }
+    return value.div(net).minus(target).abs().lte(target.times('0.0001'))
   }
   // Leave time for the API's other reads within its quote deadline. An abandoned
   // converter promise is read-only; late results are never used in the plan.

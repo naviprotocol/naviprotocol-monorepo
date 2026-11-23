@@ -189,3 +189,9 @@ any add below ≈ 300 SUI stays unlevered (10 of the last 16 production loop-ins
 | TL-02 | `add_principal` without `targetLeverage` (keep the current leverage) | Unchanged (whole-position tolerance) | `run.mjs` regression |
 | TL-03 | `open`, `set_leverage` | Unchanged | `run.mjs`, `emode.mjs`, `stage.mjs` regression; vault-strategy LS-07 / LS-08 |
 | TL-04 | The tighter bar cannot be met within the conversion budget (32 quotes, 45 s) | `NO_CONVERGENCE` before any command, never a plan outside the bar | vault-strategy LS-16 records the quote count; converter quotes are deterministic for Volo stake |
+
+TL result (2026-11-23): on the live SUI_LST position (3.37x) loop-ins of 2 / 73 / 1,000 SUI now borrow 7.02 / 256.75 /
+3,517.68 SUI (3.508 / 3.517 / 3.518 × principal) and land on the target leverage to 1e-12; before the change 73 SUI borrowed
+0. vault-strategy LS-16 (70 SUI, simulated on chain): 3.5227 × principal, leverage 3.3657978 vs target 3.3657978.
+Regression: `emode.mjs` 18/18, `stage.mjs` 10/10, `run.mjs` 15/16 — `close-haedal` expects the Haedal converter and today's
+quotes pick Astros; the same case fails identically with this change reverted (control run), so it is market-dependent.
