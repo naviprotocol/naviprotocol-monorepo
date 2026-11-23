@@ -174,3 +174,18 @@ LQ result (2026-11-23): vault-strategy LS-15 on the live SUI_LST position — an
 (3.70M SUI flash + 3.70M borrow, 5.15M available) is refused `CAPACITY_EXCEEDED` "Flash and borrow from the same reserve
 exceed its available liquidity" before any command (before the change the same quote built and aborted on chain).
 Regression: `run.mjs` all pass, `emode.mjs` 18/18, `stage.mjs` 10/10 (the isolated stage_v2 market, LQ-02).
+
+## Leverage tolerance of a small `add_principal` (2026-11-23, found by settlement M3 MS-01, before the code)
+
+`targetReached` accepts a plan when the whole position's leverage is within 0.01% of the target. An `add_principal` with an
+explicit `targetLeverage` whose principal is small next to the position is "reached" with no flash at all: the bracket's
+first evaluation (F = 0, principal deposited unlevered) already lands inside that band. SUI_LST (≈ 10.8M SUI collateral at
+3.37x) on 2026-11-23: a 73 SUI loop-in targeting the leverage legacy reaches got flash 0 / borrow 0 instead of ≈ 257 SUI;
+any add below ≈ 300 SUI stays unlevered (10 of the last 16 production loop-ins).
+
+| ID | Failure mode | Expected | E2E |
+|---|---|---|---|
+| TL-01 | `add_principal` with an explicit `targetLeverage`, principal small next to the position | Precision scales with the principal: the plan's debt-side residual to the target is within 0.01% of the principal's value (or one debt atom), so the principal is levered to the target; F = 0 is accepted only when it meets that bar | vault-strategy LS-16 (≈ 70 SUI loop-in on the live SUI_LST position: borrow ≈ principal × 3.5177) |
+| TL-02 | `add_principal` without `targetLeverage` (keep the current leverage) | Unchanged (whole-position tolerance) | `run.mjs` regression |
+| TL-03 | `open`, `set_leverage` | Unchanged | `run.mjs`, `emode.mjs`, `stage.mjs` regression; vault-strategy LS-07 / LS-08 |
+| TL-04 | The tighter bar cannot be met within the conversion budget (32 quotes, 45 s) | `NO_CONVERGENCE` before any command, never a plan outside the bar | vault-strategy LS-16 records the quote count; converter quotes are deterministic for Volo stake |
