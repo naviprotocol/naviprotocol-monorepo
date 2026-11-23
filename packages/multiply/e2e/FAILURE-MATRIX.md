@@ -202,3 +202,11 @@ collateral or the debt). TL-05 result: `add-principal-collateral-target` passes;
 it fails "a collateral-paid add with a target must borrow". Full regression on the rebased branch: unit 216/216,
 `run.mjs` 17/17 (`close-haedal` passes on today's quotes), `emode.mjs` 18/18, `stage.mjs` 10/10; vault-strategy
 sui-lst-multiply 18/18.
+
+Rebased onto zado's configured E-Mode `818d578` (2026-11-23): our own E-Mode commit is dropped in favour of it; env /
+composite feeds (ST), LQ-01 and TL-01..05 are kept. The same-reserve check now sits in `readLiveBuildState`; with `env`
+omitted the lending reads get exactly their old options (ST-01, caught by `tests/emode.test.ts`). Results: unit 261/261,
+`stage.mjs` 10/10, `emode.mjs` 5/5 with `MULTIPLY_E2E_ADDRESS=0x39c7…d9ba` (the default address `0xc41d…` now holds a
+position, so its new-Cap case fails "Use add_principal or set_leverage" — identically on 818d578 alone), `run.mjs` 16/17
+(`close-haedal` expects Haedal and today's quotes pick another route — identically on 818d578 alone). vault-strategy
+sui-lst-multiply 18/18 on top (SUI_LST, an existing E-Mode 0 account).
