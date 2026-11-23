@@ -16,6 +16,7 @@ import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
+import { makeCetusDlmmPTB } from './Dex/cetusDlmm'
 import { parsePoolTypeArgs } from './utils'
 import { moveCallTransferNonzero } from '../PTB/commonFunctions'
 import type { SwapOptions } from '../../types'
@@ -97,7 +98,8 @@ export async function buildSwapWithoutServiceFee(
         Dex.BLUEFIN,
         Dex.MAGMA,
         Dex.MOMENTUM,
-        Dex.MAGMA_ALMM
+        Dex.MAGMA_ALMM,
+        Dex.CETUS_DLMM
       ]
 
       if (dexNeedsParsing.includes(provider)) {
@@ -363,6 +365,20 @@ export async function buildSwapWithoutServiceFee(
             moveCallTransferNonzero(txb, coinBOut, userAddress, coinBtype)
             pathTempCoin = coinAOut
           }
+          break
+        }
+        case Dex.CETUS_DLMM: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+          // The whole path coin is swapped (exact-in), so there is no leftover to return.
+          pathTempCoin = await makeCetusDlmmPTB(
+            txb,
+            poolA,
+            poolB,
+            poolId,
+            pathTempCoin,
+            amountInPTB,
+            a2b
+          )
           break
         }
         default: {

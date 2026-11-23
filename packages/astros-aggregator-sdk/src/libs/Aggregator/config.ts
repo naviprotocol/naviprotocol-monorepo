@@ -111,7 +111,14 @@ export const AggregatorConfig = {
   // config::checked_package_version (code 10); 0x668909f9 is the current v4 integrate
   // package (verified by devInspect on both SUI->USDC and USDC->SUI).
   magmaIntegratePublishedAt: '0x668909f9f30380dd1b63834534dc2bd19b274e6312a0dfa9be0ee5b0cef73446',
-  magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf'
+  magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf',
+
+  // Cetus DLMM configuration (protocol package, original 0x5664f9d3…).
+  // cetusDlmmPublishedAt is the latest package (v10). It must track Versioned.version (currently 10):
+  // versioned::check_version aborts in packages whose version constant is below it.
+  cetusDlmmPublishedAt: '0x6b989f9b05bd11a00f1c7779443d66802c5e71631f59e87be5d2a616991f151e',
+  cetusDlmmGlobalConfig: '0xf31b605d117f959b9730e8c07b08b856cb05143c5e81d5751c90d2979e82f599',
+  cetusDlmmVersioned: '0x05370b2d656612dd5759cbe80463de301e3b94a921dfc72dd9daa2ecdeb2d0a8'
 }
 
 /**

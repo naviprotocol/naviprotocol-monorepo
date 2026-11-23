@@ -135,7 +135,9 @@ export enum Dex {
   /** FlowX DEX protocol */
   FLOWX = 'flowx',
   /** Magma ALMM DEX protocol */
-  MAGMA_ALMM = 'magmaAlmm'
+  MAGMA_ALMM = 'magmaAlmm',
+  /** Cetus DLMM DEX protocol */
+  CETUS_DLMM = 'cetusDlmm'
 }
 
 /**
