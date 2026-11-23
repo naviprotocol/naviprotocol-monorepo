@@ -189,6 +189,7 @@ any add below ≈ 300 SUI stays unlevered (10 of the last 16 production loop-ins
 | TL-02 | `add_principal` without `targetLeverage` (keep the current leverage) | Unchanged (whole-position tolerance) | `run.mjs` regression |
 | TL-03 | `open`, `set_leverage` | Unchanged | `run.mjs`, `emode.mjs`, `stage.mjs` regression; vault-strategy LS-07 / LS-08 |
 | TL-04 | The tighter bar cannot be met within the conversion budget (32 quotes, 45 s) | `NO_CONVERGENCE` before any command, never a plan outside the bar | vault-strategy LS-16 records the quote count; converter quotes are deterministic for Volo stake |
+| TL-05 | `add_principal` with a target paid in another accepted coin (`inputCoinType` = collateral, phase-one funding, 9f99a83) | The principal's value for the TL-01 bar is the amount priced in the coin supplied, not in the strategy's principal; a small collateral-paid add is levered like a principal-paid one | `run.mjs` `add-principal-collateral-target`: 0.001 vSUI (below the seed position's whole-position band) with `inputCoinType` vSUI and target 2 borrows, and the simulated PTB lands on the target |
 
 TL result (2026-11-23): on the live SUI_LST position (3.37x) loop-ins of 2 / 73 / 1,000 SUI now borrow 7.02 / 256.75 /
 3,517.68 SUI (3.508 / 3.517 / 3.518 × principal) and land on the target leverage to 1e-12; before the change 73 SUI borrowed
