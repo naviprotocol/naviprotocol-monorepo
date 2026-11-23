@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/multiply",
-  "version": "0.2.0-preview.20261119.1",
+  "version": "0.2.0-preview.20261123.1",
   "description": "Composable AccountCap-based NAVI Multiply strategy engine",
   "type": "module",
   "license": "MIT",

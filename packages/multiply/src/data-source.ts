@@ -4,7 +4,7 @@ import { bcs } from '@mysten/sui/bcs'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import {
   getConfig,
-  getPools,
+  getMarket,
   getAllFlashLoanAssets,
   updateOraclePricesPTB,
   ReserveDataInfo,
@@ -26,12 +26,14 @@ import {
   address,
   check,
   inspect,
+  recordReadVersion,
   sameCoin,
   coinType,
   jsonCopy,
   MultiplyError
 } from './utils'
 import { lendingToRaw, tokenDecimals } from './amounts'
+import { resolveEMode } from './emode'
 
 import {
   ACCOUNT_CAP_TYPE,
@@ -53,6 +55,8 @@ export function createNaviDataSource(
     capRegistry?: CapRegistryConfig
     strategies?: Strategy[]
     retiredRegistryKeys?: RegistryKey[]
+    /** Versions of objects actually read, delivered only after validation. */
+    onReadEvidence?: (kind: 'caps' | 'position', versions: Record<string, string>) => void
     /** Optional request-scoped instrumentation. The wrapper must run each read exactly once. */
     measure?: <T>(stage: string, read: () => Promise<T>) => Promise<T>
   } = {}
@@ -90,21 +94,14 @@ export function createNaviDataSource(
     async listAccountCaps(owner) {
       owner = address(owner)
       try {
-        const config = await getConfig(opts)
         const registry = new Transaction()
         registry.setSender(owner)
         registry.moveCall({
           target: `${capRegistry.packageId}::multiply_registry::find_user_mul_account_caps`,
           arguments: [registry.object(capRegistry.objectId), registry.pure.address(owner)]
         })
-        registry.moveCall({
-          target: `${config.emode.contract.registryPackage}::registry::find_user_emode_account_caps`,
-          arguments: [
-            registry.object(config.emode.contract.registryObject),
-            registry.pure.address(owner)
-          ]
-        })
-        const registered = await inspect(client, registry)
+        const versions = options.onReadEvidence ? {} : undefined
+        const registered = await inspect(client, registry, versions)
         const allEntries = decodeRegistryEntries(registered[0]?.returnValues)
         check(
           allEntries.every((entry) => entry.capId !== address('0x0')),
@@ -118,14 +115,6 @@ export function createNaviDataSource(
         )
         const entries = allEntries.filter(
           (entry) => !retired.has(registryKeyString(entry.registryKey))
-        )
-        check(
-          registered[1]?.returnValues?.length === 3,
-          'READ_FAILED',
-          'Incomplete E-Mode registry response'
-        )
-        const emodeOwners = new Set(
-          bcs.vector(bcs.Address).parse(registered[1].returnValues[2].bcs)
         )
         const definitions = entries.map((entry) => {
           const key = `${entry.registryKey.strategyNumericId}:${entry.registryKey.strategyVersion}`
@@ -176,7 +165,7 @@ export function createNaviDataSource(
         }
         const accountOwners = new Set<string>()
         const schema = bcs.struct('AccountCap', { id: bcs.Address, owner: bcs.Address })
-        return entries.map((entry, i): AccountCap => {
+        const caps = entries.map((entry, i): AccountCap => {
           const object = objects.get(entry.capId)
           check(
             object && coinType(object.type) === ACCOUNT_CAP_TYPE,
@@ -200,16 +189,12 @@ export function createNaviDataSource(
             'Invalid AccountCap identity'
           )
           check(
-            !emodeOwners.has(fields.owner),
-            'INVALID_ACCOUNT_CAP',
-            'E-Mode Cap cannot be used for Multiply'
-          )
-          check(
             !accountOwners.has(fields.owner),
             'DUPLICATE_ACCOUNT_CAP',
             'Multiple strategies share one lending account'
           )
           accountOwners.add(fields.owner)
+          if (versions) recordReadVersion(versions, entry.capId, object.version)
           return {
             id: entry.capId,
             accountOwner: fields.owner,
@@ -217,18 +202,21 @@ export function createNaviDataSource(
             registryKey: { ...entry.registryKey }
           }
         })
+        if (versions) options.onReadEvidence?.('caps', versions)
+        return caps
       } catch (error) {
         if (error instanceof MultiplyError) throw error
         throw new MultiplyError('READ_FAILED', 'Unable to read complete Multiply Registry snapshot')
       }
     },
     async readMarket(strategy) {
-      const [config, pools, flashConfig, flashAssets] = await Promise.all([
+      const [config, lendingMarket, flashConfig, flashAssets] = await Promise.all([
         measure('market_config', () => getConfig({ ...opts, market: strategy.market })),
-        measure('market_pools', () => getPools({ ...opts, markets: [strategy.market] })),
+        measure('market_pools', () => getMarket(strategy.market, opts)),
         measure('flash_config', () => getConfig({ ...opts, market: 'main' })),
         measure('flash_assets', () => getAllFlashLoanAssets({ ...opts, market: 'main' }))
       ])
+      const pools = lendingMarket.pools
       const collateral = pools.find((p) => sameCoin(p.suiCoinType, strategy.collateralCoinType))
       const debt = pools.find((p) => sameCoin(p.suiCoinType, strategy.debtCoinType))
       const flash = flashAssets.find((p) => sameCoin(p.coinType, strategy.debtCoinType))
@@ -242,10 +230,12 @@ export function createNaviDataSource(
         'MARKET_UNSUPPORTED',
         'Requires lending v2 and an on-chain HF limiter'
       )
+      const emode = await resolveEMode(client, strategy, config, lendingMarket, collateral, debt)
       tokenDecimals(collateral)
       tokenDecimals(debt)
       const market: MarketSnapshot = {
         config,
+        ...(emode ? { emode: { id: emode.emodeId, active: emode.isActive } } : {}),
         collateral,
         debt,
         collateralPrice: '',
@@ -318,6 +308,12 @@ export function createNaviDataSource(
       market.liquidationThreshold = new BN(reserve.liquidation_threshold)
         .div(RAY.toString())
         .toFixed()
+      if (emode) {
+        const asset = emode.assets.find((a) => a.assetId === collateral.id)!
+        market.ltv = new BN(asset.ltv).toFixed()
+        market.liquidationThreshold = new BN(asset.lt).toFixed()
+      }
+      // E-Mode overrides collateral LTV/LT; protocol logic still weights debt per reserve.
       market.borrowWeight = new BN(bcs.u64().parse(results[riskIndex + 1].returnValues[0].bcs))
         .div(10000)
         .toFixed()
@@ -340,16 +336,8 @@ export function createNaviDataSource(
         target: `${config.uiGetter}::getter_unchecked::get_user_state`,
         arguments: [tx.object(config.storage), tx.pure.address(cap.accountOwner)]
       })
-      tx.moveCall({
-        target: `${config.package}::storage::is_in_emode`,
-        arguments: [tx.object(config.storage), tx.pure.address(cap.accountOwner)]
-      })
-      const results = await inspect(client, tx)
-      check(
-        !bcs.bool().parse(results[3].returnValues[0].bcs),
-        'POSITION_UNSUPPORTED',
-        'Account has an unsupported E-Mode override'
-      )
+      const versions = options.onReadEvidence ? {} : undefined
+      const results = await inspect(client, tx, versions)
       const reserves = bcs.vector(ReserveDataInfo).parse(results[1].returnValues[0].bcs)
       const states = bcs.vector(UserStateInfo).parse(results[2].returnValues[0].bcs)
       let collateralAmount = '0',
@@ -377,10 +365,14 @@ export function createNaviDataSource(
       // NAVI's balances are normalized to 9 decimals. Coins, swaps, flash loans,
       // and all public Multiply amounts use each token's native precision.
       // Round available collateral down and liabilities up to avoid overstating equity.
-      return {
+      const amounts = {
         collateralAmount: lendingToRaw(collateralAmount, tokenDecimals(market.collateral)),
-        debtAmount: lendingToRaw(debtAmount, tokenDecimals(market.debt), true)
+        debtAmount: lendingToRaw(debtAmount, tokenDecimals(market.debt), true),
+        protocolCollateralAmount: collateralAmount,
+        protocolDebtAmount: debtAmount
       }
+      if (versions) options.onReadEvidence?.('position', versions)
+      return amounts
     },
     async readBorrowFeeBps(market, accountOwner) {
       const tx = new Transaction()

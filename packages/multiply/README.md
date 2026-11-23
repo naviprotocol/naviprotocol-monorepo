@@ -6,9 +6,9 @@ quotes and builds transactions; it never signs or broadcasts them.
 ## Phase 1 model
 
 The application owns product registration. Supply its validated `Strategy[]` to
-`createMultiplyClient`; the API's phase 1 directory uses four main-market pairs:
-vSUI/SUI, haSUI/SUI, SUI/USDC (long SUI), and USDSUI/USDC. This SDK release adds
-execution support; it does not approve their production risk policy.
+`createMultiplyClient`. The API's phase 1 directory includes vSUI/SUI, haSUI/SUI,
+and USDSUI/USDC. The application passes retired Registry keys alongside the active
+strategies so wallet reads skip retired AccountCaps.
 
 A strategy has distinct collateral and debt tokens. `principalCoinType` can equal
 either. It is the accounting/default withdrawal unit, independent of the selected
@@ -24,17 +24,17 @@ const multiply = createMultiplyClient({
   strategies: productStrategies,
   retiredRegistryKeys: retiredProductKeys,
 })
-const strategy = productStrategies.find(s => s.id === 'long-sui')!
+const strategy = productStrategies.find(s => s.id === 'main-vsui-sui')!
 const quote = await multiply.quote(
   address,
   strategy,
   { type: 'open', inputCoinType: strategy.collateralCoinType,
-    amount: '1000000000', targetLeverage: '2' },
-  { minHealthFactor: '1.6', maxSlippageBps: 50 }, // example, not approved risk policy
+    amount: '1000000000', targetLeverage: '1.5' },
+  { minHealthFactor: '2.0', maxSlippageBps: 50 },
 )
 const tx = new Transaction()
 const built = await multiply.buildPTB(tx, quote, {
-  coins: [{ coinType: strategy.collateralCoinType, coin: suppliedSuiCoin }],
+  coins: [{ coinType: strategy.collateralCoinType, coin: suppliedVsuiCoin }],
 })
 if (built.createdAccountCap) tx.transferObjects([built.createdAccountCap], address)
 if (built.coins.length) tx.transferObjects(built.coins.map(c => c.coin), address)
@@ -83,7 +83,7 @@ Collateral input is supplied directly; only borrowed debt is converted. Debt
 input may merge with debt flash funding before conversion. A 1x collateral opening
 needs no conversion or flash loan. On a collateral-principal withdrawal/close,
 only the collateral required for debt repayment is sold; the remainder is returned
-as principal. Debt dust remains a separate output. Long SUI therefore exits in SUI.
+as principal. Debt dust remains a separate output.
 
 The builder independently validates funding, conversion roles, projected balances,
 repayment math and minimum principal output. Different token types never merge.
@@ -113,8 +113,8 @@ safe integer range. When using the converter directly, pass a validated
 
 Keys `(strategyNumericId, strategyVersion)` are permanent execution identities,
 unique per registry definition. Never reassign a deployed key to different assets
-or market. New Caps are created and registered atomically; close retains the Cap.
-Invalid ownership, duplicate Caps/accounts, unsupported E-Mode and unknown keys
+or market/mode. New Caps are created and registered atomically; close retains the Cap.
+Invalid ownership, duplicate Caps/accounts, invalid E-Mode configuration and unknown keys
 fail explicitly. Only **explicit** `retiredRegistryKeys` may be skipped; structural,
 identity and duplicate checks still run first. Retiring a key does not move funds.
 
@@ -134,8 +134,8 @@ The API consequently reports lifetime yield unavailable until a conforming sourc
 and complete history watermark are available. Basic positions and risk still work.
 
 Custom adapters are trusted application code. Built-in contract deployments target
-Sui mainnet; changing only the client URL does not switch those addresses. E-Mode,
-isolated phase 2, third-token inputs and delayed redemption are out of scope.
+Sui mainnet; changing only the client URL does not switch those addresses.
+Isolated phase 2, third-token inputs and delayed redemption are out of scope.
 The exported `strategies.vsuiSui`/`hasuiSui` remain legacy dedicated-market presets
 (keys 1:1/2:1); phase 1 products must use the API-owned main-market registry.
 
@@ -161,3 +161,22 @@ threshold fallback and malformed/retired identities. Historical documents under
 phase 1 hosted simulation or signed-wallet acceptance. Each product must progress
 through open simulation → human sample creation → management simulation → human
 management/close, with matching Registry keys and source/artifact revisions.
+
+### Strategy E-Mode
+
+Set `Strategy.emodeId` together with `market` to use that market's E-Mode (ID `0`
+is valid). `getMarket()` supplies the configured group's collateral LTV/LT;
+debt retains its reserve borrow weight. The data source checks asset direction.
+
+Use a **new Multiply Registry strategyVersion** when switching a strategy's mode,
+and retire the previous key through `retiredRegistryKeys`. Existing ordinary Caps
+are not migrated. A newly created Cap enters the configured mode in the same PTB,
+before Multiply registration and funding. A previously initialized Cap, including
+an empty one reopened after close, is reused without a mode query or another enter.
+No operation reads or writes the independent E-Mode Registry.
+
+Custom DataSources must return `market.emode = { id, active }` for E-Mode strategies,
+alongside their effective risk parameters. Paused groups disable new exposure;
+the default source can read only that group's configuration to support repayment
+and exit, without reading any account's current mode. Keep the existing final-byte
+simulation requirement, especially with `buildPTBForSimulation`.

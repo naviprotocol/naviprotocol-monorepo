@@ -37,7 +37,7 @@ function fixture(
   configured = Object.values(strategies) as Strategy[],
   retiredRegistryKeys: RegistryKey[] = []
 ) {
-  const results = [returns(ids, versions, caps), returns([], [], [])]
+  const results = [returns(ids, versions, caps)]
   const objects = caps.map((id) => ({
     objectId: id,
     type: ACCOUNT_CAP_TYPE,
@@ -82,8 +82,7 @@ it('resolves numeric keys, matches unordered object responses and never reads me
   expect(f.core.listDynamicFields).not.toHaveBeenCalled()
   const tx = f.core.simulateTransaction.mock.calls[0][0].transaction as Transaction
   expect(tx.getData().commands.map((c) => c.$kind === 'MoveCall' && c.MoveCall.function)).toEqual([
-    'find_user_mul_account_caps',
-    'find_user_emode_account_caps'
+    'find_user_mul_account_caps'
   ])
 })
 
@@ -131,14 +130,13 @@ it('rejects missing rows, invalid BCS and failed simulations instead of returnin
   await expect(f.source.listAccountCaps(wallet)).rejects.toMatchObject({ code: 'READ_FAILED' })
 })
 
-it.each(['owner', 'type', 'content', 'zero', 'emode'])(
+it.each(['owner', 'type', 'content', 'zero'])(
   'rejects invalid registered Cap: %s',
   async (reason) => {
     const f = reason === 'zero' ? fixture(['1'], ['1'], [address('0x0')]) : fixture()
     if (reason === 'owner') f.objects[0].owner.AddressOwner = address('0xbb')
     if (reason === 'type') f.objects[0].type = '0x2::coin::Coin<0x2::sui::SUI>'
     if (reason === 'content') f.objects[0].content = new Uint8Array([])
-    if (reason === 'emode') f.results[1] = returns(['1'], ['1'], [cap1])
     await expect(f.source.listAccountCaps(wallet)).rejects.toMatchObject({
       code: 'INVALID_ACCOUNT_CAP'
     })
@@ -239,4 +237,68 @@ describe('explicit retired Registry discovery', () => {
       fixture(['1'], ['1'], [address('0x0')], [current], retired).source.listAccountCaps(wallet)
     ).rejects.toMatchObject({ code: 'INVALID_ACCOUNT_CAP' })
   })
+})
+
+it('reports Registry inputs, runtime reads and actual owned Cap versions only after validation', async () => {
+  const f = fixture()
+  const onReadEvidence = vi.fn()
+  const source = createNaviDataSource({
+    client: { core: f.core } as unknown as MultiplySuiClient,
+    onReadEvidence
+  })
+  const registry = address('0x99'),
+    shared = address('0x89'),
+    child = address('0xac')
+  const receipt = {
+    Transaction: {
+      status: { success: true },
+      effects: {
+        changedObjects: [
+          { objectId: registry, inputState: 'Exists', inputVersion: '10', outputVersion: '15' },
+          { objectId: address('0x98'), inputState: 'DoesNotExist', outputVersion: '15' }
+        ],
+        unchangedConsensusObjects: [{ kind: 'ReadOnlyRoot', objectId: shared, version: '11' }]
+      }
+    },
+    commandResults: f.results,
+    protoJson: {
+      transaction: {
+        effects: { unchangedLoadedRuntimeObjects: [{ objectId: child, version: '12' }] }
+      }
+    }
+  }
+  f.core.simulateTransaction.mockResolvedValue(receipt)
+  await source.listAccountCaps(wallet)
+  expect(onReadEvidence).toHaveBeenCalledWith('caps', {
+    [registry]: '10',
+    [shared]: '11',
+    [child]: '12',
+    [cap1]: '1'
+  })
+  onReadEvidence.mockClear()
+  f.objects[0].owner.AddressOwner = address('0xbc')
+  await expect(source.listAccountCaps(wallet)).rejects.toMatchObject({
+    code: 'INVALID_ACCOUNT_CAP'
+  })
+  expect(onReadEvidence).not.toHaveBeenCalled()
+})
+
+it('discovers initialized E-Mode Caps using only the strategy Registry, skipping retired ordinary Caps', async () => {
+  const configured = {
+    ...strategies.vsuiSui,
+    emodeId: 0,
+    registryKey: { strategyNumericId: '4', strategyVersion: '2' }
+  }
+  const f = fixture(
+    ['4', '4'],
+    ['1', '2'],
+    [cap1, cap2],
+    [configured],
+    [{ strategyNumericId: '4', strategyVersion: '1' }]
+  )
+  const result = await f.source.listAccountCaps(wallet)
+  expect(result.map((c) => c.id)).toEqual([cap2])
+  expect(f.core.getObjects.mock.calls[0][0].objectIds).toEqual([cap2])
+  const tx = f.core.simulateTransaction.mock.calls[0][0].transaction as Transaction
+  expect(tx.getData().commands).toHaveLength(1)
 })

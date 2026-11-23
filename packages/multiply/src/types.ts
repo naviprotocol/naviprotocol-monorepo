@@ -23,8 +23,10 @@ export interface Strategy {
   debtCoinType: string
   /** Defaults to principal only. Entries must be collateral or debt. */
   acceptedInputCoinTypes?: string[]
-  /** Reserved for strategies with an explicitly supported E-Mode risk model. */
+  /** Mode entered atomically when creating a Cap. Immutable for this Registry key; 0 is valid. */
   emodeId?: number
+  /** Enabled only for configured markets whose direct close supports sub-atom collateral. */
+  allowCollateralDustClose?: boolean
 }
 export type Action =
   | { type: 'open'; amount: string; targetLeverage: string; inputCoinType?: string }
@@ -49,6 +51,9 @@ export interface PositionAmounts {
   /** Native Coin<T> atoms, not NAVI's normalized lending balance units. */
   collateralAmount: string
   debtAmount: string
+  /** Indexed protocol balances before native-coin rounding (nine decimals). */
+  protocolCollateralAmount?: string
+  protocolDebtAmount?: string
 }
 export interface Position extends PositionAmounts {
   address: string
@@ -60,6 +65,8 @@ export interface Position extends PositionAmounts {
 export type LendingConfig = Awaited<ReturnType<typeof getConfig>>
 export interface MarketSnapshot {
   config: LendingConfig
+  /** Effective configured mode, not a recurring account-mode observation. */
+  emode?: { id: number; active: boolean }
   collateral: Pool
   debt: Pool
   /** USD per whole token. Pool capacities retain the lending SDK's documented units. */

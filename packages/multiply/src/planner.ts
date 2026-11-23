@@ -1,3 +1,4 @@
+import { validateMarketMode, assertModeExposure } from './emode'
 import type {
   Action,
   Constraints,
@@ -11,7 +12,14 @@ import type {
 } from './types'
 import { BN, ceil, check, decimal, floor, uint, MultiplyError, sameCoin } from './utils'
 import { validateConversion } from './converters'
-import { amountCushion, atomPrices, borrowCapacity, supplyCapacity, withinLtv } from './amounts'
+import {
+  isDustClose,
+  amountCushion,
+  atomPrices,
+  borrowCapacity,
+  supplyCapacity,
+  withinLtv
+} from './amounts'
 
 type N = InstanceType<typeof BN>
 const n = (v: string | number) => new BN(v)
@@ -127,6 +135,7 @@ export async function plan(
   borrowFeeBps: string,
   convert: (req: ConversionRequest) => Promise<ConversionQuote>
 ) {
+  validateMarketMode(strategy, market)
   const C = n(snapshot.collateralAmount),
     D = n(snapshot.debtAmount)
   const { collateral: pc, debt: pd } = atomPrices(market)
@@ -141,7 +150,7 @@ export async function plan(
   )
   const equity = C.times(pc).minus(D.times(pd))
   check(
-    (C.isZero() && D.isZero()) || equity.gt(0),
+    (C.isZero() && D.isZero()) || equity.gt(0) || (action.type === 'repay' && D.gt(0)),
     'POSITION_UNSUPPORTED',
     'Position has non-positive equity'
   )
@@ -227,7 +236,9 @@ export async function plan(
     }
   }
   const input = (coinType: string, amount: string) => inputs.push({ coinType, amount })
-  if (action.type === 'repay' || action.type === 'add_collateral') {
+  if (action.type === 'close' && isDustClose(strategy, snapshot, market)) {
+    result.direction = 'decrease'
+  } else if (action.type === 'repay' || action.type === 'add_collateral') {
     result.direction = action.type
     input(
       action.type === 'repay' ? strategy.debtCoinType : strategy.collateralCoinType,
@@ -475,6 +486,16 @@ export async function plan(
     if (debtOut.gt(0)) outputs.push({ coinType: strategy.debtCoinType, amount: floor(debtOut) })
   } else {
     result.direction = 'decrease'
+    if (
+      action.type === 'close' &&
+      C.isZero() &&
+      snapshot.protocolCollateralAmount &&
+      snapshot.protocolCollateralAmount !== '0'
+    )
+      throw new MultiplyError(
+        'POSITION_UNSUPPORTED',
+        'This pool does not support collateral dust cleanup'
+      )
     check(C.gt(0), 'POSITION_NOT_FOUND', 'No collateral to withdraw')
     const close = action.type === 'close'
     const payout = n(action.type === 'remove_principal' ? action.amount : 0)
@@ -594,6 +615,7 @@ export async function plan(
     'CAPACITY_EXCEEDED',
     'Supply capacity exceeded'
   )
+  assertModeExposure(action, result, market)
   const projected = { collateralAmount: result.collateralAfter, debtAmount: result.debtAfter }
   const conservative = metrics(
     { ...projected, collateralAmount: result.minCollateralAfter },

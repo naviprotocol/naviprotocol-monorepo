@@ -19,7 +19,7 @@ possible remote failures can be enumerated. Registry parsing, bindings and malfo
 | --- | --- | --- |
 | Package | Missing dist/export/types, broken workspace dependencies, tarball cannot import | First red run fails on missing dist; final consumer imports tarball |
 | Inputs | Invalid address/type, zero/negative/fractional/overflow amount, invalid leverage/HF/slippage, unknown action/strategy | Typed error before PTB mutation |
-| Discovery | Unknown numeric keys, incomplete BCS arrays/objects, duplicate Cap/account, E-Mode registration, transferred Cap, upstream failure | Registry only; no metadata or legacy scans; unknown/conflicting records fail rather than empty |
+| Discovery | Unknown numeric keys, incomplete BCS arrays/objects, duplicate Cap/account, retired ordinary keys, transferred Cap, upstream failure | Registry only; no metadata or legacy scans; unknown/conflicting records fail rather than empty |
 | Snapshot | Missing pools/config, stale/invalid oracle, unknown risk parameters, non-strategy assets, negative equity, wrong market/E-Mode | Reject incomplete or incompatible state |
 | Integer math | u64 overflow, unsafe JS number, decimals mismatch, fee rounding, nonconvergence, dust, debt interest drift | Exact arithmetic, bounded solver, conservative output and debt bounds |
 | Liquidity | Supply/borrow/flash capacity exhausted, amount below protocol minimum, disabled market | No executable quote outside limits |
@@ -76,7 +76,7 @@ Cap exactly once with positive collateral/debt, support the strategy filter,
 reject opening a duplicate position, and build/simulate repayment using the
 existing Cap. No source or protocol is isolated or mocked. Failure boundaries:
 wrong type origin filter, wrong owner or transferred fixture, missing/invalid
-metadata, E-Mode exclusion, duplicate strategy binding, RPC/getter failure,
+metadata, incorrect configured E-Mode, duplicate strategy binding, RPC/getter failure,
 empty/closed fixture, existing-Cap ownership/PTB failure. RPC errors fail the run.
 
 Set `MULTIPLY_E2E_POSITION_ADDRESS` and `MULTIPLY_E2E_CAP_ID` to an active vSUI/SUI
@@ -100,3 +100,19 @@ with an additional 1,234,567 MIST input and a recipient distinct from the sender
 Unsigned simulation balance changes must show at least that amount reaching the
 recipient. This verifies actual nonzero refund delivery, beyond inspecting command
 arguments; it does not broadcast a transaction.
+
+## Configured E-Mode (2026-11-23)
+
+`node packages/multiply/e2e/emode.mjs` only simulates and never broadcasts. It
+uses a new Registry version, opens vSUI/SUI at 5x, checks the initialized mode and
+Multiply Registry, and recomputes HF using the same simulation's collateral/debt
+values. Invalid-mode and failing-final-HF injections must abort at the intended
+command, with no created business objects or committed events. Shared object
+versions and gas-coin consolidation can change even on failure.
+
+Use `MULTIPLY_E2E_PAIR=usdsui` for USDSUI/USDC. A sufficiently funded native USDC
+Coin is required for full simulation; missing funding is an unmet prerequisite,
+not a passing scenario. A missing catalogue group exercises targeted configuration
+reading from Storage using the actual field type origin, never an account-mode
+mapping or the independent E-Mode Registry. Persisted new-version Cap management
+and paused-group operations still need chain fixtures; unit/PTB coverage is separate.

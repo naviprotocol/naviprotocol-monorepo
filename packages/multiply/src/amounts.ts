@@ -1,5 +1,5 @@
 import type { Pool } from '@naviprotocol/lending'
-import type { MarketSnapshot, PositionAmounts } from './types'
+import type { MarketSnapshot, PositionAmounts, Strategy } from './types'
 import { BN, check, decimal } from './utils'
 
 /** NAVI stores lending balances/capacity at 9 decimals, independently of Coin<T>. */
@@ -20,6 +20,48 @@ export function lendingToRaw(value: string, decimals: number, roundUp = false) {
     .shiftedBy(decimals - LENDING_DECIMALS)
     .integerValue(roundUp ? BN.ROUND_CEIL : BN.ROUND_FLOOR)
     .toFixed(0)
+}
+
+/** A custom source with a rounded-down zero cannot establish an empty Cap without the protocol amount. */
+export function positionSides(position: PositionAmounts, market: MarketSnapshot) {
+  const side = (amount: string, protocol: string | undefined, decimals: number, debt: boolean) => {
+    if (protocol !== undefined) {
+      check(
+        /^(0|[1-9][0-9]{0,77})$/.test(protocol) &&
+          lendingToRaw(protocol, decimals, debt) === amount,
+        'READ_FAILED',
+        'Invalid protocol balance or inconsistent native amount'
+      )
+      return protocol !== '0'
+    }
+    check(
+      debt || decimals >= LENDING_DECIMALS || amount !== '0',
+      'READ_FAILED',
+      'Rounded collateral requires a protocol balance'
+    )
+    return amount !== '0'
+  }
+  return {
+    collateral: side(
+      position.collateralAmount,
+      position.protocolCollateralAmount,
+      tokenDecimals(market.collateral),
+      false
+    ),
+    debt: side(position.debtAmount, position.protocolDebtAmount, tokenDecimals(market.debt), true)
+  }
+}
+
+export function isDustClose(strategy: Strategy, position: PositionAmounts, market: MarketSnapshot) {
+  return (
+    strategy.allowCollateralDustClose === true &&
+    tokenDecimals(market.collateral) === 6 &&
+    position.collateralAmount === '0' &&
+    position.debtAmount === '0' &&
+    position.protocolDebtAmount === '0' &&
+    typeof position.protocolCollateralAmount === 'string' &&
+    /^[1-9][0-9]{0,2}$/.test(position.protocolCollateralAmount)
+  )
 }
 
 /** Price of one native atom, used only inside the solver. Public prices stay USD/token. */

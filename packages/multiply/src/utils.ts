@@ -76,18 +76,58 @@ export async function checksum(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(hash), (x) => x.toString(16).padStart(2, '0')).join('')
 }
 /** Read-only VM execution. Failed reads must never become empty positions. */
-export async function inspect(client: MultiplySuiClient, tx: Transaction) {
+export async function inspect(
+  client: MultiplySuiClient,
+  tx: Transaction,
+  inputVersions?: Record<string, string>
+) {
   tx.setSenderIfNotSet('0x0')
-  const response = await client.core.simulateTransaction({
-    transaction: tx,
-    checksEnabled: false,
-    include: { commandResults: true }
-  })
+  const options = { transaction: tx, checksEnabled: false }
+  const evidence = { commandResults: true, effects: true, protoJson: true } as const
+  const response = inputVersions
+    ? await client.core.simulateTransaction({ ...options, include: evidence })
+    : await client.core.simulateTransaction({ ...options, include: { commandResults: true } })
   const result = response.Transaction ?? response.FailedTransaction
   check(result?.status.success, 'READ_FAILED', JSON.stringify(result?.status ?? response))
   check(response.commandResults, 'READ_FAILED', 'Missing command results')
+  if (inputVersions && result.effects) {
+    for (const change of result.effects.changedObjects) {
+      if (change.inputState === 'Exists' && change.inputVersion)
+        recordReadVersion(inputVersions, change.objectId, change.inputVersion)
+    }
+    for (const object of result.effects.unchangedConsensusObjects) {
+      if (object.kind === 'ReadOnlyRoot' && object.version)
+        recordReadVersion(inputVersions, object.objectId, object.version)
+    }
+    // Sui 2.24 exposes untouched dynamic children in raw gRPC JSON, while
+    // older Core clients omit them. Never infer an absent input from an output.
+    const raw = response as {
+      protoJson?: {
+        transaction?: {
+          effects?: {
+            unchangedLoadedRuntimeObjects?: { objectId?: string; version?: string }[]
+          }
+        }
+      }
+    }
+    for (const object of raw.protoJson?.transaction?.effects?.unchangedLoadedRuntimeObjects ?? []) {
+      if (object.objectId && object.version)
+        recordReadVersion(inputVersions, object.objectId, object.version)
+    }
+  }
   return response.commandResults
 }
+export function recordReadVersion(versions: Record<string, string>, id: string, version: string) {
+  const key = address(id)
+  check(
+    typeof version === 'string' && /^[1-9][0-9]*$/.test(version),
+    'READ_FAILED',
+    'Invalid read version'
+  )
+  check(!versions[key] || versions[key] === version, 'READ_FAILED', 'Conflicting read versions')
+  versions[key] = version
+}
+
 export function minOutputGuard(tx: Transaction, coin: TransactionObjectArgument, amount: string) {
   uint(amount, false)
   // split aborts if insufficient; merge preserves the complete output including surplus.

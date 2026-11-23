@@ -1,3 +1,4 @@
+import { validateMarketMode, assertModeExposure } from './emode'
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions'
 import type {
   AccountCap,
@@ -25,6 +26,8 @@ import {
 import { chooseConversion, metrics, plan, validateAction } from './planner'
 import {
   amountCushion,
+  isDustClose,
+  positionSides,
   atomPrices,
   borrowCapacity,
   supplyCapacity,
@@ -111,9 +114,9 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'Missing market'
     )
     check(
-      input.emodeId === undefined,
-      'STRATEGY_UNSUPPORTED',
-      'E-Mode risk overrides are not supported in this release'
+      input.emodeId === undefined || (Number.isSafeInteger(input.emodeId) && input.emodeId >= 0),
+      'INVALID_ARGUMENT',
+      'E-Mode ID must be a nonnegative safe integer'
     )
     registryKeyString(input.registryKey)
     const s = {
@@ -196,6 +199,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       if (!cap) continue
       const market = await source.readMarket(strategy),
         amounts = await source.readPosition(cap, strategy, market)
+      validateMarketMode(strategy, market)
       uint(amounts.collateralAmount)
       uint(amounts.debtAmount)
       result.push({
@@ -234,12 +238,14 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'Only open may create a Multiply Cap'
     )
     const market = await source.readMarket(strategy)
+    validateMarketMode(strategy, market)
     const snapshot = cap
       ? await source.readPosition(cap, strategy, market)
       : { collateralAmount: '0', debtAmount: '0' }
     uint(snapshot.collateralAmount)
     uint(snapshot.debtAmount)
-    const empty = snapshot.collateralAmount === '0' && snapshot.debtAmount === '0'
+    const sides = cap ? positionSides(snapshot, market) : { collateral: false, debt: false }
+    const empty = !sides.collateral && !sides.debt
     check(
       action.type !== 'open' || empty,
       'POSITION_EXISTS',
@@ -295,10 +301,152 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     q.execution.checksum = await checksum(q)
     return jsonCopy(q)
   }
-  async function buildPTB(
+  async function readLiveBuildState(q: MultiplyQuote, inputs: BuildInputs) {
+    const e = q.execution,
+      s = q.strategy
+    const cap = findCap(await loadCaps(q.address), s)
+    if (e.accountCap.kind === 'create')
+      check(
+        !cap && !inputs.accountCap,
+        'STALE_QUOTE',
+        'Cap was created since quote or an unexpected Cap was supplied'
+      )
+    else {
+      check(
+        cap && cap.id === e.accountCap.id && cap.accountOwner === e.accountCap.accountOwner,
+        'STALE_QUOTE',
+        'AccountCap changed since quote'
+      )
+      if (typeof inputs.accountCap === 'string')
+        check(address(inputs.accountCap) === address(cap.id), 'INVALID_INPUTS', 'Wrong AccountCap')
+    }
+    const fresh = await source.readMarket(s)
+    validateMarketMode(s, fresh)
+    assertModeExposure(q.action, q.execution, fresh)
+    for (const key of [
+      'package',
+      'storage',
+      'priceOracle',
+      'incentiveV2',
+      'incentiveV3',
+      'limter'
+    ] as const)
+      check(fresh.config[key] === e.market.config[key], 'STALE_QUOTE', `Market ${key} changed`)
+    check(
+      fresh.collateral.contract.pool === e.market.collateral.contract.pool &&
+        fresh.debt.contract.pool === e.market.debt.contract.pool &&
+        fresh.flash.poolId === e.market.flash.poolId &&
+        tokenDecimals(fresh.collateral) === tokenDecimals(e.market.collateral) &&
+        tokenDecimals(fresh.debt) === tokenDecimals(e.market.debt),
+      'STALE_QUOTE',
+      'Pool configuration changed'
+    )
+    const now = cap
+      ? await source.readPosition(cap, s, fresh)
+      : { collateralAmount: '0', debtAmount: '0' }
+    if (cap) {
+      const current = positionSides(now, fresh)
+      check(
+        (q.action.type === 'open') === (!current.collateral && !current.debt),
+        'STALE_QUOTE',
+        'Position no longer satisfies the action'
+      )
+      // Older quotes lack exact sub-atom balances. A native zero is ambiguous on
+      // the collateral side, except for an open that required a truly empty Cap.
+      if (q.action.type !== 'open') {
+        check(
+          e.snapshot.protocolCollateralAmount !== undefined ||
+            tokenDecimals(fresh.collateral) >= 9 ||
+            e.snapshot.collateralAmount !== '0',
+          'STALE_QUOTE',
+          'Quote lacks precise collateral state'
+        )
+        const quoted = positionSides(e.snapshot, fresh)
+        check(
+          quoted.collateral === current.collateral && quoted.debt === current.debt,
+          'STALE_QUOTE',
+          'Position crossed a zero balance'
+        )
+      }
+      if (q.action.type === 'close' && isDustClose(s, e.snapshot, fresh))
+        check(
+          isDustClose(s, now, fresh),
+          'STALE_QUOTE',
+          'Collateral became transferable; request a new quote'
+        )
+    }
+    // Interest may accrue; position mutations need a new quote. On-chain checks remain authoritative.
+    const collateralDelta = new BN(now.collateralAmount).minus(e.snapshot.collateralAmount)
+    const debtDelta = new BN(now.debtAmount).minus(e.snapshot.debtAmount)
+    check(
+      collateralDelta.gte(0) &&
+        collateralDelta.lte(
+          new BN(e.snapshot.collateralAmount).times('0.0001').plus(amountCushion(fresh.collateral))
+        ) &&
+        debtDelta.gte(0) &&
+        debtDelta.lte(
+          new BN(e.snapshot.debtAmount).times('0.0001').plus(amountCushion(fresh.debt))
+        ),
+      'STALE_QUOTE',
+      'Position changed since quote'
+    )
+    const currentFee = await source.readBorrowFeeBps(fresh, cap?.accountOwner)
+    check(
+      new BN(e.borrowAmount).times(currentFee).div(10000).integerValue().lte(e.borrowFee),
+      'STALE_QUOTE',
+      'Borrow fee increased'
+    )
+    check(fresh.flash.feeBps === e.market.flash.feeBps, 'STALE_QUOTE', 'Flash fee changed')
+    const projected = {
+      collateralAmount: new BN(e.minCollateralAfter).plus(collateralDelta).toFixed(0),
+      debtAmount: new BN(e.debtAfter).plus(q.action.type === 'close' ? 0 : debtDelta).toFixed(0)
+    }
+    const risk = metrics(projected, fresh)
+    check(
+      risk.healthFactor === null || new BN(risk.healthFactor).gte(q.constraints.minHealthFactor),
+      'STALE_QUOTE',
+      'Updated market no longer satisfies HF'
+    )
+    check(
+      Number.isSafeInteger(fresh.observedAt) && Date.now() - fresh.observedAt <= 120_000,
+      'STALE_QUOTE',
+      'Current market snapshot is stale'
+    )
+    if (q.constraints.maxLeverage && risk.leverage)
+      check(
+        new BN(risk.leverage).lte(q.constraints.maxLeverage),
+        'STALE_QUOTE',
+        'Updated market exceeds maximum leverage'
+      )
+    check(
+      withinLtv(projected, now, fresh, e.direction !== 'increase'),
+      'STALE_QUOTE',
+      'Updated market exceeds LTV'
+    )
+    check(
+      new BN(e.flashAmount).lte(fresh.flash.max) &&
+        (e.flashAmount === '0' || new BN(e.flashAmount).gte(fresh.flash.min)),
+      'CAPACITY_EXCEEDED',
+      'Flash capacity changed'
+    )
+    check(
+      new BN(e.collateralAfter).minus(e.snapshot.collateralAmount).lte(supplyCapacity(fresh)),
+      'CAPACITY_EXCEEDED',
+      'Supply capacity changed'
+    )
+    check(
+      new BN(e.borrowAmount).plus(e.borrowFee).lte(borrowCapacity(fresh)),
+      'CAPACITY_EXCEEDED',
+      'Borrow liquidity changed'
+    )
+    return { fresh, now }
+  }
+
+  async function assemblePTB(
     tx: Transaction,
     suppliedQuote: MultiplyQuote,
-    inputs: BuildInputs
+    inputs: BuildInputs,
+    fromStoredQuote: boolean
   ): Promise<BuildResult> {
     const q = jsonCopy(suppliedQuote)
     check(
@@ -375,108 +523,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         conversion.converterId
       )
     }
-    const cap = findCap(await loadCaps(q.address), s)
-    if (e.accountCap.kind === 'create')
-      check(
-        !cap && !inputs.accountCap,
-        'STALE_QUOTE',
-        'Cap was created since quote or an unexpected Cap was supplied'
-      )
-    else {
-      check(
-        cap && cap.id === e.accountCap.id && cap.accountOwner === e.accountCap.accountOwner,
-        'STALE_QUOTE',
-        'AccountCap changed since quote'
-      )
-      if (typeof inputs.accountCap === 'string')
-        check(address(inputs.accountCap) === address(cap.id), 'INVALID_INPUTS', 'Wrong AccountCap')
-    }
-    const fresh = await source.readMarket(s)
-    for (const key of [
-      'package',
-      'storage',
-      'priceOracle',
-      'incentiveV2',
-      'incentiveV3',
-      'limter'
-    ] as const)
-      check(fresh.config[key] === e.market.config[key], 'STALE_QUOTE', `Market ${key} changed`)
-    check(
-      fresh.collateral.contract.pool === e.market.collateral.contract.pool &&
-        fresh.debt.contract.pool === e.market.debt.contract.pool &&
-        fresh.flash.poolId === e.market.flash.poolId &&
-        tokenDecimals(fresh.collateral) === tokenDecimals(e.market.collateral) &&
-        tokenDecimals(fresh.debt) === tokenDecimals(e.market.debt),
-      'STALE_QUOTE',
-      'Pool configuration changed'
-    )
-    const now = cap
-      ? await source.readPosition(cap, s, fresh)
-      : { collateralAmount: '0', debtAmount: '0' }
-    // Interest may accrue; position mutations need a new quote. On-chain checks remain authoritative.
-    const collateralDelta = new BN(now.collateralAmount).minus(e.snapshot.collateralAmount)
-    const debtDelta = new BN(now.debtAmount).minus(e.snapshot.debtAmount)
-    check(
-      collateralDelta.gte(0) &&
-        collateralDelta.lte(
-          new BN(e.snapshot.collateralAmount).times('0.0001').plus(amountCushion(fresh.collateral))
-        ) &&
-        debtDelta.gte(0) &&
-        debtDelta.lte(
-          new BN(e.snapshot.debtAmount).times('0.0001').plus(amountCushion(fresh.debt))
-        ),
-      'STALE_QUOTE',
-      'Position changed since quote'
-    )
-    const currentFee = await source.readBorrowFeeBps(fresh, cap?.accountOwner)
-    check(
-      new BN(e.borrowAmount).times(currentFee).div(10000).integerValue().lte(e.borrowFee),
-      'STALE_QUOTE',
-      'Borrow fee increased'
-    )
-    check(fresh.flash.feeBps === e.market.flash.feeBps, 'STALE_QUOTE', 'Flash fee changed')
-    const projected = {
-      collateralAmount: new BN(e.minCollateralAfter).plus(collateralDelta).toFixed(0),
-      debtAmount: new BN(e.debtAfter).plus(q.action.type === 'close' ? 0 : debtDelta).toFixed(0)
-    }
-    const risk = metrics(projected, fresh)
-    check(
-      risk.healthFactor === null || new BN(risk.healthFactor).gte(q.constraints.minHealthFactor),
-      'STALE_QUOTE',
-      'Updated market no longer satisfies HF'
-    )
-    check(
-      Number.isSafeInteger(fresh.observedAt) && Date.now() - fresh.observedAt <= 120_000,
-      'STALE_QUOTE',
-      'Current market snapshot is stale'
-    )
-    if (q.constraints.maxLeverage && risk.leverage)
-      check(
-        new BN(risk.leverage).lte(q.constraints.maxLeverage),
-        'STALE_QUOTE',
-        'Updated market exceeds maximum leverage'
-      )
-    check(
-      withinLtv(projected, now, fresh, e.direction !== 'increase'),
-      'STALE_QUOTE',
-      'Updated market exceeds LTV'
-    )
-    check(
-      new BN(e.flashAmount).lte(fresh.flash.max) &&
-        (e.flashAmount === '0' || new BN(e.flashAmount).gte(fresh.flash.min)),
-      'CAPACITY_EXCEEDED',
-      'Flash capacity changed'
-    )
-    check(
-      new BN(e.collateralAfter).minus(e.snapshot.collateralAmount).lte(supplyCapacity(fresh)),
-      'CAPACITY_EXCEEDED',
-      'Supply capacity changed'
-    )
-    check(
-      new BN(e.borrowAmount).plus(e.borrowFee).lte(borrowCapacity(fresh)),
-      'CAPACITY_EXCEEDED',
-      'Borrow liquidity changed'
-    )
+    const { fresh, now } = fromStoredQuote
+      ? { fresh: e.market, now: e.snapshot }
+      : await readLiveBuildState(q, inputs)
+    validateMarketMode(s, fresh)
+    assertModeExposure(q.action, e, fresh)
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
     tx.setSenderIfNotSet(q.address)
     await source.prepareOracle(tx, s, fresh)
@@ -487,7 +538,14 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         : undefined
     const accountCap =
       createdAccountCap ?? inputs.accountCap ?? tx.object((e.accountCap as AccountCap).id)
-    if (createdAccountCap) registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry)
+    if (createdAccountCap) {
+      if (s.emodeId !== undefined)
+        tx.moveCall({
+          target: `${config.package}::lending::enter_emode_with_account_cap`,
+          arguments: [tx.object(config.storage), tx.pure.u64(s.emodeId), createdAccountCap]
+        })
+      registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry)
+    }
     const change: BuildResult['coins'] = []
     const exact = (type: string, amount: string) => {
       const supplied = coins.find((c) => sameCoin(c.coinType, type))!
@@ -639,6 +697,24 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
           target: `${config.package}::logic::user_collateral_balance`,
           arguments: [tx.object(config.storage), tx.pure.u8(fresh.collateral.id), owner]
         })
+        if (isDustClose(s, e.snapshot, fresh)) {
+          // The user may leave the wallet open while interest crosses into a
+          // transferable atom. Enforce the quoted dust domain at execution too.
+          for (const [left, right] of [
+            [balance, tx.pure.u256('1')],
+            [tx.pure.u256('999'), balance]
+          ]) {
+            const within = tx.moveCall({
+              target: '0x1::u256::checked_sub',
+              arguments: [left, right]
+            })
+            tx.moveCall({
+              target: '0x1::option::destroy_some',
+              typeArguments: ['u256'],
+              arguments: [within]
+            })
+          }
+        }
         const optional = tx.moveCall({ target: '0x1::u256::try_as_u64', arguments: [balance] })
         withdrawAmount = tx.moveCall({
           target: '0x1::option::destroy_some',
@@ -698,9 +774,16 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       const principalOutput = sameCoin(s.principalCoinType, s.collateralCoinType)
         ? collateral
         : debtOutput
-      check(principalOutput, 'INVALID_QUOTE', 'Missing principal output')
-      if (q.action.type === 'remove_principal') minOutputGuard(tx, principalOutput, q.action.amount)
+      const dust =
+        q.action.type === 'close' && isDustClose(s, now, fresh) && isDustClose(s, e.snapshot, fresh)
+      if (!dust) {
+        check(principalOutput, 'INVALID_QUOTE', 'Missing principal output')
+        if (q.action.type === 'remove_principal')
+          minOutputGuard(tx, principalOutput, q.action.amount)
+      }
       for (const minimum of q.estimate.minOutputs) {
+        if (dust && minimum.amount === '0' && sameCoin(minimum.coinType, s.principalCoinType))
+          continue
         const coin = sameCoin(minimum.coinType, s.collateralCoinType) ? collateral : debtOutput
         check(coin, 'INVALID_QUOTE', 'Missing minimum output coin')
         minOutputGuard(tx, coin, minimum.amount)
@@ -785,5 +868,14 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     })
     return { coins: change, accountCap, createdAccountCap }
   }
-  return { getPosition, quote, buildPTB }
+  function buildPTB(tx: Transaction, q: MultiplyQuote, inputs: BuildInputs) {
+    return assemblePTB(tx, q, inputs, false)
+  }
+
+  /** Assemble a server-stored plan for full simulation and settlement reconciliation before signing. */
+  function buildPTBForSimulation(tx: Transaction, q: MultiplyQuote, coins: BuildInputs['coins']) {
+    return assemblePTB(tx, q, { coins }, true)
+  }
+
+  return { getPosition, quote, buildPTB, buildPTBForSimulation }
 }

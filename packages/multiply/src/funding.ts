@@ -1,4 +1,5 @@
 import type { MultiplyQuote } from './types'
+import { isDustClose } from './amounts'
 import { BN, check, sameCoin, uint } from './utils'
 
 /** Independently check fixed-flow conservation; the checksum is not authorization. */
@@ -8,6 +9,21 @@ export function validateFunding(q: MultiplyQuote) {
     a = q.action
   const valid = (value: unknown) =>
     check(value, 'INVALID_QUOTE', 'Execution funding or conversion roles do not match the action')
+  const dust = a.type === 'close' && isDustClose(s, e.snapshot, e.market)
+  if (dust)
+    valid(
+      e.accountCap.kind === 'existing' &&
+        e.direction === 'decrease' &&
+        !e.conversions.length &&
+        e.flashAmount === '0' &&
+        e.flashRepayment === '0' &&
+        e.withdrawAmount === '0' &&
+        q.estimate.outputs.length === 0 &&
+        (q.estimate.minOutputs.length === 0 ||
+          (q.estimate.minOutputs.length === 1 &&
+            sameCoin(q.estimate.minOutputs[0].coinType, s.principalCoinType) &&
+            q.estimate.minOutputs[0].amount === '0'))
+    )
   const inputType =
     a.type === 'repay'
       ? s.debtCoinType
@@ -111,7 +127,7 @@ export function validateFunding(q: MultiplyQuote) {
           new BN(conversion.minOutput.amount).gte(e.flashRepayment)
       )
       if (!collateralPrincipal) valid(conversion.input.amount === e.withdrawAmount)
-    } else valid(collateralPrincipal && e.flashAmount === '0' && e.flashRepayment === '0')
+    } else valid((collateralPrincipal || dust) && e.flashAmount === '0' && e.flashRepayment === '0')
     if (a.type === 'remove_principal')
       valid(
         collateralPrincipal
@@ -126,7 +142,7 @@ export function validateFunding(q: MultiplyQuote) {
       .integerValue(BN.ROUND_CEIL)
   )
   for (const output of [...q.estimate.outputs, ...q.estimate.minOutputs]) {
-    uint(output.amount, false)
+    uint(output.amount, dust)
     valid(
       sameCoin(output.coinType, s.collateralCoinType) || sameCoin(output.coinType, s.debtCoinType)
     )

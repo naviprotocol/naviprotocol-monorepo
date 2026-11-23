@@ -3,11 +3,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
 import { ReserveDataInfo, UserStateInfo } from '@naviprotocol/lending'
-import type { Action, Converter, DataSource, MarketSnapshot, Strategy } from '../src/types'
+import type {
+  Action,
+  Converter,
+  DataSource,
+  MarketSnapshot,
+  PositionAmounts,
+  Strategy
+} from '../src/types'
 import { createMultiplyClient } from '../src/client'
 import { createNaviDataSource } from '../src/data-source'
 import { amountCushion, lendingToRaw } from '../src/amounts'
-import { coinType, BN } from '../src/utils'
+import { checksum, coinType, BN } from '../src/utils'
 
 const owner = '0x' + 'a'.repeat(64)
 const object = '0x' + 'b'.repeat(64)
@@ -22,11 +29,15 @@ function fixture(
   collateralDecimals: number,
   debtDecimals: number,
   existing = false,
-  collateralPrincipal = false
+  collateralPrincipal = false,
+  allowCollateralDustClose = false,
+  emodeId?: number
 ) {
   const strategy: Strategy = {
     id: `external-pair-${collateralDecimals}-${debtDecimals}`,
     market: 'external-market',
+    allowCollateralDustClose,
+    ...(emodeId !== undefined ? { emodeId } : {}),
     registryKey: { strategyNumericId: '100', strategyVersion: '1' },
     principalCoinType: collateralPrincipal ? collateralType : debtType,
     acceptedInputCoinTypes: collateralPrincipal
@@ -46,6 +57,7 @@ function fixture(
   }
   const market = {
     config,
+    ...(emodeId !== undefined ? { emode: { id: emodeId, active: true } } : {}),
     collateral: {
       id: 1,
       contract: { pool: object },
@@ -66,7 +78,7 @@ function fixture(
     flash: { config, poolId: object, min: '0', max: raw(1000000, debtDecimals), feeBps: '0' },
     observedAt: Date.now()
   } as MarketSnapshot
-  let position = {
+  let position: PositionAmounts = {
     collateralAmount: raw(100, collateralDecimals),
     debtAmount: raw(100, debtDecimals)
   }
@@ -150,6 +162,37 @@ async function build(
   })
   return { tx, built }
 }
+
+it.each([false, true])(
+  'builds the same PTB for simulation without live preflight (existing Cap: %s)',
+  async (existing) => {
+    const f = fixture(9, 6, existing)
+    const action: Action = existing
+      ? { type: 'repay', amount: raw(1, 6) }
+      : { type: 'open', amount: raw(100, 6), targetLeverage: '2' }
+    const q = await f.engine.quote(owner, f.strategy, action, constraints)
+    const { tx: normal } = await build(f, q)
+    for (const method of [
+      'listAccountCaps',
+      'readMarket',
+      'readPosition',
+      'readBorrowFeeBps'
+    ] as const) {
+      vi.spyOn(f.source, method).mockRejectedValue(new Error('unexpected live preflight'))
+    }
+    const tx = new Transaction()
+    await f.engine.buildPTBForSimulation(
+      tx,
+      q,
+      q.estimate.inputs.map((input, i) => ({
+        coinType: input.coinType,
+        coin: tx.object(`0x${i + 100}`)
+      }))
+    )
+    expect(tx.getData()).toEqual(normal.getData())
+    await expect(build(f, q)).rejects.toThrow('unexpected live preflight')
+  }
+)
 
 describe.each([
   [9, 6],
@@ -306,14 +349,14 @@ it('converts normalized fractional interest conservatively and scales the drift 
   expect(amountCushion(fixture(9, 6).market.collateral).toFixed()).toBe('1000')
 })
 
-it('rejects unsupported principal and E-Mode capabilities without hardcoding pair IDs', () => {
+it('rejects unsupported principal and invalid E-Mode IDs without hardcoding pair IDs', () => {
   const f = fixture(9, 6)
   expect(() =>
     createMultiplyClient({
       strategies: [{ ...f.strategy, principalCoinType: '0x33::fixture::THIRD' }]
     })
   ).toThrow('Principal must equal collateral or debt')
-  expect(() => createMultiplyClient({ strategies: [{ ...f.strategy, emodeId: 1 }] })).toThrow(
+  expect(() => createMultiplyClient({ strategies: [{ ...f.strategy, emodeId: -1 }] })).toThrow(
     'E-Mode'
   )
 })
@@ -596,6 +639,10 @@ it.each([
     f.strategy,
     f.market
   )
+  expect(p).toMatchObject({
+    protocolCollateralAmount: '100000000999',
+    protocolDebtAmount: '100000000001'
+  })
   expect(p.collateralAmount).toBe(
     new BN('100000000999')
       .shiftedBy(cd - 9)
@@ -983,4 +1030,287 @@ describe('independent funding checks including nonzero fees', () => {
         ).toBeLessThanOrEqual(2 / 10 ** Math.min(cd, dd))
       }
   })
+})
+
+describe('sub-atom protocol positions', () => {
+  const position = (collateral: string, debt = '0'): PositionAmounts => ({
+    collateralAmount: lendingToRaw(collateral, 6),
+    debtAmount: lendingToRaw(debt, 6, true),
+    protocolCollateralAmount: collateral,
+    protocolDebtAmount: debt
+  })
+  it.each([false, true])(
+    'clears 999 protocol units with no principal output, explicit minimum %s',
+    async (explicit) => {
+      const f = fixture(6, 6, true, false, true)
+      f.setPosition(position('999'))
+      const convert = vi.spyOn(f.converter, 'quote')
+      const q = await f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+      expect(q.estimate.outputs).toEqual([])
+      if (explicit) {
+        q.estimate.minOutputs = [{ coinType: debtType, amount: '0' }]
+        q.execution.checksum = ''
+        q.execution.checksum = await checksum(q)
+      }
+      const { tx, built } = await build(f, q)
+      expect(convert).not.toHaveBeenCalled()
+      expect(built.coins.map((c) => c.coinType)).toEqual([collateralType])
+      const calls = tx
+        .getData()
+        .commands.flatMap((c) => (c.$kind === 'MoveCall' ? [c.MoveCall.function] : []))
+      expect(calls.filter((c) => c === 'user_collateral_balance')).toHaveLength(2)
+      expect(calls).toContain('user_loan_balance')
+      expect(calls).toContain('withdraw_with_account_cap_v2')
+      for (const next of [position('1000'), position('0'), position('999', '1')]) {
+        f.setPosition(next)
+        await expect(build(f, q)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
+      }
+    }
+  )
+  it.each([
+    'positive minimum',
+    'unexpected token',
+    'two zero entries',
+    'zero output',
+    'non-canonical minimum',
+    'ordinary withdrawal'
+  ])('rejects %s before changing the PTB', async (kind) => {
+    const f = fixture(6, 6, true, false, true)
+    f.setPosition(position('999'))
+    const q = await f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+    const zero = { coinType: debtType, amount: '0' }
+    if (kind === 'positive minimum') q.estimate.minOutputs = [{ ...zero, amount: '1' }]
+    if (kind === 'unexpected token') q.estimate.minOutputs = [{ ...zero, coinType: collateralType }]
+    if (kind === 'two zero entries') q.estimate.minOutputs = [zero, zero]
+    if (kind === 'zero output') q.estimate.outputs = [zero]
+    if (kind === 'non-canonical minimum') q.estimate.minOutputs = [{ ...zero, amount: '00' }]
+    if (kind === 'ordinary withdrawal') q.action = { type: 'remove_principal', amount: '1' }
+    q.execution.checksum = ''
+    q.execution.checksum = await checksum(q)
+    const tx = new Transaction()
+    await expect(f.engine.buildPTB(tx, q, { coins: [] })).rejects.toMatchObject({
+      code: 'INVALID_QUOTE'
+    })
+    expect(tx.getData().commands).toEqual([])
+  })
+  const open: Action = {
+    type: 'open',
+    amount: '1000',
+    targetLeverage: '1',
+    inputCoinType: collateralType
+  }
+  it('keeps sub-atom deposits visible and prevents unsupported cleanup or reopening', async () => {
+    const f = fixture(6, 6, true)
+    f.setPosition(position('1'))
+    expect(await f.engine.getPosition(owner)).toMatchObject([
+      { protocolCollateralAmount: '1', collateralAmount: '0' }
+    ])
+    await expect(f.engine.quote(owner, f.strategy, open, constraints)).rejects.toMatchObject({
+      code: 'POSITION_EXISTS'
+    })
+    await expect(
+      f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+    ).rejects.toMatchObject({ code: 'POSITION_UNSUPPORTED' })
+  })
+  it('rejects an empty-cap quote when one protocol unit appears', async () => {
+    const f = fixture(6, 6, true)
+    f.setPosition(position('0'))
+    const q = await f.engine.quote(owner, f.strategy, open, constraints)
+    for (const next of [position('1'), position('0', '1')]) {
+      f.setPosition(next)
+      await expect(build(f, q)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
+    }
+  })
+  it('repays a protocol debt of one unit using one native atom', async () => {
+    const f = fixture(6, 6, true)
+    f.setPosition(position('0', '1'))
+    const q = await f.engine.quote(owner, f.strategy, { type: 'repay', amount: '1' }, constraints)
+    expect(q.estimate.inputs).toEqual([{ coinType: debtType, amount: '1' }])
+    expect(q.execution.debtAfter).toBe('0')
+    expect((await build(f, q)).built.coins.map((c) => c.coinType)).toContain(debtType)
+  })
+})
+
+describe('configured E-Mode initialization and risk', () => {
+  it.each([0, 2, undefined])('initializes mode %s atomically in both builders', async (emodeId) => {
+    const f = fixture(9, 6, false, false, false, emodeId)
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: raw(100, 6), targetLeverage: '2' },
+      constraints
+    )
+    const { tx } = await build(f, q)
+    const sim = new Transaction()
+    await f.engine.buildPTBForSimulation(
+      sim,
+      q,
+      q.estimate.inputs.map((input, i) => ({
+        coinType: input.coinType,
+        coin: sim.object(`0x${i + 100}`)
+      }))
+    )
+    expect(sim.getData()).toEqual(tx.getData())
+    const calls = tx.getData().commands.flatMap((c) => (c.$kind === 'MoveCall' ? [c.MoveCall] : []))
+    const init = calls.filter((c) =>
+      ['create_account', 'enter_emode_with_account_cap', 'register_mul_for_account_cap'].includes(
+        c.function
+      )
+    )
+    expect(init.map((c) => c.function)).toEqual([
+      'create_account',
+      ...(emodeId !== undefined ? ['enter_emode_with_account_cap'] : []),
+      'register_mul_for_account_cap'
+    ])
+    expect(calls.some((c) => c.module === 'registry' || c.function === 'is_in_emode')).toBe(false)
+    if (emodeId !== undefined) {
+      const enter = init[1]
+      expect(enter.arguments[2]).toEqual(
+        calls.find((c) => c.function === 'id_address')!.arguments[0]
+      )
+      const arg = enter.arguments[1]
+      expect(arg.$kind).toBe('Input')
+      const input = tx.getData().inputs[(arg as { Input: number }).Input]
+      expect(input.$kind).toBe('Pure')
+      if (input.$kind === 'Pure')
+        expect(bcs.u64().parse(Buffer.from(input.Pure.bytes, 'base64'))).toBe(String(emodeId))
+    }
+  })
+  it.each([false, true])(
+    'reuses initialized Caps without repeat enter (empty: %s)',
+    async (empty) => {
+      const f = fixture(9, 6, true, false, false, 0)
+      if (empty) f.setPosition({ collateralAmount: '0', debtAmount: '0' })
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        empty
+          ? { type: 'open', amount: raw(100, 6), targetLeverage: '2' }
+          : { type: 'repay', amount: raw(1, 6) },
+        constraints
+      )
+      const { tx } = await build(f, q)
+      expect(
+        tx
+          .getData()
+          .commands.some(
+            (c) =>
+              c.$kind === 'MoveCall' &&
+              ['enter_emode_with_account_cap', 'create_account', 'is_in_emode'].includes(
+                c.MoveCall.function
+              )
+          )
+      ).toBe(false)
+    }
+  )
+  it.each([-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, null, '0'])(
+    'rejects illegal mode ID %s',
+    (id) => {
+      const f = fixture(9, 6)
+      expect(() =>
+        createMultiplyClient({ strategies: [{ ...f.strategy, emodeId: id as number }] })
+      ).toThrow('E-Mode ID')
+    }
+  )
+  it('binds modes to the registered strategy and market snapshot', async () => {
+    const f = fixture(9, 6, false, false, false, 0)
+    const action: Action = { type: 'open', amount: raw(100, 6), targetLeverage: '2' }
+    await expect(
+      f.engine.quote(owner, { ...f.strategy, emodeId: 2 }, action, constraints)
+    ).rejects.toThrow('Registry binding')
+    f.market.emode = undefined
+    await expect(f.engine.quote(owner, f.strategy, action, constraints)).rejects.toThrow(
+      'configured E-Mode'
+    )
+  })
+  it('uses E-Mode LT and the actual borrow weight above the ordinary leverage limit', async () => {
+    const f = fixture(9, 6, false, false, false, 0)
+    f.market.ltv = '0.9'
+    f.market.liquidationThreshold = '0.93'
+    f.market.borrowWeight = '1.01'
+    const c = { minHealthFactor: '1.05', maxSlippageBps: 0 }
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: raw(100, 6), targetLeverage: '7' },
+      c
+    )
+    expect(Number(q.estimate.healthFactor)).toBeCloseTo((7 * 0.93) / (6 * 1.01), 6)
+    await expect(build(f, q)).resolves.toBeDefined()
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount: raw(100, 6), targetLeverage: '9' },
+        c
+      )
+    ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION' })
+  })
+  it('rejects paused exposure at quote and live build while preserving repayments', async () => {
+    const f = fixture(9, 6, false, false, false, 0)
+    const action: Action = { type: 'open', amount: raw(100, 6), targetLeverage: '1' }
+    const q = await f.engine.quote(owner, f.strategy, action, constraints)
+    f.market.emode!.active = false
+    await expect(build(f, q)).rejects.toThrow('paused')
+    await expect(f.engine.quote(owner, f.strategy, action, constraints)).rejects.toThrow('paused')
+    f.setExisting(true)
+    const repay = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'repay', amount: raw(1, 6) },
+      constraints
+    )
+    await expect(build(f, repay)).resolves.toBeDefined()
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'set_leverage', targetLeverage: '2.5' },
+        constraints
+      )
+    ).rejects.toThrow('paused')
+  })
+})
+
+it.each(['add_collateral', 'set_leverage', 'close'] as const)(
+  'preserves paused E-Mode risk-reducing %s',
+  async (type) => {
+    const f = fixture(6, 6, true, false, false, 2)
+    f.market.emode!.active = false
+    const action: Action =
+      type === 'add_collateral'
+        ? { type, amount: raw(1, 6) }
+        : type === 'set_leverage'
+          ? { type, targetLeverage: '1.5' }
+          : { type }
+    const quote = await f.engine.quote(owner, f.strategy, action, constraints)
+    expect(quote.execution.borrowAmount).toBe('0')
+    await expect(build(f, quote)).resolves.toBeDefined()
+  }
+)
+it('preserves a six-decimal E-Mode dust exit without re-entering mode or funding a nonexistent output', async () => {
+  const f = fixture(6, 6, true, false, true, 2)
+  f.setPosition({
+    collateralAmount: '0',
+    debtAmount: '0',
+    protocolCollateralAmount: '999',
+    protocolDebtAmount: '0'
+  })
+  const quote = await f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+  expect(quote.estimate.inputs).toEqual([])
+  const { tx } = await build(f, quote)
+  expect(
+    tx
+      .getData()
+      .commands.some(
+        (c) => c.$kind === 'MoveCall' && c.MoveCall.function === 'enter_emode_with_account_cap'
+      )
+  ).toBe(false)
+  f.setPosition({
+    collateralAmount: '1',
+    debtAmount: '0',
+    protocolCollateralAmount: '1000',
+    protocolDebtAmount: '0'
+  })
+  await expect(build(f, quote)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
 })
