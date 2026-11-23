@@ -3,8 +3,8 @@ import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import type { getConfig, Pool, NaviSdkServiceOptions } from '@naviprotocol/lending'
 
 export type MultiplySuiClient = Pick<SuiGrpcClient, 'core'>
-/** NAVI deployment the open-api serves: `prod`, or the stage deployments `dev` (stage_v2) / `test`. */
-export type NaviEnv = 'prod' | 'dev' | 'test'
+/** NAVI deployment the open-api serves: `prod`, or the stage deployment `dev` (stage_v2). */
+export type NaviEnv = 'prod' | 'dev'
 export type CoinAmount = { coinType: string; amount: string }
 export type CoinInput = { coinType: string; coin: TransactionObjectArgument }
 export interface RegistryKey {
@@ -218,7 +218,7 @@ export interface MultiplyOptions {
   services?: NaviSdkServiceOptions
   /**
    * NAVI deployment for the default data source. Omitted means `prod`. Not combinable with a
-   * custom `dataSource`, which declares its own `env`. `dev` and `test` have no Multiply Registry:
+   * custom `dataSource`, which declares its own `env`. `dev` has no Multiply Registry:
    * Cap creation and Registry discovery need an explicit `capRegistry` there.
    */
   env?: NaviEnv

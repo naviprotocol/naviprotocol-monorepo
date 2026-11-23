@@ -92,7 +92,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       capRegistry: options.capRegistry === undefined ? undefined : capRegistry,
       strategies: strategyRegistry,
       retiredRegistryKeys: options.retiredRegistryKeys,
-      env: normalizeEnv(options.env)
+      // ST-18: passed through as given; the data source normalizes it (omitted stays omitted, ST-01).
+      env: options.env
     })
   const env = normalizeEnv(source.env)
   const explicitRegistry = options.capRegistry !== undefined
@@ -551,6 +552,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       : await readLiveBuildState(q, inputs)
     validateMarketMode(s, fresh)
     assertModeExposure(q.action, e, fresh)
+    // ST-19: a created Cap needs a Registry valid for this env; refused before any command.
+    if (e.accountCap.kind === 'create') assertRegistryUsable(env, explicitRegistry)
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
     tx.setSenderIfNotSet(q.address)
     await source.prepareOracle(tx, s, fresh)
@@ -562,7 +565,6 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     const accountCap =
       createdAccountCap ?? inputs.accountCap ?? tx.object((e.accountCap as AccountCap).id)
     if (createdAccountCap) {
-      assertRegistryUsable(env, explicitRegistry)
       if (s.emodeId !== undefined)
         tx.moveCall({
           target: `${config.package}::lending::enter_emode_with_account_cap`,

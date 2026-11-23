@@ -93,14 +93,16 @@ export function borrowCapacity(market: MarketSnapshot) {
 /**
  * LQ-01: a main-market strategy flash-loans its debt coin from the same main-market reserve it borrows from, and the
  * flash is still outstanding when the borrow runs, so the reserve must hold both at once. Isolated markets borrow from
- * their own reserve (LQ-02): only the separate checks apply there.
+ * their own reserve (LQ-02): only the separate checks apply there. A plan that borrows nothing (deleverage, remove
+ * principal, close) needs only the flash, which `flash.max` bounds by reserve cash: an exit stays possible while the
+ * reserve sits at its borrow cap (LQ-04).
  */
 export function withinSameReserveCapacity(
   strategy: { market: string },
   amounts: { flashAmount: string; borrowAmount: string; borrowFee: string },
   market: MarketSnapshot
 ) {
-  if (strategy.market !== 'main') return true
+  if (strategy.market !== 'main' || new BN(amounts.borrowAmount).isZero()) return true
   return new BN(amounts.flashAmount)
     .plus(amounts.borrowAmount)
     .plus(amounts.borrowFee)

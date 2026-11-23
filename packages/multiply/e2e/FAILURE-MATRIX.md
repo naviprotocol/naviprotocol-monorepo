@@ -132,7 +132,7 @@ Listed before implementation:
 |----|---------|--------------------|
 | ST-01 | `env` omitted | Exactly the prod reads as before (`run.mjs`, `emode.mjs` unchanged) |
 | ST-02 | `env: 'dev'` but one read (market config, pools, main flash config, flash assets, oracle config, configured E-Mode group) still goes to prod | Every read uses the same env; a dev PTB references no prod lending/oracle package or object |
-| ST-03 | `env` is not `prod`/`dev`/`test` | `INVALID_ARGUMENT` before any read |
+| ST-03 | `env` is not `prod`/`dev` (`test` excluded by ST-17) | `INVALID_ARGUMENT` before any read |
 | ST-04 | A custom `dataSource` plus a client `env` (two sources of truth) | `INVALID_ARGUMENT`; env belongs to the data source |
 | ST-05 | dev Cap discovery compares against the prod `AccountCap` type | Cap type follows the env (dev `0x51e18f…::account::AccountCap`) |
 | ST-06 | dev has no Multiply Registry; creating a Cap would register a stage Cap in the prod registry, or discovery would read the prod registry | Without an explicit `capRegistry`, dev refuses Cap creation and Registry discovery (`MARKET_UNSUPPORTED`); an existing Cap supplied by a custom data source still works |
@@ -219,3 +219,13 @@ sui-lst-multiply 18/18 on top (SUI_LST, an existing E-Mode 0 account).
 | ST-17 | `env: 'test'` accepted although no AccountCap type (and no deployment facts) are known for it: every Cap discovery and Cap creation fails `MARKET_UNSUPPORTED` | `test` is not an env until its deployment is known: `INVALID_ARGUMENT` like any unknown value | `stage.mjs` ST-03 lists `test` among the invalid envs |
 | ST-18 | `createMultiplyClient` without `env` normalizes it to `'prod'` before passing it on, so the default client's lending reads carry `env: 'prod'` (ST-01 says: exactly the old options) | The client passes `options.env` through unchanged; only the data source normalizes it | not observable on the wire (lending builds the same URL); unit test `tests/emode.test.ts` asserts the default client's lending read options |
 | ST-19 | The env Registry assertion for a created Cap runs after `prepareOracle` and `create_account` were appended: a refused `buildPTBForSimulation` of a stored create-quote (prod quote, dev client without `capRegistry`) leaves the caller's PTB mutated | Refused before any command, with the other preflight checks | `stage.mjs` ST-19: a prod create-quote given to a dev client's `buildPTBForSimulation` fails `MARKET_UNSUPPORTED` and the PTB has no commands |
+
+Review follow-up results (2026-11-23), each case failing before the fix and passing after it:
+- LQ-04: vault-strategy LS-17 — before: SUI_LST set_leverage 4.036x → 3.786x at `availableBorrow` 0 refused "Flash and
+  borrow from the same reserve exceed its available liquidity"; after: quoted (flash 533,948 SUI, borrow 0) and the build
+  preflight passes. LS-15 (lever-up beyond the reserve) still refused.
+- ST-17: `stage.mjs` ST-03 — before: `env: 'test'` accepted; after: `INVALID_ARGUMENT` (8 invalid values).
+- ST-18: `tests/env-wiring.test.ts` — before: the default client handed the data source `env: 'prod'`; after: unset.
+- ST-19: `stage.mjs` ST-19 — before: commands appended before the `MARKET_UNSUPPORTED` refusal; after: none.
+Regression: unit 263/263, `stage.mjs` 11/11, `emode.mjs` 5/5 (address override), `run.mjs` 16/17 (`close-haedal`
+market-dependent, as above), vault-strategy sui-lst-multiply 19/19.

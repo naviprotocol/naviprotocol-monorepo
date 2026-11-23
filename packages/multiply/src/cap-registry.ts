@@ -15,7 +15,8 @@ export const ACCOUNT_CAP_TYPES: Readonly<Partial<Record<NaviEnv, string>>> = Obj
 export function normalizeEnv(env: unknown): NaviEnv {
   if (env === undefined) return 'prod'
   check(
-    env === 'prod' || env === 'dev' || env === 'test',
+    // ST-17: 'test' is not accepted until its deployment (AccountCap type, Registry) is known.
+    env === 'prod' || env === 'dev',
     'INVALID_ARGUMENT',
     `Unsupported NAVI env: ${String(env)}`
   )
