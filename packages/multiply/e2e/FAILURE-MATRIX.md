@@ -271,3 +271,21 @@ in one PTB. ST-19 covered only a created Cap without `capRegistry`.
 
 ST-19 keeps its assertion that the PTB is untouched; its refusal now comes from the env check (`INVALID_QUOTE`), which
 runs first.
+
+Second review results (2026-11-24), every SDK case failing before the fix (`e2e/evidence/review2-unit-before-fix.txt`,
+`review2-stage-before-fix.txt`) and passing after it (`review2-after-fix.txt`):
+- LQ-05..LQ-10 (unit, 9/6, 6/9, 8/6, 9/9 decimals): before, LQ-05 was refused ("same reserve") and LQ-06 / LQ-09 /
+  LQ-10 were not; after, all pass at the exact boundaries.
+- Chain model, `stage.mjs` on stage_v2 main WBTC (headroom 561 sats, pool cash 1,146, API balance 1,136): LQ-05 flash
+  405 + borrow 448 = 853 (above the headroom) succeeds; LQ-06 flash 699 + borrow 448 = 1,147 (one above cash) aborts in
+  the borrow's `balance::split` (2); LQ-08 borrow 571 aborts in `validate_borrow` (1605). These are raw lending PTBs and
+  pass before and after the SDK change.
+- ST-20 / ST-21 / ST-22 (`stage.mjs`): before, the quotes carried no env and ST-22 built; after, `INVALID_QUOTE` from
+  both entries with the PTB untouched. ST-19 now refuses with `INVALID_QUOTE` (env check first). ST-23 (unit): a quote
+  without env is refused.
+- vault-strategy sui-lst-multiply 19/19 on the live SUI_LST position: LS-15 (uncapped 6.0x) still refused, now "exceed its
+  cash"; LS-17 flash-only exit at `availableBorrow` 0 quotes (flash 533,821 SUI) and passes the preflight.
+Regression: unit 298/298, typecheck, lint; `stage.mjs` 17/17; `emode.mjs` 5/5 (main-market vSUI-SUI, address override);
+`run.mjs` 17/17 — `close-haedal` passes today; `add-principal-collateral-target` failed once `NO_CONVERGENCE` on the
+conversion quotes (TL-04's refusal) and passed on the immediate rerun. settlement `--only MS,BD`: 15 pass, 0 fail, 3 skips
+(BD-07/08 retired; BD-04 skips while the Helper claim window is open).
