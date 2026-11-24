@@ -1,0 +1,48 @@
+{
+  "broadcast": false,
+  "checksEnabled": true,
+  "referenceOracle": true,
+  "address": "0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe",
+  "scenarios": [
+    {
+      "name": "usdsui",
+      "target": "5.68",
+      "minHF": "1.05",
+      "status": "passed",
+      "formalQuoteCalls": 1,
+      "quotedHF": "1.055851760851",
+      "hf": 1.0558517631290614,
+      "recomputedHF": 1.0558517624356463,
+      "bytesSha256": "d4c8d8ed67b8ac50fec8ba1d4a30b72e7efd684d672322640da6827d0da0ee3a"
+    },
+    {
+      "name": "usdsui-min-output",
+      "status": "passed",
+      "error": {
+        "$kind": "Unknown",
+        "message": "InsufficientCoinBalance in command 35",
+        "command": 35,
+        "Unknown": null
+      }
+    },
+    {
+      "name": "usdsui-unsafe-hf",
+      "status": "passed",
+      "error": {
+        "$kind": "MoveAbort",
+        "message": "MoveAbort in 45th command, abort code: 1000000000, in '0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a::navi_adaptor::verify_navi_position_healthy' (instruction 30)",
+        "command": 44,
+        "MoveAbort": {
+          "abortCode": "1000000000",
+          "location": {
+            "package": "0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a",
+            "module": "navi_adaptor",
+            "function": 0,
+            "instruction": 30,
+            "functionName": "verify_navi_position_healthy"
+          }
+        }
+      }
+    }
+  ]
+}

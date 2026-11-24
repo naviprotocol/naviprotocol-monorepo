@@ -76,6 +76,16 @@ export interface Position extends PositionAmounts {
   leverage: string | null
 }
 export type LendingConfig = Awaited<ReturnType<typeof getConfig>>
+export type MarketPriceMode = 'live' | 'prefer-market' | 'market-only'
+export interface OraclePriceFreshness {
+  version: 1
+  source: 'navi-oracle'
+  snapshotId: string
+  observedAtMs: number
+  chainObservedAtMs: number
+  validUntilMs: number
+  deploymentRevision: string
+}
 export interface MarketSnapshot {
   config: LendingConfig
   /** Effective configured mode, not a recurring account-mode observation. */
@@ -90,15 +100,17 @@ export interface MarketSnapshot {
   borrowWeight: string
   flash: { config: LendingConfig; poolId: string; max: string; min: string; feeBps: string }
   observedAt: number
+  priceEvidence?: { source: 'market'; snapshotId: string; observedAtMs: number; expiresAt: number }
 }
 /** Implementations must fail closed on incomplete reads; these methods never sign or broadcast. */
 export interface DataSource {
+  marketPriceMode?: MarketPriceMode
   /** Deployment used for discovery. A custom source must declare its binding. */
   capRegistry: CapRegistryConfig
   /** NAVI deployment every read and PTB of this source targets. Omitted means `prod`. */
   env?: NaviEnv
   listAccountCaps(address: string): Promise<AccountCap[]>
-  readMarket(strategy: Strategy): Promise<MarketSnapshot>
+  readMarket(strategy: Strategy, mode?: MarketPriceMode): Promise<MarketSnapshot>
   readPosition(
     cap: AccountCap,
     strategy: Strategy,
@@ -159,7 +171,7 @@ export interface PlannedConversion extends ConversionQuote {
   purpose: 'input' | 'leverage' | 'repayment' | 'output'
   source: 'wallet' | 'flash' | 'wallet-and-flash' | 'withdrawal' | 'surplus'
 }
-/** Net native-staking output per input, used only as a solver hint, never as a risk price. */
+/** Gross chain exchange rate used only as a solver hint, never as an executable quote or risk price. */
 export interface ConversionRateHint {
   input: CoinAmount
   output: CoinAmount
@@ -180,6 +192,13 @@ export interface StakingSnapshot {
   observedAt: number
   expiresAt: number
 }
+export interface RedemptionSnapshot extends Omit<StakingSnapshot, 'minInput'> {
+  source?: { packageId: string; objectVersions: Record<string, string> }
+  /** Gross SUI safely available without assuming future deposits or staking redemptions. */
+  availableSui: string
+  minOutput: string
+  minOutputBasis: 'gross' | 'net'
+}
 export interface Converter {
   id: string
   supports(coinIn: string, coinOut: string): boolean
@@ -188,9 +207,14 @@ export interface Converter {
   getRateHint?(
     pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
   ): Promise<ConversionRateHint | undefined>
+  /** Optional decoration applied only to the final chosen conversion, before checksum. */
+  enrichFees?(quote: ConversionQuote): Promise<ConversionQuote['fees']>
   getStakingSnapshot?(
     pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
   ): Promise<StakingSnapshot | undefined>
+  getRedemptionSnapshot?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<RedemptionSnapshot | undefined>
   buildPTB(
     tx: Transaction,
     quote: ConversionQuote,
@@ -257,6 +281,17 @@ export interface MultiplyOptions {
   /** Omitted: Astros. Used only when no eligible primary converter can quote. */
   fallbackConverter?: Converter
   services?: NaviSdkServiceOptions
+  marketPriceMode?: MarketPriceMode
+  /** API stored-plan assembly only. The caller MUST fully simulate and reconcile the PTB. */
+  prepareOracleForSimulation?: boolean
+  /** Disable chain rate hints; execution still uses the configured converters (default Astros). */
+  useRateHints?: boolean
+  /** Independent from execution routing. Undefined selects built-in LST hints for default routing. */
+  rateHintProvider?: (
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ) => Promise<ConversionRateHint | undefined>
+  /** Explicit native-converter experiments only; default routing never uses native snapshots. */
+  disableRedemptionSnapshot?: boolean
   /**
    * NAVI deployment for the default data source. Omitted means `prod`. Not combinable with a
    * custom `dataSource`, which declares its own `env`. `dev` has no Multiply Registry:

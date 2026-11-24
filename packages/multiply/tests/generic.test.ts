@@ -1356,12 +1356,12 @@ describe.each([
 
   it('LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary', async () => {
     const f = main()
-    // A non-oracle route keeps this exact-boundary regression on the original solver.
+    // A 1% route deviation stays outside the 0.1% target band, keeping this exact-boundary regression on the original solver.
     const original = f.converter.quote
     f.converter.quote = async (req) => {
       const q = await original(req)
       const amount = new BN(q.expectedOutput.amount)
-        .times('0.999')
+        .times('0.99')
         .integerValue(BN.ROUND_FLOOR)
         .toFixed(0)
       return {
@@ -1382,12 +1382,12 @@ describe.each([
 
   it('LQ-08: the borrow alone is still bounded by headroom, at the exact boundary', async () => {
     const f = main()
-    // A non-oracle route keeps this exact-boundary regression on the original solver.
+    // A 1% route deviation stays outside the 0.1% target band, keeping this exact-boundary regression on the original solver.
     const original = f.converter.quote
     f.converter.quote = async (req) => {
       const q = await original(req)
       const amount = new BN(q.expectedOutput.amount)
-        .times('0.999')
+        .times('0.99')
         .integerValue(BN.ROUND_FLOOR)
         .toFixed(0)
       return {
@@ -2552,4 +2552,637 @@ describe('native staking rate seed with unchanged oracle risk', () => {
       }
     }
   )
+})
+
+describe('v3 native redemption candidate and build oracle mode', () => {
+  const loose = { minHealthFactor: '1.1', maxSlippageBps: 0 }
+  function withRedemption() {
+    const f = fixture(9, 9, true)
+    f.converter.getRedemptionSnapshot = vi.fn(async () => ({
+      converterId: f.converter.id,
+      coinIn: collateralType,
+      coinOut: debtType,
+      suiSupply: raw(2000000, 9),
+      lstSupply: raw(1000000, 9),
+      availableSui: raw(2000000, 9),
+      feeRate: '0',
+      feeDenominator: '10000',
+      feeRounding: 'ceil' as const,
+      minOutput: raw(1, 9),
+      minOutputBasis: 'net' as const,
+      epoch: '10',
+      observedAt: Date.now(),
+      expiresAt: Date.now() + 5000
+    }))
+    return f
+  }
+  it.each<Action>([
+    { type: 'set_leverage', targetLeverage: '1.5' },
+    { type: 'set_leverage', targetLeverage: '1' },
+    { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '1.5' },
+    { type: 'close' }
+  ])(
+    'calculates $type locally and retains funding/health guards in the complete PTB',
+    async (action) => {
+      const f = withRedemption(),
+        formal = vi.spyOn(f.converter, 'quote')
+      const q = await f.engine.quote(owner, f.strategy, action, loose)
+      expect(formal).not.toHaveBeenCalled()
+      expect(f.converter.getRedemptionSnapshot).toHaveBeenCalledTimes(1)
+      expect(BigInt(q.execution.conversions[0].minOutput.amount)).toBeGreaterThanOrEqual(
+        BigInt(q.execution.flashRepayment)
+      )
+      if (
+        action.type === 'close' ||
+        (action.type === 'set_leverage' && action.targetLeverage === '1')
+      )
+        expect(q.execution.debtAfter).toBe('0')
+      await build(f, q)
+    }
+  )
+  it.each(['CONVERTER_UNAVAILABLE', 'SNAPSHOT_UNAVAILABLE', 'CONVERSION_AMOUNT_TOO_SMALL'])(
+    'falls back for %s without changing solver precision',
+    async (code) => {
+      const f = withRedemption(),
+        formal = vi.spyOn(f.converter, 'quote')
+      f.converter.getRedemptionSnapshot = vi.fn(async () => {
+        throw new MultiplyError(code, 'test')
+      })
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'set_leverage', targetLeverage: '1.5' },
+        loose
+      )
+      expect(formal).toHaveBeenCalled()
+      expect(Number(q.estimate.leverage)).toBeCloseTo(1.5, 3)
+    }
+  )
+  it.each(['repay', 'add_collateral'] as const)(
+    'does not read redemption rates for %s',
+    async (type) => {
+      const f = withRedemption()
+      await f.engine.quote(owner, f.strategy, { type, amount: raw(1, 9) }, loose)
+      expect(f.converter.getRedemptionSnapshot).not.toHaveBeenCalled()
+    }
+  )
+  it('uses precise nonzero flash and redemption fees, including payout', async () => {
+    const f = withRedemption(),
+      original = f.converter.getRedemptionSnapshot!
+    f.converter.getRedemptionSnapshot = async (p) => ({ ...(await original(p))!, feeRate: '3' })
+    f.market.flash.feeBps = '9'
+    const formal = vi.spyOn(f.converter, 'quote')
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '1.5' },
+      loose
+    )
+    expect(formal).not.toHaveBeenCalled()
+    expect(BigInt(q.execution.conversions[0].minOutput.amount)).toBeGreaterThanOrEqual(
+      BigInt(q.execution.flashRepayment) + BigInt(raw(10, 9))
+    )
+    expect(BigInt(q.execution.flashRepayment)).toBeGreaterThan(BigInt(q.execution.flashAmount))
+    await build(f, q)
+  })
+  it('skips oracle preparation only for explicitly opted-in simulation assembly', async () => {
+    const f = withRedemption(),
+      prepare = vi.spyOn(f.source, 'prepareOracle')
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '1.5' },
+      loose
+    )
+    const optimized = createMultiplyClient({
+      dataSource: f.source,
+      strategies: [f.strategy],
+      converters: [f.converter],
+      prepareOracleForSimulation: false
+    })
+    const tx = new Transaction()
+    await optimized.buildPTBForSimulation(tx, q, [])
+    expect(prepare).not.toHaveBeenCalled()
+    expect(
+      tx.getData().commands.some((c) => c.MoveCall?.function === 'verify_navi_position_healthy')
+    ).toBe(true)
+    await f.engine.buildPTBForSimulation(new Transaction(), q, [])
+    expect(prepare).toHaveBeenCalledTimes(1)
+    await optimized.buildPTB(new Transaction(), q, { coins: [] })
+    expect(prepare).toHaveBeenCalledTimes(2)
+  })
+  it('replans the entire quote once with live prices when market evidence expires', async () => {
+    const f = withRedemption()
+    const read = vi.spyOn(f.source, 'readMarket')
+    read
+      .mockResolvedValueOnce({
+        ...f.market,
+        priceEvidence: {
+          source: 'market',
+          snapshotId: 'test',
+          observedAtMs: Date.now(),
+          expiresAt: Date.now() - 1
+        }
+      })
+      .mockResolvedValue({ ...f.market })
+    const engine = createMultiplyClient({
+      dataSource: f.source,
+      strategies: [f.strategy],
+      converters: [f.converter],
+      marketPriceMode: 'prefer-market'
+    })
+    const q = await engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '1.5' },
+      loose
+    )
+    expect(read.mock.calls.map((c) => c[1])).toEqual(['prefer-market', 'live'])
+    expect(q.execution.market.priceEvidence).toBeUndefined()
+  })
+  it('does not upgrade market-only into a live oracle request', async () => {
+    const f = withRedemption()
+    const read = vi.spyOn(f.source, 'readMarket').mockResolvedValue({
+      ...f.market,
+      priceEvidence: {
+        source: 'market',
+        snapshotId: 'test',
+        observedAtMs: Date.now(),
+        expiresAt: Date.now() - 1
+      }
+    })
+    const engine = createMultiplyClient({
+      dataSource: f.source,
+      strategies: [f.strategy],
+      converters: [f.converter],
+      marketPriceMode: 'market-only'
+    })
+    await expect(
+      engine.quote(owner, f.strategy, { type: 'set_leverage', targetLeverage: '1.5' }, loose)
+    ).rejects.toMatchObject({ code: 'MARKET_PRICE_EXPIRED' })
+    expect(read).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Astros-only independent hint planning', () => {
+  function setup(existing = true, feeBps = '0') {
+    const f = fixture(9, 9, existing)
+    f.market.flash.feeBps = feeBps
+    const quote = vi.spyOn(f.converter, 'quote')
+    const enrich = vi.fn(async () => undefined)
+    f.converter.enrichFees = enrich
+    const hint = vi.fn(async (pair: { coinIn: string; coinOut: string }) => ({
+      input: { coinType: pair.coinIn, amount: raw(pair.coinIn === debtType ? 2 : 1, 9) },
+      output: { coinType: pair.coinOut, amount: raw(pair.coinIn === debtType ? 1 : 2, 9) },
+      expiresAt: Date.now() + 5000
+    }))
+    const options = {
+      dataSource: f.source,
+      strategies: [f.strategy],
+      converters: [],
+      fallbackConverter: f.converter,
+      rateHintProvider: hint,
+      prepareOracleForSimulation: false
+    }
+    return { ...f, quote, hint, enrich, options, engine: createMultiplyClient(options) }
+  }
+  it.each<Action>([
+    { type: 'set_leverage', targetLeverage: '2.5' },
+    { type: 'set_leverage', targetLeverage: '1.5' },
+    { type: 'set_leverage', targetLeverage: '1' },
+    { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '1.5' },
+    { type: 'add_principal', amount: raw(10, 9), targetLeverage: '2' }
+  ])(
+    'validates one real quote for %j, enriches once and never requotes during build',
+    async (action) => {
+      const f = setup()
+      const q = await f.engine.quote(owner, f.strategy, action, constraints)
+      expect(f.quote).toHaveBeenCalledTimes(1)
+      expect(f.hint).toHaveBeenCalledTimes(1)
+      expect(f.enrich).toHaveBeenCalledTimes(1)
+      const tx = new Transaction()
+      await f.engine.buildPTBForSimulation(
+        tx,
+        q,
+        q.estimate.inputs.map((c, i) => ({
+          coinType: c.coinType,
+          coin: tx.object(`0x${100 + i}`)
+        }))
+      )
+      expect(f.quote).toHaveBeenCalledTimes(1)
+    }
+  )
+  it.each([0, 5, 50])('preserves flash/borrow fees %s and real route fees', async (bps) => {
+    const f = setup(true, String(bps))
+    f.source.readBorrowFeeBps = async () => String(bps)
+    const real = f.converter.quote.bind(f.converter)
+    f.quote.mockRestore()
+    const quote = vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+      const q = await real(req)
+      q.expectedOutput.amount = new BN(q.expectedOutput.amount)
+        .times('.9997')
+        .integerValue(BN.ROUND_FLOOR)
+        .toFixed(0)
+      q.minOutput.amount = new BN(q.expectedOutput.amount)
+        .times('.995')
+        .integerValue(BN.ROUND_FLOOR)
+        .toFixed(0)
+      return q
+    })
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '1.5' },
+      { ...constraints, maxSlippageBps: 50 }
+    )
+    expect(quote.mock.calls.length).toBeGreaterThan(1)
+    expect(new BN(q.estimate.leverage!).minus(1.5).abs().lte('.00015')).toBe(true)
+    expect(BigInt(q.execution.conversions[0].minOutput.amount)).toBeGreaterThanOrEqual(
+      BigInt(q.execution.flashRepayment)
+    )
+    expect(f.enrich).toHaveBeenCalledTimes(1)
+  })
+  it.each<Action>([
+    { type: 'close' },
+    { type: 'repay', amount: '1' },
+    { type: 'add_collateral', amount: '1' }
+  ])('does not read a hint for %j', async (action) => {
+    const f = setup()
+    await f.engine.quote(owner, f.strategy, action, constraints)
+    expect(f.hint).not.toHaveBeenCalled()
+    expect(f.quote).toHaveBeenCalledTimes(action.type === 'close' ? 1 : 0)
+  })
+  it.each([
+    '99999999',
+    '100000000',
+    '100000001',
+    '999999999',
+    '1000000000',
+    '1000000001',
+    '100000000000000'
+  ])('accepts Astros inputs independent of native minimum: %s', async (amount) => {
+    const f = setup(false)
+    await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount, targetLeverage: '2' },
+      constraints
+    )
+    expect(f.quote).toHaveBeenCalledTimes(1)
+  })
+  it('makes no quote or hint for direct collateral 1x', async () => {
+    const f = setup(false)
+    await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', inputCoinType: collateralType, amount: '1000', targetLeverage: '1' },
+      constraints
+    )
+    expect(f.quote).not.toHaveBeenCalled()
+    expect(f.hint).not.toHaveBeenCalled()
+  })
+  it('closes a debt-free position with one real quote and no rate read', async () => {
+    const f = setup()
+    f.setPosition({ collateralAmount: raw(100, 9), debtAmount: '0' })
+    const q = await f.engine.quote(owner, f.strategy, { type: 'close' }, constraints)
+    expect(f.quote).toHaveBeenCalledTimes(1)
+    expect(f.hint).not.toHaveBeenCalled()
+    expect(q.execution.flashAmount).toBe('0')
+    expect(q.execution.withdrawAmount).toBe(raw(100, 9))
+    expect(q.estimate.outputs[0].amount).toBe(raw(200, 9))
+  })
+  it.each(['missing', 'expired'])('uses the original solver when exit hint is %s', async (kind) => {
+    const f = setup()
+    if (kind === 'missing') f.hint.mockResolvedValue(undefined as never)
+    else {
+      const value = await f.hint({ coinIn: collateralType, coinOut: debtType })
+      f.hint.mockResolvedValue({ ...value, expiresAt: Date.now() - 1 })
+    }
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '1.5' },
+      constraints
+    )
+    expect(new BN(q.estimate.leverage!).minus(1.5).abs().lte('.00015')).toBe(true)
+  })
+  it('does not silently accept a mismatched hint', async () => {
+    const f = setup()
+    f.hint.mockResolvedValue({
+      input: { coinType: debtType, amount: '1' },
+      output: { coinType: collateralType, amount: '1' },
+      expiresAt: Date.now() + 5000
+    })
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'set_leverage', targetLeverage: '1.5' },
+        constraints
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_CONVERSION' })
+    expect(f.quote).not.toHaveBeenCalled()
+  })
+  it('does not reset the shared deadline after hint/first quote', async () => {
+    vi.useFakeTimers()
+    try {
+      const f = setup()
+      let signal!: () => void
+      const started = new Promise<void>((resolve) => {
+        signal = resolve
+      })
+      f.quote.mockImplementation(async () => {
+        signal()
+        await new Promise((resolve) => setTimeout(resolve, 46000))
+        throw new Error('late')
+      })
+      const pending = expect(
+        f.engine.quote(
+          owner,
+          f.strategy,
+          { type: 'set_leverage', targetLeverage: '1.5' },
+          constraints
+        )
+      ).rejects.toMatchObject({ code: 'NO_CONVERGENCE' })
+      await started
+      await vi.advanceTimersByTimeAsync(45000)
+      await pending
+      expect(f.quote).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('rejects a route that expires during final fee enrichment', async () => {
+    const f = setup()
+    f.enrich.mockImplementation(async () => {
+      f.market.observedAt = Date.now()
+      vi.setSystemTime(Date.now() + 120001)
+      return undefined
+    })
+    vi.useFakeTimers()
+    try {
+      await expect(
+        f.engine.quote(
+          owner,
+          f.strategy,
+          { type: 'set_leverage', targetLeverage: '1.5' },
+          constraints
+        )
+      ).rejects.toMatchObject({ code: 'QUOTE_EXPIRED' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('0.1% target accuracy is independent of hard risk and funding limits', () => {
+  function firstOutput(f: ReturnType<typeof fixture>, output: string) {
+    const original = f.converter.quote.bind(f.converter)
+    const spy = vi.spyOn(f.converter, 'quote')
+    spy
+      .mockImplementationOnce(async (req) => {
+        const q = await original(req)
+        q.expectedOutput.amount = q.minOutput.amount = output
+        return q
+      })
+      .mockImplementation(original)
+    return spy
+  }
+  it.each([
+    ['1002', '1001', '2.002000000000'],
+    ['998', '999', '1.998000000000']
+  ])(
+    'accepts the inclusive 0.1%% boundary with real output P=%s',
+    async (amount, output, leverage) => {
+      const f = fixture(9, 9)
+      const calls = firstOutput(f, output)
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount, targetLeverage: '2' },
+        constraints
+      )
+      expect(calls).toHaveBeenCalledTimes(1)
+      expect(q.estimate.leverage).toBe(leverage)
+      expect(q.estimate.leverage).not.toBe(q.action.type === 'open' ? q.action.targetLeverage : '')
+      await expect(build(f, q)).resolves.toBeDefined()
+    }
+  )
+  it.each([
+    ['1001', '1000'],
+    ['997', '998']
+  ])('falls back immediately outside either target boundary P=%s', async (amount, output) => {
+    const f = fixture(9, 9)
+    const calls = firstOutput(f, output)
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount, targetLeverage: '2' },
+      constraints
+    )
+    expect(calls.mock.calls.length).toBeGreaterThan(1)
+    expect(new BN(q.estimate.leverage!).minus(2).abs().lte('.002')).toBe(true)
+    await expect(build(f, q)).resolves.toBeDefined()
+  })
+  it.each([6, 9])(
+    'accepts an upward set_leverage seed within 0.1%% with %i decimals',
+    async (decimals) => {
+      const f = fixture(decimals, decimals, true)
+      const original = f.converter.quote.bind(f.converter)
+      const calls = vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+        const q = await original(req)
+        q.expectedOutput.amount = q.minOutput.amount = new BN(q.expectedOutput.amount)
+          .times('.999')
+          .integerValue(BN.ROUND_FLOOR)
+          .toFixed(0)
+        return q
+      })
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'set_leverage', targetLeverage: '2.5' },
+        constraints
+      )
+      const relative = new BN(q.estimate.leverage!).div('2.5').minus(1).abs()
+      expect(relative.gt('.0001') && relative.lte('.001')).toBe(true)
+      expect(calls).toHaveBeenCalledTimes(1)
+      await expect(build(f, q)).resolves.toBeDefined()
+    }
+  )
+  it.each<Action>([
+    { type: 'add_principal', amount: raw(100, 9), targetLeverage: '2' },
+    { type: 'set_leverage', targetLeverage: '1.5' },
+    { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '1.5' }
+  ])('retains 0.01%% accuracy for %j', async (action) => {
+    const f = fixture(9, 9, true)
+    const original = f.converter.quote.bind(f.converter)
+    const calls = vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+      const q = await original(req)
+      q.expectedOutput.amount = q.minOutput.amount = new BN(q.expectedOutput.amount)
+        .times('.999')
+        .integerValue(BN.ROUND_FLOOR)
+        .toFixed(0)
+      return q
+    })
+    const q = await f.engine.quote(owner, f.strategy, action, constraints)
+    expect(calls.mock.calls.length).toBeGreaterThan(1)
+    expect(
+      new BN(q.estimate.leverage!).div(action.targetLeverage!).minus(1).abs().lte('.0001')
+    ).toBe(true)
+    await expect(build(f, q)).resolves.toBeDefined()
+  })
+  it.each(['hf', 'ltv', 'maxLeverage'])(
+    'does not accept relaxed target accuracy at the expense of %s',
+    async (kind) => {
+      const f = fixture(9, 9)
+      const original = f.converter.quote.bind(f.converter)
+      const calls = vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+        const q = await original(req)
+        // At the initial 2x seed this is ~2.001x: valid target accuracy, adverse risk.
+        q.expectedOutput.amount = q.minOutput.amount = new BN(q.expectedOutput.amount)
+          .times('.9995')
+          .integerValue(BN.ROUND_FLOOR)
+          .toFixed(0)
+        return q
+      })
+      if (kind === 'ltv') f.market.ltv = '0.5'
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount: raw(100, 9), targetLeverage: '2' },
+        {
+          ...constraints,
+          ...(kind === 'hf' ? { minHealthFactor: '1.8' } : {}),
+          ...(kind === 'maxLeverage' ? { maxLeverage: '2' } : {})
+        }
+      )
+      // Reject the unsafe seed, but allow the original solver to find a safe plan.
+      expect(calls.mock.calls.length).toBeGreaterThan(1)
+      if (kind === 'hf') expect(new BN(q.estimate.healthFactor!).gte('1.8')).toBe(true)
+      if (kind === 'ltv')
+        expect(
+          new BN(q.execution.debtAfter)
+            .div(new BN(q.execution.minCollateralAfter).times(2))
+            .lte('.5')
+        ).toBe(true)
+      if (kind === 'maxLeverage') expect(new BN(q.estimate.leverage!).lte('2.0002')).toBe(true)
+      await expect(build(f, q)).resolves.toBeDefined()
+    }
+  )
+  it.each(['hf', 'ltv', 'maxLeverage'])(
+    'rejects when minimum output violates %s even inside target accuracy',
+    async (kind) => {
+      const f = fixture(9, 9)
+      const original = f.converter.quote.bind(f.converter)
+      vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+        const q = await original(req)
+        q.expectedOutput.amount = new BN(q.expectedOutput.amount)
+          .times('.9995')
+          .integerValue(BN.ROUND_FLOOR)
+          .toFixed(0)
+        q.minOutput.amount = new BN(q.expectedOutput.amount)
+          .times('.995')
+          .integerValue(BN.ROUND_FLOOR)
+          .toFixed(0)
+        return q
+      })
+      if (kind === 'ltv') f.market.ltv = '0.5'
+      await expect(
+        f.engine.quote(
+          owner,
+          f.strategy,
+          { type: 'open', amount: raw(100, 9), targetLeverage: '2' },
+          {
+            ...constraints,
+            maxSlippageBps: 50,
+            ...(kind === 'hf' ? { minHealthFactor: '1.8' } : {}),
+            ...(kind === 'maxLeverage' ? { maxLeverage: '2' } : {})
+          }
+        )
+      ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION' })
+    }
+  )
+  it.each([
+    [6, false],
+    [9, false],
+    [6, true],
+    [9, true]
+  ] as const)(
+    'preserves nonzero fee funding with relaxed accuracy (%i decimals, existing=%s)',
+    async (decimals, existing) => {
+      const f = fixture(decimals, decimals, existing)
+      f.market.flash.feeBps = '30'
+      f.source.readBorrowFeeBps = async () => '20'
+      const original = f.converter.quote.bind(f.converter)
+      const calls = vi.spyOn(f.converter, 'quote').mockImplementation(async (req) => {
+        const q = await original(req)
+        q.expectedOutput.amount = q.minOutput.amount = new BN(q.expectedOutput.amount)
+          .times('.9995')
+          .integerValue(BN.ROUND_FLOOR)
+          .toFixed(0)
+        return q
+      })
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        existing
+          ? { type: 'set_leverage', targetLeverage: '2.5' }
+          : { type: 'open', amount: raw(100, decimals), targetLeverage: '2' },
+        constraints
+      )
+      expect(calls).toHaveBeenCalledTimes(1)
+      const target = existing ? '2.5' : '2'
+      const error = new BN(q.estimate.leverage!).div(target).minus(1).abs()
+      expect(error.gt('.0001') && error.lte('.001')).toBe(true)
+      const repayment = new BN(q.execution.flashAmount).times('1.003').integerValue(BN.ROUND_CEIL)
+      const fee = repayment.times('.002').integerValue(BN.ROUND_FLOOR)
+      expect(q.execution.flashRepayment).toBe(repayment.toFixed(0))
+      expect(q.execution.borrowFee).toBe(fee.toFixed(0))
+      expect(q.execution.debtAfter).toBe(
+        new BN(existing ? raw(100, decimals) : '0').plus(repayment).plus(fee).toFixed(0)
+      )
+      await expect(build(f, q)).resolves.toBeDefined()
+    }
+  )
+  it('does not expand explicit maxLeverage input admission or its existing hard-cap band', async () => {
+    const f = fixture(9, 9)
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount: raw(100, 9), targetLeverage: '2.001' },
+        { ...constraints, maxLeverage: '2' }
+      )
+    ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION' })
+    const calls = firstOutput(f, '1001')
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: '1002', targetLeverage: '2' },
+      constraints
+    )
+    expect(q.estimate.leverage).toBe('2.002000000000')
+    q.constraints.maxLeverage = '2'
+    q.execution.checksum = ''
+    q.execution.checksum = await checksum(q)
+    await expect(build(f, q)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
+    expect(calls).toHaveBeenCalledTimes(1)
+  })
+  it('keeps funding validation even for a quote accepted by the new tolerance', async () => {
+    const f = fixture(9, 9)
+    firstOutput(f, '1001')
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: '1002', targetLeverage: '2' },
+      constraints
+    )
+    q.execution.flashRepayment = String(BigInt(q.execution.flashRepayment) + 1n)
+    q.execution.checksum = ''
+    q.execution.checksum = await checksum(q)
+    const tx = new Transaction()
+    await expect(
+      f.engine.buildPTBForSimulation(tx, q, [{ coinType: debtType, coin: tx.object('0x100') }])
+    ).rejects.toMatchObject({ code: 'INVALID_QUOTE' })
+  })
 })

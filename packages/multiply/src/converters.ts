@@ -1,3 +1,4 @@
+import { createRedemptionSnapshotReader } from './native-redemption'
 import { createStakingSnapshotReader } from './native-staking'
 import { Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
@@ -254,6 +255,14 @@ export function voloConverter(options: { client?: MultiplySuiClient } = {}): Con
     coinIn: SUI,
     coinOut: VSUI
   })
+  converter.getRedemptionSnapshot = createRedemptionSnapshotReader(client, {
+    converterId: 'volo',
+    packageId: VOLO.package,
+    pool: VOLO.pool,
+    metadata: VOLO.metadata,
+    coinIn: VSUI,
+    coinOut: SUI
+  })
   return converter
 }
 export function haedalConverter(options: { client?: MultiplySuiClient } = {}): Converter {
@@ -364,6 +373,13 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
     coinIn: SUI,
     coinOut: HASUI
   })
+  converter.getRedemptionSnapshot = createRedemptionSnapshotReader(client, {
+    converterId: 'haedal',
+    packageId: HAEDAL.package,
+    pool: HAEDAL.config,
+    coinIn: HASUI,
+    coinOut: SUI
+  })
   return converter
 }
 export function astrosConverter(
@@ -430,18 +446,15 @@ export function astrosConverter(
         byAmountIn: true
       })
       validateRoute(route, req.amountIn)
+      check(
+        typeof route.from === 'string' &&
+          typeof route.target === 'string' &&
+          sameCoin(route.from, req.coinIn) &&
+          sameCoin(route.target, req.coinOut),
+        'INVALID_CONVERSION',
+        'Astros returned a different coin pair'
+      )
       const result = quoted('astros', req, String(route.amount_out), { version: 1, route })
-      if (isSingleVoloRedemption(route, req)) {
-        const redemption = await readOptionalVoloFee(
-          options.client ?? defaultClient(),
-          req.amountIn
-        )
-        // Do not rewrite the frozen aggregator output or infer any fee from its
-        // fee_rate, slippage or price difference. Mixed/ambiguous routes stay unknown.
-        if (redemption && BigInt(result.expectedOutput.amount) <= BigInt(redemption.net)) {
-          result.fees = redemption.fees
-        }
-      }
       result.route = {
         provider: 'astros',
         observedAt: Date.now(),
@@ -462,6 +475,21 @@ export function astrosConverter(
         )
       }
       return result
+    },
+    async enrichFees(q) {
+      const route = (q.data as { route: AstrosQuote }).route
+      const req = {
+        coinIn: q.input.coinType,
+        coinOut: q.expectedOutput.coinType,
+        amountIn: q.input.amount,
+        slippageBps: 0
+      }
+      if (!isSingleVoloRedemption(route, req)) return undefined
+      const redemption = await readOptionalVoloFee(options.client ?? defaultClient(), req.amountIn)
+      // Decoration only: never rewrite frozen outputs or deduct the fee twice.
+      return redemption && BigInt(q.expectedOutput.amount) <= BigInt(redemption.net)
+        ? redemption.fees
+        : undefined
     },
     async buildPTB(tx, q, coinIn, context) {
       check(context?.changeRecipient, 'INVALID_ARGUMENT', 'Astros requires a change recipient')

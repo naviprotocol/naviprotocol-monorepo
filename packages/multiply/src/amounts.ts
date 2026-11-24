@@ -122,9 +122,9 @@ export function withinSameReserveCapacity(
 }
 
 /**
- * `maxLeverage` as enforced: the solver accepts a plan within 0.01% of its target and amounts are
- * whole atoms, so a target equal to the ceiling can land a hair above it. The quote, the live
- * rebuild and the on-chain check all allow that same band, and nothing beyond it.
+ * Independent 0.01% rounding band for the hard `maxLeverage` ceiling. Whole-atom amounts
+ * may land a hair above the requested ceiling. Quote, live rebuild and on-chain checks
+ * share this band; relaxing target accuracy must never widen it.
  */
 export const LEVERAGE_TOLERANCE = '0.0001'
 export function leverageCeiling(maxLeverage: string) {

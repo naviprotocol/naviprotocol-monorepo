@@ -1,3 +1,4 @@
+import { marketOraclePrices } from './market-prices'
 import { Transaction } from '@mysten/sui/transactions'
 import type { SuiClientTypes } from '@mysten/sui/client'
 import { bcs } from '@mysten/sui/bcs'
@@ -19,7 +20,8 @@ import type {
   MultiplySuiClient,
   NaviEnv,
   Strategy,
-  RegistryKey
+  RegistryKey,
+  MarketPriceMode
 } from './types'
 import {
   BN,
@@ -89,6 +91,7 @@ export function createNaviDataSource(
   options: {
     client?: MultiplySuiClient
     services?: NaviSdkServiceOptions
+    marketPriceMode?: MarketPriceMode
     capRegistry?: CapRegistryConfig
     strategies?: Strategy[]
     retiredRegistryKeys?: RegistryKey[]
@@ -130,6 +133,7 @@ export function createNaviDataSource(
     })
   }
   const source: DataSource = {
+    marketPriceMode: options.marketPriceMode,
     prepareOracle,
     capRegistry,
     env,
@@ -253,7 +257,7 @@ export function createNaviDataSource(
         throw new MultiplyError('READ_FAILED', 'Unable to read complete Multiply Registry snapshot')
       }
     },
-    async readMarket(strategy) {
+    async readMarket(strategy, priceMode = options.marketPriceMode ?? 'live') {
       const [config, lendingMarket, flashConfig, flashAssets] = await Promise.all([
         measure('market_config', () => getConfig({ ...opts, market: strategy.market })),
         measure('market_pools', () => getMarket(strategy.market, opts)),
@@ -296,21 +300,35 @@ export function createNaviDataSource(
         },
         observedAt: Date.now()
       }
+      const prices =
+        priceMode === 'live'
+          ? undefined
+          : await measure('market_price_validate', async () =>
+              marketOraclePrices(strategy, config, env, collateral, debt)
+            )
+      check(
+        prices || priceMode !== 'market-only',
+        'PRICE_DATA_UNAVAILABLE',
+        'Fresh market oracle prices are required'
+      )
+      if (prices) Object.assign(market, prices)
       const tx = new Transaction()
-      await measure('market_oracle', () => prepareOracle(tx, strategy, market))
-      const priceIndices = [collateral, debt].map((p) => {
-        const i = tx.getData().commands.length
-        tx.moveCall({
-          target: `${config.package}::calculator::calculate_value`,
-          arguments: [
-            tx.object('0x6'),
-            tx.object(config.priceOracle),
-            tx.pure.u256('1000000000000000000'),
-            tx.pure.u8(p.oracleId)
-          ]
-        })
-        return i
-      })
+      if (!prices) await measure('market_oracle', () => prepareOracle(tx, strategy, market))
+      const priceIndices = prices
+        ? []
+        : [collateral, debt].map((p) => {
+            const i = tx.getData().commands.length
+            tx.moveCall({
+              target: `${config.package}::calculator::calculate_value`,
+              arguments: [
+                tx.object('0x6'),
+                tx.object(config.priceOracle),
+                tx.pure.u256('1000000000000000000'),
+                tx.pure.u8(p.oracleId)
+              ]
+            })
+            return i
+          })
       const riskIndex = tx.getData().commands.length
       tx.moveCall({
         target: `${config.uiGetter}::getter::get_reserve_data`,
@@ -325,7 +343,9 @@ export function createNaviDataSource(
         typeArguments: [strategy.debtCoinType],
         arguments: [tx.object(flashConfig.flashloanConfig)]
       })
-      const results = await measure('market_inspect', () => inspect(client, tx))
+      const results = await measure(prices ? 'market_risk_inspect' : 'market_inspect', () =>
+        inspect(client, tx)
+      )
       const flashValues = results[riskIndex + 2].returnValues
       check(
         bcs.Address.parse(flashValues[3].bcs) === flash.poolId,
@@ -337,14 +357,16 @@ export function createNaviDataSource(
       ).toString()
       market.flash.max = bcs.u64().parse(flashValues[6].bcs)
       market.flash.min = bcs.u64().parse(flashValues[7].bcs)
-      market.collateralPrice = new BN(
-        bcs.u256().parse(results[priceIndices[0]].returnValues[0].bcs)
-      )
-        .div('1e18')
-        .toFixed()
-      market.debtPrice = new BN(bcs.u256().parse(results[priceIndices[1]].returnValues[0].bcs))
-        .div('1e18')
-        .toFixed()
+      if (!prices) {
+        market.collateralPrice = new BN(
+          bcs.u256().parse(results[priceIndices[0]].returnValues[0].bcs)
+        )
+          .div('1e18')
+          .toFixed()
+        market.debtPrice = new BN(bcs.u256().parse(results[priceIndices[1]].returnValues[0].bcs))
+          .div('1e18')
+          .toFixed()
+      }
       const reserves = bcs.vector(ReserveDataInfo).parse(results[riskIndex].returnValues[0].bcs)
       const reserve = reserves.find((r) => r.id === collateral.id)
       check(reserve, 'READ_FAILED', 'Missing collateral risk parameters')

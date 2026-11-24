@@ -1,3 +1,4 @@
+import { createChainRateHintReader } from './rate-hints'
 import { validateMarketMode, assertModeExposure } from './emode'
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions'
 import type {
@@ -11,9 +12,10 @@ import type {
   MultiplyOptions,
   MultiplyQuote,
   Position,
-  Strategy
+  Strategy,
+  MarketPriceMode
 } from './types'
-import { astrosConverter, haedalConverter, voloConverter, validateConversion } from './converters'
+import { astrosConverter, validateConversion } from './converters'
 import { createNaviDataSource, defaultClient } from './data-source'
 import { strategies as builtInStrategies } from './strategies'
 import {
@@ -41,6 +43,7 @@ import {
 } from './amounts'
 import {
   BN,
+  MultiplyError,
   address,
   assertAddressPTB,
   check,
@@ -55,9 +58,16 @@ import { validateFunding } from './funding'
 
 export function createMultiplyClient(options: MultiplyOptions = {}) {
   const client = options.client ?? defaultClient()
-  const converters = options.converters ?? [voloConverter({ client }), haedalConverter({ client })]
+  const converters = options.converters ?? []
   const fallback =
     options.fallbackConverter ?? astrosConverter({ services: options.services, client })
+  const readRateHint =
+    options.useRateHints === false
+      ? undefined
+      : (options.rateHintProvider ??
+        (options.converters === undefined && options.fallbackConverter === undefined
+          ? async (pair) => (env === 'prod' ? createChainRateHintReader(client)(pair) : undefined)
+          : undefined))
   const registry = new Map<string, Converter>()
   for (const c of [...converters, fallback]) {
     check(!registry.has(c.id), 'INVALID_ARGUMENT', `Duplicate converter id: ${c.id}`)
@@ -91,6 +101,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     createNaviDataSource({
       client,
       services: options.services,
+      marketPriceMode: options.marketPriceMode,
       capRegistry: options.capRegistry === undefined ? undefined : capRegistry,
       strategies: strategyRegistry,
       retiredRegistryKeys: options.retiredRegistryKeys,
@@ -233,11 +244,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     }
     return result
   }
-  async function quote(
+  async function quoteOnce(
     owner: string,
     suppliedStrategy: Strategy,
     action: Action,
-    constraints: Constraints
+    constraints: Constraints,
+    mode: MarketPriceMode,
+    budget: { deadline: number; count: number }
   ): Promise<MultiplyQuote> {
     owner = address(owner)
     check(owner !== address('0x0'), 'INVALID_ARGUMENT', 'Multiply owner cannot be zero')
@@ -258,7 +271,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'POSITION_NOT_FOUND',
       'Only open may create a Multiply Cap'
     )
-    const market = await source.readMarket(strategy)
+    const market = await source.readMarket(strategy, mode)
     validateMarketMode(strategy, market)
     const snapshot = cap
       ? await source.readPosition(cap, strategy, market)
@@ -305,6 +318,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         : rateProviders.length === 1
           ? rateProviders[0]
           : undefined
+    const hint = async (pair: typeof ratePair) => {
+      const value = await readRateHint!(pair)
+      // A late optional hint is discarded, never promoted into an executable price.
+      return value && Number.isSafeInteger(value.expiresAt) && value.expiresAt <= Date.now()
+        ? undefined
+        : value
+    }
     const planned = await plan(
       strategy,
       action,
@@ -313,8 +333,12 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       market,
       fee,
       (req) => chooseConversion(req, converters, fallback),
-      rateProvider?.getRateHint ? () => rateProvider.getRateHint!(ratePair) : undefined,
-      rateProvider?.getStakingSnapshot
+      readRateHint
+        ? () => hint(ratePair)
+        : options.useRateHints !== false && rateProvider?.getRateHint
+          ? () => rateProvider.getRateHint!(ratePair)
+          : undefined,
+      !readRateHint && options.useRateHints !== false && rateProvider?.getStakingSnapshot
         ? async () => {
             const snapshot = await rateProvider.getStakingSnapshot!(ratePair)
             if (snapshot)
@@ -325,8 +349,56 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
               )
             return snapshot
           }
-        : undefined
+        : undefined,
+      !readRateHint &&
+        options.useRateHints !== false &&
+        !options.disableRedemptionSnapshot &&
+        rateProvider?.getRedemptionSnapshot
+        ? async () => {
+            const snapshot = await rateProvider.getRedemptionSnapshot!({
+              coinIn: ratePair.coinOut,
+              coinOut: ratePair.coinIn
+            })
+            if (snapshot)
+              check(
+                snapshot.converterId === rateProvider.id,
+                'INVALID_CONVERSION',
+                'Redemption snapshot provider mismatch'
+              )
+            return snapshot
+          }
+        : undefined,
+      budget,
+      readRateHint ? () => hint({ coinIn: ratePair.coinOut, coinOut: ratePair.coinIn }) : undefined,
+      options.useRateHints !== false
     )
+    for (const conversion of planned.execution.conversions) {
+      const converter = registry.get(conversion.converterId)!
+      const remaining = budget.deadline - Date.now()
+      if (converter.enrichFees && remaining > 1) {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          conversion.fees = await Promise.race([
+            converter.enrichFees(conversion),
+            new Promise<undefined>((resolve) => {
+              timer = setTimeout(() => resolve(undefined), Math.min(1500, remaining - 1))
+            })
+          ])
+        } finally {
+          clearTimeout(timer)
+        }
+      }
+      validateConversion(
+        conversion,
+        {
+          coinIn: conversion.input.coinType,
+          coinOut: conversion.expectedOutput.coinType,
+          amountIn: conversion.input.amount,
+          slippageBps: constraints.maxSlippageBps
+        },
+        converter.id
+      )
+    }
     if (!cap) {
       // ST-05/ST-06: a new Cap is registered with the env's Cap type in a Registry valid for it.
       assertRegistryUsable(env, explicitRegistry)
@@ -339,6 +411,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       constraints: jsonCopy(constraints),
       expiresAt: Math.min(
         Date.now() + 120_000,
+        market.priceEvidence?.expiresAt ?? Infinity,
         ...planned.execution.conversions.map((c) => c.expiresAt)
       ),
       estimate: planned.estimate,
@@ -353,7 +426,33 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       }
     }
     q.execution.checksum = await checksum(q)
+    check(
+      !market.priceEvidence || market.priceEvidence.expiresAt > Date.now(),
+      'MARKET_PRICE_EXPIRED',
+      'Market price expired during calculation'
+    )
     return jsonCopy(q)
+  }
+  async function quote(
+    owner: string,
+    strategy: Strategy,
+    action: Action,
+    constraints: Constraints
+  ): Promise<MultiplyQuote> {
+    const mode = options.marketPriceMode ?? source.marketPriceMode ?? 'live'
+    const budget = { deadline: Date.now() + 45_000, count: 0 }
+    try {
+      return await quoteOnce(owner, strategy, action, constraints, mode, budget)
+    } catch (error) {
+      if (
+        !(error instanceof MultiplyError) ||
+        error.code !== 'MARKET_PRICE_EXPIRED' ||
+        mode !== 'prefer-market'
+      )
+        throw error
+      check(Date.now() < budget.deadline, 'NO_CONVERGENCE', 'Quote deadline exhausted')
+      return quoteOnce(owner, strategy, action, constraints, 'live', budget)
+    }
   }
   async function readLiveBuildState(q: MultiplyQuote, inputs: BuildInputs) {
     const e = q.execution,
@@ -615,7 +714,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     )
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
     tx.setSenderIfNotSet(q.address)
-    await source.prepareOracle(tx, s, fresh)
+    if (!fromStoredQuote || options.prepareOracleForSimulation !== false)
+      await source.prepareOracle(tx, s, fresh)
     const config = fresh.config
     const createdAccountCap =
       e.accountCap.kind === 'create'

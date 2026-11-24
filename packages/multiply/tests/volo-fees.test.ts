@@ -111,10 +111,13 @@ describe('Volo provider fees use deployed SUI-denominated ceil arithmetic', () =
   })
   it('matches ENG-5577 on an Astros single-hop Volo route despite fee_rate=0', async () => {
     vi.mocked(getQuote).mockResolvedValueOnce(route() as never)
-    const quote = await astrosConverter({ client: clientFixture('1000030398') }).quote({
+    const converter = astrosConverter({ client: clientFixture('1000030398') })
+    const quote = await converter.quote({
       ...req,
       amountIn: '934588763'
     })
+    expect(quote.fees).toBeUndefined()
+    quote.fees = await converter.enrichFees!(quote)
     expect(quote.fees).toEqual(fee('300010'))
     expect(quote.expectedOutput.amount).toBe('999730388')
     expect(quote.minOutput.amount).toBe('994731736')
@@ -123,7 +126,10 @@ describe('Volo provider fees use deployed SUI-denominated ceil arithmetic', () =
     vi.mocked(getQuote).mockResolvedValueOnce(route() as never)
     const client = clientFixture()
     vi.mocked(client.core.simulateTransaction).mockRejectedValueOnce(new Error('RPC unavailable'))
-    const quote = await astrosConverter({ client }).quote({ ...req, amountIn: '934588763' })
+    const converter = astrosConverter({ client })
+    const quote = await converter.quote({ ...req, amountIn: '934588763' })
+    expect(client.core.simulateTransaction).not.toHaveBeenCalled()
+    quote.fees = await converter.enrichFees!(quote)
     expect(quote.fees).toBeUndefined()
     expect(quote.expectedOutput.amount).toBe('999730388')
   })
@@ -133,9 +139,11 @@ describe('Volo provider fees use deployed SUI-denominated ceil arithmetic', () =
       vi.mocked(getQuote).mockResolvedValueOnce(route() as never)
       const client = clientFixture()
       vi.mocked(client.core.simulateTransaction).mockReturnValueOnce(new Promise(() => {}))
-      const pending = astrosConverter({ client }).quote({ ...req, amountIn: '934588763' })
+      const converter = astrosConverter({ client })
+      const quote = await converter.quote({ ...req, amountIn: '934588763' })
+      const pending = converter.enrichFees!(quote)
       await vi.advanceTimersByTimeAsync(1500)
-      const quote = await pending
+      quote.fees = await pending
       expect(quote.fees).toBeUndefined()
       expect(quote.expectedOutput.amount).toBe('999730388')
     } finally {
@@ -153,9 +161,9 @@ describe('Volo provider fees use deployed SUI-denominated ceil arithmetic', () =
       if (kind === 'mismatched-pair') r.routes[0].path[0].from = SUI
       vi.mocked(getQuote).mockResolvedValueOnce(r as never)
       const client = clientFixture()
-      expect(
-        (await astrosConverter({ client }).quote({ ...req, amountIn: '934588763' })).fees
-      ).toBeUndefined()
+      const converter = astrosConverter({ client })
+      const quote = await converter.quote({ ...req, amountIn: '934588763' })
+      expect(await converter.enrichFees!(quote)).toBeUndefined()
       expect(client.core.simulateTransaction).not.toHaveBeenCalled()
     }
   )

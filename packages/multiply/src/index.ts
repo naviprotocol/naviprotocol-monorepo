@@ -15,3 +15,7 @@ export {
 } from './cap-registry'
 export { MultiplyError } from './utils'
 export type * from './types'
+
+export { oracleDeploymentRevision, marketOraclePrices } from './market-prices'
+
+export { createChainRateHintReader } from './rate-hints'

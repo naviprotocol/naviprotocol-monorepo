@@ -71,7 +71,7 @@ valuation belongs to the API and may differ for LST backing. Zero debt has null
 HF; empty/non-positive equity has null leverage.
 
 `maxLeverage` bounds leverage at the **minimum** conversion output, at quote, live
-rebuild and on chain, with the solver's 0.01% tolerance: a target equal to it is
+rebuild and on chain, with its existing 0.01% rounding band: a target equal to it is
 reachable at zero slippage, and a nonzero `maxSlippageBps` needs matching headroom
 above the target. It bounds only what can raise leverage: `close`, `repay` and
 `add_collateral` are never refused by it, and `remove_principal` or a lowering
@@ -82,46 +82,36 @@ equity, but the result must still meet `minHealthFactor`. A `remove_principal`
 target that would need new debt is `ACTION_UNSUPPORTED`. `add_principal` levers
 the amount it adds to the target, or to the current leverage when none is given.
 
-## Snapshot-based leverage quotes
+For `open` and upward `set_leverage`, target accuracy is a relative **0.1%**:
+`abs(actualLeverage - targetLeverage) / targetLeverage <= 0.001`.
+This applies to both the first swap candidate and the solver result. Other actions
+retain their existing 0.01% target accuracy. Estimates always report the actual
+quoted result. Target accuracy never relaxes HF, LTV, the independent
+`maxLeverage` band, liquidity limits, or funding conservation checks. A candidate
+that fails any of those checks still falls back or fails.
 
-Opening, adding principal and increasing leverage estimate flash funding with prices,
-fees and the selected conversion rate. Volo/Haedal native staking now use an optional
-`getStakingSnapshot(pair)` with complete integer state to calculate the conversion
-locally. A valid candidate needs **zero formal conversion quotes**. Other routes,
-including USDSUI/USDC, still validate one real quote. An unavailable snapshot or a
-candidate outside the original tolerance/risk limits falls back to the original
-bracket solver. Malformed state and the shared deadline remain errors.
+## Astros-only leverage quotes
 
-Volo simulates `refresh` followed by effective supply and fee getters in one PTB.
-It rounds the stake fee up, then minted LST down. Haedal reads all supply components
-from one state object and reproduces checked-u64 arithmetic; the pinned stake
-entrypoint does not charge its stored `deposit_fee`. Its redemption fee is unchanged.
-This is exact integer math for the pinned native contracts, not a rounded display
-exchange rate. Both preserve the existing SDK minimum of 1 SUI conversion input.
+Default conversions use Astros exact-input quotes and build the saved Astros route.
+For vSUI/haSUI, an independent chain-rate reader seeds the amount; protocol oracle
+prices still determine leverage, HF and capacity. The hint never supplies executable
+outputs. One real quote must pass the unchanged target, minimum-output and risk
+checks; otherwise the existing solver continues using Astros. An exit candidate is
+reused once as the starting point of the existing correction loop. No persistent
+amount memoization disables intentional endpoint refreshes.
 
-Snapshots live for 5 seconds per converter/client instance. Every use checks the
-current epoch; epoch changes invalidate the cache. Concurrent reads are deduplicated;
-expired pending reads can be retried, and late old reads cannot replace newer state.
-Volo's simulation reports its actual epoch. A read exceeding TTL is not accepted.
-Reusing an instance avoids the complete snapshot read, but still performs an epoch
-RPC. No snapshot is used for unstaking or DEX execution.
+The Volo hint reads refreshed supply totals in one read-only PTB; Haedal reads the
+chain conversion getter with an integer probe. Hints expire after 5 seconds and
+are not cached across requests or epochs. Unavailable/paused getters or zero totals
+skip the hint. Native cash, native fees and minimums do not gate Astros routes.
+`useRateHints: false` disables seeds without changing execution routing.
+`rateHintProvider` may provide a separate custom reader. USDSUI uses a price/fee seed.
+Close uses its known full input directly; repay/top-up/direct collateral 1x need no
+hint or swap. The shared 45-second/32-call budget and solver precision are unchanged.
 
-Protocol oracle prices still determine target leverage, HF, LTV and capacity. All
-integer funding/fee rounding, minimum-output guards and final on-chain HF checks
-remain in force. Builds must still be fully simulated before execution: fees, pause
-state and exchange rates can change after quoting. The cache TTL controls calculation
-reuse; it does not shrink the existing executable quote lifetime. Snapshot reads and
-fallback quotes share the existing 32-attempt / 45-second budget. Custom converters
-can still supply `getRateHint`, which requires an actual quote to verify the seed.
-
-See [the current benchmark and acceptance evidence](docs/native-snapshot-benchmark.md).
-After building, `node e2e/quote-seed-benchmark.mjs` compares baseline `0e8f2a9` against
-cold and same-instance follow-up quotes. `MULTIPLY_BENCH_BASE`, `MULTIPLY_BENCH_ROUNDS`,
-`MULTIPLY_BENCH_PRINCIPAL`, `MULTIPLY_BENCH_LEVERAGE` and `MULTIPLY_BENCH_OUT` configure
-it. Formal quotes and snapshot time are reported separately within total SDK latency.
-`node e2e/native-snapshot-build.mjs` exercises fully funded mainnet simulations,
-actual minted amounts, min-output failures and final HF failures. Neither signs or
-broadcasts transactions.
+Explicit custom converters remain supported, including native snapshot methods;
+those methods are never selected by the default client or the API's Astros-only client.
+See `e2e/astros-only-benchmark.mjs` for read-only interleaved measurements.
 
 ## Execution plan v4
 
@@ -147,14 +137,16 @@ server-side. The caller must simulate the final composed PTB before signing.
 
 ## Converters
 
-Volo and Haedal use live contract getters. Eligible routes are compared by minimum
-net output. Astros is the fallback only for explicit route unavailability or
-minimum-amount errors; malformed quotes, invalid inputs and read failures propagate.
-A build never silently switches routes. Haedal instant redemption requires gross
-SUI equivalent >= 1 SUI **before** its service fee in the pinned staking module.
+The default registry contains Astros only. Optional Volo/Haedal converters remain
+available for explicitly configured integrations; their native execution limits
+apply only when callers select them. Astros may itself choose native, DEX or mixed
+routes. A build uses the saved route and never silently switches providers.
 Unknown conversion fees are omitted, never fabricated as zero. Known fees are
 marked `includedInExpectedOutput: true`. Optional route metadata describes provider,
 hops, pools/DEX and observation time; it is separate from opaque executable data.
+Astros fee decoration runs at most once per selected conversion, before the checksum,
+and never changes output/minimum amounts. Direct converter consumers can call
+`enrichFees(quote)` explicitly. Unknown/mixed-route fees remain unavailable.
 
 Astros is pinned to 2.0.7. Its route change goes directly to `quote.address`, not
 the gas sponsor or `built.coins`. Vault integrations must account for that custody
@@ -233,3 +225,35 @@ alongside their effective risk parameters. Paused groups disable new exposure;
 the default source can read only that group's configuration to support repayment
 and exit, without reading any account's current mode. Keep the existing final-byte
 simulation requirement, especially with `buildPTBForSimulation`.
+
+### Market-price and native-exit optimization
+
+`marketPriceMode` defaults to `live` for existing SDK callers. `prefer-market`
+uses `Pool.oracle.freshness` only when both strategy assets have coherent,
+validated, unexpired evidence for the configured NAVI deployment; otherwise it
+uses the existing live oracle path. `market-only` fails with
+`PRICE_DATA_UNAVAILABLE` instead of preparing/updating the oracle. Price expiry
+also bounds the quote expiry. An expired calculation is replanned once with live
+prices only in `prefer-market`, within the original request budget.
+
+Default exits now use the independent rate hint plus a real Astros quote; the prior
+native redemption cash-gated fast path is not selected. Explicit native integrations
+can still use their snapshot helpers. API `MULTIPLY_DISABLE_RATE_HINTS=true` disables
+hints only and never restores native execution.
+
+`prepareOracleForSimulation: false` applies **only** to
+`buildPTBForSimulation`. It omits oracle preparation/update commands. The caller
+must run the complete checks-enabled transaction simulation and reconcile funding
+before exposing signing bytes. Public `buildPTB` keeps its existing oracle and
+preflight behavior. No-update builds can fail on expired on-chain prices even if
+a live quote succeeded by updating prices inside a read-only simulation. Requoting
+does not itself update on-chain prices.
+
+Read-only regression tools:
+
+- `e2e/exit-snapshot-benchmark.mjs`: interleaved native/DEX solver comparison, plus
+  real wallet exit simulations. Synthetic positions used for solver timing are
+  explicitly separate from the wallet section.
+- `MULTIPLY_REFERENCE_ORACLE=true` is an **E2E-only** fixture that explicitly adds
+  an oracle update inside simulation. It is never enabled by the API and does not
+  prove a no-update build succeeded on current chain state.

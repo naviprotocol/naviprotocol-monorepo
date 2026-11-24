@@ -1,3 +1,4 @@
+import { quoteRedemptionSnapshot } from './native-redemption'
 import { quoteStakingSnapshot } from './native-staking'
 import { validateMarketMode, assertModeExposure } from './emode'
 import type {
@@ -142,7 +143,11 @@ export async function plan(
   borrowFeeBps: string,
   convert: (req: ConversionRequest) => Promise<ConversionQuote>,
   readRate?: () => Promise<ConversionRateHint | undefined>,
-  readSnapshot?: () => Promise<StakingSnapshot | undefined>
+  readSnapshot?: () => Promise<StakingSnapshot | undefined>,
+  readRedemption?: () => Promise<import('./types').RedemptionSnapshot | undefined>,
+  sharedBudget?: { deadline: number; count: number },
+  readExitRate?: () => Promise<ConversionRateHint | undefined>,
+  useSeed = true
 ) {
   validateMarketMode(strategy, market)
   const C = n(snapshot.collateralAmount),
@@ -196,6 +201,10 @@ export async function plan(
     action.type === 'open' ||
     action.type === 'add_principal' ||
     (action.type === 'set_leverage' && target.gt(current.leverage ?? '1'))
+  // Target accuracy is distinct from the risk ceiling in amounts.ts. Only open
+  // and upward set_leverage allow 0.1%; additions and exits retain 0.01%.
+  const targetTolerance =
+    action.type === 'open' || (action.type === 'set_leverage' && increasing) ? '0.001' : '0.0001'
   // An explicit target that adds debt is held to maxLeverage itself; the band only absorbs rounding.
   if (constraints.maxLeverage && increasing && specified !== undefined)
     check(target.lte(constraints.maxLeverage), 'CONSTRAINT_VIOLATION', 'Target exceeds maxLeverage')
@@ -258,16 +267,15 @@ export async function plan(
         .abs()
       return residual.lte(BN.maximum(principalValue.times('0.0001'), pd))
     }
-    return value.div(net).minus(target).abs().lte(target.times('0.0001'))
+    return value.div(net).minus(target).abs().lte(target.times(targetTolerance))
   }
   // Leave time for the API's other reads within its quote deadline. An abandoned
   // converter promise is read-only; late results are never used in the plan.
-  const conversionDeadline = Date.now() + 45_000
-  let conversionCount = 0
+  const budget = sharedBudget ?? { deadline: Date.now() + 45_000, count: 0 }
   const budgeted = async <T>(read: () => Promise<T>): Promise<T> => {
-    const remaining = conversionDeadline - Date.now()
+    const remaining = budget.deadline - Date.now()
     check(
-      ++conversionCount <= 32 && remaining > 0,
+      ++budget.count <= 32 && remaining > 0,
       'NO_CONVERGENCE',
       'Conversion quote budget exhausted'
     )
@@ -376,7 +384,7 @@ export async function plan(
     // The rate predicts conversion amounts only. Oracle pc/pd remain the valuation
     // basis for the target leverage and every final risk/capacity check.
     let rate = pd.div(pc)
-    let usableSeed = true
+    let usableSeed = useSeed
     let stakingSnapshot: StakingSnapshot | undefined
     if (readSnapshot) {
       try {
@@ -702,8 +710,15 @@ export async function plan(
     )
     // Repay a small interest reserve when clearing debt. Actual excess is returned by NAVI.
     const fullRepay = D.isZero() ? D : n(ceil(D.times('1.0001').plus(amountCushion(market.debt))))
-    const evaluation = async (W: N) => {
-      const q = await request(W.toFixed(0), false)
+    const evaluation = async (W: N, native?: import('./types').RedemptionSnapshot) => {
+      const req = {
+        coinIn: strategy.collateralCoinType,
+        coinOut: strategy.debtCoinType,
+        amountIn: W.toFixed(0),
+        slippageBps: constraints.maxSlippageBps
+      }
+      const q = native ? quoteRedemptionSnapshot(native, req) : await request(W.toFixed(0), false)
+      if (native) validateConversion(q, req, native.converterId)
       const available = n(q.minOutput.amount).minus(payout)
       const R =
         close || target.eq(1)
@@ -722,55 +737,217 @@ export async function plan(
         available
       }
     }
-    let best
-    if (close) best = await evaluation(C)
-    else {
-      // Estimate using oracle prices, then correct with the actual conversion minimum and fees.
-      let W = n(
-        ceil(
-          D.times(pd)
-            .minus(C.times(pc).times(target.minus(1)).div(target))
-            .plus(payout.times(pd))
-            .times(target)
-            .div(pc)
-        )
-      )
-      // Even with the payout left as debt the position stays below the target: it needs new debt.
-      check(target.eq(1) || W.gte(0), 'ACTION_UNSUPPORTED', BORROW_NEEDED)
-      // The same holds when the payout is funded by collateral at oracle value and nothing is repaid.
-      // Conversions can price differently, so this only names the cause once the search has failed.
-      const borrowNeeded =
-        !target.eq(1) &&
-        D.times(pd).lt(C.times(pc).minus(payout.times(pd)).times(target.minus(1)).div(target))
-      if (target.eq(1)) W = n(ceil(fullRepay.plus(payout).times(pd).div(pc).times('1.01')))
-      W = BN.maximum(1, BN.minimum(C, W))
-      for (let i = 0; i < 20; i++) {
-        best = await evaluation(W)
-        const shortfall = best.repayment.plus(payout).minus(best.q.minOutput.amount)
-        // Trim the initial price cushion; convert only what repayment and the payout need.
-        if (target.eq(1) && shortfall.lt(0) && i < 2) {
-          const trimmed = n(ceil(W.times(best.repayment.plus(payout)).div(best.q.minOutput.amount)))
-          if (trimmed.gt(0) && trimmed.lt(W)) {
-            W = trimmed
-            continue
+    let best: Awaited<ReturnType<typeof evaluation>> | undefined
+    const decreaseResult = (v: Awaited<ReturnType<typeof evaluation>>) => ({
+      ...result,
+      conversions: [
+        { ...v.q, id: 'withdrawal', purpose: 'repayment' as const, source: 'withdrawal' as const }
+      ],
+      flashAmount: v.R.toFixed(0),
+      flashRepayment: v.repayment.toFixed(0),
+      withdrawAmount: v.W.toFixed(0),
+      collateralAfter: v.c.toFixed(0),
+      minCollateralAfter: v.c.toFixed(0),
+      debtAfter: v.d.toFixed(0)
+    })
+    let firstExitCandidate: Awaited<ReturnType<typeof evaluation>> | undefined
+    // A gross chain rate is only an initial guess. Every candidate uses an actual
+    // Astros output/minimum; native cash, fees and minimums are not admission gates.
+    if (!close && readExitRate && useSeed) {
+      try {
+        const hint = await budgeted(readExitRate)
+        if (hint) {
+          uint(hint.input.amount, false)
+          uint(hint.output.amount, false)
+          check(
+            sameCoin(hint.input.coinType, strategy.collateralCoinType) &&
+              sameCoin(hint.output.coinType, strategy.debtCoinType) &&
+              Number.isSafeInteger(hint.expiresAt) &&
+              hint.expiresAt > Date.now(),
+            'INVALID_CONVERSION',
+            'Invalid redemption rate hint'
+          )
+          const rate = n(hint.output.amount)
+            .div(hint.input.amount)
+            .times(n(1).minus(n(constraints.maxSlippageBps).div(10000)))
+          const a = target.minus(1).div(target),
+            b = n(1).plus(n(market.flash.feeBps).div(10000))
+          const denominator = rate.minus(b.times(a).times(pc).div(pd))
+          const W = target.eq(1)
+            ? n(ceil(flashRepay(fullRepay).plus(payout).div(rate)))
+            : n(
+                ceil(
+                  b
+                    .times(D.minus(a.times(C).times(pc).div(pd)))
+                    .plus(payout)
+                    .div(denominator)
+                )
+              )
+          if ((target.eq(1) || denominator.gt(0)) && W.isFinite() && W.gt(0) && W.lte(C)) {
+            const candidate = await evaluation(W)
+            firstExitCandidate = candidate
+            if (
+              candidate.R.gte(0) &&
+              candidate.repayment.plus(payout).lte(candidate.q.minOutput.amount) &&
+              targetReached(candidate.c, candidate.d)
+            ) {
+              try {
+                validateResult(decreaseResult(candidate))
+                best = candidate
+              } catch (error) {
+                if (
+                  !(error instanceof MultiplyError) ||
+                  !['NO_CONVERGENCE', 'CAPACITY_EXCEEDED', 'CONSTRAINT_VIOLATION'].includes(
+                    error.code
+                  )
+                )
+                  throw error
+              }
+            }
           }
         }
-
-        // Use remaining equity, as large withdrawals can make the original
-        // position's value-based residual tolerance far too permissive.
-        if (best.R.gte(0) && shortfall.lte(0) && targetReached(best.c, best.d)) break
-        const delta = target.eq(1)
-          ? shortfall.times(pd).div(pc)
-          : best.residual.times(target).div(pc)
-        const next = BN.maximum(
-          1,
-          n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1 : 0)))
+      } catch (error) {
+        if (
+          !(error instanceof MultiplyError) ||
+          ![
+            'SNAPSHOT_UNAVAILABLE',
+            'CONVERTER_UNAVAILABLE',
+            'CONVERSION_AMOUNT_TOO_SMALL',
+            'NO_CONVERSION_ROUTE'
+          ].includes(error.code)
         )
-        if (!(next.lt(C) && !next.eq(W) && i < 19))
-          throw borrowNeeded
-            ? new MultiplyError('ACTION_UNSUPPORTED', BORROW_NEEDED)
-            : new MultiplyError('NO_CONVERGENCE', 'No feasible deleverage route within constraints')
-        W = next
+          throw error
+      }
+    }
+    if (readRedemption) {
+      try {
+        const native = await budgeted(readRedemption)
+        if (native) {
+          const rate = n(native.suiSupply)
+            .div(native.lstSupply)
+            .times(n(1).minus(n(native.feeRate).div(native.feeDenominator)))
+            .times(n(1).minus(n(constraints.maxSlippageBps).div(10000)))
+          const a = target.minus(1).div(target),
+            b = n(1).plus(n(market.flash.feeBps).div(10000))
+          const denominator = rate.minus(b.times(a).times(pc).div(pd))
+          const W = close
+            ? C
+            : target.eq(1)
+              ? n(ceil(flashRepay(fullRepay).plus(payout).div(rate)))
+              : n(
+                  ceil(
+                    b
+                      .times(D.minus(a.times(C).times(pc).div(pd)))
+                      .plus(payout)
+                      .div(denominator)
+                  )
+                )
+          if ((close || target.eq(1) || denominator.gt(0)) && W.isFinite() && W.gt(0) && W.lte(C)) {
+            // Correct only integer rounding locally. No RPC loop and no relaxed tolerance.
+            for (const offset of close ? [0] : [0, 1, -1, 2, -2, 3, -3, 4]) {
+              const candidateW = W.plus(offset)
+              if (!candidateW.gt(0) || candidateW.gt(C)) continue
+              const candidate = await evaluation(candidateW, native)
+              if (
+                candidate.R.lt(0) ||
+                candidate.repayment.plus(payout).gt(candidate.q.minOutput.amount) ||
+                (!close && !targetReached(candidate.c, candidate.d))
+              )
+                continue
+              try {
+                validateResult(decreaseResult(candidate))
+                best = candidate
+                break
+              } catch (error) {
+                if (
+                  !(error instanceof MultiplyError) ||
+                  !['NO_CONVERGENCE', 'CAPACITY_EXCEEDED', 'CONSTRAINT_VIOLATION'].includes(
+                    error.code
+                  )
+                )
+                  throw error
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (
+          !(error instanceof MultiplyError) ||
+          ![
+            'SNAPSHOT_UNAVAILABLE',
+            'CONVERTER_UNAVAILABLE',
+            'CONVERSION_AMOUNT_TOO_SMALL',
+            'NO_CONVERSION_ROUTE'
+          ].includes(error.code)
+        )
+          throw error
+      }
+    }
+    if (!best) {
+      if (close) best = await evaluation(C)
+      else {
+        // Estimate using oracle prices, then correct with the actual conversion minimum and fees.
+        let W = n(
+          ceil(
+            D.times(pd)
+              .minus(C.times(pc).times(target.minus(1)).div(target))
+              .plus(payout.times(pd))
+              .times(target)
+              .div(pc)
+          )
+        )
+        // Even with the payout left as debt the position stays below the target: it needs new debt.
+        check(target.eq(1) || W.gte(0), 'ACTION_UNSUPPORTED', BORROW_NEEDED)
+        // The same holds when the payout is funded by collateral at oracle value and nothing is repaid.
+        // Conversions can price differently, so this only names the cause once the search has failed.
+        const borrowNeeded =
+          !target.eq(1) &&
+          D.times(pd).lt(C.times(pc).minus(payout.times(pd)).times(target.minus(1)).div(target))
+        if (target.eq(1)) W = n(ceil(fullRepay.plus(payout).times(pd).div(pc).times('1.01')))
+        W = BN.maximum(1, BN.minimum(C, W))
+        // Continue the unchanged correction loop from the real first quote, once.
+        // Do not reset to an oracle guess or permanently memoize market responses.
+        if (firstExitCandidate && firstExitCandidate.q.expiresAt > Date.now())
+          W = firstExitCandidate.W
+        for (let i = 0; i < 20; i++) {
+          best =
+            i === 0 &&
+            firstExitCandidate &&
+            firstExitCandidate.W.eq(W) &&
+            firstExitCandidate.q.expiresAt > Date.now()
+              ? firstExitCandidate
+              : await evaluation(W)
+          const shortfall = best.repayment.plus(payout).minus(best.q.minOutput.amount)
+          // Trim the initial price cushion; convert only what repayment and the payout need.
+          if (target.eq(1) && shortfall.lt(0) && i < 2) {
+            const trimmed = n(
+              ceil(W.times(best.repayment.plus(payout)).div(best.q.minOutput.amount))
+            )
+            if (trimmed.gt(0) && trimmed.lt(W)) {
+              W = trimmed
+              continue
+            }
+          }
+
+          // Use remaining equity, as large withdrawals can make the original
+          // position's value-based residual tolerance far too permissive.
+          if (best.R.gte(0) && shortfall.lte(0) && targetReached(best.c, best.d)) break
+          const delta = target.eq(1)
+            ? shortfall.times(pd).div(pc)
+            : best.residual.times(target).div(pc)
+          const next = BN.maximum(
+            1,
+            n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1 : 0)))
+          )
+          if (!(next.lt(C) && !next.eq(W) && i < 19))
+            throw borrowNeeded
+              ? new MultiplyError('ACTION_UNSUPPORTED', BORROW_NEEDED)
+              : new MultiplyError(
+                  'NO_CONVERGENCE',
+                  'No feasible deleverage route within constraints'
+                )
+          W = next
+        }
       }
     }
     check(best && best.R.gte(0), 'NO_CONVERGENCE', 'Missing decrease plan')
@@ -874,7 +1051,7 @@ export async function plan(
     if (['open', 'add_principal', 'remove_principal', 'set_leverage'].includes(action.type))
       check(
         estimate.leverage !== null &&
-          n(estimate.leverage).minus(target).abs().lte(target.times('0.0001')),
+          n(estimate.leverage).minus(target).abs().lte(target.times(targetTolerance)),
         'NO_CONVERGENCE',
         'Conversion quote cannot achieve the requested leverage within tolerance'
       )
