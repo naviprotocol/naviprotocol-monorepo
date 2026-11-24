@@ -7,8 +7,10 @@
 - Aftermath swaps call amm v5 (`0x93056cd8…`) `swap::swap_exact_in` instead of v2. Since
   2026-11-13 the Aftermath PoolRegistry is at protocol version 4; v2 requires exactly 2 and
   aborts with code 40, v4 accepts at most 3. The v5 entry keeps the same arguments. Bump the
-  `find_routes` client version from 18 to 20 for backend capability gating (19 is reserved
-  for the release that adds new DEXes).
+  `find_routes` client version from 18 to 20 for backend capability gating.
+- New swap sources, gated on the backend at `find_routes` version 19 (this release sends 20, so
+  it receives them): Cetus DLMM (`Dex.CETUS_DLMM`), alphafi stSUI, haWAL, afSUI and FlowX AMM v2
+  (`Dex.FLOWX_AMM`).
 
 ## 2.0.9
 
