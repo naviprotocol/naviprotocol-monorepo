@@ -33,6 +33,7 @@ import {
   positionSides,
   atomPrices,
   borrowCapacity,
+  leverageCeiling,
   withinSameReserveCapacity,
   supplyCapacity,
   tokenDecimals,
@@ -41,6 +42,7 @@ import {
 import {
   BN,
   address,
+  assertAddressPTB,
   check,
   checksum,
   coinType,
@@ -191,6 +193,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
           configured.id === cap.strategyId,
           'INVALID_ACCOUNT_CAP',
           'Cap numeric binding differs from strategy ID'
+        )
+        check(
+          cap.transient === undefined || cap.transient === true,
+          'INVALID_ACCOUNT_CAP',
+          'Cap transient marker must be true or absent'
         )
         return { ...cap, id, accountOwner, registryKey: { ...cap.registryKey } }
       })
@@ -434,7 +441,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     )
     if (q.constraints.maxLeverage && risk.leverage)
       check(
-        new BN(risk.leverage).lte(q.constraints.maxLeverage),
+        new BN(risk.leverage).lte(leverageCeiling(q.constraints.maxLeverage)),
         'STALE_QUOTE',
         'Updated market exceeds maximum leverage'
       )
@@ -566,6 +573,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     assertModeExposure(q.action, e, fresh)
     // ST-19: a created Cap needs a Registry valid for this env; refused before any command.
     if (e.accountCap.kind === 'create') assertRegistryUsable(env, explicitRegistry)
+    // A transient Cap has no object to resolve: only the caller's transaction argument exists.
+    const transientCap = e.accountCap.kind === 'existing' && e.accountCap.transient === true
+    check(
+      !transientCap || inputs.accountCap !== undefined,
+      'INVALID_INPUTS',
+      'A transient AccountCap must be supplied as a transaction argument'
+    )
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
     tx.setSenderIfNotSet(q.address)
     await source.prepareOracle(tx, s, fresh)
@@ -576,6 +590,20 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         : undefined
     const accountCap =
       createdAccountCap ?? inputs.accountCap ?? tx.object((e.accountCap as AccountCap).id)
+    if (e.accountCap.kind === 'existing' && inputs.accountCap !== undefined && !transientCap) {
+      // A supplied Cap is a transaction argument (e.g. one a vault extracts earlier in the PTB), so
+      // its identity cannot be proven here. Every preflight check was made for the quoted Cap: bind
+      // the argument to that Cap's lending account on chain, before any lending call uses it. Only a
+      // Cap its data source declared transient (created in this PTB, no identity yet) is exempt.
+      assertAddressPTB(
+        tx,
+        tx.moveCall({
+          target: `${config.package}::account::account_owner`,
+          arguments: [accountCap]
+        }),
+        e.accountCap.accountOwner
+      )
+    }
     if (createdAccountCap) {
       if (s.emodeId !== undefined)
         tx.moveCall({
@@ -876,7 +904,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
           arguments: [product]
         })
       }
-      const limit = new BN(q.constraints.maxLeverage).shiftedBy(12).integerValue(BN.ROUND_FLOOR)
+      // The same ceiling the quote accepted, so a plan at the limit is not refused on chain.
+      const limit = leverageCeiling(q.constraints.maxLeverage)
+        .shiftedBy(12)
+        .integerValue(BN.ROUND_FLOOR)
       const collateralLimit = multiply(
         readValue('user_collateral_value', fresh.collateral.id),
         limit.minus('1e12').toFixed(0)

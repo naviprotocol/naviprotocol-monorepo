@@ -40,7 +40,11 @@ export type Action =
 export interface Constraints {
   minHealthFactor: string
   maxSlippageBps: number
-  /** Additional ceiling on estimated leverage; omitted means protocol/HF limits apply. */
+  /**
+   * Additional ceiling on leverage at the minimum conversion output, also checked on chain; omitted
+   * means protocol/HF limits apply. Enforced with the solver's 0.01% tolerance, so a target equal
+   * to it is reachable; with nonzero slippage leave headroom above the target.
+   */
   maxLeverage?: string
 }
 export interface AccountCap {
@@ -48,6 +52,12 @@ export interface AccountCap {
   accountOwner: string
   strategyId: string
   registryKey: RegistryKey
+  /**
+   * Simulation fixtures only, never set by the default data source: the Cap is created earlier in
+   * the PTB being built, so `id` and `accountOwner` are placeholders. `buildPTB` then requires
+   * `inputs.accountCap` and cannot bind it on chain to the quoted lending account.
+   */
+  transient?: true
 }
 export interface PositionAmounts {
   /** Native Coin<T> atoms, not NAVI's normalized lending balance units. */

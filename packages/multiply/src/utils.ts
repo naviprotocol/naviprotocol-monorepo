@@ -128,6 +128,28 @@ export function recordReadVersion(versions: Record<string, string>, id: string, 
   versions[key] = version
 }
 
+/** Abort the transaction unless an on-chain `address` value equals `expected`. */
+export function assertAddressPTB(
+  tx: Transaction,
+  actual: TransactionObjectArgument,
+  expected: string
+) {
+  const want = BigInt(address(expected)).toString()
+  const value = tx.moveCall({ target: '0x2::address::to_u256', arguments: [actual] })
+  // A PTB has no equality assertion: a - b and b - a both exist only when a == b.
+  for (const [left, right] of [
+    [value, tx.pure.u256(want)],
+    [tx.pure.u256(want), value]
+  ]) {
+    const difference = tx.moveCall({ target: '0x1::u256::checked_sub', arguments: [left, right] })
+    tx.moveCall({
+      target: '0x1::option::destroy_some',
+      typeArguments: ['u256'],
+      arguments: [difference]
+    })
+  }
+}
+
 export function minOutputGuard(tx: Transaction, coin: TransactionObjectArgument, amount: string) {
   uint(amount, false)
   // split aborts if insufficient; merge preserves the complete output including surplus.

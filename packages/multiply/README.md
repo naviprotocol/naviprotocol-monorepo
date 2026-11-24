@@ -70,6 +70,14 @@ HF, LTV and solver leverage use **NAVI risk oracle values**. Economic display
 valuation belongs to the API and may differ for LST backing. Zero debt has null
 HF; empty/non-positive equity has null leverage.
 
+`maxLeverage` bounds leverage at the **minimum** conversion output, at quote, live
+rebuild and on chain, with the solver's 0.01% tolerance: a target equal to it is
+reachable at zero slippage, and a nonzero `maxSlippageBps` needs matching headroom
+above the target. `repay` and `add_collateral` stay available without positive
+equity, but the result must still meet `minHealthFactor`. A `remove_principal`
+target that would need new debt is `ACTION_UNSUPPORTED`. `add_principal` levers
+the amount it adds to the target, or to the current leverage when none is given.
+
 ## Execution plan v4
 
 Older plans must be re-quoted. `funding` identifies wallet collateral/debt or no

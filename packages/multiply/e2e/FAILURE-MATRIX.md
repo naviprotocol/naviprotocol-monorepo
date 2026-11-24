@@ -186,7 +186,7 @@ any add below ≈ 300 SUI stays unlevered (10 of the last 16 production loop-ins
 | ID | Failure mode | Expected | E2E |
 |---|---|---|---|
 | TL-01 | `add_principal` with an explicit `targetLeverage`, principal small next to the position | Precision scales with the principal: the plan's debt-side residual to the target is within 0.01% of the principal's value (or one debt atom), so the principal is levered to the target; F = 0 is accepted only when it meets that bar | vault-strategy LS-16 (≈ 70 SUI loop-in on the live SUI_LST position: borrow ≈ principal × 3.5177) |
-| TL-02 | `add_principal` without `targetLeverage` (keep the current leverage) | Unchanged (whole-position tolerance) | `run.mjs` regression |
+| TL-02 | `add_principal` without `targetLeverage` (keep the current leverage) | Same bar as TL-01 since the PR 125 review (2026-11-24): the target is the exact current leverage and the added amount is levered to it. Before, a small add stayed unlevered inside the whole-position band | unit `levers a small add_principal that keeps the current leverage`; `run.mjs` not rerun for this change |
 | TL-03 | `open`, `set_leverage` | Unchanged | `run.mjs`, `emode.mjs`, `stage.mjs` regression; vault-strategy LS-07 / LS-08 |
 | TL-04 | The tighter bar cannot be met within the conversion budget (32 quotes, 45 s) | `NO_CONVERGENCE` before any command, never a plan outside the bar | vault-strategy LS-16 records the quote count; converter quotes are deterministic for Volo stake |
 | TL-05 | `add_principal` with a target paid in another accepted coin (`inputCoinType` = collateral, phase-one funding, 9f99a83) | The principal's value for the TL-01 bar is the amount priced in the coin supplied, not in the strategy's principal; a small collateral-paid add is levered like a principal-paid one | `run.mjs` `add-principal-collateral-target`: 0.001 vSUI (below the seed position's whole-position band) with `inputCoinType` vSUI and target 2 borrows, and the simulated PTB lands on the target |
@@ -289,3 +289,28 @@ Regression: unit 298/298, typecheck, lint; `stage.mjs` 17/17; `emode.mjs` 5/5 (m
 `run.mjs` 17/17 — `close-haedal` passes today; `add-principal-collateral-target` failed once `NO_CONVERGENCE` on the
 conversion quotes (TL-04's refusal) and passed on the immediate rerun. settlement `--only MS,BD`: 15 pass, 0 fail, 3 skips
 (BD-07/08 retired; BD-04 skips while the Helper claim window is open).
+
+## PR #125 review (2026-11-24, recorded with the code, not before it)
+
+Found by a review of PR #125 with probe tests on the PR head, and by the Codex P1 comment on `client.ts` (supplied Cap
+identity). Unlike the sections above, these rows were written together with the fix.
+
+| ID | Failure | Required behaviour | E2E |
+|----|---------|--------------------|-----|
+| RV-01 | `targetLeverage` equal to `maxLeverage`: the pre-check allows it, but whole atoms and the solver's 0.01% band land the plan at e.g. 3.000000000010 and the strict ceiling refuses it, at quote and on chain | The ceiling is enforced with the same 0.01% band at quote, live rebuild and on chain. It still bounds leverage at the **minimum** conversion output, so nonzero slippage needs headroom above the target | unit `reaches a target equal to maxLeverage…`, `keeps maxLeverage a bound on the minimum output…` |
+| RV-02 | `add_collateral` on a position without positive equity is `POSITION_UNSUPPORTED`, although `repay` is accepted | Both risk-reducing actions pass the equity precondition; the `minHealthFactor` floor is unchanged | unit `accepts a collateral top-up without positive equity…` |
+| RV-03 | Debt-principal `set_leverage` / `remove_principal` to 1x keeps the 1.01 price cushion: about 1% of the debt's value in extra collateral is sold and paid to the wallet | The cushion is trimmed as on the collateral-principal branch: only repayment plus the payout is converted | unit `sells only what a debt-principal … to 1x needs` |
+| RV-04 | `remove_principal` with a target that needs new debt fails as `CONSTRAINT_VIOLATION` "Insufficient collateral" or `NO_CONVERGENCE` | `ACTION_UNSUPPORTED`, before any conversion quote when the oracle estimate already shows it | unit `names a remove_principal target that needs new debt`, `names the cause when a debt-principal search fails…` |
+| TL-02 | see the TL table above: a small `add_principal` without a target stayed unlevered | Levered to the exact current leverage | unit `levers a small add_principal that keeps the current leverage` |
+| CB-01 | `inputs.accountCap` is a transaction argument: the string-only check never runs, so a wrong Cap is used for every lending call while the preflight was made for the quoted Cap | `account::account_owner(cap)` is asserted equal to the quoted `accountOwner` on chain, before any lending call | `run.mjs` `cap-binding`: the fixture's placeholder identity presented as a real one, the PTB-created Cap supplied, abort inside the binding |
+| CB-02 | The lifecycle fixture (above) supplies a Cap created in the same PTB under a placeholder identity; its owner address depends on the transaction digest, so no binding can be embedded in that transaction | A data source may declare such a Cap `transient: true` (never set by the default source): the builder requires the argument and does not bind it. `run.mjs` and `stage.mjs` fixtures now declare it | every `run.mjs` lifecycle scenario; `stage.mjs` not rerun for this change |
+
+Not changed (reported, left for a decision): a partial `repay` / `add_collateral` that improves the health factor without
+reaching `minHealthFactor` is still refused at quote and on chain; the four `minor` changesets on a hand-set preview version.
+
+Result (2026-11-24): unit 311/311 (the 13 new cases: 12 fail with the fix reverted, one is a control), typecheck, lint,
+build. `run.mjs` 18/18 on mainnet simulation, evidence verified (115 artifacts); `cap-binding` aborts in the binding's
+second `destroy_some` (command 40, lending call at 41). Before `transient` was declared by the fixtures the same run failed
+every lifecycle scenario inside the binding. `verify-evidence.mjs` also lacked `add-principal-collateral-target` (TL-05)
+and failed on any full run; it is now listed. `stage.mjs`, `emode.mjs` and vault-strategy were not rerun: a suite that
+supplies a PTB-created Cap under a placeholder identity must add `transient: true` to that Cap.

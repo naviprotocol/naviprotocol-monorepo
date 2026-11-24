@@ -136,7 +136,8 @@ const constraints = { minHealthFactor: '1.05', maxSlippageBps: 50 }
 const PRINCIPAL = '1200000000' // 1.2 SUI: Volo stakes >= 1 SUI; stage borrow liquidity is ~1.4 SUI
 const LEVERAGE = '1.5'
 const PLACEHOLDER = '0x' + '1'.repeat(64)
-const placeholderCap = { id: PLACEHOLDER, accountOwner: PLACEHOLDER, strategyId: STRATEGY.id, registryKey: STRATEGY.registryKey }
+// transient: the stage Cap is created in the PTB under test, so the builder cannot bind it to an identity.
+const placeholderCap = { id: PLACEHOLDER, accountOwner: PLACEHOLDER, strategyId: STRATEGY.id, registryKey: STRATEGY.registryKey, transient: true }
 
 const dev = sdk.createNaviDataSource({ client, env: 'dev', strategies: [STRATEGY] })
 report.address = address

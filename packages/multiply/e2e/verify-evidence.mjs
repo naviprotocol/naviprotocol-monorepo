@@ -29,8 +29,10 @@ const required = [
   'small-haedal-fallback',
   'default-fallback',
   'quote-guards',
+  'cap-binding',
   'custom-fallback',
   'add-principal',
+  'add-principal-collateral-target',
   'remove-principal',
   'leverage-up',
   'leverage-down',
@@ -42,7 +44,7 @@ const required = [
 assert.deepEqual(report.scenarios.map((s) => s.name).sort(), required.sort())
 for (const s of report.scenarios) assert.equal(s.status, 'passed', s.name)
 for (const name of required.filter(
-  (n) => !['discovery', 'invalid-inputs', 'quote-guards'].includes(n)
+  (n) => !['discovery', 'invalid-inputs', 'quote-guards', 'cap-binding'].includes(n)
 )) {
   for (const suffix of ['quote.json', 'commands.json', 'tx.b64', 'simulation.json', 'outcome.json'])
     assert(names.has(`${name}.${suffix}`), `Missing ${name}.${suffix}`)

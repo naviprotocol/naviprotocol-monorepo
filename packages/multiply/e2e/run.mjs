@@ -469,19 +469,26 @@ try {
       collateralAmount: scaled(market.collateral.id, 'supply'),
       debtAmount: scaled(market.debt.id, 'borrow')
     }
-    // Logical ID is only a transient fixture key. The actual Cap is the PTB result.
+    // Logical ID is only a transient fixture key. The actual Cap is the PTB result, so the source
+    // declares it transient: the builder cannot bind a Cap that has no identity before this PTB.
     const cap = {
       id: '0x' + '1'.repeat(64),
       accountOwner: '0x' + '1'.repeat(64),
       strategyId: strat.id,
-      registryKey: strat.registryKey
+      registryKey: strat.registryKey,
+      transient: true
     }
     const scoped = {
       ...source,
       listAccountCaps: async () => [cap],
       readPosition: async () => position
     }
-    return { scoped, position }
+    // The same placeholder presented as a real identity: the PTB-created Cap is then a wrong Cap.
+    const bound = {
+      ...scoped,
+      listAccountCaps: async () => [{ ...cap, transient: undefined }]
+    }
+    return { scoped, bound, position }
   }
   const actions = [
     ['add-principal', { type: 'add_principal', amount: '1000000000' }],
@@ -576,6 +583,45 @@ try {
       await assertOutcome(name, result, probe, quote)
       if (name === 'close') assert.equal(quote.estimate.leverage, null)
     })
+  // CB-01: a Cap argument other than the quoted Cap aborts on chain before any lending call.
+  await scenario('cap-binding', async () => {
+    const fixture = await transient('cap-binding')
+    const instance = sdk.createMultiplyClient({ client, dataSource: fixture.bound })
+    const quote = await instance.quote(
+      address,
+      strategy,
+      { type: 'repay', amount: '1000000000' },
+      constraints
+    )
+    assert.equal(quote.execution.accountCap.transient, undefined)
+    const tx = Transaction.from(seed.tx)
+    const coin = tx.splitCoins(tx.gas, [quote.estimate.inputs[0].amount])[0]
+    const built = await instance.buildPTB(tx, quote, {
+      coins: [{ ...quote.estimate.inputs[0], coin }],
+      accountCap: seed.built.createdAccountCap
+    })
+    const commands = tx.getData().commands
+    const call = (c) => (c.$kind === 'MoveCall' ? `${c.MoveCall.module}::${c.MoveCall.function}` : '')
+    const binding = commands.findIndex((c) => call(c) === 'address::to_u256')
+    const lending = commands.findIndex(
+      (c, i) => i > binding && call(c) === 'incentive_v3::repay_with_account_cap'
+    )
+    assert(binding > 0 && lending > binding + 4, 'The binding must precede the lending call')
+    finish(tx, {
+      coins: [...seed.built.coins, ...built.coins],
+      createdAccountCap: seed.built.createdAccountCap
+    })
+    let message
+    await assert.rejects(tx.build({ client }), (error) => {
+      message = String(error.message)
+      return true
+    })
+    const aborted = Number(/MoveAbort in (\d+)\w* command/.exec(message)?.[1])
+    assert.match(message, /option::destroy_some/)
+    // 1-based: the two destroy_some of the equality follow to_u256 at +2 and +4.
+    assert([binding + 3, binding + 5].includes(aborted), `Aborted outside the binding: ${message}`)
+    await save('cap-binding.outcome.json', { binding, lending, aborted, message })
+  })
   await scenario('close-haedal', async () => {
     const strat = sdk.strategies.hasuiSui
     const fixture = await transient('close-haedal', strat)

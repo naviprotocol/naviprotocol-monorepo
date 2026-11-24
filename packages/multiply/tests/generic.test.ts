@@ -1457,3 +1457,273 @@ describe('stored quotes and the NAVI env', () => {
     expect(s.tx.getData().commands.length).toBe(s.before)
   })
 })
+
+describe('ceilings, risk-reducing top-ups and exact deleveraging', () => {
+  const loose = { minHealthFactor: '1.1', maxSlippageBps: 0 }
+  const calls = (tx: Transaction) =>
+    tx
+      .getData()
+      .commands.flatMap((c) =>
+        c.$kind === 'MoveCall' ? [`${c.MoveCall.module}::${c.MoveCall.function}`] : []
+      )
+  const pureU256 = (tx: Transaction) =>
+    tx
+      .getData()
+      .inputs.flatMap((input) =>
+        input.$kind === 'Pure' && Buffer.from(input.Pure.bytes, 'base64').length === 32
+          ? [bcs.u256().parse(Buffer.from(input.Pure.bytes, 'base64'))]
+          : []
+      )
+
+  it('reaches a target equal to maxLeverage and enforces the same ceiling on chain', async () => {
+    const f = fixture(9, 9)
+    const capped = { ...loose, maxLeverage: '3' }
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: raw(100, 9), targetLeverage: '3' },
+      capped
+    )
+    // Whole atoms land the plan a hair above the target; that is inside the solver's band.
+    expect(new BN(q.estimate.leverage!).gt(3)).toBe(true)
+    expect(new BN(q.estimate.leverage!).lte('3.0003')).toBe(true)
+    const { tx } = await build(f, q)
+    // collateral value * (limit - 1e12) >= debt value * limit, with limit = 3 * 1.0001 * 1e12.
+    expect(pureU256(tx)).toEqual(expect.arrayContaining(['3000300000000', '2000300000000']))
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount: raw(100, 9), targetLeverage: '3.0001' },
+        capped
+      )
+    ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION', message: 'Target exceeds maxLeverage' })
+  })
+
+  it('keeps maxLeverage a bound on the minimum output beyond the solver band', async () => {
+    const f = fixture(9, 9)
+    f.converter.quote = async (req) => {
+      const out = new BN(req.amountIn).times('0.5').integerValue(BN.ROUND_FLOOR)
+      return {
+        converterId: 'fixture',
+        input: { coinType: req.coinIn, amount: req.amountIn },
+        expectedOutput: { coinType: req.coinOut, amount: out.toFixed(0) },
+        minOutput: {
+          coinType: req.coinOut,
+          amount: out.times('0.995').integerValue(BN.ROUND_FLOOR).toFixed(0)
+        },
+        expiresAt: Date.now() + 120000,
+        data: null
+      }
+    }
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'open', amount: raw(100, 9), targetLeverage: '3' },
+        { minHealthFactor: '1.1', maxSlippageBps: 50, maxLeverage: '3' }
+      )
+    ).rejects.toMatchObject({
+      code: 'CONSTRAINT_VIOLATION',
+      message: 'Leverage at the minimum conversion output exceeds maxLeverage'
+    })
+  })
+
+  it('accepts a collateral top-up without positive equity once it restores the health factor', async () => {
+    const f = fixture(9, 9, true)
+    f.setPosition({ collateralAmount: raw(100, 9), debtAmount: raw(205, 9) })
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'add_collateral', amount: raw(30, 9) },
+      loose
+    )
+    expect(q.execution.direction).toBe('add_collateral')
+    expect(q.execution.collateralAfter).toBe(raw(130, 9))
+    expect(new BN(q.estimate.healthFactor!).gte('1.1')).toBe(true)
+    await build(f, q)
+    // The health-factor floor still applies; only the equity precondition is lifted.
+    await expect(
+      f.engine.quote(owner, f.strategy, { type: 'add_collateral', amount: raw(10, 9) }, loose)
+    ).rejects.toMatchObject({ code: 'CONSTRAINT_VIOLATION' })
+    await expect(
+      f.engine.quote(owner, f.strategy, { type: 'set_leverage', targetLeverage: '2' }, loose)
+    ).rejects.toMatchObject({ code: 'POSITION_UNSUPPORTED' })
+  })
+
+  it.each([
+    ['set_leverage', undefined],
+    ['remove_principal', raw(10, 9)]
+  ] as const)('sells only what a debt-principal %s to 1x needs', async (type, amount) => {
+    const f = fixture(9, 9, true)
+    const action: Action =
+      type === 'set_leverage'
+        ? { type, targetLeverage: '1' }
+        : { type, amount: amount!, targetLeverage: '1' }
+    const q = await f.engine.quote(owner, f.strategy, action, loose)
+    const e = q.execution
+    const payout = new BN(amount ?? 0)
+    // Fixture converts 1 collateral into 2 debt: conversion output covers repayment + payout exactly.
+    const needed = new BN(e.flashRepayment).plus(payout)
+    const converted = new BN(e.conversions[0].minOutput.amount)
+    expect(converted.gte(needed)).toBe(true)
+    expect(converted.minus(needed).lte(2)).toBe(true)
+    expect(e.debtAfter).toBe('0')
+    expect(q.estimate.leverage).toBe('1.000000000000')
+    // Only the interest reserve returned by NAVI (0.01% of debt + one micro-token) is surplus.
+    const surplus = new BN(q.estimate.outputs[0]?.amount ?? 0).minus(payout)
+    expect(surplus.gte(0)).toBe(true)
+    expect(surplus.lte(new BN(raw(100, 9)).times('0.0002'))).toBe(true)
+    if (amount) expect(new BN(q.estimate.minOutputs[0].amount).gte(amount)).toBe(true)
+    await build(f, q)
+  })
+
+  it.each([false, true])(
+    'levers a small add_principal that keeps the current leverage (collateral input: %s)',
+    async (collateralInput) => {
+      const f = fixture(9, 9, true)
+      const amount = raw('0.005', 9)
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        {
+          type: 'add_principal',
+          amount,
+          ...(collateralInput ? { inputCoinType: collateralType } : {})
+        },
+        loose
+      )
+      // 2x position: the added equity is matched by an equal value of new debt.
+      const addedValue = new BN(amount).times(collateralInput ? 2 : 1)
+      expect(new BN(q.execution.flashAmount).minus(addedValue).abs().lte(2)).toBe(true)
+      expect(new BN(q.estimate.leverage!).minus(2).abs().lte('0.000000001')).toBe(true)
+      await build(f, q)
+    }
+  )
+
+  it('keeps an unlevered position unlevered on add_principal without a target', async () => {
+    const f = fixture(9, 9, true)
+    f.setPosition({ collateralAmount: raw(100, 9), debtAmount: '0' })
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'add_principal', amount: raw(1, 9) },
+      loose
+    )
+    expect(q.execution.flashAmount).toBe('0')
+    expect(q.execution.debtAfter).toBe('0')
+  })
+
+  it.each([false, true])(
+    'names a remove_principal target that needs new debt (collateral principal: %s)',
+    async (collateralPrincipal) => {
+      const f = fixture(9, 9, true, collateralPrincipal)
+      const quote = vi.spyOn(f.converter, 'quote')
+      await expect(
+        f.engine.quote(
+          owner,
+          f.strategy,
+          { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '3' },
+          loose
+        )
+      ).rejects.toMatchObject({
+        code: 'ACTION_UNSUPPORTED',
+        message: 'Target leverage needs new debt after this withdrawal; use set_leverage separately'
+      })
+      expect(quote).not.toHaveBeenCalled()
+      // A target the withdrawal can still reach by deleveraging is unaffected.
+      const q = await f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '2' },
+        loose
+      )
+      expect(Number(q.estimate.leverage)).toBeCloseTo(2, 6)
+    }
+  )
+
+  it('names the cause when a debt-principal search fails just above the reachable leverage', async () => {
+    const f = fixture(9, 9, true)
+    // After paying 10 out of collateral the position is at 190 / 90 = 2.111x: 2.2x needs new debt,
+    // but the payout left as debt (2.222x) does not show it, so only the failed search can.
+    await expect(
+      f.engine.quote(
+        owner,
+        f.strategy,
+        { type: 'remove_principal', amount: raw(10, 9), targetLeverage: '2.2' },
+        loose
+      )
+    ).rejects.toMatchObject({ code: 'ACTION_UNSUPPORTED' })
+  })
+
+  it('binds a supplied AccountCap argument to the quoted lending account on chain', async () => {
+    const f = fixture(9, 6, true)
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'repay', amount: raw(1, 6) },
+      constraints
+    )
+    const { tx: plain } = await build(f, q)
+    expect(calls(plain)).not.toContain('address::to_u256')
+
+    const tx = new Transaction()
+    const supplied = tx.object('0x' + 'c'.repeat(64))
+    const built = await f.engine.buildPTB(tx, q, {
+      coins: [{ coinType: q.estimate.inputs[0].coinType, coin: tx.object('0x100') }],
+      accountCap: supplied
+    })
+    expect(built.accountCap).toBe(supplied)
+    const order = calls(tx)
+    // owner -> u256 -> equal to the quoted owner in both directions, before any lending call.
+    expect(order.slice(0, 7)).toEqual([
+      'account::account_owner',
+      'address::to_u256',
+      'u256::checked_sub',
+      'option::destroy_some',
+      'u256::checked_sub',
+      'option::destroy_some',
+      'incentive_v3::repay_with_account_cap'
+    ])
+    expect(pureU256(tx).filter((v) => v === BigInt(f.cap.accountOwner).toString())).toHaveLength(2)
+  })
+
+  it('exempts only a Cap its data source declares transient, and then requires the argument', async () => {
+    const f = fixture(9, 6, true)
+    const listed = vi.spyOn(f.source, 'listAccountCaps')
+    listed.mockResolvedValue([{ ...f.cap, transient: true }])
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'repay', amount: raw(1, 6) },
+      constraints
+    )
+    expect(q.execution.accountCap).toMatchObject({ kind: 'existing', transient: true })
+    const coins = (tx: Transaction) => [
+      { coinType: q.estimate.inputs[0].coinType, coin: tx.object('0x100') }
+    ]
+    const tx = new Transaction()
+    await f.engine.buildPTB(tx, q, {
+      coins: coins(tx),
+      accountCap: tx.moveCall({ target: `${object}::lending::create_account` })
+    })
+    expect(calls(tx)).not.toContain('address::to_u256')
+    expect(calls(tx)).toContain('incentive_v3::repay_with_account_cap')
+    // No object exists to fall back to: refused before any command, on both entries.
+    for (const run of [
+      (empty: Transaction) => f.engine.buildPTB(empty, q, { coins: coins(empty) }),
+      (empty: Transaction) => f.engine.buildPTBForSimulation(empty, q, coins(empty))
+    ]) {
+      const empty = new Transaction()
+      const inputs = coins(empty)
+      const before = empty.getData().commands.length
+      await expect(run(empty)).rejects.toMatchObject({ code: 'INVALID_INPUTS' })
+      expect(empty.getData().commands.length).toBe(before)
+      expect(inputs).toHaveLength(1)
+    }
+    listed.mockResolvedValue([{ ...f.cap, transient: false as unknown as true }])
+    await expect(
+      f.engine.quote(owner, f.strategy, { type: 'repay', amount: raw(1, 6) }, constraints)
+    ).rejects.toMatchObject({ code: 'INVALID_ACCOUNT_CAP' })
+  })
+})

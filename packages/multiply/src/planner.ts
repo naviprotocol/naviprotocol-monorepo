@@ -17,6 +17,7 @@ import {
   amountCushion,
   atomPrices,
   borrowCapacity,
+  leverageCeiling,
   supplyCapacity,
   withinLtv,
   withinSameReserveCapacity
@@ -24,6 +25,8 @@ import {
 
 type N = InstanceType<typeof BN>
 const n = (v: string | number) => new BN(v)
+const BORROW_NEEDED =
+  'Target leverage needs new debt after this withdrawal; use set_leverage separately'
 export function metrics(position: PositionAmounts, market: MarketSnapshot) {
   const prices = atomPrices(market)
   const c = n(position.collateralAmount).times(prices.collateral)
@@ -150,14 +153,22 @@ export async function plan(
     'Invalid market risk or price data'
   )
   const equity = C.times(pc).minus(D.times(pd))
+  // Repayment and a collateral top-up only reduce risk, so both stay available without positive equity.
   check(
-    (C.isZero() && D.isZero()) || equity.gt(0) || (action.type === 'repay' && D.gt(0)),
+    (C.isZero() && D.isZero()) ||
+      equity.gt(0) ||
+      ((action.type === 'repay' || action.type === 'add_collateral') && D.gt(0)),
     'POSITION_UNSUPPORTED',
     'Position has non-positive equity'
   )
   const current = metrics(snapshot, market)
   const specified = 'targetLeverage' in action ? action.targetLeverage : undefined
-  const target = decimal(specified ?? current.leverage ?? '1', '1')
+  // "Keep the current leverage" uses the exact ratio: the 12-digit display value would leave a
+  // debt-side residual on a large position that a small add_principal cannot absorb.
+  const target =
+    specified === undefined && current.leverage !== null
+      ? C.times(pc).div(equity)
+      : decimal(specified ?? '1', '1')
   if (action.type === 'set_leverage')
     check(
       target
@@ -199,12 +210,13 @@ export async function plan(
   }
   const flashRepay = (v: N) => n(ceil(v.times(n(market.flash.feeBps).div(10000).plus(1))))
   const borrowFee = (v: N) => n(floor(v.times(borrowFeeBps).div(10000)))
-  // TL-01: an add_principal with an explicit target is judged against the principal it adds, not the whole position
-  // (a small principal on a large position would otherwise be "reached" unlevered, at F = 0). The residual is the
-  // debt-side distance to the target, the same quantity the bracket search drives to zero. The amount is priced in the
-  // coin actually supplied (inputCoinType, else the principal), which is the collateral or the debt.
+  // TL-01 / TL-02: an add_principal is judged against the principal it adds, not the whole position (a small
+  // principal on a large position would otherwise be "reached" unlevered, at F = 0), whether the target is explicit
+  // or the current leverage. The residual is the debt-side distance to the target, the same quantity the bracket
+  // search drives to zero. The amount is priced in the coin actually supplied (inputCoinType, else the principal),
+  // which is the collateral or the debt.
   const principalValue =
-    action.type === 'add_principal' && specified !== undefined
+    action.type === 'add_principal'
       ? n(action.amount).times(
           sameCoin(action.inputCoinType || strategy.principalCoinType, strategy.collateralCoinType)
             ? pc
@@ -450,6 +462,9 @@ export async function plan(
                 .div(pc)
             )
           )
+    // A negative estimate means the withdrawal alone leaves the position below the target:
+    // reaching it needs new debt, which a decrease cannot add.
+    check(clearingDebt || W.gte(0), 'ACTION_UNSUPPORTED', BORROW_NEEDED)
     // The oracle cushion is only a search estimate, not proof of insufficient
     // collateral. Test the executable minimum at the available balance first.
     if (clearingDebt) W = BN.minimum(W, maxConversion)
@@ -560,11 +575,26 @@ export async function plan(
             .div(pc)
         )
       )
+      // Even with the payout left as debt the position stays below the target: it needs new debt.
+      check(target.eq(1) || W.gte(0), 'ACTION_UNSUPPORTED', BORROW_NEEDED)
+      // The same holds when the payout is funded by collateral at oracle value and nothing is repaid.
+      // Conversions can price differently, so this only names the cause once the search has failed.
+      const borrowNeeded =
+        !target.eq(1) &&
+        D.times(pd).lt(C.times(pc).minus(payout.times(pd)).times(target.minus(1)).div(target))
       if (target.eq(1)) W = n(ceil(fullRepay.plus(payout).times(pd).div(pc).times('1.01')))
       W = BN.maximum(1, BN.minimum(C, W))
       for (let i = 0; i < 20; i++) {
         best = await evaluation(W)
         const shortfall = best.repayment.plus(payout).minus(best.q.minOutput.amount)
+        // Trim the initial price cushion; convert only what repayment and the payout need.
+        if (target.eq(1) && shortfall.lt(0) && i < 2) {
+          const trimmed = n(ceil(W.times(best.repayment.plus(payout)).div(best.q.minOutput.amount)))
+          if (trimmed.gt(0) && trimmed.lt(W)) {
+            W = trimmed
+            continue
+          }
+        }
 
         // Use remaining equity, as large withdrawals can make the original
         // position's value-based residual tolerance far too permissive.
@@ -576,11 +606,10 @@ export async function plan(
           1,
           n(ceil(W.plus(delta.times('1.01')).plus(shortfall.gt(0) ? 1 : 0)))
         )
-        check(
-          next.lt(C) && !next.eq(W) && i < 19,
-          'NO_CONVERGENCE',
-          'No feasible deleverage route within constraints'
-        )
+        if (!(next.lt(C) && !next.eq(W) && i < 19))
+          throw borrowNeeded
+            ? new MultiplyError('ACTION_UNSUPPORTED', BORROW_NEEDED)
+            : new MultiplyError('NO_CONVERGENCE', 'No feasible deleverage route within constraints')
         W = next
       }
     }
@@ -665,9 +694,9 @@ export async function plan(
   )
   if (constraints.maxLeverage && conservative.leverage)
     check(
-      n(conservative.leverage).lte(constraints.maxLeverage),
+      n(conservative.leverage).lte(leverageCeiling(constraints.maxLeverage)),
       'CONSTRAINT_VIOLATION',
-      'Maximum leverage exceeded'
+      'Leverage at the minimum conversion output exceeds maxLeverage'
     )
   const estimate = metrics(projected, market)
   if (['open', 'add_principal', 'remove_principal', 'set_leverage'].includes(action.type))

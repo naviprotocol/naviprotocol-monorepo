@@ -121,6 +121,16 @@ export function withinSameReserveCapacity(
   return out.isZero() || out.lte(reserveCash(market))
 }
 
+/**
+ * `maxLeverage` as enforced: the solver accepts a plan within 0.01% of its target and amounts are
+ * whole atoms, so a target equal to the ceiling can land a hair above it. The quote, the live
+ * rebuild and the on-chain check all allow that same band, and nothing beyond it.
+ */
+export const LEVERAGE_TOLERANCE = '0.0001'
+export function leverageCeiling(maxLeverage: string) {
+  return new BN(maxLeverage).times(new BN(1).plus(LEVERAGE_TOLERANCE))
+}
+
 /** A lowered borrowing cap must still permit repayment, collateral top-up and exit. */
 export function withinLtv(
   projected: PositionAmounts,

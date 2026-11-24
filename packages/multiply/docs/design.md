@@ -422,7 +422,7 @@ type MultiplyBuildResult = {
 }
 ```
 
-默认通过 `quote.execution.accountCap` 使用已有 Cap 或创建新 Cap。可选的 `inputs.accountCap` 用于 Vault 已从容器取出的同一个 Cap 在当前 PTB 中的引用；它不是更换账户的入口，必须与 quote 的账户绑定一致。
+默认通过 `quote.execution.accountCap` 使用已有 Cap 或创建新 Cap。可选的 `inputs.accountCap` 用于 Vault 已从容器取出的同一个 Cap 在当前 PTB 中的引用；它不是更换账户的入口，必须与 quote 的账户绑定一致。该参数是交易内引用，链下无法证明其身份，因此 builder 会在任何借贷调用之前，在链上断言 `account::account_owner(cap)` 等于 quote 记录的 `accountOwner`；传入其他 Cap 时交易中止。唯一例外是数据源显式标记为 `transient: true` 的 Cap（仅用于模拟夹具：Cap 在同一笔 PTB 内创建，尚无可绑定的身份），此时必须传入该参数且不做绑定；默认数据源从不设置该标记。
 
 构造步骤：
 
