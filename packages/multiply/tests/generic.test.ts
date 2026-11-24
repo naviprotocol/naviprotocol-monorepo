@@ -166,6 +166,91 @@ async function build(
   return { tx, built }
 }
 
+describe('AccountCap flash-loan wiring', () => {
+  function assertFlashPair(tx: Transaction) {
+    const commands = tx.getData().commands
+    const calls = commands.flatMap((command) => (command.MoveCall ? [command.MoveCall] : []))
+    const loan = calls.filter((call) => call.function === 'flash_loan_with_account_cap_v2')
+    const repayment = calls.filter((call) => call.function === 'flash_repay_with_account_cap')
+    expect(loan).toHaveLength(1)
+    expect(repayment).toHaveLength(1)
+    expect(loan[0].typeArguments).toEqual([debtType])
+    expect(repayment[0].typeArguments).toEqual([debtType])
+    expect(loan[0].arguments).toHaveLength(5)
+    expect(repayment[0].arguments).toHaveLength(6)
+    const cap = loan[0].arguments[3]
+    expect(repayment[0].arguments[5]).toEqual(cap)
+    expect(repayment[0].arguments[3]).toMatchObject({
+      NestedResult: [commands.findIndex((command) => command.MoveCall === loan[0]), 1]
+    })
+    for (const call of calls.filter((call) => call.module === 'incentive_v3')) {
+      const capIndex = call.function.endsWith('_v2')
+        ? call.arguments.length - 2
+        : call.arguments.length - 1
+      expect(call.arguments[capIndex]).toEqual(cap)
+    }
+    expect(
+      calls.some((call) =>
+        ['flash_loan_with_ctx_v2', 'flash_repay_with_ctx'].includes(call.function)
+      )
+    ).toBe(false)
+    return cap
+  }
+
+  for (const simulation of [false, true]) {
+    it.each(['open', 'increase', 'decrease', 'close'] as const)(
+      `uses the position Cap for %s (simulation: ${simulation})`,
+      async (operation) => {
+        const f = fixture(9, 6, operation !== 'open')
+        const action: Action =
+          operation === 'open'
+            ? { type: 'open', amount: raw(100, 6), targetLeverage: '2' }
+            : operation === 'close'
+              ? { type: 'close' }
+              : { type: 'set_leverage', targetLeverage: operation === 'increase' ? '3' : '1.5' }
+        const q = await f.engine.quote(owner, f.strategy, action, constraints)
+        const tx = new Transaction()
+        const coins = q.estimate.inputs.map((input) => ({
+          coinType: input.coinType,
+          coin: tx.object('0x100')
+        }))
+        if (simulation) await f.engine.buildPTBForSimulation(tx, q, coins)
+        else await f.engine.buildPTB(tx, q, { coins })
+        const cap = assertFlashPair(tx)
+        if (operation === 'open') {
+          expect(cap).toMatchObject({
+            Result: tx
+              .getData()
+              .commands.findIndex((command) => command.MoveCall?.function === 'create_account')
+          })
+        } else {
+          expect(cap).toMatchObject({
+            Input: tx
+              .getData()
+              .inputs.findIndex((input) => input.UnresolvedObject?.objectId === object)
+          })
+        }
+      }
+    )
+  }
+
+  it.each([false, true])('reuses a supplied Cap argument (transient: %s)', async (transient) => {
+    const f = fixture(9, 6, true)
+    if (transient)
+      vi.spyOn(f.source, 'listAccountCaps').mockResolvedValue([{ ...f.cap, transient: true }])
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '3' },
+      constraints
+    )
+    const tx = new Transaction()
+    const supplied = tx.moveCall({ target: `${object}::fixture::extract_cap` })
+    await f.engine.buildPTB(tx, q, { coins: [], accountCap: supplied })
+    expect(assertFlashPair(tx)).toMatchObject({ Result: 0 })
+  })
+})
+
 it.each([false, true])(
   'builds the same PTB for simulation without live preflight (existing Cap: %s)',
   async (existing) => {

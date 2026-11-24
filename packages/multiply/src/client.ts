@@ -798,12 +798,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       receipt: TransactionObjectArgument | undefined
     if (e.flashAmount !== '0') {
       const borrowed = tx.moveCall({
-        target: `${fresh.flash.config.package}::lending::flash_loan_with_ctx_v2`,
+        target: `${fresh.flash.config.package}::lending::flash_loan_with_account_cap_v2`,
         typeArguments: [s.debtCoinType],
         arguments: [
           tx.object(fresh.flash.config.flashloanConfig),
           tx.object(fresh.flash.poolId),
           tx.pure.u64(e.flashAmount),
+          accountCap,
           tx.object('0x5')
         ]
       })
@@ -814,14 +815,15 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       receipt
         ? asCoin(
             tx.moveCall({
-              target: `${fresh.flash.config.package}::lending::flash_repay_with_ctx`,
+              target: `${fresh.flash.config.package}::lending::flash_repay_with_account_cap`,
               typeArguments: [s.debtCoinType],
               arguments: [
                 tx.object('0x6'),
                 tx.object(fresh.flash.config.storage),
                 tx.object(fresh.flash.poolId),
                 receipt,
-                asBalance(coin, s.debtCoinType)
+                asBalance(coin, s.debtCoinType),
+                accountCap
               ]
             }),
             s.debtCoinType

@@ -1,0 +1,1284 @@
+{
+  "date": "2026-11-24",
+  "wallet": "0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe",
+  "rpc": "https://sui-grpc-web.publicnode.com",
+  "broadcast": false,
+  "checksEnabled": true,
+  "sdkClientSha256": "1c1ef686a5a44b7ecca0e874c8503cd9731bf963c9ce16fd0a2f5a2c4ed0d32f",
+  "sdk": [
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "7.270280833094"
+      },
+      "quoteMs": 6504.992457999999,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 9076.288999999999
+    },
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "6.470280833094"
+      },
+      "quoteMs": 6839.875334,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 9562.519541999998
+    },
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "close"
+      },
+      "quoteMs": 6309.391416000002,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 8009.253165999999
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "2.019930237508"
+      },
+      "quoteMs": 5574.433499999999,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 7730.670459000001
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "1.219930237508"
+      },
+      "quoteMs": 6917.114708000001,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 9394.949667
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "close"
+      },
+      "quoteMs": 5842.979457999994,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "existing",
+      "totalMs": 7683.619374999995
+    },
+    {
+      "strategy": "main-usdsui-usdc",
+      "action": {
+        "type": "open",
+        "amount": "100000",
+        "targetLeverage": "5.69"
+      },
+      "quoteMs": 5622.831833000004,
+      "simulation": {
+        "success": true,
+        "error": null
+      },
+      "status": "passed",
+      "capKind": "create",
+      "totalMs": 8025.606041000006
+    }
+  ],
+  "api": [
+    {
+      "name": "catalog",
+      "status": 200,
+      "ms": 3751.943875
+    },
+    {
+      "name": "positions",
+      "status": 200,
+      "ms": 6526.342042
+    },
+    {
+      "name": "main-vsui-sui-quote",
+      "status": 200,
+      "ms": 6137.690916,
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "7.170286670639"
+      }
+    },
+    {
+      "name": "main-vsui-sui-build",
+      "status": 200,
+      "ms": 6018.432916999998,
+      "simulation": "success",
+      "bytesSha256": "dc4c3950165249a8971ec00a192fb90179c45be675eabfe2d99086d67c130119",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 6,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 7,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 8,
+          "module": "router",
+          "function": "swap"
+        },
+        {
+          "i": 9,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 10,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 11,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 12,
+          "module": "router",
+          "function": "swap"
+        },
+        {
+          "i": 13,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 15,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 16,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 21,
+          "module": "incentive_v3",
+          "function": "deposit_with_account_cap"
+        },
+        {
+          "i": 22,
+          "module": "incentive_v3",
+          "function": "borrow_with_account_cap_v2"
+        },
+        {
+          "i": 23,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 24,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 25,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 26,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 27,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 28,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-vsui-sui-decrease-quote",
+      "status": 200,
+      "ms": 6561.926459000002,
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "6.570286670639"
+      }
+    },
+    {
+      "name": "main-vsui-sui-decrease-build",
+      "status": 200,
+      "ms": 2444.2242499999993,
+      "simulation": "success",
+      "bytesSha256": "32bbeacdd996c50047cc3bcb55c1c88e6b0aa322eb9a8972531a5ec3753b3006",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "incentive_v3",
+          "function": "repay_with_account_cap"
+        },
+        {
+          "i": 5,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 6,
+          "module": "incentive_v3",
+          "function": "withdraw_with_account_cap_v2"
+        },
+        {
+          "i": 7,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 9,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 11,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 12,
+          "module": "stake_pool",
+          "function": "unstake"
+        },
+        {
+          "i": 14,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 15,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 21,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 22,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 23,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 24,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 25,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-vsui-sui-close-quote",
+      "status": 200,
+      "ms": 6402.910417000003,
+      "action": {
+        "type": "close"
+      }
+    },
+    {
+      "name": "main-vsui-sui-close-build",
+      "status": 200,
+      "ms": 2034.6808329999985,
+      "simulation": "success",
+      "bytesSha256": "fc7b54280cf3acd83cb707fa521047782d91fe8c25c765b282043c645c37d8c5",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "incentive_v3",
+          "function": "repay_with_account_cap"
+        },
+        {
+          "i": 5,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 6,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 7,
+          "module": "lending",
+          "function": "update_state_of_user"
+        },
+        {
+          "i": 8,
+          "module": "logic",
+          "function": "user_collateral_balance"
+        },
+        {
+          "i": 9,
+          "module": "u256",
+          "function": "try_as_u64"
+        },
+        {
+          "i": 10,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 11,
+          "module": "incentive_v3",
+          "function": "withdraw_with_account_cap_v2"
+        },
+        {
+          "i": 12,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 14,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 16,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 17,
+          "module": "stake_pool",
+          "function": "unstake"
+        },
+        {
+          "i": 19,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 20,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 26,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 27,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 28,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 31,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 32,
+          "module": "logic",
+          "function": "user_collateral_balance"
+        },
+        {
+          "i": 33,
+          "module": "u256",
+          "function": "checked_sub"
+        },
+        {
+          "i": 34,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 35,
+          "module": "logic",
+          "function": "user_loan_balance"
+        },
+        {
+          "i": 36,
+          "module": "u256",
+          "function": "checked_sub"
+        },
+        {
+          "i": 37,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 38,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-hasui-sui-quote",
+      "status": 200,
+      "ms": 31845.995542000004,
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "1.919930385644"
+      }
+    },
+    {
+      "name": "main-hasui-sui-build",
+      "status": 200,
+      "ms": 3219.259334000002,
+      "simulation": "success",
+      "bytesSha256": "cb96beaec17f3ef7e4a827baa752c963f08f07cd9aba4404dbb8a69fd5379005",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 6,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 7,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 8,
+          "module": "router",
+          "function": "swap"
+        },
+        {
+          "i": 9,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 11,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 12,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 17,
+          "module": "incentive_v3",
+          "function": "deposit_with_account_cap"
+        },
+        {
+          "i": 18,
+          "module": "incentive_v3",
+          "function": "borrow_with_account_cap_v2"
+        },
+        {
+          "i": 19,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 20,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 21,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 22,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 23,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 24,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-hasui-sui-decrease-quote",
+      "status": 200,
+      "ms": 7560.826291000005,
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "1.3199303856440001"
+      }
+    },
+    {
+      "name": "main-hasui-sui-decrease-build",
+      "status": 200,
+      "ms": 2395.3497079999943,
+      "simulation": "success",
+      "bytesSha256": "8c8b9e1af8963dbfff286e1c67720f8fcd898fd05e032ccff41c8cb1df470f7e",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "incentive_v3",
+          "function": "repay_with_account_cap"
+        },
+        {
+          "i": 5,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 6,
+          "module": "incentive_v3",
+          "function": "withdraw_with_account_cap_v2"
+        },
+        {
+          "i": 7,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 9,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 11,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 12,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 13,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 14,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 15,
+          "module": "pool",
+          "function": "swap"
+        },
+        {
+          "i": 16,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 17,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 18,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 20,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 21,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 27,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 28,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 29,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 30,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 31,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-hasui-sui-close-quote",
+      "status": 200,
+      "ms": 5505.340500000006,
+      "action": {
+        "type": "close"
+      }
+    },
+    {
+      "name": "main-hasui-sui-close-build",
+      "status": 200,
+      "ms": 2945.204500000007,
+      "simulation": "success",
+      "bytesSha256": "9cc90e47e12f59bfdb78ef1efc61796af80609f391fb4a277443945049ddfa35",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 1,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 2,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 3,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 4,
+          "module": "incentive_v3",
+          "function": "repay_with_account_cap"
+        },
+        {
+          "i": 5,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 6,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 7,
+          "module": "lending",
+          "function": "update_state_of_user"
+        },
+        {
+          "i": 8,
+          "module": "logic",
+          "function": "user_collateral_balance"
+        },
+        {
+          "i": 9,
+          "module": "u256",
+          "function": "try_as_u64"
+        },
+        {
+          "i": 10,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 11,
+          "module": "incentive_v3",
+          "function": "withdraw_with_account_cap_v2"
+        },
+        {
+          "i": 12,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 14,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 16,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 17,
+          "module": "staking",
+          "function": "request_unstake_instant_coin"
+        },
+        {
+          "i": 19,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 20,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 26,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 27,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 28,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 31,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 32,
+          "module": "logic",
+          "function": "user_collateral_balance"
+        },
+        {
+          "i": 33,
+          "module": "u256",
+          "function": "checked_sub"
+        },
+        {
+          "i": 34,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 35,
+          "module": "logic",
+          "function": "user_loan_balance"
+        },
+        {
+          "i": 36,
+          "module": "u256",
+          "function": "checked_sub"
+        },
+        {
+          "i": 37,
+          "module": "option",
+          "function": "destroy_some"
+        },
+        {
+          "i": 38,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-usdsui-usdc-quote",
+      "status": 200,
+      "ms": 4424.4798750000045,
+      "action": {
+        "type": "open",
+        "amount": "100000",
+        "targetLeverage": "5.69",
+        "inputCoinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+      }
+    },
+    {
+      "name": "main-usdsui-usdc-build",
+      "status": 200,
+      "ms": 2676.5420000000013,
+      "simulation": "success",
+      "bytesSha256": "8eeb009b6c44b2033dd344f05c9415ad313513de385ab799fc4ac66ef72a422f",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "coin",
+          "function": "redeem_funds"
+        },
+        {
+          "i": 2,
+          "module": "coin",
+          "function": "send_funds"
+        },
+        {
+          "i": 3,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 4,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 5,
+          "module": "lending",
+          "function": "create_account"
+        },
+        {
+          "i": 6,
+          "module": "lending",
+          "function": "enter_emode_with_account_cap"
+        },
+        {
+          "i": 7,
+          "module": "object",
+          "function": "id_address"
+        },
+        {
+          "i": 8,
+          "module": "multiply_registry",
+          "function": "register_mul_for_account_cap"
+        },
+        {
+          "i": 9,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 10,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 13,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 15,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 17,
+          "module": "swap_router",
+          "function": "swap_b_a_with_return_"
+        },
+        {
+          "i": 18,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 20,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 21,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 26,
+          "module": "incentive_v3",
+          "function": "deposit_with_account_cap"
+        },
+        {
+          "i": 27,
+          "module": "incentive_v3",
+          "function": "borrow_with_account_cap_v2"
+        },
+        {
+          "i": 28,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 29,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 30,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 31,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 32,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 33,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    },
+    {
+      "name": "main-usdsui-usdc-direct-build",
+      "status": 200,
+      "ms": 6976.427584000005,
+      "simulation": "success",
+      "bytesSha256": "c12cb5ee935498dcffb5565b6a3b72fc82ac02dd932a74a6929395502342e15f",
+      "ptbCalls": [
+        {
+          "i": 0,
+          "module": "coin",
+          "function": "redeem_funds"
+        },
+        {
+          "i": 2,
+          "module": "coin",
+          "function": "send_funds"
+        },
+        {
+          "i": 3,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 4,
+          "module": "oracle_pro",
+          "function": "update_single_price_v3"
+        },
+        {
+          "i": 5,
+          "module": "lending",
+          "function": "create_account"
+        },
+        {
+          "i": 6,
+          "module": "lending",
+          "function": "enter_emode_with_account_cap"
+        },
+        {
+          "i": 7,
+          "module": "object",
+          "function": "id_address"
+        },
+        {
+          "i": 8,
+          "module": "multiply_registry",
+          "function": "register_mul_for_account_cap"
+        },
+        {
+          "i": 9,
+          "module": "lending",
+          "function": "flash_loan_with_account_cap_v2"
+        },
+        {
+          "i": 10,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 13,
+          "module": "coin",
+          "function": "zero"
+        },
+        {
+          "i": 15,
+          "module": "coin",
+          "function": "value"
+        },
+        {
+          "i": 17,
+          "module": "swap_router",
+          "function": "swap_b_a_with_return_"
+        },
+        {
+          "i": 18,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 20,
+          "module": "coin_utils",
+          "function": "transfer_nonzero"
+        },
+        {
+          "i": 21,
+          "module": "slippage",
+          "function": "check_slippage_v3"
+        },
+        {
+          "i": 26,
+          "module": "incentive_v3",
+          "function": "deposit_with_account_cap"
+        },
+        {
+          "i": 27,
+          "module": "incentive_v3",
+          "function": "borrow_with_account_cap_v2"
+        },
+        {
+          "i": 28,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 29,
+          "module": "coin",
+          "function": "into_balance"
+        },
+        {
+          "i": 30,
+          "module": "lending",
+          "function": "flash_repay_with_account_cap"
+        },
+        {
+          "i": 31,
+          "module": "coin",
+          "function": "from_balance"
+        },
+        {
+          "i": 32,
+          "module": "account",
+          "function": "account_owner"
+        },
+        {
+          "i": 33,
+          "module": "navi_adaptor",
+          "function": "verify_navi_position_healthy"
+        }
+      ]
+    }
+  ],
+  "flashEvents": [
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "7.270280833094"
+      },
+      "loanSender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "repaySender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "amount": "232108053"
+    },
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "6.470280833094"
+      },
+      "loanSender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "repaySender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "amount": "410258721"
+    },
+    {
+      "strategy": "main-vsui-sui",
+      "action": {
+        "type": "close"
+      },
+      "loanSender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "repaySender": "0x9f888acf13a9a60c9cd413ca6292b7e4c0ae5c23f643940d61c5876fd35610e7",
+      "amount": "6519424580"
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "2.019930237508"
+      },
+      "loanSender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "repaySender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "amount": "196857505"
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "set_leverage",
+        "targetLeverage": "1.219930237508"
+      },
+      "loanSender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "repaySender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "amount": "348541312"
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "action": {
+        "type": "close"
+      },
+      "loanSender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "repaySender": "0xe139f93feff21d4ff719646b9e0048d4d028f5f4fffebb5c2b38bbc002858552",
+      "amount": "509935938"
+    },
+    {
+      "strategy": "main-usdsui-usdc",
+      "action": {
+        "type": "open",
+        "amount": "100000",
+        "targetLeverage": "5.69",
+        "inputCoinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+      },
+      "loanSender": "0x840b2f805511896bb5dc78bc42f81b584d92cf1c53131431e04c1e0d541f2376",
+      "repaySender": "0x840b2f805511896bb5dc78bc42f81b584d92cf1c53131431e04c1e0d541f2376",
+      "amount": "461128"
+    }
+  ],
+  "closeZeroGuards": "Both existing positions execute protocol collateral=0 and debt=0 guards successfully"
+}
