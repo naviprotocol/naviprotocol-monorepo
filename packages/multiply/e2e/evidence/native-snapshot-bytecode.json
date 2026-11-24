@@ -1,0 +1,32 @@
+{
+  "network": "mainnet",
+  "retrieval": "Sui gRPC ledgerService.getObject package.modules[].contents; sui move disassemble",
+  "modules": [
+    {
+      "file": "haedal-manage.mv",
+      "sha256": "1b5484fa20f904188c8601be3bf3beba4ca97cc529d03e8e4fde58d534f679c8"
+    },
+    {
+      "file": "haedal-staking.mv",
+      "sha256": "92a76d21117b39df52f9cc90fc44040ac9ad88a759891482aa5f6ea139cf1e8f"
+    },
+    {
+      "file": "volo-cert.mv",
+      "sha256": "c3690f6368055ccf4225f9f96c263ccd1db252659e64cfbf546294e856071077"
+    },
+    {
+      "file": "volo-fee_config.mv",
+      "sha256": "a46ba5778f6b1642f5ce86ee9096e33f6dea14bcbda5aef7a88a6082cbe039f7"
+    },
+    {
+      "file": "volo-manage.mv",
+      "sha256": "8c3f88102ae5afa561478cf97e21f130faaaadd89a85ac8aa3b39041ee29a957"
+    },
+    {
+      "file": "volo-stake_pool.mv",
+      "sha256": "ab3f5b36e3123bdfe9d36cb58d8ec65513d4f0bdc950e7a04aaee341fe7140a0"
+    }
+  ],
+  "voloPackage": "0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20",
+  "haedalPackage": "0x19e6ea7f5ced4f090e20da794cc80349a03e638940ddb95155a4e301f5f4967c"
+}

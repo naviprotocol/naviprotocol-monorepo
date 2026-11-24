@@ -1,3 +1,4 @@
+import { createStakingSnapshotReader } from './native-staking'
 import { Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
 import {
@@ -179,7 +180,7 @@ function isSingleVoloRedemption(route: AstrosQuote, req: ConversionRequest) {
 }
 export function voloConverter(options: { client?: MultiplySuiClient } = {}): Converter {
   const client = options.client ?? defaultClient()
-  return {
+  const converter: Converter = {
     id: 'volo',
     supports: (a, b) => pair(VSUI, a, b),
     async quote(input) {
@@ -245,10 +246,19 @@ export function voloConverter(options: { client?: MultiplySuiClient } = {}): Con
       return { coinOut, change: [] }
     }
   }
+  converter.getStakingSnapshot = createStakingSnapshotReader(client, {
+    converterId: 'volo',
+    packageId: VOLO.package,
+    pool: VOLO.pool,
+    metadata: VOLO.metadata,
+    coinIn: SUI,
+    coinOut: VSUI
+  })
+  return converter
 }
 export function haedalConverter(options: { client?: MultiplySuiClient } = {}): Converter {
   const client = options.client ?? defaultClient()
-  return {
+  const converter: Converter = {
     id: 'haedal',
     supports: (a, b) => pair(HASUI, a, b),
     async quote(input) {
@@ -274,7 +284,12 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
       const paused = state[stake ? 'pause_stake' : 'pause_unstake']
       check(typeof paused === 'boolean', 'READ_FAILED', 'Invalid Haedal pause state')
       const config = poolObject(state.config, 'Haedal fee configuration')
-      const feeRate = responseUint(config[stake ? 'deposit_fee' : 'service_fee'], 'READ_FAILED')
+      const configuredFee = responseUint(
+        config[stake ? 'deposit_fee' : 'service_fee'],
+        'READ_FAILED'
+      )
+      // The pinned stake entrypoint does not charge deposit_fee. Redemption still charges service_fee.
+      const feeRate = stake ? 0n : configuredFee
       const denominator = 10_000_000n // Haedal FEE_DENOMINATOR, independent of exchange-rate scale.
       check(feeRate < denominator, 'READ_FAILED', 'Invalid Haedal fee')
       const liquidity = stake
@@ -342,6 +357,14 @@ export function haedalConverter(options: { client?: MultiplySuiClient } = {}): C
       return { coinOut, change: [] }
     }
   }
+  converter.getStakingSnapshot = createStakingSnapshotReader(client, {
+    converterId: 'haedal',
+    packageId: HAEDAL.package,
+    pool: HAEDAL.config,
+    coinIn: SUI,
+    coinOut: HASUI
+  })
+  return converter
 }
 export function astrosConverter(
   options: {

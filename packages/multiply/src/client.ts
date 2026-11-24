@@ -297,8 +297,35 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       )
     }
     const fee = await source.readBorrowFeeBps(market, cap?.accountOwner)
-    const planned = await plan(strategy, action, constraints, snapshot, market, fee, (req) =>
-      chooseConversion(req, converters, fallback)
+    const ratePair = { coinIn: strategy.debtCoinType, coinOut: strategy.collateralCoinType }
+    const rateProviders = converters.filter((c) => c.supports(ratePair.coinIn, ratePair.coinOut))
+    const rateProvider =
+      rateProviders.length === 0
+        ? fallback
+        : rateProviders.length === 1
+          ? rateProviders[0]
+          : undefined
+    const planned = await plan(
+      strategy,
+      action,
+      constraints,
+      snapshot,
+      market,
+      fee,
+      (req) => chooseConversion(req, converters, fallback),
+      rateProvider?.getRateHint ? () => rateProvider.getRateHint!(ratePair) : undefined,
+      rateProvider?.getStakingSnapshot
+        ? async () => {
+            const snapshot = await rateProvider.getStakingSnapshot!(ratePair)
+            if (snapshot)
+              check(
+                snapshot.converterId === rateProvider.id,
+                'INVALID_CONVERSION',
+                'Native snapshot provider mismatch'
+              )
+            return snapshot
+          }
+        : undefined
     )
     if (!cap) {
       // ST-05/ST-06: a new Cap is registered with the env's Cap type in a Registry valid for it.

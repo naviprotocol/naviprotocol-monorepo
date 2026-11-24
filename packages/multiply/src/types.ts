@@ -158,10 +158,38 @@ export interface PlannedConversion extends ConversionQuote {
   purpose: 'input' | 'leverage' | 'repayment' | 'output'
   source: 'wallet' | 'flash' | 'wallet-and-flash' | 'withdrawal' | 'surplus'
 }
+/** Net native-staking output per input, used only as a solver hint, never as a risk price. */
+export interface ConversionRateHint {
+  input: CoinAmount
+  output: CoinAmount
+  expiresAt: number
+}
+/** Coherent, short-lived native stake state. Supply/fees are integer strings, not a display rate. */
+export interface StakingSnapshot {
+  converterId: string
+  coinIn: string
+  coinOut: string
+  suiSupply: string
+  lstSupply: string
+  feeRate: string
+  feeDenominator: string
+  feeRounding: 'ceil' | 'floor'
+  minInput: string
+  epoch: string
+  observedAt: number
+  expiresAt: number
+}
 export interface Converter {
   id: string
   supports(coinIn: string, coinOut: string): boolean
   quote(request: ConversionRequest): Promise<ConversionQuote>
+  /** Optional short-lived native staking rate. Final amounts always require a fresh quote. */
+  getRateHint?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<ConversionRateHint | undefined>
+  getStakingSnapshot?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<StakingSnapshot | undefined>
   buildPTB(
     tx: Transaction,
     quote: ConversionQuote,

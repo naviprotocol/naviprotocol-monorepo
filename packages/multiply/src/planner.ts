@@ -1,14 +1,17 @@
+import { quoteStakingSnapshot } from './native-staking'
 import { validateMarketMode, assertModeExposure } from './emode'
 import type {
   Action,
   Constraints,
   ConversionQuote,
+  ConversionRateHint,
   ConversionRequest,
   Converter,
   ExecutionPlan,
   MarketSnapshot,
   PositionAmounts,
-  Strategy
+  Strategy,
+  StakingSnapshot
 } from './types'
 import { BN, ceil, check, decimal, floor, uint, MultiplyError, sameCoin } from './utils'
 import { validateConversion } from './converters'
@@ -137,7 +140,9 @@ export async function plan(
   snapshot: PositionAmounts,
   market: MarketSnapshot,
   borrowFeeBps: string,
-  convert: (req: ConversionRequest) => Promise<ConversionQuote>
+  convert: (req: ConversionRequest) => Promise<ConversionQuote>,
+  readRate?: () => Promise<ConversionRateHint | undefined>,
+  readSnapshot?: () => Promise<StakingSnapshot | undefined>
 ) {
   validateMarketMode(strategy, market)
   const C = n(snapshot.collateralAmount),
@@ -240,7 +245,7 @@ export async function plan(
   // converter promise is read-only; late results are never used in the plan.
   const conversionDeadline = Date.now() + 45_000
   let conversionCount = 0
-  const request = async (amount: string, increase: boolean) => {
+  const budgeted = async <T>(read: () => Promise<T>): Promise<T> => {
     const remaining = conversionDeadline - Date.now()
     check(
       ++conversionCount <= 32 && remaining > 0,
@@ -250,12 +255,7 @@ export async function plan(
     let timeout: ReturnType<typeof setTimeout> | undefined
     try {
       return await Promise.race([
-        convert({
-          amountIn: amount,
-          coinIn: increase ? strategy.debtCoinType : strategy.collateralCoinType,
-          coinOut: increase ? strategy.collateralCoinType : strategy.debtCoinType,
-          slippageBps: constraints.maxSlippageBps
-        }),
+        read(),
         new Promise<never>((_, reject) => {
           timeout = setTimeout(
             () =>
@@ -268,6 +268,15 @@ export async function plan(
       clearTimeout(timeout)
     }
   }
+  const request = (amount: string, increase: boolean) =>
+    budgeted(() =>
+      convert({
+        amountIn: amount,
+        coinIn: increase ? strategy.debtCoinType : strategy.collateralCoinType,
+        coinOut: increase ? strategy.collateralCoinType : strategy.debtCoinType,
+        slippageBps: constraints.maxSlippageBps
+      })
+    )
   const input = (coinType: string, amount: string) => inputs.push({ coinType, amount })
   if (action.type === 'close' && isDustClose(strategy, snapshot, market)) {
     result.direction = 'decrease'
@@ -294,11 +303,20 @@ export async function plan(
         : strategy.principalCoinType
     const direct = sameCoin(inputType, strategy.collateralCoinType)
     if (P.gt(0)) input(inputType, P.toFixed(0))
-    const evaluation = async (F: N) => {
+    const evaluation = async (F: N, snapshot?: StakingSnapshot) => {
       const conversionAmount = F.plus(direct ? 0 : P)
+      const req = {
+        amountIn: conversionAmount.toFixed(0),
+        coinIn: strategy.debtCoinType,
+        coinOut: strategy.collateralCoinType,
+        slippageBps: constraints.maxSlippageBps
+      }
       const q = conversionAmount.gt(0)
-        ? await request(conversionAmount.toFixed(0), true)
+        ? snapshot
+          ? quoteStakingSnapshot(snapshot, req)
+          : await request(conversionAmount.toFixed(0), true)
         : undefined
+      if (q) validateConversion(q, req, snapshot?.converterId ?? q.converterId)
       const repayment = flashRepay(F),
         fee = borrowFee(repayment)
       const c = C.plus(direct ? P : 0).plus(q?.expectedOutput.amount ?? 0),
@@ -313,6 +331,150 @@ export async function plan(
         residual: d.times(pd).minus(c.times(pc).times(target.minus(1)).div(target))
       }
     }
+    const increaseResult = (value: Awaited<ReturnType<typeof evaluation>>) => ({
+      ...result,
+      conversions: value.q
+        ? [
+            {
+              ...value.q,
+              id: 'increase',
+              purpose: value.F.gt(0) ? ('leverage' as const) : ('input' as const),
+              source:
+                direct || P.isZero()
+                  ? ('flash' as const)
+                  : value.F.gt(0)
+                    ? ('wallet-and-flash' as const)
+                    : ('wallet' as const)
+            }
+          ]
+        : [],
+      flashAmount: value.F.toFixed(0),
+      flashRepayment: value.repayment.toFixed(0),
+      borrowAmount: value.repayment.toFixed(0),
+      borrowFee: value.fee.toFixed(0),
+      collateralAfter: value.c.toFixed(0),
+      minCollateralAfter: C.plus(direct ? P : 0)
+        .plus(value.q?.minOutput.amount ?? 0)
+        .toFixed(0),
+      debtAfter: value.d.toFixed(0)
+    })
+    // The rate predicts conversion amounts only. Oracle pc/pd remain the valuation
+    // basis for the target leverage and every final risk/capacity check.
+    let rate = pd.div(pc)
+    let usableSeed = true
+    let stakingSnapshot: StakingSnapshot | undefined
+    if (readSnapshot) {
+      try {
+        stakingSnapshot = await budgeted(readSnapshot)
+        if (stakingSnapshot) {
+          // Validate all snapshot fields/fees using a one-unit local probe. No RPC.
+          quoteStakingSnapshot(stakingSnapshot, {
+            coinIn: strategy.debtCoinType,
+            coinOut: strategy.collateralCoinType,
+            amountIn: stakingSnapshot.minInput,
+            slippageBps: 0
+          })
+          const sui = uint(stakingSnapshot.suiSupply),
+            lst = uint(stakingSnapshot.lstSupply)
+          rate = (sui === 0n || lst === 0n ? n(1) : n(lst.toString()).div(sui.toString())).times(
+            n(1).minus(n(stakingSnapshot.feeRate).div(stakingSnapshot.feeDenominator))
+          )
+        }
+      } catch (error) {
+        if (
+          !(error instanceof MultiplyError) ||
+          ![
+            'SNAPSHOT_UNAVAILABLE',
+            'CONVERTER_UNAVAILABLE',
+            'CONVERSION_AMOUNT_TOO_SMALL',
+            'NO_CONVERSION_ROUTE'
+          ].includes(error.code)
+        )
+          throw error
+        usableSeed = false
+        stakingSnapshot = undefined
+      }
+    } else if (readRate && target.gt(1)) {
+      try {
+        const hint = await budgeted(readRate)
+        if (hint) {
+          uint(hint.input.amount, false)
+          uint(hint.output.amount, false)
+          check(
+            sameCoin(hint.input.coinType, strategy.debtCoinType) &&
+              sameCoin(hint.output.coinType, strategy.collateralCoinType) &&
+              Number.isSafeInteger(hint.expiresAt) &&
+              hint.expiresAt > Date.now(),
+            'INVALID_CONVERSION',
+            'Invalid staking rate hint'
+          )
+          rate = n(hint.output.amount).div(hint.input.amount)
+        }
+      } catch (error) {
+        if (
+          !(error instanceof MultiplyError) ||
+          !['CONVERTER_UNAVAILABLE', 'CONVERSION_AMOUNT_TOO_SMALL', 'NO_CONVERSION_ROUTE'].includes(
+            error.code
+          )
+        )
+          throw error
+        usableSeed = false
+      }
+    }
+    const feeFactor = n(1)
+      .plus(n(market.flash.feeBps).div(10000))
+      .times(n(1).plus(n(borrowFeeBps).div(10000)))
+    const denominator = pd
+      .times(feeFactor)
+      .times(target)
+      .minus(pc.times(rate).times(target.minus(1)))
+    const seed = n(
+      floor(
+        C.plus(P.times(direct ? n(1) : rate))
+          .times(pc)
+          .times(target.minus(1))
+          .minus(D.times(pd).times(target))
+          .div(denominator)
+      )
+    )
+    let seeded: Awaited<ReturnType<typeof evaluation>> | undefined
+    if (
+      usableSeed &&
+      denominator.gt(0) &&
+      seed.isFinite() &&
+      seed.gte(0) &&
+      seed.lte('18446744073709551615')
+    ) {
+      try {
+        const candidate = await evaluation(seed, stakingSnapshot)
+        if (targetReached(candidate.c, candidate.d)) {
+          try {
+            validateResult(increaseResult(candidate))
+            seeded = candidate
+          } catch (error) {
+            // A rounded seed can pass the principal-relative check but miss the final
+            // whole-position tolerance. Only that validation failure is recoverable;
+            // converter/deadline NO_CONVERGENCE errors still propagate below.
+            if (!(error instanceof MultiplyError) || error.code !== 'NO_CONVERGENCE') throw error
+          }
+        }
+      } catch (error) {
+        // An unusable candidate falls straight back to the original bracket search.
+        // Invalid data, paused markets and the shared deadline remain hard failures.
+        if (
+          !(error instanceof MultiplyError) ||
+          ![
+            'SNAPSHOT_UNAVAILABLE',
+            'CONVERTER_UNAVAILABLE',
+            'CONVERSION_AMOUNT_TOO_SMALL',
+            'NO_CONVERSION_ROUTE',
+            'CAPACITY_EXCEEDED',
+            'CONSTRAINT_VIOLATION'
+          ].includes(error.code)
+        )
+          throw error
+      }
+    }
     const initialHi = n(
       ceil(
         equity
@@ -325,7 +487,7 @@ export async function plan(
     )
     let lo = n(0),
       hi = initialHi
-    let best: Awaited<ReturnType<typeof evaluation>> | undefined
+    let best: Awaited<ReturnType<typeof evaluation>> | undefined = seeded
     let upper: Awaited<ReturnType<typeof evaluation>>
     let lowerResidual = n(0)
     const bracket = async () => {
@@ -353,7 +515,7 @@ export async function plan(
       check(upper.residual.gte(0), 'NO_CONVERGENCE', 'Could not bracket leverage')
       return false
     }
-    let converged = await bracket()
+    let converged = seeded !== undefined || (await bracket())
     let refreshes = 0,
       stagnant = 0,
       previousResidual: N | undefined
@@ -397,24 +559,7 @@ export async function plan(
       'NO_CONVERGENCE',
       'Conversion quotes could not achieve the requested leverage within tolerance'
     )
-    result.conversions = best.q
-      ? [
-          {
-            ...best.q,
-            id: 'increase',
-            purpose: best.F.gt(0) ? 'leverage' : 'input',
-            source: direct || P.isZero() ? 'flash' : best.F.gt(0) ? 'wallet-and-flash' : 'wallet'
-          }
-        ]
-      : []
-    result.flashAmount = best.F.toFixed(0)
-    result.flashRepayment = result.borrowAmount = best.repayment.toFixed(0)
-    result.borrowFee = best.fee.toFixed(0)
-    result.collateralAfter = best.c.toFixed(0)
-    result.minCollateralAfter = C.plus(direct ? P : 0)
-      .plus(best.q?.minOutput.amount ?? 0)
-      .toFixed(0)
-    result.debtAfter = best.d.toFixed(0)
+    Object.assign(result, increaseResult(best))
   } else if (sameCoin(strategy.principalCoinType, strategy.collateralCoinType)) {
     result.direction = 'decrease'
     check(C.gt(0), 'POSITION_NOT_FOUND', 'No collateral to withdraw')
@@ -639,73 +784,83 @@ export async function plan(
       kind: sameCoin(inputs[0].coinType, strategy.collateralCoinType) ? 'collateral' : 'debt',
       input: inputs[0]
     }
-  for (const amount of [
-    result.flashAmount,
-    result.flashRepayment,
-    result.borrowAmount,
-    result.borrowFee,
-    result.withdrawAmount,
-    result.collateralAfter,
-    result.debtAfter
-  ])
-    uint(amount)
-  const f = n(result.flashAmount)
-  check(
-    f.isZero() || (f.gte(market.flash.min) && f.lte(market.flash.max)),
-    'CAPACITY_EXCEEDED',
-    'Flash liquidity limit exceeded'
-  )
-  check(
-    n(result.borrowAmount).plus(result.borrowFee).lte(borrowCapacity(market)),
-    'CAPACITY_EXCEEDED',
-    'Borrow liquidity limit exceeded'
-  )
-  check(
-    withinSameReserveCapacity(strategy, result, market),
-    'CAPACITY_EXCEEDED',
-    'Flash and borrow from the same reserve exceed its cash'
-  )
-  check(
-    n(result.collateralAfter).minus(C).lte(supplyCapacity(market)),
-    'CAPACITY_EXCEEDED',
-    'Supply capacity exceeded'
-  )
-  assertModeExposure(action, result, market)
-  const projected = { collateralAmount: result.collateralAfter, debtAmount: result.debtAfter }
-  const conservative = metrics(
-    { ...projected, collateralAmount: result.minCollateralAfter },
-    market
-  )
-  check(
-    conservative.healthFactor === null ||
-      n(conservative.healthFactor).gte(constraints.minHealthFactor),
-    'CONSTRAINT_VIOLATION',
-    'Minimum output does not meet health factor constraint'
-  )
-  check(
-    withinLtv(
-      { ...projected, collateralAmount: result.minCollateralAfter },
-      snapshot,
-      market,
-      result.direction !== 'increase'
-    ),
-    'CONSTRAINT_VIOLATION',
-    'Projected debt exceeds collateral LTV'
-  )
-  if (constraints.maxLeverage && conservative.leverage)
+  // One validator for both the optional price seed and the final solver result.
+  // Keep the acceptance criteria identical regardless of how the amount was found.
+  function validateResult(candidate: typeof result) {
+    for (const amount of [
+      candidate.flashAmount,
+      candidate.flashRepayment,
+      candidate.borrowAmount,
+      candidate.borrowFee,
+      candidate.withdrawAmount,
+      candidate.collateralAfter,
+      candidate.debtAfter
+    ])
+      uint(amount)
+    const f = n(candidate.flashAmount)
     check(
-      n(conservative.leverage).lte(leverageCeiling(constraints.maxLeverage)),
+      f.isZero() || (f.gte(market.flash.min) && f.lte(market.flash.max)),
+      'CAPACITY_EXCEEDED',
+      'Flash liquidity limit exceeded'
+    )
+    check(
+      n(candidate.borrowAmount).plus(candidate.borrowFee).lte(borrowCapacity(market)),
+      'CAPACITY_EXCEEDED',
+      'Borrow liquidity limit exceeded'
+    )
+    check(
+      withinSameReserveCapacity(strategy, candidate, market),
+      'CAPACITY_EXCEEDED',
+      'Flash and borrow from the same reserve exceed its cash'
+    )
+    check(
+      n(candidate.collateralAfter).minus(C).lte(supplyCapacity(market)),
+      'CAPACITY_EXCEEDED',
+      'Supply capacity exceeded'
+    )
+    assertModeExposure(action, candidate, market)
+    const projected = {
+      collateralAmount: candidate.collateralAfter,
+      debtAmount: candidate.debtAfter
+    }
+    const conservative = metrics(
+      { ...projected, collateralAmount: candidate.minCollateralAfter },
+      market
+    )
+    check(
+      conservative.healthFactor === null ||
+        n(conservative.healthFactor).gte(constraints.minHealthFactor),
       'CONSTRAINT_VIOLATION',
-      'Leverage at the minimum conversion output exceeds maxLeverage'
+      'Minimum output does not meet health factor constraint'
     )
-  const estimate = metrics(projected, market)
-  if (['open', 'add_principal', 'remove_principal', 'set_leverage'].includes(action.type))
     check(
-      estimate.leverage !== null &&
-        n(estimate.leverage).minus(target).abs().lte(target.times('0.0001')),
-      'NO_CONVERGENCE',
-      'Conversion quote cannot achieve the requested leverage within tolerance'
+      withinLtv(
+        { ...projected, collateralAmount: candidate.minCollateralAfter },
+        snapshot,
+        market,
+        candidate.direction !== 'increase'
+      ),
+      'CONSTRAINT_VIOLATION',
+      'Projected debt exceeds collateral LTV'
     )
+    if (constraints.maxLeverage && conservative.leverage)
+      check(
+        n(conservative.leverage).lte(leverageCeiling(constraints.maxLeverage)),
+        'CONSTRAINT_VIOLATION',
+        'Leverage at the minimum conversion output exceeds maxLeverage'
+      )
+    const estimate = metrics(projected, market)
+    if (['open', 'add_principal', 'remove_principal', 'set_leverage'].includes(action.type))
+      check(
+        estimate.leverage !== null &&
+          n(estimate.leverage).minus(target).abs().lte(target.times('0.0001')),
+        'NO_CONVERGENCE',
+        'Conversion quote cannot achieve the requested leverage within tolerance'
+      )
+    return estimate
+  }
+  const estimate = validateResult(result)
+
   return {
     execution: result,
     estimate: { inputs, outputs, minOutputs, ...estimate }

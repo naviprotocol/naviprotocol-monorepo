@@ -1,0 +1,481 @@
+{
+  "baseline": "0e8f2a9",
+  "candidate": "0e8f2a90e7e81c90a902885e3b2b828fdf4bae42+working-tree",
+  "broadcast": false,
+  "principal": "100000",
+  "targetLeverage": "2",
+  "rounds": 1,
+  "timingScope": "full SDK quote: live Cap, market, fee reads and live converters; excludes HTTP API/valuation/save/frontend",
+  "samples": [
+    {
+      "strategy": "main-vsui-sui",
+      "round": 1,
+      "variant": "before",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 840.7327909999999
+        },
+        {
+          "stage": "market_config",
+          "ms": 379.2896249999999
+        },
+        {
+          "stage": "flash_config",
+          "ms": 375.1986669999999
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 2068.531291
+        },
+        {
+          "stage": "market_pools",
+          "ms": 3054.7479160000003
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 586.8158749999993
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 849.5344999999998
+        },
+        {
+          "stage": "readMarket",
+          "ms": 4499.097250000001
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 225.2637079999995
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "volo",
+          "amount": "100000000000000",
+          "output": "93441391859498",
+          "ms": 457.5431669999998
+        },
+        {
+          "provider": "volo",
+          "amount": "300000000000001",
+          "output": "280324175578496",
+          "ms": 579.3172500000001
+        },
+        {
+          "provider": "volo",
+          "amount": "187690139248339",
+          "output": "175380278496679",
+          "ms": 436.0606250000001
+        }
+      ],
+      "leverage": "1.999999999999",
+      "healthFactor": "1.860000000000",
+      "flashAmount": "87690139248339",
+      "provider": "volo",
+      "market": {
+        "collateralPrice": "0.67504663",
+        "debtPrice": "0.67504663",
+        "flashFeeBps": "0",
+        "ltv": "0.9",
+        "lt": "0.93"
+      },
+      "status": "passed",
+      "ms": 7045.822334,
+      "converterCalls": 3,
+      "converterMs": 1472.921042
+    },
+    {
+      "strategy": "main-vsui-sui",
+      "round": 1,
+      "variant": "after",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 218.29270799999995
+        },
+        {
+          "stage": "market_config",
+          "ms": 197.2558340000005
+        },
+        {
+          "stage": "flash_config",
+          "ms": 196.41824999999972
+        },
+        {
+          "stage": "market_pools",
+          "ms": 239.91949999999997
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 896.8369159999993
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 404.19195799999943
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 328.5971669999999
+        },
+        {
+          "stage": "readMarket",
+          "ms": 1635.1148749999993
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 223.83554100000038
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "volo",
+          "amount": "200000000000000",
+          "output": "186882783718997",
+          "ms": 434.448124999999
+        },
+        {
+          "provider": "volo",
+          "amount": "100000000000000",
+          "output": "93441391859498",
+          "ms": 437.5860410000005
+        },
+        {
+          "provider": "volo",
+          "amount": "300000000000001",
+          "output": "280324175578496",
+          "ms": 434.6243749999994
+        },
+        {
+          "provider": "volo",
+          "amount": "187690139248339",
+          "output": "175380278496679",
+          "ms": 429.7852920000005
+        }
+      ],
+      "leverage": "1.999999999999",
+      "healthFactor": "1.860000000000",
+      "flashAmount": "87690139248339",
+      "provider": "volo",
+      "market": {
+        "collateralPrice": "0.67504663",
+        "debtPrice": "0.67504663",
+        "flashFeeBps": "0",
+        "ltv": "0.9",
+        "lt": "0.93"
+      },
+      "status": "passed",
+      "ms": 3820.242292000001,
+      "converterCalls": 4,
+      "converterMs": 1736.4438329999994
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "round": 1,
+      "variant": "before",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 217.10275000000001
+        },
+        {
+          "stage": "market_config",
+          "ms": 196.38574999999946
+        },
+        {
+          "stage": "flash_config",
+          "ms": 195.93858399999954
+        },
+        {
+          "stage": "market_pools",
+          "ms": 337.3285420000011
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 930.962125
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 391.4076249999998
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 565.1017499999998
+        },
+        {
+          "stage": "readMarket",
+          "ms": 1891.3232499999995
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 232.00495899999987
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "haedal",
+          "amount": "100000000000000",
+          "output": "92223006557677",
+          "ms": 434.9064589999998
+        },
+        {
+          "provider": "haedal",
+          "amount": "300000000000001",
+          "output": "276669019673033",
+          "ms": 431.6399999999994
+        },
+        {
+          "provider": "haedal",
+          "amount": "185568360753197",
+          "output": "171136721506395",
+          "ms": 443.329667
+        }
+      ],
+      "leverage": "1.999999999999",
+      "healthFactor": "1.500000000000",
+      "flashAmount": "85568360753197",
+      "provider": "haedal",
+      "market": {
+        "collateralPrice": "0.67488222",
+        "debtPrice": "0.67488222",
+        "flashFeeBps": "0",
+        "ltv": "0.7",
+        "lt": "0.75"
+      },
+      "status": "passed",
+      "ms": 3653.419582999999,
+      "converterCalls": 3,
+      "converterMs": 1309.8761259999992
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "round": 1,
+      "variant": "after",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 222.81554200000028
+        },
+        {
+          "stage": "market_config",
+          "ms": 184.89670800000022
+        },
+        {
+          "stage": "flash_config",
+          "ms": 184.43266699999913
+        },
+        {
+          "stage": "market_pools",
+          "ms": 354.27279199999975
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 868.703042000001
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 394.6651669999992
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 317.6715419999982
+        },
+        {
+          "stage": "readMarket",
+          "ms": 1585.0276250000006
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 228.38087499999892
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "haedal",
+          "amount": "200000000000000",
+          "output": "184446013115355",
+          "ms": 439.2847499999989
+        },
+        {
+          "provider": "haedal",
+          "amount": "100000000000000",
+          "output": "92223006557677",
+          "ms": 432.9240839999984
+        },
+        {
+          "provider": "haedal",
+          "amount": "300000000000001",
+          "output": "276669019673033",
+          "ms": 438.1647919999996
+        },
+        {
+          "provider": "haedal",
+          "amount": "185568360753197",
+          "output": "171136721506395",
+          "ms": 435.35812499999884
+        }
+      ],
+      "leverage": "1.999999999999",
+      "healthFactor": "1.500000000000",
+      "flashAmount": "85568360753197",
+      "provider": "haedal",
+      "market": {
+        "collateralPrice": "0.67488222",
+        "debtPrice": "0.67488222",
+        "flashFeeBps": "0",
+        "ltv": "0.7",
+        "lt": "0.75"
+      },
+      "status": "passed",
+      "ms": 3787.237916000002,
+      "converterCalls": 4,
+      "converterMs": 1745.7317509999957
+    },
+    {
+      "strategy": "main-usdsui-usdc",
+      "round": 1,
+      "variant": "before",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 217.92704199999935
+        },
+        {
+          "stage": "market_config",
+          "ms": 187.90670799999862
+        },
+        {
+          "stage": "flash_config",
+          "ms": 187.25975000000108
+        },
+        {
+          "stage": "market_pools",
+          "ms": 362.3075000000026
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 1412.7751669999998
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 382.1631660000021
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 400.46729100000084
+        },
+        {
+          "stage": "readMarket",
+          "ms": 2199.773083
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 223.0403329999972
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "astros",
+          "amount": "100000000000",
+          "output": "99995492733",
+          "ms": 1245.4974169999987
+        },
+        {
+          "provider": "astros",
+          "amount": "300000000001",
+          "output": "299984190062",
+          "ms": 956.9033750000017
+        },
+        {
+          "provider": "astros",
+          "amount": "199393514584",
+          "output": "199383771595",
+          "ms": 638.1332500000026
+        }
+      ],
+      "leverage": "1.999996174811",
+      "healthFactor": "1.740003327926",
+      "flashAmount": "99393514584",
+      "provider": "astros",
+      "market": {
+        "collateralPrice": "0.9999",
+        "debtPrice": "0.9999",
+        "flashFeeBps": "0",
+        "ltv": "0.85",
+        "lt": "0.87"
+      },
+      "status": "passed",
+      "ms": 5483.6419160000005,
+      "converterCalls": 3,
+      "converterMs": 2840.534042000003
+    },
+    {
+      "strategy": "main-usdsui-usdc",
+      "round": 1,
+      "variant": "after",
+      "stages": [
+        {
+          "stage": "listAccountCaps",
+          "ms": 216.93154199999844
+        },
+        {
+          "stage": "market_config",
+          "ms": 174.9957089999989
+        },
+        {
+          "stage": "flash_config",
+          "ms": 173.37554199999795
+        },
+        {
+          "stage": "market_pools",
+          "ms": 528.137917
+        },
+        {
+          "stage": "flash_assets",
+          "ms": 893.6386669999993
+        },
+        {
+          "stage": "market_oracle",
+          "ms": 385.7622920000031
+        },
+        {
+          "stage": "market_inspect",
+          "ms": 555.5836659999986
+        },
+        {
+          "stage": "readMarket",
+          "ms": 1839.3528749999969
+        },
+        {
+          "stage": "readBorrowFeeBps",
+          "ms": 225.27287499999875
+        }
+      ],
+      "quotes": [
+        {
+          "provider": "astros",
+          "amount": "199403578528",
+          "output": "199393834970",
+          "ms": 1067.7670839999992
+        }
+      ],
+      "leverage": "2.000097736543",
+      "healthFactor": "1.739914977516",
+      "flashAmount": "99403578528",
+      "provider": "astros",
+      "market": {
+        "collateralPrice": "0.9999",
+        "debtPrice": "0.9999",
+        "flashFeeBps": "0",
+        "ltv": "0.85",
+        "lt": "0.87"
+      },
+      "status": "passed",
+      "ms": 3352.7555420000026,
+      "converterCalls": 1,
+      "converterMs": 1067.7670839999992
+    }
+  ],
+  "candidatePlannerSha256": "a1acc997eb820e88f3aabe4e2354daea0fc1170d7532f977d8b43f2b5eb21353",
+  "measuredAt": "2026-11-24 Asia/Singapore"
+}

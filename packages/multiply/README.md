@@ -78,6 +78,47 @@ equity, but the result must still meet `minHealthFactor`. A `remove_principal`
 target that would need new debt is `ACTION_UNSUPPORTED`. `add_principal` levers
 the amount it adds to the target, or to the current leverage when none is given.
 
+## Snapshot-based leverage quotes
+
+Opening, adding principal and increasing leverage estimate flash funding with prices,
+fees and the selected conversion rate. Volo/Haedal native staking now use an optional
+`getStakingSnapshot(pair)` with complete integer state to calculate the conversion
+locally. A valid candidate needs **zero formal conversion quotes**. Other routes,
+including USDSUI/USDC, still validate one real quote. An unavailable snapshot or a
+candidate outside the original tolerance/risk limits falls back to the original
+bracket solver. Malformed state and the shared deadline remain errors.
+
+Volo simulates `refresh` followed by effective supply and fee getters in one PTB.
+It rounds the stake fee up, then minted LST down. Haedal reads all supply components
+from one state object and reproduces checked-u64 arithmetic; the pinned stake
+entrypoint does not charge its stored `deposit_fee`. Its redemption fee is unchanged.
+This is exact integer math for the pinned native contracts, not a rounded display
+exchange rate. Both preserve the existing SDK minimum of 1 SUI conversion input.
+
+Snapshots live for 5 seconds per converter/client instance. Every use checks the
+current epoch; epoch changes invalidate the cache. Concurrent reads are deduplicated;
+expired pending reads can be retried, and late old reads cannot replace newer state.
+Volo's simulation reports its actual epoch. A read exceeding TTL is not accepted.
+Reusing an instance avoids the complete snapshot read, but still performs an epoch
+RPC. No snapshot is used for unstaking or DEX execution.
+
+Protocol oracle prices still determine target leverage, HF, LTV and capacity. All
+integer funding/fee rounding, minimum-output guards and final on-chain HF checks
+remain in force. Builds must still be fully simulated before execution: fees, pause
+state and exchange rates can change after quoting. The cache TTL controls calculation
+reuse; it does not shrink the existing executable quote lifetime. Snapshot reads and
+fallback quotes share the existing 32-attempt / 45-second budget. Custom converters
+can still supply `getRateHint`, which requires an actual quote to verify the seed.
+
+See [the current benchmark and acceptance evidence](docs/native-snapshot-benchmark.md).
+After building, `node e2e/quote-seed-benchmark.mjs` compares baseline `0e8f2a9` against
+cold and same-instance follow-up quotes. `MULTIPLY_BENCH_BASE`, `MULTIPLY_BENCH_ROUNDS`,
+`MULTIPLY_BENCH_PRINCIPAL`, `MULTIPLY_BENCH_LEVERAGE` and `MULTIPLY_BENCH_OUT` configure
+it. Formal quotes and snapshot time are reported separately within total SDK latency.
+`node e2e/native-snapshot-build.mjs` exercises fully funded mainnet simulations,
+actual minted amounts, min-output failures and final HF failures. Neither signs or
+broadcasts transactions.
+
 ## Execution plan v4
 
 Older plans must be re-quoted. `funding` identifies wallet collateral/debt or no
