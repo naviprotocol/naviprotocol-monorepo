@@ -162,6 +162,8 @@ export interface Converter {
 }
 export interface ExecutionPlan {
   version: 4
+  /** NAVI deployment the quote was made for; a client of another env refuses to build it (ST-20..ST-23). */
+  env: NaviEnv
   capRegistry: CapRegistryConfig
   accountCap: { kind: 'create'; registryKey: RegistryKey } | ({ kind: 'existing' } & AccountCap)
   snapshot: PositionAmounts

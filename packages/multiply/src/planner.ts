@@ -181,7 +181,7 @@ export async function plan(
   const inputs: { coinType: string; amount: string }[] = [],
     outputs: typeof inputs = [],
     minOutputs: typeof inputs = []
-  const result: Omit<ExecutionPlan, 'accountCap' | 'capRegistry' | 'checksum'> = {
+  const result: Omit<ExecutionPlan, 'accountCap' | 'capRegistry' | 'checksum' | 'env'> = {
     version: 4,
     funding: { kind: 'none' },
     snapshot,
@@ -634,7 +634,7 @@ export async function plan(
   check(
     withinSameReserveCapacity(strategy, result, market),
     'CAPACITY_EXCEEDED',
-    'Flash and borrow from the same reserve exceed its available liquidity'
+    'Flash and borrow from the same reserve exceed its cash'
   )
   check(
     n(result.collateralAfter).minus(C).lte(supplyCapacity(market)),

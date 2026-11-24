@@ -310,6 +310,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       estimate: planned.estimate,
       execution: {
         ...planned.execution,
+        env,
         capRegistry: { ...capRegistry },
         accountCap: cap
           ? { kind: 'existing', ...cap }
@@ -461,7 +462,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     check(
       withinSameReserveCapacity(s, e, fresh),
       'CAPACITY_EXCEEDED',
-      'Flash and borrow from the same reserve exceed its available liquidity'
+      'Flash and borrow from the same reserve exceed its cash'
     )
     return { fresh, now }
   }
@@ -486,6 +487,17 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'Quote contents have changed; request a fresh quote'
     )
     q.execution.checksum = expectedHash
+    // ST-20..ST-23: a quote is bound to the env it was made for, whichever entry builds it, before anything else.
+    check(
+      q.execution.env !== undefined,
+      'INVALID_QUOTE',
+      'Quote has no NAVI env (made by an older SDK); request a fresh quote'
+    )
+    check(
+      q.execution.env === env,
+      'INVALID_QUOTE',
+      `Quote was made for NAVI env ${String(q.execution.env)}; this client targets ${env}`
+    )
     check(
       Number.isSafeInteger(q.expiresAt) && q.expiresAt > Date.now(),
       'QUOTE_EXPIRED',
