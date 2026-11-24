@@ -90,6 +90,37 @@ export function borrowCapacity(market: MarketSnapshot) {
   return new BN(lendingToRaw(market.debt.availableBorrow, tokenDecimals(market.debt)))
 }
 
+/**
+ * Pool cash of the debt reserve, raw in the coin's own decimals: the lending API's `balance` ("pool withdrawable
+ * balance"). Not the `Pool<T>` object's balance: the SUI pool stakes most of its SUI and unstakes on withdrawal (LQ-09).
+ */
+export function reserveCash(market: MarketSnapshot) {
+  const cash = (market.debt as { balance?: unknown }).balance
+  check(
+    typeof cash === 'string' && /^\d+$/.test(cash),
+    'READ_FAILED',
+    'Missing or invalid debt reserve cash'
+  )
+  return new BN(cash)
+}
+
+/**
+ * LQ-01 / LQ-05..LQ-10: a main-market strategy flash-loans its debt coin from the same main-market reserve it borrows
+ * from, and the flash is still outstanding when the borrow runs. The borrow alone uses borrow-cap headroom
+ * (`availableBorrow`, checked separately); every coin taken out — flash, borrow and its fee — must be in the pool at once.
+ * A flash-only exit at the borrow cap stays possible while the cash is there (LQ-04). Isolated markets borrow from their
+ * own reserve (LQ-02): only the separate checks apply there.
+ */
+export function withinSameReserveCapacity(
+  strategy: { market: string },
+  amounts: { flashAmount: string; borrowAmount: string; borrowFee: string },
+  market: MarketSnapshot
+) {
+  if (strategy.market !== 'main') return true
+  const out = new BN(amounts.flashAmount).plus(amounts.borrowAmount).plus(amounts.borrowFee)
+  return out.isZero() || out.lte(reserveCash(market))
+}
+
 /** A lowered borrowing cap must still permit repayment, collateral top-up and exit. */
 export function withinLtv(
   projected: PositionAmounts,

@@ -490,15 +490,52 @@ try {
     ['leverage-down', { type: 'set_leverage', targetLeverage: '1.5' }],
     ['repay', { type: 'repay', amount: '1000000000' }],
     ['add-collateral', { type: 'add_collateral', amount: '1000000000' }],
-    ['close', { type: 'close' }]
+    ['close', { type: 'close' }],
+    // TL-05: a collateral-paid add_principal with a target, 0.001 vSUI: below the seed position's whole-position band
+    // (0.01% of ≈ 20 SUI), so only the principal-scaled TL-01 bar makes it borrow. The strategy accepts vSUI input.
+    [
+      'add-principal-collateral-target',
+      {
+        type: 'add_principal',
+        amount: '1000000',
+        inputCoinType: strategy.collateralCoinType,
+        targetLeverage: '2'
+      },
+      {
+        ...strategy,
+        acceptedInputCoinTypes: [strategy.principalCoinType, strategy.collateralCoinType]
+      }
+    ]
   ]
   let fixture
-  for (const [name, action] of actions)
+  for (const [name, action, custom] of actions)
     await scenario(name, async () => {
       fixture = await transient(name)
-      const instance = sdk.createMultiplyClient({ client, dataSource: fixture.scoped })
-      const quote = await instance.quote(address, strategy, action, constraints)
+      const strat = custom ?? strategy
+      const scoped = custom
+        ? {
+            ...sdk.createNaviDataSource({ client, strategies: [custom] }),
+            listAccountCaps: fixture.scoped.listAccountCaps,
+            readPosition: fixture.scoped.readPosition
+          }
+        : fixture.scoped
+      const instance = sdk.createMultiplyClient({
+        client,
+        dataSource: scoped,
+        ...(custom ? { strategies: [custom] } : {})
+      })
+      const quote = await instance.quote(address, strat, action, constraints)
       await save(`${name}.quote.json`, quote)
+      if (name === 'add-principal-collateral-target') {
+        const e = quote.execution
+        assert.equal(quote.estimate.inputs[0].coinType, strategy.collateralCoinType)
+        assert(BigInt(e.borrowAmount) > 0n, 'TL-05: a collateral-paid add with a target must borrow')
+        assert(BigInt(e.debtAfter) > BigInt(fixture.position.debtAmount), 'TL-05: debt must grow')
+        assert(
+          Math.abs(Number(quote.estimate.leverage) - 2) < 1e-3,
+          `TL-05: leverage ${quote.estimate.leverage} vs target 2`
+        )
+      }
       const tx = Transaction.from(seed.tx)
       const coins = []
       for (const input of quote.estimate.inputs) {
@@ -509,7 +546,8 @@ try {
           const conversion = await converter.quote({
             coinIn: strategy.principalCoinType,
             coinOut: input.coinType,
-            amountIn: (BigInt(input.amount) * 2n).toString(),
+            // Volo stakes at least 1 SUI; a smaller input (TL-05) is cut from a 1 SUI stake.
+            amountIn: (BigInt(input.amount) * 2n > 10n ** 9n ? BigInt(input.amount) * 2n : 10n ** 9n).toString(),
             slippageBps: 10
           })
           // Supply enough real LST, then pass an exact-sized input and return remainder.

@@ -36,7 +36,9 @@
     "test": "vitest run tests",
     "test:e2e": "node e2e/run.mjs",
     "test:e2e:package": "node e2e/package-run.mjs",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test:e2e:emode": "node e2e/emode.mjs",
+    "test:e2e:stage": "node e2e/stage.mjs"
   },
   "dependencies": {
     "@naviprotocol/lending": "2.2.0",

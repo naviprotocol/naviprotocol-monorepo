@@ -1,0 +1,49 @@
+# Second #127 review, after the fix (ef4f190; dist identical to the one tested).
+
+## stage.mjs  commit b82afe5 dirty  2026-11-24T01:10:23.938Z
+PASSED ST-03 invalid env :: {"rejected": 8}
+PASSED ST-04 env with a custom dataSource :: {"rejected": 1}
+PASSED ST-01 env omitted reads prod; ST-02/ST-12 env dev reads stage_v2 only :: {"prodPackage": "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a", "devPackage": "0x64d89919ad10c78c27385429873334365823ebe21971f6450e58dbe61a5bacc0"}
+PASSED ST-07/ST-08/ST-09/ST-10 strategy feed selection :: {"dev": 3, "prod": 2, "prodHasRatio": false, "rejected": ["debt has no own feed", "RR without own feed", "two own feeds", "two RR feeds"]}
+PASSED ST-06 dev has no Multiply Registry :: {"rejected": 3}
+PASSED ST-19 a refused created-Cap build leaves the PTB untouched :: {"commandsBefore": 1, "commandsAfter": 1}
+PASSED ST-20 a prod quote (existing Cap) is refused by a dev client :: {"buildPTBForSimulation": {"code": "INVALID_QUOTE", "message": "Quote was made for NAVI env prod; this client targets dev", "commandsBefore": 1, "commandsAfter": 1}, "buildPTB": {"code": "INVALID_QUOTE", "message": "Quot
+PASSED ST-21 a dev quote (existing Cap) is refused by a prod client :: {"buildPTBForSimulation": {"code": "INVALID_QUOTE", "message": "Quote was made for NAVI env dev; this client targets prod", "commandsBefore": 1, "commandsAfter": 1}, "buildPTB": {"code": "INVALID_QUOTE", "message": "Quot
+PASSED ST-22 a prod create-quote is refused by a dev client even with an explicit capRegistry :: {"commandsBefore": 1, "commandsAfter": 1}
+PASSED LQ-05 flash + borrow above the headroom, borrow below it, within cash: the chain accepts it :: {"reserve": {"coinType": "0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC", "decimals": 8, "availableBorrow": "5615", "headroomRaw": "561", "poolBalanceRaw": "1146", "apiBalanceRaw": "1136"
+PASSED LQ-06 flash + borrow above cash, borrow within headroom: the borrow aborts on the cash :: {"reserve": {"coinType": "0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC", "decimals": 8, "availableBorrow": "5615", "headroomRaw": "561", "poolBalanceRaw": "1146", "apiBalanceRaw": "1136"
+PASSED LQ-08 a borrow above the headroom with cash to spare: the borrow aborts on the cap :: {"reserve": {"coinType": "0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC", "decimals": 8, "availableBorrow": "5615", "headroomRaw": "561", "poolBalanceRaw": "1146", "apiBalanceRaw": "1136"
+PASSED ST-02/ST-05/ST-07/ST-12 open on stage_v2 vsui-sui with a PTB-created Cap :: {"hf": 2.790000001424381, "quotedHf": 2.789999999401, "collateral": "1681945045", "debt": "599999992", "leverage": "1.500000000160", "packages": ["0x0000000000000000000000000000000000000000000000000000000000000002", "0x2
+PASSED ST-07 without the RR push the same open aborts 1502 :: {"status": "Transaction resolution failed: MoveAbort in 15th command, abort code: 1502, in '0x64d89919ad10c78c27385429873334365823ebe21971f6450e58dbe61a5bacc0::calculator::calculate_value' (instruction 9)"}
+PASSED ST-12 add_principal keeps leverage :: {"before": {"c": "1681945045", "d": "599999992", "hf": 2.7900000030976075}, "after": {"c": "3363890090", "d": "1199999984", "hf": 2.790000001193672}, "quotedLeverage": "1.500000000376"}
+PASSED ST-12 remove_principal :: {"before": {"c": "1681945045", "d": "599999991", "hf": 2.7900000080954377}, "after": {"c": "410360241", "d": "146373632", "hf": 2.790268996271186}, "quotedLeverage": "1.499927700123"}
+PASSED ST-12 close :: {"before": {"c": "1681945045", "d": "599999991", "hf": 2.7900000096588666}, "after": {"c": "0", "d": "0", "hf": 1.157920892373162e+50}, "quotedLeverage": null}
+
+## run.mjs  commit ef4f190 clean  2026-11-24T01:16:02.069Z
+PASSED discovery :: null
+PASSED invalid-inputs :: null
+PASSED open-volo :: null
+PASSED open-haedal :: null
+PASSED small-haedal-fallback :: null
+PASSED default-fallback :: null
+PASSED quote-guards :: null
+PASSED custom-fallback :: null
+PASSED add-principal :: null
+PASSED remove-principal :: null
+PASSED leverage-up :: null
+PASSED leverage-down :: null
+PASSED repay :: null
+PASSED add-collateral :: null
+PASSED close :: null
+FAILED add-principal-collateral-target :: MultiplyError: Conversion quotes could not achieve the requested leverage within tolerance     at a (file:///Users/xavier/WorkingSpace/navi/_wt/multiply-emode/packages/multiply/dist/utils.js:10:17)     at we (file:///Use
+PASSED close-haedal :: null
+
+## run-tl05-rerun.mjs  commit ef4f190 clean  2026-11-24T01:18:20.778Z
+PASSED add-principal-collateral-target :: null
+
+## emode.mjs (MULTIPLY_E2E_ADDRESS=0x39c7…d9ba)
+PASSED main-vsui-sui-5x-quote
+PASSED main-vsui-sui-targeted-group-read
+PASSED main-vsui-sui-5x-new-cap
+PASSED main-vsui-sui-invalid-mode-rollback
+PASSED main-vsui-sui-final-hf-rollback
