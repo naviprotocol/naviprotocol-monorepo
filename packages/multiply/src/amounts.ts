@@ -1,5 +1,5 @@
 import type { Pool } from '@naviprotocol/lending'
-import type { MarketSnapshot, PositionAmounts, Strategy } from './types'
+import type { Action, ExecutionPlan, MarketSnapshot, PositionAmounts, Strategy } from './types'
 import { BN, check, decimal } from './utils'
 
 /** NAVI stores lending balances/capacity at 9 decimals, independently of Coin<T>. */
@@ -129,6 +129,27 @@ export function withinSameReserveCapacity(
 export const LEVERAGE_TOLERANCE = '0.0001'
 export function leverageCeiling(maxLeverage: string) {
   return new BN(maxLeverage).times(new BN(1).plus(LEVERAGE_TOLERANCE))
+}
+
+/**
+ * The `maxLeverage` bound of one action, the same at quote, live rebuild and on chain. An action
+ * that adds debt (`increase`: open, add_principal, a raising set_leverage) must land within the
+ * ceiling. Repay, a collateral top-up and close only lower leverage, so `maxLeverage` never refuses
+ * them (`undefined`): a position above the ceiling — prices moved, or an open landed inside the
+ * band — must stay exitable. Any other decrease may keep such a position's leverage but not raise
+ * it: its bound is the higher of the ceiling and the current leverage with the same band.
+ */
+export function leverageLimit(
+  maxLeverage: string | undefined,
+  action: Pick<Action, 'type'>,
+  direction: ExecutionPlan['direction'],
+  currentLeverage: string | null
+) {
+  if (!maxLeverage || ['close', 'repay', 'add_collateral'].includes(action.type)) return undefined
+  const ceiling = leverageCeiling(maxLeverage)
+  return direction === 'increase' || currentLeverage === null
+    ? ceiling
+    : BN.maximum(ceiling, leverageCeiling(currentLeverage))
 }
 
 /** A lowered borrowing cap must still permit repayment, collateral top-up and exit. */

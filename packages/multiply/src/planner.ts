@@ -20,7 +20,7 @@ import {
   amountCushion,
   atomPrices,
   borrowCapacity,
-  leverageCeiling,
+  leverageLimit,
   supplyCapacity,
   withinLtv,
   withinSameReserveCapacity
@@ -192,8 +192,27 @@ export async function plan(
     'STALE_QUOTE',
     'Market snapshot is stale'
   )
-  if (constraints.maxLeverage)
+  const increasing =
+    action.type === 'open' ||
+    action.type === 'add_principal' ||
+    (action.type === 'set_leverage' && target.gt(current.leverage ?? '1'))
+  // An explicit target that adds debt is held to maxLeverage itself; the band only absorbs rounding.
+  if (constraints.maxLeverage && increasing && specified !== undefined)
     check(target.lte(constraints.maxLeverage), 'CONSTRAINT_VIOLATION', 'Target exceeds maxLeverage')
+  const limit = leverageLimit(
+    constraints.maxLeverage,
+    action,
+    increasing ? 'increase' : 'decrease',
+    current.leverage
+  )
+  if (limit)
+    check(
+      target.lte(limit),
+      'CONSTRAINT_VIOLATION',
+      specified === undefined
+        ? 'Current leverage exceeds maxLeverage'
+        : 'Target exceeds maxLeverage'
+    )
   const inputs: { coinType: string; amount: string }[] = [],
     outputs: typeof inputs = [],
     minOutputs: typeof inputs = []
@@ -291,11 +310,7 @@ export async function plan(
       const change = BN.maximum(0, n(action.amount).minus(D)).toFixed(0)
       if (change !== '0') outputs.push({ coinType: strategy.debtCoinType, amount: change })
     } else result.collateralAfter = result.minCollateralAfter = C.plus(action.amount).toFixed(0)
-  } else if (
-    action.type === 'open' ||
-    action.type === 'add_principal' ||
-    (action.type === 'set_leverage' && target.gt(current.leverage ?? '1'))
-  ) {
+  } else if (increasing) {
     const P = n('amount' in action ? action.amount : '0')
     const inputType =
       'inputCoinType' in action && action.inputCoinType
@@ -843,9 +858,15 @@ export async function plan(
       'CONSTRAINT_VIOLATION',
       'Projected debt exceeds collateral LTV'
     )
-    if (constraints.maxLeverage && conservative.leverage)
+    const resultLimit = leverageLimit(
+      constraints.maxLeverage,
+      action,
+      candidate.direction,
+      current.leverage
+    )
+    if (resultLimit && conservative.leverage)
       check(
-        n(conservative.leverage).lte(leverageCeiling(constraints.maxLeverage)),
+        n(conservative.leverage).lte(resultLimit),
         'CONSTRAINT_VIOLATION',
         'Leverage at the minimum conversion output exceeds maxLeverage'
       )

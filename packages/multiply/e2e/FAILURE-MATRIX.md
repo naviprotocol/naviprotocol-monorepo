@@ -314,3 +314,13 @@ second `destroy_some` (command 40, lending call at 41). Before `transient` was d
 every lifecycle scenario inside the binding. `verify-evidence.mjs` also lacked `add-principal-collateral-target` (TL-05)
 and failed on any full run; it is now listed. `stage.mjs`, `emode.mjs` and vault-strategy were not rerun: a suite that
 supplies a PTB-created Cap under a placeholder identity must add `transient: true` to that Cap.
+
+### Second review of PR #125 (2026-11-24, on head 2a17675)
+
+| ID | Failure | Required behaviour | E2E |
+|----|---------|--------------------|-----|
+| RV-05 | A position above `maxLeverage` (inside RV-01's band after an open at the limit, or above it after a price move) has its current leverage as the implicit target of `close`, `repay`, `add_collateral`, `add_principal` and `remove_principal`, so the raw pre-check refused all of them with "Target exceeds maxLeverage", including close. The final, live-rebuild and on-chain checks also refused a partial repay or top-up that left it above the ceiling | `leverageLimit`, shared by quote, live rebuild and chain: `close`, `repay` and `add_collateral` only lower leverage and are never bounded (no on-chain check is emitted). Actions that add debt (`open`, `add_principal`, a raising `set_leverage`) stay within the ceiling, and an explicit target within `maxLeverage` itself. Other decreases may keep the current leverage but not raise it: bound = max(ceiling, current × 1.0001) | unit `keeps a position inside the maxLeverage band manageable…`, `never refuses risk reduction above maxLeverage…` |
+
+Result: unit tests pass (both new cases fail with the fix reverted: "Target exceeds maxLeverage"), typecheck, lint, build.
+`run.mjs` (constraints `maxLeverage: '3'`) on mainnet simulation from the rebuilt `dist`: 18/18, evidence verified
+(115 artifacts, `broadcast=false`); `repay`, `add-collateral` and `close` now run without the on-chain leverage check.

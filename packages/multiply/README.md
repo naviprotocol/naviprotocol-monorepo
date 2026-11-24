@@ -73,7 +73,11 @@ HF; empty/non-positive equity has null leverage.
 `maxLeverage` bounds leverage at the **minimum** conversion output, at quote, live
 rebuild and on chain, with the solver's 0.01% tolerance: a target equal to it is
 reachable at zero slippage, and a nonzero `maxSlippageBps` needs matching headroom
-above the target. `repay` and `add_collateral` stay available without positive
+above the target. It bounds only what can raise leverage: `close`, `repay` and
+`add_collateral` are never refused by it, and `remove_principal` or a lowering
+`set_leverage` on a position already above it may keep, but not raise, the current
+leverage; `add_principal` there is refused, since it adds debt. `repay` and
+`add_collateral` stay available without positive
 equity, but the result must still meet `minHealthFactor`. A `remove_principal`
 target that would need new debt is `ACTION_UNSUPPORTED`. `add_principal` levers
 the amount it adds to the target, or to the current leverage when none is given.

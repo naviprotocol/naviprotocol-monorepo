@@ -43,7 +43,8 @@ export interface Constraints {
   /**
    * Additional ceiling on leverage at the minimum conversion output, also checked on chain; omitted
    * means protocol/HF limits apply. Enforced with the solver's 0.01% tolerance, so a target equal
-   * to it is reachable; with nonzero slippage leave headroom above the target.
+   * to it is reachable; with nonzero slippage leave headroom above the target. Never refuses
+   * close, repay or add_collateral; other decreases may keep, but not raise, a leverage above it.
    */
   maxLeverage?: string
 }

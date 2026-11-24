@@ -33,7 +33,7 @@ import {
   positionSides,
   atomPrices,
   borrowCapacity,
-  leverageCeiling,
+  leverageLimit,
   withinSameReserveCapacity,
   supplyCapacity,
   tokenDecimals,
@@ -466,9 +466,15 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'STALE_QUOTE',
       'Current market snapshot is stale'
     )
-    if (q.constraints.maxLeverage && risk.leverage)
+    const liveLimit = leverageLimit(
+      q.constraints.maxLeverage,
+      q.action,
+      e.direction,
+      metrics(now, fresh).leverage
+    )
+    if (liveLimit && risk.leverage)
       check(
-        new BN(risk.leverage).lte(leverageCeiling(q.constraints.maxLeverage)),
+        new BN(risk.leverage).lte(liveLimit),
         'STALE_QUOTE',
         'Updated market exceeds maximum leverage'
       )
@@ -908,7 +914,14 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         })
       }
     }
-    if (q.constraints.maxLeverage !== undefined) {
+    // Not emitted for repay, top-up and close: they only lower leverage (leverageLimit).
+    const chainLimit = leverageLimit(
+      q.constraints.maxLeverage,
+      q.action,
+      e.direction,
+      metrics(now, fresh).leverage
+    )
+    if (chainLimit) {
       const readValue = (fn: string, asset: number) =>
         tx.moveCall({
           target: `${config.package}::logic::${fn}`,
@@ -931,10 +944,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
           arguments: [product]
         })
       }
-      // The same ceiling the quote accepted, so a plan at the limit is not refused on chain.
-      const limit = leverageCeiling(q.constraints.maxLeverage)
-        .shiftedBy(12)
-        .integerValue(BN.ROUND_FLOOR)
+      // The same bound the quote accepted, so a plan at the limit is not refused on chain.
+      const limit = chainLimit.shiftedBy(12).integerValue(BN.ROUND_FLOOR)
       const collateralLimit = multiply(
         readValue('user_collateral_value', fresh.collateral.id),
         limit.minus('1e12').toFixed(0)

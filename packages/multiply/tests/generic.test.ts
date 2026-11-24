@@ -1762,6 +1762,64 @@ describe('ceilings, risk-reducing top-ups and exact deleveraging', () => {
       f.engine.quote(owner, f.strategy, { type: 'repay', amount: raw(1, 6) }, constraints)
     ).rejects.toMatchObject({ code: 'INVALID_ACCOUNT_CAP' })
   })
+
+  it('keeps a position inside the maxLeverage band manageable with the same constraints', async () => {
+    const f = fixture(9, 9, true)
+    // An open at targetLeverage = maxLeverage may land inside the 0.01% band: 200 / 66.6622 ≈ 3.0002x.
+    f.setPosition({ collateralAmount: raw(100, 9), debtAmount: raw('133.3378', 9) })
+    const capped = { ...loose, maxLeverage: '3' }
+    for (const action of [
+      { type: 'close' },
+      { type: 'repay', amount: raw(1, 9) },
+      { type: 'add_collateral', amount: raw(1, 9) },
+      { type: 'add_principal', amount: raw(1, 9) },
+      { type: 'remove_principal', amount: raw(1, 9) }
+    ] as Action[]) {
+      const q = await f.engine.quote(owner, f.strategy, action, capped)
+      const { tx } = await build(f, q)
+      // Only the actions that can hold or raise leverage carry the on-chain bound.
+      expect(calls(tx).includes('u256::checked_mul')).toBe(
+        action.type === 'add_principal' || action.type === 'remove_principal'
+      )
+    }
+  })
+
+  it('never refuses risk reduction above maxLeverage, but refuses raising leverage there', async () => {
+    const f = fixture(9, 9, true)
+    // 200 USD collateral, 150 USD debt: 4x, above maxLeverage 3 (prices moved after the open).
+    f.setPosition({ collateralAmount: raw(100, 9), debtAmount: raw(150, 9) })
+    const capped = { ...loose, maxLeverage: '3' }
+    for (const action of [
+      { type: 'repay', amount: raw(10, 9) },
+      { type: 'add_collateral', amount: raw(5, 9) },
+      { type: 'close' }
+    ] as Action[]) {
+      const q = await f.engine.quote(owner, f.strategy, action, capped)
+      const { tx } = await build(f, q)
+      expect(calls(tx)).not.toContain('u256::checked_mul')
+    }
+    // A partial deleverage that stays above the ceiling may not raise leverage past the current 4x.
+    const down = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '3.5' },
+      capped
+    )
+    const { tx } = await build(f, down)
+    expect(pureU256(tx)).toEqual(expect.arrayContaining(['4000400000000', '3000400000000']))
+    for (const [action, message] of [
+      [{ type: 'add_principal', amount: raw(1, 9) }, 'Current leverage exceeds maxLeverage'],
+      [{ type: 'set_leverage', targetLeverage: '4.5' }, 'Target exceeds maxLeverage'],
+      [
+        { type: 'remove_principal', amount: raw(1, 9), targetLeverage: '4.5' },
+        'Target exceeds maxLeverage'
+      ]
+    ] as [Action, string][])
+      await expect(f.engine.quote(owner, f.strategy, action, capped)).rejects.toMatchObject({
+        code: 'CONSTRAINT_VIOLATION',
+        message
+      })
+  })
 })
 
 describe('price-and-fee seed before the existing leverage solver', () => {
