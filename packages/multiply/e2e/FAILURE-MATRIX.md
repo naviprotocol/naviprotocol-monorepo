@@ -229,3 +229,39 @@ Review follow-up results (2026-11-23), each case failing before the fix and pass
 - ST-19: `stage.mjs` ST-19 — before: commands appended before the `MARKET_UNSUPPORTED` refusal; after: none.
 Regression: unit 263/263, `stage.mjs` 11/11, `emode.mjs` 5/5 (address override), `run.mjs` 16/17 (`close-haedal`
 market-dependent, as above), vault-strategy sui-lst-multiply 19/19.
+
+## PR #127 review, second round (alexayan, 2026-11-24, before the code)
+
+**Same-reserve capacity is two limits, not one.** NAVI's borrow-cap check (`validate_borrow`) uses the reserve's
+accounting (total borrow + amount against total supply × borrow cap); a flash loan moves coins out of the pool without
+touching that accounting. The pool's coins (`Pool<T>` balance, the lending API's `balance`, in the coin's own decimals)
+must cover everything withdrawn while the flash is outstanding. LQ-01 compared flash + borrow + fee with
+`availableBorrow`, which is the borrow-cap headroom, not cash. The two are unrelated in general: SUI main on mainnet
+2026-11-24 has 5.05M SUI headroom and 5.94M cash; stage_v2 main vSUI has 3.15 vSUI headroom and 25.7 cash; stage_v2 main
+USDC has 12,102 USDC headroom and 12.8 cash. The LQ-01 abort (`balance::split` inside the borrow) was the cash running
+out. The borrow fee is counted as a cash outflow too (conservative by at most the fee).
+
+| ID | Failure | Required behaviour | E2E |
+|----|---------|--------------------|-----|
+| LQ-05 | Main-market plan with cash for flash + borrow but little borrow headroom (borrow + fee ≤ `availableBorrow` < flash + borrow + fee ≤ cash) is refused `CAPACITY_EXCEEDED` although the chain accepts it | Quoted and built: borrow + fee is checked against `availableBorrow`, flash + borrow + fee against cash | `stage.mjs` LQ-05: on stage_v2 main (real chain, simulation), a raw PTB flash-loans vSUI and borrows vSUI from the same reserve with flash + borrow above the headroom and borrow below it: it succeeds (a flash does not use headroom). Unit: alexayan's fixture (supply 1000, borrowed 700, cap 78%: headroom 80, cash 300; 100 at 1.5x → flash 50, borrow 50) quotes and builds |
+| LQ-06 | Cash short while headroom is ample (headroom can exceed cash: stage_v2 USDC) — flash + borrow + fee ≤ `availableBorrow` but > cash passes the quote and the preflight and aborts on chain | `CAPACITY_EXCEEDED` at the quote and again in `readLiveBuildState`, before any command | `stage.mjs` LQ-06: on stage_v2 main a borrow above the USDC cash and far below its headroom aborts on chain (headroom is not cash). Unit: cash 99 for flash 50 + borrow 50 refused at quote and build; cash 100 passes |
+| LQ-07 | Units: `debt.balance` is raw in the coin's decimals, `availableBorrow` is lending's 9-decimal amount; mixing them is off by 10^(9−d) | Cash compared raw-to-raw with the plan amounts; headroom converted with `lendingToRaw` as before | Unit: LQ-05 / LQ-06 for every decimal pair of `generic.test.ts` (9/6, 6/9, 8/6, …), at the exact boundary |
+| LQ-08 | The headroom check stays: borrow + fee > `availableBorrow` with ample cash | `CAPACITY_EXCEEDED` (unchanged) | `stage.mjs` LQ-08: a vSUI borrow just above the headroom aborts on chain (`validate_borrow`). Unit: headroom 49 for borrow 50 refused |
+| LQ-09 | Cash missing or not an unsigned integer in the snapshot (custom data source, API without `balance`) | Fail closed `READ_FAILED` for a main-market plan that withdraws anything, before any command | Unit: `balance` deleted / `'1.5'` / `'-1'` |
+| LQ-10 | Flash-only exit (LQ-04) bounded only by `flash.max`, a configured maximum, not by cash | The exit's flash is checked against cash too; at the borrow cap with cash left it stays possible (LQ-04) | vault-strategy LS-17 unchanged (passes). Unit: flash-only set_leverage down with headroom 0 passes; with cash below the flash refused |
+
+**Stored quotes are not bound to a NAVI env.** `buildPTBForSimulation` takes `q.execution.market` (prod package,
+storage, pools) as it is, and nothing in the quote says which env produced it, so a prod quote is assembled by a dev
+client (and the other way round) — the default `prepareOracle` then reads the client's own env, mixing two deployments
+in one PTB. ST-19 covered only a created Cap without `capRegistry`.
+
+| ID | Failure | Required behaviour | E2E |
+|----|---------|--------------------|-----|
+| ST-20 | prod quote, existing Cap, built by a dev client (`buildPTBForSimulation` and `buildPTB`) | The quote carries its normalized env (`execution.env`, inside the checksum); both build entries refuse a different env `INVALID_QUOTE` before any command | `stage.mjs` ST-20 |
+| ST-21 | dev quote, existing Cap, built by a prod client | Same | `stage.mjs` ST-21 |
+| ST-22 | created Cap with an explicit `capRegistry` on both clients (passes the ST-19 Registry check) | Same | `stage.mjs` ST-22 |
+| ST-23 | A quote made before this change (no `execution.env`, valid checksum) | `INVALID_QUOTE` "request a fresh quote" | Unit: env removed and checksum recomputed |
+| ST-24 | Same-env stored quotes | Build as before | `stage.mjs` lifecycle (dev → dev), unit "builds the same PTB for simulation" (prod → prod) |
+
+ST-19 keeps its assertion that the PTB is untouched; its refusal now comes from the env check (`INVALID_QUOTE`), which
+runs first.
