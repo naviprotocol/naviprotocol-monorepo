@@ -316,9 +316,163 @@ try {
     tx.setSender(address)
     const coin = tx.splitCoins(tx.gas, [PRINCIPAL])[0]
     const before = tx.getData().commands.length
-    await rejects(devEngine.buildPTBForSimulation(tx, quote, [{ coinType: STRATEGY.principalCoinType, coin }]), 'MARKET_UNSUPPORTED')
+    // ST-20..ST-22: the env check runs first, so the refusal is now INVALID_QUOTE; the PTB stays untouched either way.
+    await rejects(devEngine.buildPTBForSimulation(tx, quote, [{ coinType: STRATEGY.principalCoinType, coin }]), 'INVALID_QUOTE')
     assert.equal(tx.getData().commands.length, before, 'commands appended before the refusal')
     return { commandsBefore: before, commandsAfter: tx.getData().commands.length }
+  })
+
+  // ST-20..ST-22 (FAILURE-MATRIX.md, second #127 review): a quote is bound to the env it was made for.
+  const POSITION = { collateralAmount: '10000000000', debtAmount: '2000000000' } // 10 vSUI / 2 SUI, never read on chain
+  const prodSource = sdk.createNaviDataSource({ client, strategies: [STRATEGY] })
+  const prodWith = (position) =>
+    sdk.createMultiplyClient({ client, strategies: [STRATEGY], dataSource: { ...prodSource, listAccountCaps: async () => [placeholderCap], readPosition: async () => position } })
+  const REPAY = { type: 'repay', amount: '100000000' }
+  /** Both build entries of `engine` must refuse `quote` with INVALID_QUOTE and leave the PTB untouched. */
+  async function refusedEverywhere(engine, quote) {
+    const out = {}
+    for (const entry of ['buildPTBForSimulation', 'buildPTB']) {
+      const tx = new Transaction()
+      tx.setSender(address)
+      const coins = quote.estimate.inputs.map((i) => ({ coinType: i.coinType, coin: tx.splitCoins(tx.gas, [i.amount])[0] }))
+      const before = tx.getData().commands.length
+      const run = entry === 'buildPTB' ? engine.buildPTB(tx, quote, { coins }) : engine.buildPTBForSimulation(tx, quote, coins)
+      let error
+      await assert.rejects(run, (e) => ((error = e), true))
+      out[entry] = { code: error.code, message: error.message, commandsBefore: before, commandsAfter: tx.getData().commands.length }
+      assert.equal(error.code, 'INVALID_QUOTE', `${entry}: ${error.code} ${error.message}`)
+      assert.equal(tx.getData().commands.length, before, `${entry}: commands appended before the refusal`)
+    }
+    return out
+  }
+  await scenario('ST-20 a prod quote (existing Cap) is refused by a dev client', async () => {
+    const quote = await prodWith(POSITION).quote(address, STRATEGY, REPAY, constraints)
+    await save('ST-20.quote.json', quote)
+    assert.equal(quote.execution.env, 'prod')
+    return refusedEverywhere(engineWith(POSITION), quote)
+  })
+  await scenario('ST-21 a dev quote (existing Cap) is refused by a prod client', async () => {
+    const quote = await engineWith(POSITION).quote(address, STRATEGY, REPAY, constraints)
+    await save('ST-21.quote.json', quote)
+    assert.equal(quote.execution.env, 'dev')
+    return refusedEverywhere(prodWith(POSITION), quote)
+  })
+  await scenario('ST-22 a prod create-quote is refused by a dev client even with an explicit capRegistry', async () => {
+    const registry = { capRegistry: sdk.MAINNET_CAP_REGISTRY }
+    const prodEngine = sdk.createMultiplyClient({ client, strategies: [STRATEGY], ...registry })
+    const quote = await prodEngine.quote(address, STRATEGY, { type: 'open', amount: PRINCIPAL, targetLeverage: LEVERAGE }, constraints)
+    assert.equal(quote.execution.accountCap.kind, 'create')
+    const devEngine = sdk.createMultiplyClient({ client, env: 'dev', strategies: [STRATEGY], ...registry })
+    const tx = new Transaction()
+    tx.setSender(address)
+    const coin = tx.splitCoins(tx.gas, [PRINCIPAL])[0]
+    const before = tx.getData().commands.length
+    await rejects(devEngine.buildPTBForSimulation(tx, quote, [{ coinType: STRATEGY.principalCoinType, coin }]), 'INVALID_QUOTE')
+    assert.equal(tx.getData().commands.length, before, 'commands appended before the refusal')
+    return { commandsBefore: before, commandsAfter: tx.getData().commands.length }
+  })
+
+  // LQ-05 / LQ-06 / LQ-08 (FAILURE-MATRIX.md, second #127 review): what the chain itself enforces when a flash loan and
+  // a borrow come from the same reserve. Raw lending PTBs on the stage_v2 main WBTC reserve (id 32: headroom ≈ 560 sats,
+  // cash ≈ 1,100 sats, about 1 USD, far below stage's 10 USD/h outflow limit, ST-13), against vSUI collateral staked
+  // from gas through Volo (the stage SUI reserve takes no deposits). No SDK planning involved: this is the model the SDK
+  // check encodes. Abort 3200 (the outflow limit) is never accepted as the expected abort.
+  const VSUI = STRATEGY.collateralCoinType
+  const DEBT_RESERVE = 32
+  const STAKE_SUI = '3000000000'
+  const devMain = { env: 'dev', market: 'main', client, disableCache: true }
+  const ct = (t) => { const [a, ...rest] = t.split('::'); return [norm(a), ...rest].join('::') }
+  async function stageReserves() {
+    const market = await lending.getMarket('main', { env: 'dev', disableCache: true })
+    const vsui = market.pools.find((p) => ct(p.suiCoinType) === ct(VSUI))
+    const debt = market.pools.find((p) => p.id === DEBT_RESERVE)
+    assert(vsui && debt, 'stage_v2 main has the vSUI and debt reserves')
+    const d = debt.token.decimals
+    // availableBorrow is lending's 9-decimal amount; balance is raw pool cash in the coin's decimals.
+    assert(d <= 9)
+    const headroom = BigInt(String(debt.availableBorrow).split('.')[0]) / 10n ** BigInt(9 - d)
+    // The API's balance ("pool withdrawable balance") is what the SDK checks; it can lag the chain by a few atoms. WBTC
+    // has no staking, so the Pool object's own balance is the exact cash the boundary cases below are set against.
+    const pool = await client.core.getObject({ objectId: debt.contract.pool, include: { json: true } })
+    const onChain = BigInt(pool.object.json.balance)
+    return { vsui, debt, decimals: d, headroom, cash: onChain, apiBalance: debt.balance, availableBorrow: debt.availableBorrow, coinType: debt.suiCoinType }
+  }
+  /** Oracle, Volo stake, vSUI deposit, [flash], borrow, [flash repay]. Returns the status and the borrow's command range. */
+  async function sameReservePTB(name, { flash, borrow }) {
+    const { vsui, debt } = await stageReserves()
+    const DEBT = debt.suiCoinType
+    const tx = new Transaction()
+    tx.setSender(address)
+    const cfg = await lending.getConfig({ env: 'dev', market: 'main', disableCache: true })
+    const feeds = sdk.selectStrategyFeeds(cfg.oracle.feeds, { ...STRATEGY, collateralCoinType: VSUI, debtCoinType: DEBT })
+    await lending.updateOraclePricesPTB(tx, feeds, { ...devMain, updatePythPriceFeeds: true })
+    const volo = sdk.voloConverter({ client })
+    const stake = await volo.quote({ coinIn: STRATEGY.debtCoinType, coinOut: VSUI, amountIn: STAKE_SUI, slippageBps: 50 })
+    const { coinOut } = await volo.buildPTB(tx, stake, tx.splitCoins(tx.gas, [STAKE_SUI])[0], { changeRecipient: address })
+    await lending.depositCoinPTB(tx, vsui, coinOut, { ...devMain, amount: Number(stake.minOutput.amount) })
+    let flashCoin, receipt
+    if (flash > 0n) {
+      const [balance, r] = await lending.flashloanPTB(tx, debt, Number(flash), devMain)
+      flashCoin = tx.moveCall({ target: '0x2::coin::from_balance', typeArguments: [DEBT], arguments: [balance] })
+      receipt = r
+    }
+    const borrowAt = tx.getData().commands.length
+    const borrowed = await lending.borrowCoinPTB(tx, debt, Number(borrow), devMain)
+    const borrowEnd = tx.getData().commands.length
+    if (receipt) {
+      tx.mergeCoins(flashCoin, [borrowed])
+      const repayWith = tx.moveCall({ target: '0x2::coin::into_balance', typeArguments: [DEBT], arguments: [flashCoin] })
+      const [left] = await lending.repayFlashLoanPTB(tx, debt, receipt, repayWith, devMain)
+      tx.transferObjects([tx.moveCall({ target: '0x2::coin::from_balance', typeArguments: [DEBT], arguments: [left] })], address)
+    } else tx.transferObjects([borrowed], address)
+    tx.setGasBudget(500_000_000)
+    let status
+    try {
+      status = txOf(await simulateRaw(name, tx)).status
+    } catch (error) {
+      status = { success: false, error: String(error.message) } // tx.build dry-runs, an abort can surface there
+    }
+    await save(`${name}.status.json`, { status, borrowCommands: [borrowAt, borrowEnd], flash, borrow })
+    const text = JSON.stringify(status)
+    if (text.includes('3200')) throw new Error(`stage outflow limit hit (abort 3200), environment limit, not a result: ${text}`)
+    return { status, text, borrowCommands: [borrowAt, borrowEnd] }
+  }
+  /** The abort happened in one of the borrow's commands ("in Nth command", 1-based). */
+  function abortedIn(r, [from, to]) {
+    const m = /in (\d+)(?:st|nd|rd|th) command/.exec(r.text)
+    assert(m, `no command index in ${r.text}`)
+    const n = Number(m[1]) - 1
+    assert(n >= from && n < to, `aborted in command ${n}, borrow is [${from}, ${to}): ${r.text}`)
+  }
+  const reserveDetail = (r) => ({ coinType: r.coinType, decimals: r.decimals, availableBorrow: r.availableBorrow, headroomRaw: r.headroom, poolBalanceRaw: r.cash, apiBalanceRaw: r.apiBalance })
+  await scenario('LQ-05 flash + borrow above the headroom, borrow below it, within cash: the chain accepts it', async () => {
+    const reserve = await stageReserves()
+    const borrow = (reserve.headroom * 8n) / 10n
+    const flash = (reserve.headroom + reserve.cash) / 2n - borrow
+    assert(borrow > 0n && flash > 0n && flash + borrow > reserve.headroom && flash + borrow < reserve.cash, `stage reserve no longer separates headroom and cash: ${json(reserveDetail(reserve))}`)
+    const r = await sameReservePTB('LQ-05', { flash, borrow })
+    assert.equal(r.status.success, true, r.text)
+    return { reserve: reserveDetail(reserve), flash, borrow, flashPlusBorrow: flash + borrow }
+  })
+  await scenario('LQ-06 flash + borrow above cash, borrow within headroom: the borrow aborts on the cash', async () => {
+    const reserve = await stageReserves()
+    const borrow = (reserve.headroom * 8n) / 10n
+    const flash = reserve.cash - borrow + 1n // one atom above the pool's cash
+    const r = await sameReservePTB('LQ-06', { flash, borrow })
+    assert.equal(r.status.success, false, 'must abort')
+    abortedIn(r, r.borrowCommands)
+    assert.match(r.text, /balance/, r.text)
+    return { reserve: reserveDetail(reserve), flash, borrow, status: r.text.slice(0, 400) }
+  })
+  await scenario('LQ-08 a borrow above the headroom with cash to spare: the borrow aborts on the cap', async () => {
+    const reserve = await stageReserves()
+    const borrow = reserve.headroom + 10n
+    assert(borrow < reserve.cash)
+    const r = await sameReservePTB('LQ-08', { flash: 0n, borrow })
+    assert.equal(r.status.success, false, 'must abort')
+    abortedIn(r, r.borrowCommands)
+    assert.match(r.text, /validate_borrow/, r.text)
+    return { reserve: reserveDetail(reserve), borrow, status: r.text.slice(0, 400) }
   })
 
   let seed

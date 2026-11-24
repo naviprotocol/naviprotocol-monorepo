@@ -31,11 +31,12 @@ function fixture(
   existing = false,
   collateralPrincipal = false,
   allowCollateralDustClose = false,
-  emodeId?: number
+  emodeId?: number,
+  marketName = 'external-market'
 ) {
   const strategy: Strategy = {
     id: `external-pair-${collateralDecimals}-${debtDecimals}`,
-    market: 'external-market',
+    market: marketName,
     allowCollateralDustClose,
     ...(emodeId !== undefined ? { emodeId } : {}),
     registryKey: { strategyNumericId: '100', strategyVersion: '1' },
@@ -68,7 +69,9 @@ function fixture(
       id: 2,
       contract: { pool: object },
       token: { decimals: debtDecimals },
-      availableBorrow: raw(1000000, 9)
+      availableBorrow: raw(1000000, 9),
+      // Pool cash, raw in the coin's own decimals (lending API `balance`).
+      balance: raw(1000000, debtDecimals)
     },
     collateralPrice: '2',
     debtPrice: '1',
@@ -1313,4 +1316,144 @@ it('preserves a six-decimal E-Mode dust exit without re-entering mode or funding
     protocolDebtAmount: '0'
   })
   await expect(build(f, quote)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
+})
+
+// LQ-05..LQ-10 (e2e/FAILURE-MATRIX.md, second #127 review): on a main-market strategy the borrow uses borrow-cap
+// headroom (`availableBorrow`, lending 9-decimal) and flash + borrow + fee use pool cash (`debt.balance`, raw in the
+// coin's decimals). Fixture from the review: headroom 80, cash 300; 100 at 1.5x → flash 50, borrow 50.
+describe.each([
+  [9, 6],
+  [6, 9],
+  [8, 6],
+  [9, 9]
+])('main-market same-reserve capacity (%i/%i decimals)', (cd, dd) => {
+  const open: Action = { type: 'open', amount: raw(100, dd), targetLeverage: '1.5' }
+  const main = (existing = false) => fixture(cd, dd, existing, false, false, undefined, 'main')
+  const headroom = (f: ReturnType<typeof main>, rawAmount: BN.Value) => {
+    f.market.debt.availableBorrow = new BN(rawAmount).shiftedBy(9 - dd).toFixed()
+  }
+  const near = (value: string, whole: number) =>
+    expect(new BN(value).minus(raw(whole, dd)).abs().lte(2)).toBe(true)
+  const refused = async (f: ReturnType<typeof main>, action: Action, q: unknown) => {
+    await expect(f.engine.quote(owner, f.strategy, action, constraints)).rejects.toMatchObject({
+      code: 'CAPACITY_EXCEEDED'
+    })
+    await expect(build(f, q as Parameters<typeof build>[1])).rejects.toMatchObject({
+      code: 'CAPACITY_EXCEEDED'
+    })
+  }
+
+  it('LQ-05: cash for flash + borrow, headroom only for the borrow → quoted and built', async () => {
+    const f = main()
+    f.market.debt.availableBorrow = raw(80, 9)
+    f.market.debt.balance = raw(300, dd)
+    const q = await f.engine.quote(owner, f.strategy, open, constraints)
+    near(q.execution.flashAmount, 50)
+    near(q.execution.borrowAmount, 50)
+    await expect(build(f, q)).resolves.toBeDefined()
+  })
+
+  it('LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary', async () => {
+    const f = main()
+    const q = await f.engine.quote(owner, f.strategy, open, constraints)
+    const e = q.execution
+    const need = new BN(e.flashAmount).plus(e.borrowAmount).plus(e.borrowFee)
+    f.market.debt.balance = need.toFixed(0)
+    await expect(f.engine.quote(owner, f.strategy, open, constraints)).resolves.toBeDefined()
+    await expect(build(f, q)).resolves.toBeDefined()
+    f.market.debt.balance = need.minus(1).toFixed(0)
+    await refused(f, open, q)
+  })
+
+  it('LQ-08: the borrow alone is still bounded by headroom, at the exact boundary', async () => {
+    const f = main()
+    const q = await f.engine.quote(owner, f.strategy, open, constraints)
+    const borrow = new BN(q.execution.borrowAmount).plus(q.execution.borrowFee)
+    headroom(f, borrow)
+    await expect(build(f, q)).resolves.toBeDefined()
+    headroom(f, borrow.minus(1))
+    await refused(f, open, q)
+  })
+
+  it.each([undefined, '1.5', '-1', ''])('LQ-09: cash %s fails closed', async (cash) => {
+    const f = main()
+    if (cash === undefined) delete (f.market.debt as { balance?: string }).balance
+    else f.market.debt.balance = cash
+    await expect(f.engine.quote(owner, f.strategy, open, constraints)).rejects.toMatchObject({
+      code: 'READ_FAILED'
+    })
+  })
+
+  it('LQ-10: a flash-only exit needs cash for the flash, not headroom', async () => {
+    const f = main(true)
+    const down: Action = { type: 'set_leverage', targetLeverage: '1.5' }
+    f.market.debt.availableBorrow = '0'
+    const q = await f.engine.quote(owner, f.strategy, down, constraints)
+    expect(q.execution.borrowAmount).toBe('0')
+    expect(new BN(q.execution.flashAmount).gt(0)).toBe(true)
+    await expect(build(f, q)).resolves.toBeDefined()
+    f.market.debt.balance = new BN(q.execution.flashAmount).minus(1).toFixed(0)
+    await refused(f, down, q)
+  })
+})
+
+// ST-20..ST-23 (e2e/FAILURE-MATRIX.md): a quote is bound to the NAVI env it was made for.
+describe('stored quotes and the NAVI env', () => {
+  const reseal = async (q: Awaited<ReturnType<ReturnType<typeof fixture>['engine']['quote']>>) => {
+    q.execution.checksum = ''
+    q.execution.checksum = await checksum(q)
+    return q
+  }
+  const simulate = (f: ReturnType<typeof fixture>, q: Parameters<typeof build>[1]) => {
+    const tx = new Transaction()
+    const coins = q.estimate.inputs.map((input, i) => ({
+      coinType: input.coinType,
+      coin: tx.object(`0x${i + 100}`)
+    }))
+    const before = tx.getData().commands.length
+    return { tx, before, run: () => f.engine.buildPTBForSimulation(tx, q, coins) }
+  }
+
+  it.each([false, true])(
+    'ST-20/ST-21: a quote for another env is refused before any command (existing Cap: %s)',
+    async (existing) => {
+      const f = fixture(9, 6, existing)
+      const action: Action = existing
+        ? { type: 'repay', amount: raw(1, 6) }
+        : { type: 'open', amount: raw(100, 6), targetLeverage: '2' }
+      const q = await f.engine.quote(owner, f.strategy, action, constraints)
+      expect((q.execution as { env?: string }).env).toBe('prod')
+      ;(q.execution as { env?: string }).env = 'dev'
+      await reseal(q)
+      for (const entry of ['simulation', 'live'] as const) {
+        const s = simulate(f, q)
+        const run =
+          entry === 'simulation'
+            ? s.run()
+            : f.engine.buildPTB(s.tx, q, {
+                coins: q.estimate.inputs.map((input, i) => ({
+                  coinType: input.coinType,
+                  coin: s.tx.object(`0x${i + 200}`)
+                }))
+              })
+        await expect(run).rejects.toMatchObject({ code: 'INVALID_QUOTE' })
+        expect(s.tx.getData().commands.length).toBe(s.before)
+      }
+    }
+  )
+
+  it('ST-23: a quote without an env (made before the binding) asks for a fresh quote', async () => {
+    const f = fixture(9, 6, true)
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'repay', amount: raw(1, 6) },
+      constraints
+    )
+    delete (q.execution as { env?: string }).env
+    await reseal(q)
+    const s = simulate(f, q)
+    await expect(s.run()).rejects.toMatchObject({ code: 'INVALID_QUOTE' })
+    expect(s.tx.getData().commands.length).toBe(s.before)
+  })
 })

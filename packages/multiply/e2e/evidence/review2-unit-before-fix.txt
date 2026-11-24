@@ -1,0 +1,196 @@
+ ✓ tests/generic.test.ts > builds the same PTB for simulation without live preflight (existing Cap: false) 12ms
+ ✓ tests/generic.test.ts > builds the same PTB for simulation without live preflight (existing Cap: true) 2ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > opens an unbundled pair, values native amounts, and builds its PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > discovers only the supplied registry and preserves native position units 0ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > add_principal at 2 supports quote and build 2ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > remove_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > set_leverage at 2.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > set_leverage at 1.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > set_leverage at 1 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > repay at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > add_collateral at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > close at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > checks normalized borrow capacity and whole-token supply capacity at quote and build 2ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > rechecks mixed-decimal risk and drift before mutating a PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > permits repay after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > permits add_collateral after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > permits close after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/6 decimals > permits set_leverage after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > opens an unbundled pair, values native amounts, and builds its PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > discovers only the supplied registry and preserves native position units 0ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > add_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > remove_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > set_leverage at 2.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > set_leverage at 1.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > set_leverage at 1 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > repay at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > add_collateral at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > close at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > checks normalized borrow capacity and whole-token supply capacity at quote and build 2ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > rechecks mixed-decimal risk and drift before mutating a PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > permits repay after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > permits add_collateral after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > permits close after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 6/9 decimals > permits set_leverage after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > opens an unbundled pair, values native amounts, and builds its PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > discovers only the supplied registry and preserves native position units 0ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > add_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > remove_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > set_leverage at 2.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > set_leverage at 1.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > set_leverage at 1 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > repay at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > add_collateral at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > close at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > checks normalized borrow capacity and whole-token supply capacity at quote and build 2ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > rechecks mixed-decimal risk and drift before mutating a PTB 2ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > permits repay after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > permits add_collateral after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > permits close after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 8/6 decimals > permits set_leverage after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > opens an unbundled pair, values native amounts, and builds its PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > discovers only the supplied registry and preserves native position units 0ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > add_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > remove_principal at 2 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > set_leverage at 2.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > set_leverage at 1.5 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > set_leverage at 1 supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > repay at undefined supports quote and build 0ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > add_collateral at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > close at undefined supports quote and build 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > checks normalized borrow capacity and whole-token supply capacity at quote and build 2ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > rechecks mixed-decimal risk and drift before mutating a PTB 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > permits repay after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > permits add_collateral after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > permits close after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > injected strategy: 9/9 decimals > permits set_leverage after borrowing/supply capacity is withdrawn without relaxing HF 1ms
+ ✓ tests/generic.test.ts > rejects duplicate configured IDs and snapshots caller registry input 0ms
+ ✓ tests/generic.test.ts > converts normalized fractional interest conservatively and scales the drift cushion 0ms
+ ✓ tests/generic.test.ts > rejects unsupported principal and invalid E-Mode IDs without hardcoding pair IDs 0ms
+ ✓ tests/generic.test.ts > rejects a tiny position when native precision cannot achieve its requested leverage 0ms
+ ✓ tests/generic.test.ts > refreshes a stale solver bracket when the route moves, preserving the target bound 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 6/9 position (90 tokens) 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 6/9 position (95 tokens) 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 6/9 position (99 tokens) 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 9/6 position (90 tokens) 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 9/6 position (95 tokens) 1ms
+ ✓ tests/generic.test.ts > converges after withdrawing most equity in a 9/6 position (99 tokens) 1ms
+ ✓ tests/generic.test.ts > does not round a representable small mixed-precision position down to 1x 1ms
+ ✓ tests/generic.test.ts > fails within the quote-count limit when every new route moves away from the target 1ms
+ ✓ tests/generic.test.ts > times out a stalled read-only converter without waiting beyond the solver budget 1ms
+ ✓ tests/generic.test.ts > supports the precision boundary for 18/6 native decimals 1ms
+ ✓ tests/generic.test.ts > supports the precision boundary for 6/18 native decimals 1ms
+ ✓ tests/generic.test.ts > supports the precision boundary for 18/18 native decimals 1ms
+ ✓ tests/generic.test.ts > rejects unsupported token precision -1 0ms
+ ✓ tests/generic.test.ts > rejects unsupported token precision 19 0ms
+ ✓ tests/generic.test.ts > rejects unsupported token precision 255 0ms
+ ✓ tests/generic.test.ts > rejects unsupported token precision 6 0ms
+ ✓ tests/generic.test.ts > rejects old execution-plan units and changed token precision before PTB mutation 1ms
+ ✓ tests/generic.test.ts > decodes normalized chain balances as 6/9 native token atoms 1ms
+ ✓ tests/generic.test.ts > decodes normalized chain balances as 9/6 native token atoms 0ms
+ ✓ tests/generic.test.ts > decodes normalized chain balances as 8/6 native token atoms 0ms
+ ✓ tests/generic.test.ts > adds atomic registration only for a new Cap and binds the sender 2ms
+ ✓ tests/generic.test.ts > rejects changed Cap/deployment/strategy binding and wrong sender before mutation 1ms
+ ✓ tests/generic.test.ts > discovers all configured positions once per operation and rejects custom-source conflicts 0ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > opens with collateral at 1x and 2x 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > opens with debt at 1x and 2x 2ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages add_principal and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages remove_principal and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages repay and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages add_collateral and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages close and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages up and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages down and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > manages debt_free and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 9/6 > closes an unlevered collateral position without conversion or flash loan 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > opens with collateral at 1x and 2x 2ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > opens with debt at 1x and 2x 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages add_principal and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages remove_principal and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages repay and preserves output coin types 0ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages add_collateral and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages close and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages up and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages down and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > manages debt_free and preserves output coin types 1ms
+ ✓ tests/generic.test.ts > phase 1 principal=collateral 6/9 > closes an unlevered collateral position without conversion or flash loan 1ms
+ ✓ tests/generic.test.ts > rejects changed funding roles even with a recomputed checksum, before mutating a PTB 1ms
+ ✓ tests/generic.test.ts > filters explicitly retired custom-source Caps only after duplicate identity checks 0ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (9/6 decimals) > clears distressed positive-equity debt with close, fees and slippage 2ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (9/6 decimals) > clears distressed positive-equity debt with one, fees and slippage 1ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (9/6 decimals) > rejects close when all collateral cannot cover actual minimum output and fees 1ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (9/6 decimals) > rejects one when all collateral cannot cover actual minimum output and fees 0ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (6/9 decimals) > clears distressed positive-equity debt with close, fees and slippage 1ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (6/9 decimals) > clears distressed positive-equity debt with one, fees and slippage 1ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (6/9 decimals) > rejects close when all collateral cannot cover actual minimum output and fees 0ms
+ ✓ tests/generic.test.ts > bounded collateral-principal exits (6/9 decimals) > rejects one when all collateral cannot cover actual minimum output and fees 0ms
+ ✓ tests/generic.test.ts > independent funding checks including nonzero fees > collateral principal with 0 bps slippage 7ms
+ ✓ tests/generic.test.ts > independent funding checks including nonzero fees > collateral principal with 50 bps slippage 7ms
+ ✓ tests/generic.test.ts > independent funding checks including nonzero fees > collateral principal with 100 bps slippage 7ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > clears 999 protocol units with no principal output, explicit minimum false 1ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > clears 999 protocol units with no principal output, explicit minimum true 1ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects positive minimum before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects unexpected token before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects two zero entries before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects zero output before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects non-canonical minimum before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects ordinary withdrawal before changing the PTB 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > keeps sub-atom deposits visible and prevents unsupported cleanup or reopening 0ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > rejects an empty-cap quote when one protocol unit appears 1ms
+ ✓ tests/generic.test.ts > sub-atom protocol positions > repays a protocol debt of one unit using one native atom 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > initializes mode 0 atomically in both builders 2ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > initializes mode 2 atomically in both builders 1ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > initializes mode undefined atomically in both builders 2ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > reuses initialized Caps without repeat enter (empty: false) 1ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > reuses initialized Caps without repeat enter (empty: true) 1ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID -1 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID 0.5 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID NaN 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID Infinity 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID 9007199254740992 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID null 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects illegal mode ID 0 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > binds modes to the registered strategy and market snapshot 0ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > uses E-Mode LT and the actual borrow weight above the ordinary leverage limit 1ms
+ ✓ tests/generic.test.ts > configured E-Mode initialization and risk > rejects paused exposure at quote and live build while preserving repayments 1ms
+ ✓ tests/generic.test.ts > preserves paused E-Mode risk-reducing add_collateral 0ms
+ ✓ tests/generic.test.ts > preserves paused E-Mode risk-reducing set_leverage 1ms
+ ✓ tests/generic.test.ts > preserves paused E-Mode risk-reducing close 0ms
+ ✓ tests/generic.test.ts > preserves a six-decimal E-Mode dust exit without re-entering mode or funding a nonexistent output 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-05: cash for flash + borrow, headroom only for the borrow → quoted and built 4ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary 4ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-08: the borrow alone is still bounded by headroom, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-09: cash undefined fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-09: cash 1.5 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-09: cash -1 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-09: cash  fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/6 decimals) > LQ-10: a flash-only exit needs cash for the flash, not headroom 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-05: cash for flash + borrow, headroom only for the borrow → quoted and built 0ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-08: the borrow alone is still bounded by headroom, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-09: cash undefined fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-09: cash 1.5 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-09: cash -1 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-09: cash  fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (6/9 decimals) > LQ-10: a flash-only exit needs cash for the flash, not headroom 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-05: cash for flash + borrow, headroom only for the borrow → quoted and built 0ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary 2ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-08: the borrow alone is still bounded by headroom, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-09: cash undefined fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-09: cash 1.5 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-09: cash -1 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-09: cash  fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (8/6 decimals) > LQ-10: a flash-only exit needs cash for the flash, not headroom 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-05: cash for flash + borrow, headroom only for the borrow → quoted and built 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-06/LQ-07: cash is compared raw with flash + borrow + fee, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-08: the borrow alone is still bounded by headroom, at the exact boundary 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-09: cash undefined fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-09: cash 1.5 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-09: cash -1 fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-09: cash  fails closed 1ms
+ × tests/generic.test.ts > main-market same-reserve capacity (9/9 decimals) > LQ-10: a flash-only exit needs cash for the flash, not headroom 1ms
+ × tests/generic.test.ts > stored quotes and the NAVI env > ST-20/ST-21: a quote for another env is refused before any command (existing Cap: false) 0ms
+ × tests/generic.test.ts > stored quotes and the NAVI env > ST-20/ST-21: a quote for another env is refused before any command (existing Cap: true) 0ms
+ × tests/generic.test.ts > stored quotes and the NAVI env > ST-23: a quote without an env (made before the binding) asks for a fresh quote 1ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 35 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  35 failed | 159 passed (194)
