@@ -1,5 +1,15 @@
 # @naviprotocol/astros-aggregator-sdk
 
+## 2.0.10
+
+### Patch Changes
+
+- Aftermath swaps call amm v5 (`0x93056cd8…`) `swap::swap_exact_in` instead of v2. Since
+  2026-11-13 the Aftermath PoolRegistry is at protocol version 4; v2 requires exactly 2 and
+  aborts with code 40, v4 accepts at most 3. The v5 entry keeps the same arguments. Bump the
+  `find_routes` client version from 18 to 20 for backend capability gating (19 is reserved
+  for the release that adds new DEXes).
+
 ## 2.0.9
 
 ### Patch Changes

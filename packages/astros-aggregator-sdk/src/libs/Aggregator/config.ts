@@ -70,7 +70,10 @@ export const AggregatorConfig = {
   clockAddress: '0x6',
 
   // Aftermath DEX configuration
-  aftermathPackageId: '0xc4049b2d1cc0f6e017fda8260e4377cecd236bd7f56a54fee120816e72e2e0dd',
+  // amm v5 package. swap::swap_exact_in keeps the v2 signature but runs pool_registry::assert_correct_package:
+  // PoolRegistry.protocol_version must be <= 4 (abort 63) and not paused (abort 64). Since 2026-11-13 the registry is 4,
+  // so the old v2 package (0xc4049b2d…, requires == 2) aborts with code 40 and v4 (0x3a6928bd…, accepts <= 3) with 63.
+  aftermathPackageId: '0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7',
   aftermathPoolRegistry: '0xfcc774493db2c45c79f688f88d28023a3e7d98e4ee9f48bbf5c7990f651577ae',
   aftermathFeeVault: '0xf194d9b1bcad972e45a7dd67dd49b3ee1e3357a00a50850c52cd51bb450e13b4',
   aftermathTreasury: '0x28e499dff5e864a2eafe476269a4f5035f1c16f338da7be18b103499abf271ce',

@@ -18,7 +18,9 @@ export async function makeAftermathPTB(
     txb.object(AggregatorConfig.aftermathReferralVault),
     coinA,
     txb.pure.u64(amountOut),
-    txb.pure.u64('800000000000000000') // 80%， use https://suivision.xyz/txblock/AvASModFbU6Bmu6FNghqBsVqktnhB9QZKQjdYfnuxNvo?tab=Overview as an reference
+    // allowable slippage 80%: v5 swap_exact_in turns it into min_out = amountLimit * (1 - 0.8)
+    // (amountLimit = 90% of the quoted hop output) and calls swap_exact_in_direct
+    txb.pure.u64('800000000000000000')
   ]
 
   const res = txb.moveCall({
