@@ -337,95 +337,13 @@ it('fails closed when the configured group is unavailable', async () => {
   ).rejects.toThrow('unavailable')
 })
 
-it.each(['prefer-market', 'market-only'] as const)(
-  'reuses eligible oracle prices in %s while reading live risk and flash terms',
-  async (mode) => {
-    const { oracleDeploymentRevision } = await import('../src/market-prices')
-    const c = { ...config, oracle: { ...config.oracle, packageId: '0x30' } }
-    mock.config.mockResolvedValue(c)
-    const fresh = {
-      version: 1,
-      source: 'navi-oracle',
-      snapshotId: 'a'.repeat(64),
-      observedAtMs: Date.now(),
-      chainObservedAtMs: Date.now(),
-      validUntilMs: Date.now() + 15000,
-      deploymentRevision: oracleDeploymentRevision('prod', 'main', c)
-    }
-    const m = market(structuredClone(group))
-    m.pools = pools.map((p, i) => ({
-      ...p,
-      oracle: {
-        oracleId: p.oracleId,
-        valid: true,
-        value: i ? '1000000000' : '1100000000',
-        decimal: 9,
-        price: i ? '1' : '1.1',
-        freshness: fresh
-      }
-    })) as Pool[]
-    mock.market.mockResolvedValue(m)
-    const inspect = vi.fn(
-      async ({ transaction }: { transaction: import('@mysten/sui/transactions').Transaction }) => {
-        expect(transaction.getData().commands.map((x) => x.MoveCall?.function)).toEqual([
-          'get_reserve_data',
-          'get_borrow_weight',
-          'get_asset'
-        ])
-        return {
-          Transaction: { status: { success: true } },
-          commandResults: [
-            result(
-              bcs
-                .vector(ReserveDataInfo)
-                .serialize([reserve(5), reserve(0)] as never)
-                .toBytes()
-            ),
-            result(bcs.u64().serialize(10500).toBytes()),
-            result(
-              ...[0, 0, 0].map(() => bcs.u64().serialize(0).toBytes()),
-              bcs.Address.serialize(address('0x26')).toBytes(),
-              ...[1, 2, 9999999, 0].map((x) => bcs.u64().serialize(x).toBytes())
-            )
-          ]
-        }
-      }
-    )
-    const source = createNaviDataSource({
-      client: { core: { simulateTransaction: inspect } } as unknown as MultiplySuiClient,
-      marketPriceMode: mode
-    })
-    const snapshot = await source.readMarket(strategy)
-    expect(mock.oracle).not.toHaveBeenCalled()
-    expect(inspect).toHaveBeenCalledTimes(1)
-    expect(snapshot).toMatchObject({
-      collateralPrice: '1.1',
-      debtPrice: '1',
-      ltv: '0.9',
-      liquidationThreshold: '0.93',
-      borrowWeight: '1.05',
-      flash: { feeBps: '3' }
-    })
-  }
-)
-it('market-only never prepares the oracle when evidence is absent', async () => {
+it('propagates live oracle failure without simulating', async () => {
+  mock.oracle.mockRejectedValue(new Error('oracle upstream unavailable'))
   const inspect = vi.fn()
   const source = createNaviDataSource({
-    client: { core: { simulateTransaction: inspect } } as unknown as MultiplySuiClient,
-    marketPriceMode: 'market-only'
-  })
-  await expect(source.readMarket(strategy)).rejects.toMatchObject({
-    code: 'PRICE_DATA_UNAVAILABLE'
-  })
-  expect(inspect).not.toHaveBeenCalled()
-  expect(mock.oracle).not.toHaveBeenCalled()
-})
-it('prefer-market propagates live fallback failure rather than reusing invalid prices', async () => {
-  mock.oracle.mockRejectedValue(new Error('oracle upstream unavailable'))
-  const source = createNaviDataSource({
-    client: { core: { simulateTransaction: vi.fn() } } as unknown as MultiplySuiClient,
-    marketPriceMode: 'prefer-market'
+    client: { core: { simulateTransaction: inspect } } as unknown as MultiplySuiClient
   })
   await expect(source.readMarket(strategy)).rejects.toThrow('oracle upstream unavailable')
   expect(mock.oracle).toHaveBeenCalledTimes(1)
+  expect(inspect).not.toHaveBeenCalled()
 })

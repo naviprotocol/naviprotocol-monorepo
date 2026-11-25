@@ -1,5 +1,14 @@
 # @naviprotocol/multiply
 
+## 0.3.0
+
+### Minor Changes
+
+- Remove the market-price path; quotes always use live oracle prices.
+
+  - **Breaking:** remove `marketPriceMode` (client and data-source options), `MarketPriceMode`, `OraclePriceFreshness`, `MarketSnapshot.priceEvidence`, and the `marketOraclePrices` / `oracleDeploymentRevision` exports. `DataSource.readMarket(strategy)` no longer takes a mode. `MARKET_PRICE_EXPIRED` and `PRICE_DATA_UNAVAILABLE` are no longer raised. Measured on mainnet, cached oracle prices were minutes old (vSUI ~25 min, haSUI ~57 min), so the market path never qualified.
+  - Start oracle preparation (Pyth staleness check, Pyth update when stale, `update_single_price_v2`) as soon as the market config is read, in parallel with the pool, flash-loan and E-Mode reads. Prices, feeds and the simulated PTB are unchanged. The `market_price_validate` and `market_risk_inspect` measure stages are gone; `market_oracle` now overlaps the other reads.
+
 ## 0.2.0
 
 ### Minor Changes

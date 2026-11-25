@@ -226,15 +226,14 @@ the default source can read only that group's configuration to support repayment
 and exit, without reading any account's current mode. Keep the existing final-byte
 simulation requirement, especially with `buildPTBForSimulation`.
 
-### Market-price and native-exit optimization
+### Live prices and native-exit optimization
 
-`marketPriceMode` defaults to `live` for existing SDK callers. `prefer-market`
-uses `Pool.oracle.freshness` only when both strategy assets have coherent,
-validated, unexpired evidence for the configured NAVI deployment; otherwise it
-uses the existing live oracle path. `market-only` fails with
-`PRICE_DATA_UNAVAILABLE` instead of preparing/updating the oracle. Price expiry
-also bounds the quote expiry. An expired calculation is replanned once with live
-prices only in `prefer-market`, within the original request budget.
+`readMarket` always reads prices live: it pushes the strategy's oracle feeds (Pyth
+updates when stale, then `update_single_price_v2`) and evaluates them with
+`calculate_value` in one simulation. The oracle preparation starts as soon as the
+market config is read and runs beside the pool, flash-loan and E-Mode reads; the
+simulated PTB is unchanged. Built PTBs push the same feeds again and the on-chain HF
+limiter checks `minHealthFactor`, so quote prices never bypass on-chain safety.
 
 Default exits now use the independent rate hint plus a real Astros quote; the prior
 native redemption cash-gated fast path is not selected. Explicit native integrations

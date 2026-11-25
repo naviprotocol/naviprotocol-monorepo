@@ -12,8 +12,7 @@ import type {
   MultiplyOptions,
   MultiplyQuote,
   Position,
-  Strategy,
-  MarketPriceMode
+  Strategy
 } from './types'
 import { astrosConverter, validateConversion } from './converters'
 import { createNaviDataSource, defaultClient } from './data-source'
@@ -43,7 +42,6 @@ import {
 } from './amounts'
 import {
   BN,
-  MultiplyError,
   address,
   assertAddressPTB,
   check,
@@ -101,7 +99,6 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     createNaviDataSource({
       client,
       services: options.services,
-      marketPriceMode: options.marketPriceMode,
       capRegistry: options.capRegistry === undefined ? undefined : capRegistry,
       strategies: strategyRegistry,
       retiredRegistryKeys: options.retiredRegistryKeys,
@@ -244,14 +241,13 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
     }
     return result
   }
-  async function quoteOnce(
+  async function quote(
     owner: string,
     suppliedStrategy: Strategy,
     action: Action,
-    constraints: Constraints,
-    mode: MarketPriceMode,
-    budget: { deadline: number; count: number }
+    constraints: Constraints
   ): Promise<MultiplyQuote> {
+    const budget = { deadline: Date.now() + 45_000, count: 0 }
     owner = address(owner)
     check(owner !== address('0x0'), 'INVALID_ARGUMENT', 'Multiply owner cannot be zero')
     validateAction(action, constraints)
@@ -271,7 +267,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'POSITION_NOT_FOUND',
       'Only open may create a Multiply Cap'
     )
-    const market = await source.readMarket(strategy, mode)
+    const market = await source.readMarket(strategy)
     validateMarketMode(strategy, market)
     const snapshot = cap
       ? await source.readPosition(cap, strategy, market)
@@ -411,7 +407,6 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       constraints: jsonCopy(constraints),
       expiresAt: Math.min(
         Date.now() + 120_000,
-        market.priceEvidence?.expiresAt ?? Infinity,
         ...planned.execution.conversions.map((c) => c.expiresAt)
       ),
       estimate: planned.estimate,
@@ -426,33 +421,7 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       }
     }
     q.execution.checksum = await checksum(q)
-    check(
-      !market.priceEvidence || market.priceEvidence.expiresAt > Date.now(),
-      'MARKET_PRICE_EXPIRED',
-      'Market price expired during calculation'
-    )
     return jsonCopy(q)
-  }
-  async function quote(
-    owner: string,
-    strategy: Strategy,
-    action: Action,
-    constraints: Constraints
-  ): Promise<MultiplyQuote> {
-    const mode = options.marketPriceMode ?? source.marketPriceMode ?? 'live'
-    const budget = { deadline: Date.now() + 45_000, count: 0 }
-    try {
-      return await quoteOnce(owner, strategy, action, constraints, mode, budget)
-    } catch (error) {
-      if (
-        !(error instanceof MultiplyError) ||
-        error.code !== 'MARKET_PRICE_EXPIRED' ||
-        mode !== 'prefer-market'
-      )
-        throw error
-      check(Date.now() < budget.deadline, 'NO_CONVERGENCE', 'Quote deadline exhausted')
-      return quoteOnce(owner, strategy, action, constraints, 'live', budget)
-    }
   }
   async function readLiveBuildState(q: MultiplyQuote, inputs: BuildInputs) {
     const e = q.execution,

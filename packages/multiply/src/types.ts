@@ -76,16 +76,6 @@ export interface Position extends PositionAmounts {
   leverage: string | null
 }
 export type LendingConfig = Awaited<ReturnType<typeof getConfig>>
-export type MarketPriceMode = 'live' | 'prefer-market' | 'market-only'
-export interface OraclePriceFreshness {
-  version: 1
-  source: 'navi-oracle'
-  snapshotId: string
-  observedAtMs: number
-  chainObservedAtMs: number
-  validUntilMs: number
-  deploymentRevision: string
-}
 export interface MarketSnapshot {
   config: LendingConfig
   /** Effective configured mode, not a recurring account-mode observation. */
@@ -100,17 +90,15 @@ export interface MarketSnapshot {
   borrowWeight: string
   flash: { config: LendingConfig; poolId: string; max: string; min: string; feeBps: string }
   observedAt: number
-  priceEvidence?: { source: 'market'; snapshotId: string; observedAtMs: number; expiresAt: number }
 }
 /** Implementations must fail closed on incomplete reads; these methods never sign or broadcast. */
 export interface DataSource {
-  marketPriceMode?: MarketPriceMode
   /** Deployment used for discovery. A custom source must declare its binding. */
   capRegistry: CapRegistryConfig
   /** NAVI deployment every read and PTB of this source targets. Omitted means `prod`. */
   env?: NaviEnv
   listAccountCaps(address: string): Promise<AccountCap[]>
-  readMarket(strategy: Strategy, mode?: MarketPriceMode): Promise<MarketSnapshot>
+  readMarket(strategy: Strategy): Promise<MarketSnapshot>
   readPosition(
     cap: AccountCap,
     strategy: Strategy,
@@ -281,7 +269,6 @@ export interface MultiplyOptions {
   /** Omitted: Astros. Used only when no eligible primary converter can quote. */
   fallbackConverter?: Converter
   services?: NaviSdkServiceOptions
-  marketPriceMode?: MarketPriceMode
   /** API stored-plan assembly only. The caller MUST fully simulate and reconcile the PTB. */
   prepareOracleForSimulation?: boolean
   /** Disable chain rate hints; execution still uses the configured converters (default Astros). */
