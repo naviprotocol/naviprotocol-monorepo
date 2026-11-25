@@ -2,7 +2,12 @@ import { bcs } from '@mysten/sui/bcs'
 import type { SuiGrpcClient } from '@mysten/sui/grpc'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
 import { describe, expect, it, vi } from 'vitest'
-import { getVaultReceipts, ReceiptStruct } from '../../src/protocols/navi/receipt'
+import {
+  getReceiptType,
+  getVaultReceipts,
+  PROD_ORIGINAL_PACKAGE,
+  ReceiptStruct
+} from '../../src/protocols/navi/receipt'
 import type { Vault } from '../../src/types'
 
 vi.mock('../../src/protocols/navi/vault', () => ({
@@ -104,5 +109,29 @@ describe('NAVI receipt state errors', () => {
       Array.from({ length: 51 }, (_, i) => BigInt(i))
     )
     expect(batchGetObjects.mock.calls.map(([request]) => request.requests.length)).toEqual([50, 1])
+  })
+})
+
+describe('NAVI receipt type per deployment', () => {
+  it('defaults to the production original package', () => {
+    expect(getReceiptType(vault)).toBe(`${PROD_ORIGINAL_PACKAGE}::navi_vault::Receipt`)
+    expect(PROD_ORIGINAL_PACKAGE).toBe(
+      '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c'
+    )
+  })
+
+  it('uses vault.navi.originalPackage when set', () => {
+    const stage = { ...vault, navi: { package: '0x4', originalPackage: '0xbd' } } as Vault
+    expect(getReceiptType(stage)).toBe('0xbd::navi_vault::Receipt')
+  })
+
+  it.each([
+    [undefined, `${PROD_ORIGINAL_PACKAGE}::navi_vault::Receipt`],
+    ['0xbd', '0xbd::navi_vault::Receipt']
+  ])('lists owned receipts by the derived type (originalPackage=%s)', async (original, type) => {
+    const { client } = fixture([])
+    const v = { ...vault, navi: { package: '0x4', originalPackage: original } } as Vault
+    await getVaultReceipts(v, '0x5', { client })
+    expect(client.listOwnedObjects).toHaveBeenCalledWith(expect.objectContaining({ type }))
   })
 })

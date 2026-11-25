@@ -8,7 +8,23 @@ import { U64_MAX } from '../../config'
 import { getSuiClient } from '../../utils'
 import { getVaultInfo, getVaultRewardRules, VaultRewardRule } from './vault'
 
-export const receiptType = `0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c::navi_vault::Receipt`
+/** Original `navi_vault` package of the production deployment (default for `Vault.navi.originalPackage`). */
+export const PROD_ORIGINAL_PACKAGE =
+  '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c'
+
+/** Receipt struct type of the production deployment. Prefer {@link getReceiptType} for a vault. */
+export const receiptType = `${PROD_ORIGINAL_PACKAGE}::navi_vault::Receipt`
+
+/**
+ * Receipt struct type of the deployment a vault belongs to, from `vault.navi.originalPackage`
+ * (production's original package when unset).
+ *
+ * @param vault - A NAVI vault
+ * @returns The fully-qualified `<originalPackage>::navi_vault::Receipt` type
+ */
+export function getReceiptType(vault: Vault): string {
+  return `${vault.navi?.originalPackage ?? PROD_ORIGINAL_PACKAGE}::navi_vault::Receipt`
+}
 
 export const ReceiptStruct: BcsType<
   {
@@ -213,7 +229,7 @@ export async function getVaultReceipts(
   do {
     const page = await client.listOwnedObjects({
       owner,
-      type: receiptType,
+      type: getReceiptType(vault),
       cursor,
       include: { content: true }
     })
