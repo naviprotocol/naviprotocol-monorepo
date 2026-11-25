@@ -3220,3 +3220,137 @@ describe('0.1% target accuracy is independent of hard risk and funding limits', 
     ).rejects.toMatchObject({ code: 'INVALID_QUOTE' })
   })
 })
+
+describe('third review of PR #125', () => {
+  const callsOf = (tx: Transaction) =>
+    tx.getData().commands.flatMap((command) => (command.MoveCall ? [command.MoveCall] : []))
+
+  it('RV-06 keeps fees the converter quoted when enrichFees has nothing to add', async () => {
+    const f = fixture(9, 9, true)
+    const fees = [
+      { coinType: debtType, amount: '7', feeKind: 'swap', includedInExpectedOutput: true as const }
+    ]
+    const quote = f.converter.quote.bind(f.converter)
+    f.converter.quote = async (req) => ({ ...(await quote(req)), fees })
+    f.converter.enrichFees = async () => undefined
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '3' },
+      constraints
+    )
+    expect(q.execution.conversions[0].fees).toEqual(fees)
+    f.converter.enrichFees = async () => [{ ...fees[0], amount: '9' }]
+    const enriched = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'set_leverage', targetLeverage: '3' },
+      constraints
+    )
+    expect(enriched.execution.conversions[0].fees).toEqual([{ ...fees[0], amount: '9' }])
+  })
+
+  it('RV-07 reaches a target equal to maxLeverage when a quote lands inside the relaxed 0.1% band', async () => {
+    const f = fixture(9, 9)
+    const quote = f.converter.quote.bind(f.converter)
+    // 3 bps less output in a narrow size band around the exact solution (300 debt converted).
+    f.converter.quote = async (req) => {
+      const q = await quote(req)
+      const size = new BN(req.amountIn)
+      if (size.lt(raw('299.95', 9)) || size.gt(raw('300.05', 9))) return q
+      const amount = new BN(q.expectedOutput.amount).times('0.9997').integerValue().toFixed(0)
+      return {
+        ...q,
+        expectedOutput: { ...q.expectedOutput, amount },
+        minOutput: { ...q.minOutput, amount }
+      }
+    }
+    const q = await f.engine.quote(
+      owner,
+      f.strategy,
+      { type: 'open', amount: raw(100, 9), targetLeverage: '3' },
+      { minHealthFactor: '1.1', maxSlippageBps: 0, maxLeverage: '3' }
+    )
+    const leverage = new BN(q.estimate.leverage!)
+    expect(leverage.lte('3.0003')).toBe(true)
+    expect(leverage.gte('2.997')).toBe(true)
+    await build(f, q)
+  })
+
+  describe('RV-08 E-Mode of an existing Cap', () => {
+    const empty = (accountEmodeId: number | null | undefined) => ({
+      collateralAmount: '0',
+      debtAmount: '0',
+      ...(accountEmodeId === undefined ? {} : { accountEmodeId })
+    })
+    const open: Action = { type: 'open', amount: raw(100, 9), targetLeverage: '2' }
+
+    it('enters the strategy E-Mode when an open reuses an empty Cap that is in none', async () => {
+      const f = fixture(9, 9, true, false, false, 0)
+      f.setPosition(empty(null))
+      const q = await f.engine.quote(owner, f.strategy, open, constraints)
+      expect(q.execution.accountCap.kind).toBe('existing')
+      for (const simulation of [false, true]) {
+        const tx = new Transaction()
+        const coins = [{ coinType: debtType, coin: tx.object('0x100') }]
+        if (simulation) await f.engine.buildPTBForSimulation(tx, q, coins)
+        else await f.engine.buildPTB(tx, q, { coins })
+        const calls = callsOf(tx)
+        const enter = calls.findIndex((call) => call.function === 'enter_emode_with_account_cap')
+        expect(enter).toBeGreaterThanOrEqual(0)
+        expect(
+          calls.filter((call) => call.function === 'enter_emode_with_account_cap')
+        ).toHaveLength(1)
+        expect(calls.some((call) => call.function === 'create_account')).toBe(false)
+        const firstLending = calls.findIndex((call) =>
+          ['flash_loan_with_account_cap_v2', 'deposit_with_account_cap'].includes(call.function)
+        )
+        expect(enter).toBeLessThan(firstLending)
+        const cap = calls[firstLending].arguments[3]
+        expect(calls[enter].arguments[2]).toEqual(cap)
+      }
+    })
+
+    it.each([0, undefined])('adds no mode call when the Cap mode is %s', async (mode) => {
+      const f = fixture(9, 9, true, false, false, 0)
+      f.setPosition(empty(mode))
+      const q = await f.engine.quote(owner, f.strategy, open, constraints)
+      const { tx } = await build(f, q)
+      expect(callsOf(tx).some((call) => call.function === 'enter_emode_with_account_cap')).toBe(
+        false
+      )
+    })
+
+    it('refuses a lending account outside the strategy E-Mode instead of quoting E-Mode risk', async () => {
+      const f = fixture(9, 9, true, false, false, 0)
+      f.setPosition({
+        collateralAmount: raw(100, 9),
+        debtAmount: raw(100, 9),
+        accountEmodeId: null
+      })
+      const outside = { code: 'POSITION_UNSUPPORTED' }
+      await expect(f.engine.getPosition(owner)).rejects.toMatchObject(outside)
+      for (const action of [
+        { type: 'set_leverage', targetLeverage: '1.5' },
+        { type: 'close' }
+      ] as Action[])
+        await expect(f.engine.quote(owner, f.strategy, action, constraints)).rejects.toMatchObject(
+          outside
+        )
+      // An empty Cap in another mode would have to leave it first: not built here.
+      f.setPosition(empty(3))
+      await expect(f.engine.quote(owner, f.strategy, open, constraints)).rejects.toMatchObject(
+        outside
+      )
+      expect(await f.engine.getPosition(owner)).toMatchObject([{ healthFactor: null }])
+    })
+
+    it('refuses to build once the account mode differs from the quoted one', async () => {
+      const f = fixture(9, 9, true, false, false, 0)
+      f.setPosition(empty(0))
+      const q = await f.engine.quote(owner, f.strategy, open, constraints)
+      f.setPosition(empty(null))
+      await expect(build(f, q)).rejects.toMatchObject({ code: 'STALE_QUOTE' })
+    })
+  })
+})

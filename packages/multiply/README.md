@@ -148,7 +148,7 @@ Astros fee decoration runs at most once per selected conversion, before the chec
 and never changes output/minimum amounts. Direct converter consumers can call
 `enrichFees(quote)` explicitly. Unknown/mixed-route fees remain unavailable.
 
-Astros is pinned to 2.0.7. Its route change goes directly to `quote.address`, not
+Astros is pinned to 2.0.9. Its route change goes directly to `quote.address`, not
 the gas sponsor or `built.coins`. Vault integrations must account for that custody
 policy or supply another converter. Its numeric builder rejects amounts above JS
 safe integer range. When using the converter directly, pass a validated
@@ -162,6 +162,13 @@ or market/mode. New Caps are created and registered atomically; close retains th
 Invalid ownership, duplicate Caps/accounts, invalid E-Mode configuration and unknown keys
 fail explicitly. Only **explicit** `retiredRegistryKeys` may be skipped; structural,
 identity and duplicate checks still run first. Retiring a key does not move funds.
+
+A lending account can hold supply its strategy never made: NAVI lets anyone deposit
+on behalf of an address (`entry_deposit_on_behalf_of_user`; an account in an E-Mode
+accepts only that mode's collateral). Supply outside the collateral reserve is left
+out of every amount, HF and leverage figure — on chain it only adds collateral value.
+Debt outside the debt reserve can only be the Cap holder's and is
+`POSITION_UNSUPPORTED`.
 
 The source and engine must receive identical strategies, retired keys and
 `capRegistry`. Custom sources declare `capRegistry`; wrapped Cap resolvers must
@@ -196,7 +203,7 @@ pnpm --filter @naviprotocol/multiply lint
 pnpm --filter @naviprotocol/multiply build
 ```
 
-This preview pins published Lending 2.2.0 and Astros 2.0.7. Package it with `npm pack`
+This preview pins published Lending 2.2.0 and Astros 2.0.9. Package it with `npm pack`
 after building; API integration uses an exact local tarball plus lockfile integrity
 until npm publication. A local package is not an npm release.
 
@@ -216,15 +223,23 @@ debt retains its reserve borrow weight. The data source checks asset direction.
 Use a **new Multiply Registry strategyVersion** when switching a strategy's mode,
 and retire the previous key through `retiredRegistryKeys`. Existing ordinary Caps
 are not migrated. A newly created Cap enters the configured mode in the same PTB,
-before Multiply registration and funding. A previously initialized Cap, including
-an empty one reopened after close, is reused without a mode query or another enter.
-No operation reads or writes the independent E-Mode Registry.
+before Multiply registration and funding.
+
+The E-Mode LTV/LT hold only while the lending account is in that mode, and the Cap
+holder can leave it (`exit_emode_with_account_cap`). For an E-Mode strategy the
+default source therefore reads the account's actual mode with the `is_in_emode` and
+`get_user_emode_id` getters and reports it as `accountEmodeId` (`null` for none). An
+`open` that reuses an empty Cap in no mode enters the configured mode in the same PTB,
+before any lending call. A position outside the configured mode, or an empty Cap in
+another mode, is `POSITION_UNSUPPORTED`; a mode that changed after the quote is
+`STALE_QUOTE`. No operation reads or writes the independent E-Mode Registry.
 
 Custom DataSources must return `market.emode = { id, active }` for E-Mode strategies,
 alongside their effective risk parameters. Paused groups disable new exposure;
 the default source can read only that group's configuration to support repayment
-and exit, without reading any account's current mode. Keep the existing final-byte
-simulation requirement, especially with `buildPTBForSimulation`.
+and exit. A custom source may omit `accountEmodeId`; the account is then taken to be
+in the configured mode. Keep the existing final-byte simulation requirement,
+especially with `buildPTBForSimulation`.
 
 ### Live prices and native-exit optimization
 

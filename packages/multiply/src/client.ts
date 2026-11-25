@@ -1,5 +1,5 @@
 import { createChainRateHintReader } from './rate-hints'
-import { validateMarketMode, assertModeExposure } from './emode'
+import { validateMarketMode, assertModeExposure, assertPositionMode, mustEnterMode } from './emode'
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions'
 import type {
   AccountCap,
@@ -231,6 +231,10 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       validateMarketMode(strategy, market)
       uint(amounts.collateralAmount)
       uint(amounts.debtAmount)
+      if (amounts.accountEmodeId !== undefined) {
+        const sides = positionSides(amounts, market)
+        assertPositionMode(strategy, amounts, !sides.collateral && !sides.debt)
+      }
       result.push({
         address: owner,
         strategy,
@@ -286,6 +290,8 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'POSITION_NOT_FOUND',
       'Empty position; use open to reuse this Cap'
     )
+    // RV-08: an empty Cap in no mode enters the strategy mode in the PTB; any other mismatch is refused.
+    mustEnterMode(strategy, snapshot, empty)
     if ('targetLeverage' in action && action.targetLeverage) {
       const healthRatio = new BN(market.liquidationThreshold).div(
         new BN(market.borrowWeight).times(constraints.minHealthFactor)
@@ -374,12 +380,14 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       if (converter.enrichFees && remaining > 1) {
         let timer: ReturnType<typeof setTimeout> | undefined
         try {
-          conversion.fees = await Promise.race([
+          const fees = await Promise.race([
             converter.enrichFees(conversion),
             new Promise<undefined>((resolve) => {
               timer = setTimeout(() => resolve(undefined), Math.min(1500, remaining - 1))
             })
           ])
+          // RV-06: nothing to add, or a late answer, leaves the fees the converter quoted in place.
+          if (fees !== undefined) conversion.fees = fees
         } finally {
           clearTimeout(timer)
         }
@@ -467,6 +475,12 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       ? await source.readPosition(cap, s, fresh)
       : { collateralAmount: '0', debtAmount: '0' }
     if (cap) {
+      // RV-08: the plan (and whether it enters the mode) was made for the quoted account mode.
+      check(
+        now.accountEmodeId === e.snapshot.accountEmodeId,
+        'STALE_QUOTE',
+        'Account E-Mode changed since quote'
+      )
       const current = positionSides(now, fresh)
       check(
         (q.action.type === 'open') === (!current.collateral && !current.debt),
@@ -681,6 +695,9 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
       'INVALID_INPUTS',
       'A transient AccountCap must be supplied as a transaction argument'
     )
+    // RV-08: an open that reuses an empty Cap in no mode enters the mode its quote was priced in.
+    const enterMode =
+      e.accountCap.kind === 'existing' && mustEnterMode(s, e.snapshot, q.action.type === 'open')
     // All preflight checks precede mutation. A later network/build failure requires discarding the PTB.
     tx.setSenderIfNotSet(q.address)
     if (!fromStoredQuote || options.prepareOracleForSimulation !== false)
@@ -714,6 +731,11 @@ export function createMultiplyClient(options: MultiplyOptions = {}) {
         })
       registerCreatedCapPTB(tx, createdAccountCap, s.registryKey, capRegistry, accountCapType(env))
     }
+    if (enterMode)
+      tx.moveCall({
+        target: `${config.package}::lending::enter_emode_with_account_cap`,
+        arguments: [tx.object(config.storage), tx.pure.u64(s.emodeId!), accountCap]
+      })
     const change: BuildResult['coins'] = []
     const exact = (type: string, amount: string) => {
       const supplied = coins.find((c) => sameCoin(c.coinType, type))!

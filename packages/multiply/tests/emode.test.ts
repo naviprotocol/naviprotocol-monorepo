@@ -174,62 +174,134 @@ it.each([
     resolveEMode({} as MultiplySuiClient, strategy, config, market(mode), pools[0], pools[1])
   ).rejects.toThrow()
 })
-it('reads balances without querying account mode and preserves precision and asset isolation', async () => {
-  const inspect = vi.fn(async (_: unknown) => ({
-    Transaction: { status: { success: true } },
-    commandResults: [
-      result(),
-      result(
-        bcs
-          .vector(ReserveDataInfo)
-          .serialize([reserve(5), reserve(0)] as never)
-          .toBytes()
-      ),
-      result(
-        bcs
-          .vector(UserStateInfo)
-          .serialize([
-            { asset_id: 5, supply_balance: '999', borrow_balance: '0' },
-            { asset_id: 0, supply_balance: '0', borrow_balance: '1001' }
-          ])
-          .toBytes()
-      )
-    ]
-  }))
+type AccountState = { asset_id: number; supply_balance: string; borrow_balance: string }
+type InspectedTx = { transaction: import('@mysten/sui/transactions').Transaction }
+const functionsOf = (request: unknown) =>
+  (request as InspectedTx).transaction
+    .getData()
+    .commands.map((c) => c.$kind === 'MoveCall' && c.MoveCall.function)
+/** Chain double for `readPosition`: the position read, plus the two account-mode getters. */
+function positionChain(
+  states: AccountState[],
+  mode: { inMode: boolean; id?: number } = { inMode: true, id: 0 },
+  reserveIds = [5, 0]
+) {
+  const inspect = vi.fn(async (request: unknown) => {
+    const functions = functionsOf(request)
+    if (functions[0] === 'get_user_emode_id')
+      // The getter aborts for an account in no mode: there is no row to borrow.
+      return mode.id === undefined
+        ? { FailedTransaction: { status: { success: false, error: 'MoveAbort' } } }
+        : {
+            Transaction: { status: { success: true } },
+            commandResults: [result(bcs.u64().serialize(mode.id).toBytes())]
+          }
+    return {
+      Transaction: { status: { success: true } },
+      commandResults: [
+        result(),
+        result(
+          bcs
+            .vector(ReserveDataInfo)
+            .serialize(reserveIds.map(reserve) as never)
+            .toBytes()
+        ),
+        result(bcs.vector(UserStateInfo).serialize(states).toBytes()),
+        ...(functions.includes('is_in_emode')
+          ? [result(bcs.bool().serialize(mode.inMode).toBytes())]
+          : [])
+      ]
+    }
+  })
   const source = createNaviDataSource({
     client: { core: { simulateTransaction: inspect } } as unknown as MultiplySuiClient
   })
-  const supplied = {
-    config,
-    collateral: { ...pools[0], token: { decimals: 6 } },
-    debt: { ...pools[1], token: { decimals: 6 } }
-  }
-  const cap = {
-    id: address('0xa'),
-    accountOwner: address('0xb'),
-    strategyId: strategy.id,
-    registryKey: strategy.registryKey
-  }
+  return { inspect, source }
+}
+const supplied = {
+  config,
+  collateral: { ...pools[0], token: { decimals: 6 } },
+  debt: { ...pools[1], token: { decimals: 6 } }
+}
+const cap = {
+  id: address('0xa'),
+  accountOwner: address('0xb'),
+  strategyId: strategy.id,
+  registryKey: strategy.registryKey
+}
+const held: AccountState[] = [
+  { asset_id: 5, supply_balance: '999', borrow_balance: '0' },
+  { asset_id: 0, supply_balance: '0', borrow_balance: '1001' }
+]
+const amounts = {
+  collateralAmount: '0',
+  debtAmount: '2',
+  protocolCollateralAmount: '999',
+  protocolDebtAmount: '1001'
+}
+
+it('RV-08 reads balances and the account mode with getters, preserving precision', async () => {
+  const { inspect, source } = positionChain(held)
   expect(await source.readPosition(cap, strategy, supplied as never)).toEqual({
-    collateralAmount: '0',
-    debtAmount: '2',
-    protocolCollateralAmount: '999',
-    protocolDebtAmount: '1001'
+    ...amounts,
+    accountEmodeId: 0
   })
-  const tx = (
-    inspect.mock.calls[0][0] as { transaction: import('@mysten/sui/transactions').Transaction }
-  ).transaction
-  expect(tx.getData().commands.map((c) => c.$kind === 'MoveCall' && c.MoveCall.function)).toEqual([
-    'update_state_of_user',
-    'get_reserve_data',
-    'get_user_state'
+  expect(inspect.mock.calls.map(([request]) => functionsOf(request))).toEqual([
+    ['get_user_emode_id'],
+    ['update_state_of_user', 'get_reserve_data', 'get_user_state', 'is_in_emode']
   ])
+})
+it('RV-08 reports an account that is in no mode, and fails closed on an unreadable mode id', async () => {
+  const outside = positionChain(held, { inMode: false })
+  expect(await outside.source.readPosition(cap, strategy, supplied as never)).toEqual({
+    ...amounts,
+    accountEmodeId: null
+  })
+  const other = positionChain(held, { inMode: true, id: 3 })
+  expect(await other.source.readPosition(cap, strategy, supplied as never)).toMatchObject({
+    accountEmodeId: 3
+  })
+  const unreadable = positionChain(held, { inMode: true })
   await expect(
-    source.readPosition(cap, strategy, {
-      ...supplied,
-      collateral: { ...supplied.collateral, id: 6 }
-    } as never)
-  ).rejects.toMatchObject({ code: 'POSITION_UNSUPPORTED' })
+    unreadable.source.readPosition(cap, strategy, supplied as never)
+  ).rejects.toMatchObject({ code: 'READ_FAILED' })
+})
+it('RV-08 does not read the account mode for a strategy without E-Mode', async () => {
+  const { inspect, source } = positionChain(held)
+  const plain = { ...strategy, emodeId: undefined }
+  expect(await source.readPosition(cap, plain, supplied as never)).toEqual(amounts)
+  expect(inspect.mock.calls.map(([request]) => functionsOf(request))).toEqual([
+    ['update_state_of_user', 'get_reserve_data', 'get_user_state']
+  ])
+})
+it('RV-09 leaves out supply anyone can add on behalf of the account, and still refuses foreign debt', async () => {
+  // The state `entry_deposit_on_behalf_of_user` leaves behind: the debt coin supplied to the
+  // account, and a reserve the strategy does not use.
+  const donated = positionChain(
+    [
+      held[0],
+      { ...held[1], supply_balance: '908166' },
+      { asset_id: 7, supply_balance: '5', borrow_balance: '0' }
+    ],
+    undefined,
+    [5, 0, 7]
+  )
+  expect(await donated.source.readPosition(cap, strategy, supplied as never)).toEqual({
+    ...amounts,
+    accountEmodeId: 0
+  })
+  for (const foreign of [
+    { asset_id: 7, supply_balance: '0', borrow_balance: '1' },
+    { ...held[0], borrow_balance: '1' }
+  ]) {
+    const borrowed = positionChain([held[1], foreign], undefined, [5, 0, 7])
+    await expect(
+      borrowed.source.readPosition(cap, strategy, supplied as never)
+    ).rejects.toMatchObject({
+      code: 'POSITION_UNSUPPORTED',
+      message: 'Account has debt outside this strategy'
+    })
+  }
 })
 it.each([false, true])(
   'reads only targeted configuration when filtered (active: %s)',

@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/multiply",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Composable AccountCap-based NAVI Multiply strategy engine",
   "type": "module",
   "license": "MIT",
@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@naviprotocol/lending": "2.2.0",
-    "@naviprotocol/astros-aggregator-sdk": "2.0.7",
+    "@naviprotocol/astros-aggregator-sdk": "2.0.9",
     "bignumber.js": "9.1.2"
   },
   "peerDependencies": {

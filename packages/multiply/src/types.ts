@@ -67,6 +67,13 @@ export interface PositionAmounts {
   /** Indexed protocol balances before native-coin rounding (nine decimals). */
   protocolCollateralAmount?: string
   protocolDebtAmount?: string
+  /**
+   * E-Mode the lending account is actually in: its id, or `null` for none. Read only for a
+   * strategy that configures `emodeId`; omitted means the source did not observe it. The Cap
+   * holder can leave a mode with `exit_emode_with_account_cap`, so the configured mode is not
+   * proof of the account's risk parameters.
+   */
+  accountEmodeId?: number | null
 }
 export interface Position extends PositionAmounts {
   address: string

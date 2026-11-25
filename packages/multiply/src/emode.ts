@@ -6,6 +6,7 @@ import type {
   LendingConfig,
   MarketSnapshot,
   MultiplySuiClient,
+  PositionAmounts,
   Strategy
 } from './types'
 import { BN, RAY, check } from './utils'
@@ -135,6 +136,38 @@ export function validateMarketMode(strategy: Strategy, market: MarketSnapshot) {
     'READ_FAILED',
     'Market snapshot does not match configured E-Mode'
   )
+}
+
+/**
+ * RV-08: the snapshot's LTV/LT are those of `strategy.emodeId`, so they describe a position only
+ * while its lending account is in that mode. A source that does not report the account mode
+ * (`undefined`) is taken at its word, as before.
+ */
+export function inStrategyMode(strategy: Strategy, position: PositionAmounts) {
+  const actual = position.accountEmodeId
+  if (strategy.emodeId === undefined || actual === undefined) return true
+  check(
+    actual === null || (Number.isSafeInteger(actual) && actual >= 0),
+    'READ_FAILED',
+    'Invalid account E-Mode'
+  )
+  return actual === strategy.emodeId
+}
+
+const OUTSIDE_MODE = 'Lending account is not in the strategy E-Mode'
+/** A position outside the strategy mode has other risk parameters than every figure quoted for it. */
+export function assertPositionMode(strategy: Strategy, position: PositionAmounts, empty: boolean) {
+  check(empty || inStrategyMode(strategy, position), 'POSITION_UNSUPPORTED', OUTSIDE_MODE)
+}
+
+/**
+ * True when an empty account in no mode has to enter the strategy mode before an open. An account
+ * that holds a position outside the mode, or sits in another mode, is refused.
+ */
+export function mustEnterMode(strategy: Strategy, position: PositionAmounts, empty: boolean) {
+  if (inStrategyMode(strategy, position)) return false
+  check(empty && position.accountEmodeId === null, 'POSITION_UNSUPPORTED', OUTSIDE_MODE)
+  return true
 }
 
 export function assertModeExposure(

@@ -389,18 +389,52 @@ export function createNaviDataSource(
         target: `${config.uiGetter}::getter_unchecked::get_user_state`,
         arguments: [tx.object(config.storage), tx.pure.address(cap.accountOwner)]
       })
+      // RV-08: an E-Mode strategy is priced with that mode's LTV/LT, which hold only while the
+      // lending account is in it. `get_user_emode_id` aborts for an account in no mode, so
+      // `is_in_emode` decides and the id is read on its own, alongside the position.
+      const readsMode = strategy.emodeId !== undefined
+      let modeId: Promise<number | undefined> | undefined
+      if (readsMode) {
+        tx.moveCall({
+          target: `${config.package}::storage::is_in_emode`,
+          arguments: [tx.object(config.storage), tx.pure.address(cap.accountOwner)]
+        })
+        const idRead = new Transaction()
+        idRead.moveCall({
+          target: `${config.package}::storage::get_user_emode_id`,
+          arguments: [idRead.object(config.storage), idRead.pure.address(cap.accountOwner)]
+        })
+        modeId = inspect(client, idRead).then(
+          (result) => Number(bcs.u64().parse(result[0].returnValues[0].bcs)),
+          () => undefined
+        )
+      }
       const versions = options.onReadEvidence ? {} : undefined
       const results = await inspect(client, tx, versions)
       const reserves = bcs.vector(ReserveDataInfo).parse(results[1].returnValues[0].bcs)
       const states = bcs.vector(UserStateInfo).parse(results[2].returnValues[0].bcs)
+      let accountEmodeId: number | null | undefined
+      if (readsMode) {
+        const inMode = bcs.bool().parse(results[3].returnValues[0].bcs)
+        const id = await modeId
+        check(
+          !inMode || (id !== undefined && Number.isSafeInteger(id)),
+          'READ_FAILED',
+          'Unable to read the account E-Mode'
+        )
+        accountEmodeId = inMode ? id! : null
+      }
       let collateralAmount = '0',
         debtAmount = '0'
       for (const state of states) {
+        // RV-09: anyone can supply to an address (`entry_deposit_on_behalf_of_user`), so a supply
+        // outside the collateral reserve cannot make the position unreadable. It only adds
+        // collateral value on chain and is left out of every quoted figure. Only the Cap holder
+        // can borrow: debt outside the debt reserve is a liability this strategy cannot price.
         check(
-          (state.asset_id === market.collateral.id || BigInt(state.supply_balance) === 0n) &&
-            (state.asset_id === market.debt.id || BigInt(state.borrow_balance) === 0n),
+          state.asset_id === market.debt.id || BigInt(state.borrow_balance) === 0n,
           'POSITION_UNSUPPORTED',
-          'Account contains assets outside this strategy'
+          'Account has debt outside this strategy'
         )
         const reserve = reserves.find((r) => r.id === state.asset_id)
         check(reserve, 'READ_FAILED', 'Position references an unknown reserve')
@@ -422,7 +456,8 @@ export function createNaviDataSource(
         collateralAmount: lendingToRaw(collateralAmount, tokenDecimals(market.collateral)),
         debtAmount: lendingToRaw(debtAmount, tokenDecimals(market.debt), true),
         protocolCollateralAmount: collateralAmount,
-        protocolDebtAmount: debtAmount
+        protocolDebtAmount: debtAmount,
+        ...(accountEmodeId === undefined ? {} : { accountEmodeId })
       }
       if (versions) options.onReadEvidence?.('position', versions)
       return amounts
