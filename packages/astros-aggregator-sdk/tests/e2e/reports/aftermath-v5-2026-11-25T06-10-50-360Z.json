@@ -10,96 +10,102 @@
       "routes": 1,
       "hops": 1,
       "nonAftermath": 0,
-      "quoteOut": "9278935472",
+      "quoteOut": "9291971442",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "9278935472",
+      "received": "9291971442",
       "receivedMinusQuote": "0",
-      "referenceOut": "9278935472",
+      "referenceOut": "9291971442",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     },
     {
       "case": "SUI->USDC 100 SUI",
       "routes": 1,
       "hops": 1,
       "nonAftermath": 0,
-      "quoteOut": "65881975",
+      "quoteOut": "63955635",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "65881975",
+      "received": "63955635",
       "receivedMinusQuote": "0",
-      "referenceOut": "65881975",
+      "referenceOut": "63955635",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     },
     {
       "case": "USDC->SUI 50 USDC",
       "routes": 1,
       "hops": 1,
       "nonAftermath": 0,
-      "quoteOut": "75143191803",
+      "quoteOut": "77362471504",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "75143191803",
+      "received": "77362471504",
       "receivedMinusQuote": "0",
-      "referenceOut": "75143191803",
+      "referenceOut": "77362471504",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     },
     {
       "case": "SUI->haSUI 8-coin",
       "routes": 1,
       "hops": 1,
       "nonAftermath": 0,
-      "quoteOut": "4581168029",
+      "quoteOut": "4578427693",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "4581168029",
+      "received": "4578427693",
       "receivedMinusQuote": "0",
-      "referenceOut": "4581168029",
+      "referenceOut": "4578427693",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     },
     {
       "case": "SUI->USDC stable 3-coin",
       "routes": 1,
       "hops": 1,
       "nonAftermath": 0,
-      "quoteOut": "6592",
+      "quoteOut": "6264",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "6592",
+      "received": "6264",
       "receivedMinusQuote": "0",
-      "referenceOut": "6592",
+      "referenceOut": "6264",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     },
     {
       "case": "SUI->afSUI->SUI 2 hops",
       "routes": 1,
       "hops": 2,
       "nonAftermath": 0,
-      "quoteOut": "19651954135",
+      "quoteOut": "19691487046",
       "sdkOk": true,
       "calledPackages": [
         "0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7"
       ],
-      "received": "19651954135",
+      "received": "19691487046",
       "receivedMinusQuote": "0",
-      "referenceOut": "19651954135",
+      "referenceOut": "19691487046",
       "sameState": true,
-      "result": "pass"
+      "result": "pass",
+      "attempts": 1
     }
   ]
 }

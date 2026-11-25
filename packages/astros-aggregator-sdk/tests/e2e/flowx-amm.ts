@@ -22,6 +22,7 @@ const GRPC = process.env.SUI_GRPC_URL || 'https://fullnode.mainnet.sui.io'
 const client = new SuiGrpcClient({ baseUrl: GRPC, network: 'mainnet' })
 const SENDER =
   process.env.SENDER || '0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d'
+const MAX_ATTEMPTS = 5
 const RECEIVER = '0x000000000000000000000000000000000000000000000000000000000000beef'
 const SUI = '0x2::sui::SUI'
 const IKA = '0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA'
@@ -114,62 +115,69 @@ function versions(effects: any): Record<string, string> {
       is_accurate: false,
       routes: [{ amount_in: Number(c.amount), amount_out: 0, path: c.hops.map(hop) }]
     }
-    const tx = new Transaction()
-    tx.setSender(SENDER)
-    tx.setGasBudget(2_000_000_000n)
-    const input = tx.splitCoins(tx.gas, [tx.pure.u64(c.amount)])
-    const out = await buildSwapWithoutServiceFee(SENDER, tx, input as any, quote, 0, 0, false)
-    tx.transferObjects([out as any], RECEIVER)
-    const ref = new Transaction()
-    ref.setSender(SENDER)
-    let coin: any = ref.splitCoins(ref.gas, [ref.pure.u64(c.amount)])
-    for (const h of c.hops) coin = referenceCall(ref, h, coin)
-    ref.moveCall({ target: '0x2::coin::value', typeArguments: [c.target], arguments: [coin] })
-    ref.transferObjects([coin], RECEIVER)
-    const [sdkSim, refSim]: any[] = await Promise.all([
-      client.core.simulateTransaction({
-        transaction: tx,
-        checksEnabled: true,
-        include: { effects: true, balanceChanges: true }
-      } as any),
-      client.core.simulateTransaction({
-        transaction: ref,
-        checksEnabled: false,
-        include: { effects: true, commandResults: true }
-      } as any)
-    ])
-    const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
-    const r = refSim.Transaction ?? refSim.FailedTransaction
-    const row: any = {
-      case: c.name,
-      sdkOk: Boolean(s?.status?.success),
-      refOk: Boolean(r?.status?.success)
-    }
-    if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error).slice(0, 300)
-    if (!row.refOk) row.refError = JSON.stringify(r?.status?.error).slice(0, 300)
-    row.received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
-      .filter((b: any) => norm(b.coinType) === norm(c.target) && b.address === RECEIVER)
-      .reduce((t: bigint, b: any) => t + BigInt(b.amount), 0n)
-      .toString()
-    if (row.refOk) {
-      const vi = refSim.commandResults.length - 2
-      row.reference = Buffer.from(refSim.commandResults[vi].returnValues[0].bcs)
-        .readBigUInt64LE(0)
+    // Pool state can move between the two simulations; retry so 'received = reference' is really checked.
+    let row: any
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const tx = new Transaction()
+      tx.setSender(SENDER)
+      tx.setGasBudget(2_000_000_000n)
+      const input = tx.splitCoins(tx.gas, [tx.pure.u64(c.amount)])
+      const out = await buildSwapWithoutServiceFee(SENDER, tx, input as any, quote, 0, 0, false)
+      tx.transferObjects([out as any], RECEIVER)
+      const ref = new Transaction()
+      ref.setSender(SENDER)
+      let coin: any = ref.splitCoins(ref.gas, [ref.pure.u64(c.amount)])
+      for (const h of c.hops) coin = referenceCall(ref, h, coin)
+      ref.moveCall({ target: '0x2::coin::value', typeArguments: [c.target], arguments: [coin] })
+      ref.transferObjects([coin], RECEIVER)
+      const [sdkSim, refSim]: any[] = await Promise.all([
+        client.core.simulateTransaction({
+          transaction: tx,
+          checksEnabled: true,
+          include: { effects: true, balanceChanges: true }
+        } as any),
+        client.core.simulateTransaction({
+          transaction: ref,
+          checksEnabled: false,
+          include: { effects: true, commandResults: true }
+        } as any)
+      ])
+      const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
+      const r = refSim.Transaction ?? refSim.FailedTransaction
+      row = {
+        case: c.name,
+        sdkOk: Boolean(s?.status?.success),
+        refOk: Boolean(r?.status?.success)
+      }
+      if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error).slice(0, 300)
+      if (!row.refOk) row.refError = JSON.stringify(r?.status?.error).slice(0, 300)
+      row.received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
+        .filter((b: any) => norm(b.coinType) === norm(c.target) && b.address === RECEIVER)
+        .reduce((t: bigint, b: any) => t + BigInt(b.amount), 0n)
         .toString()
+      if (row.refOk) {
+        const vi = refSim.commandResults.length - 2
+        row.reference = Buffer.from(refSim.commandResults[vi].returnValues[0].bcs)
+          .readBigUInt64LE(0)
+          .toString()
+      }
+      const vs = versions(s?.effects)
+      const vr = versions(r?.effects)
+      row.fieldVersions = vs
+      row.sameState = Object.keys(vs).length > 0 && Object.keys(vs).every((k) => vs[k] === vr[k])
+      row.result =
+        !row.sdkOk || !row.refOk
+          ? 'fail'
+          : !row.sameState
+            ? 'state_moved'
+            : row.received === row.reference
+              ? 'pass'
+              : 'fail'
+      row.attempts = attempt
+      if (row.result !== 'state_moved') break
     }
-    const vs = versions(s?.effects)
-    const vr = versions(r?.effects)
-    row.fieldVersions = vs
-    row.sameState = Object.keys(vs).length > 0 && Object.keys(vs).every((k) => vs[k] === vr[k])
-    row.result =
-      !row.sdkOk || !row.refOk
-        ? 'fail'
-        : !row.sameState
-          ? 'pass_state_moved'
-          : row.received === row.reference
-            ? 'pass'
-            : 'fail'
-    if (row.result === 'fail') failed++
+    if (row.result === 'state_moved') row.result = 'fail_state_moved'
+    if (row.result !== 'pass') failed++
     rows.push(row)
     console.log(
       `${row.result.toUpperCase().padEnd(16)} ${c.name.padEnd(26)} received=${row.received} reference=${row.reference ?? row.refError}${row.sdkError ? ` sdkErr=${row.sdkError.slice(0, 200)}` : ''}`

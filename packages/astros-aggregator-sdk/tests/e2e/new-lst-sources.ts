@@ -21,6 +21,7 @@ const GQL = process.env.SUI_GRAPHQL_URL || 'https://graphql.mainnet.sui.io/graph
 const client = new SuiGrpcClient({ baseUrl: GRPC, network: 'mainnet' })
 const SENDER =
   process.env.SENDER || '0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d'
+const MAX_ATTEMPTS = 5
 const RECEIVER = '0x000000000000000000000000000000000000000000000000000000000000beef'
 const SUI = '0x2::sui::SUI'
 const STSUI = C.stSuiCoinType
@@ -104,6 +105,14 @@ async function topCoin(
         variables: { t: `0x2::coin::Coin<${type}>`, a: after }
       })
     }).then((r) => r.json())
+    if (!res?.data?.objects) {
+      // GraphQL error or rate limit: stop paging and use what was found so far (the haWAL case is
+      // then reported as skipped, which fails the run).
+      console.log(
+        `topCoin ${type}: page ${p} failed: ${JSON.stringify(res?.errors ?? res).slice(0, 200)}`
+      )
+      break
+    }
     for (const n of res.data.objects.nodes) {
       const b = BigInt(n.asMoveObject?.contents?.json?.balance ?? 0)
       const owner = n.owner?.address?.address
@@ -197,66 +206,90 @@ function versions(effects: any): Record<string, string> {
       c.walCoin
         ? tx.splitCoins(tx.object(c.walCoin.id), [tx.pure.u64(c.amount)])
         : tx.splitCoins(tx.gas, [tx.pure.u64(c.amount)])
-    const tx = new Transaction()
-    tx.setSender(sender)
-    tx.setGasBudget(2_000_000_000n)
-    const out = await buildSwapWithoutServiceFee(sender, tx, inputOf(tx) as any, quote, 0, 0, false)
-    tx.transferObjects([out as any], RECEIVER)
-    const ref = new Transaction()
-    ref.setSender(sender)
-    let coin: any = inputOf(ref)
-    for (const h of c.hops) coin = referenceCall(ref, h, coin)
-    ref.moveCall({ target: '0x2::coin::value', typeArguments: [c.target], arguments: [coin] })
-    ref.transferObjects([coin], RECEIVER)
-    const [sdkSim, refSim]: any[] = await Promise.all([
-      client.core.simulateTransaction({
-        transaction: tx,
-        checksEnabled: !c.walCoin,
-        include: { effects: true, balanceChanges: true }
-      } as any),
-      client.core.simulateTransaction({
-        transaction: ref,
-        checksEnabled: false,
-        include: { effects: true, commandResults: true }
-      } as any)
-    ])
-    const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
-    const r = refSim.Transaction ?? refSim.FailedTransaction
-    const row: any = {
-      case: c.name,
-      sdkOk: Boolean(s?.status?.success),
-      refOk: Boolean(r?.status?.success)
-    }
-    if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error).slice(0, 300)
-    if (!row.refOk) row.refError = JSON.stringify(r?.status?.error).slice(0, 300)
-    row.received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
-      .filter((b: any) => norm(b.coinType) === norm(c.target) && b.address === RECEIVER)
-      .reduce((t: bigint, b: any) => t + BigInt(b.amount), 0n)
-      .toString()
-    if (row.refOk) {
-      const vi = refSim.commandResults.length - 2
-      row.reference = Buffer.from(refSim.commandResults[vi].returnValues[0].bcs)
-        .readBigUInt64LE(0)
+    // Pool state can move between the two simulations; retry so 'received = reference' is really checked.
+    let row: any
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const tx = new Transaction()
+      tx.setSender(sender)
+      tx.setGasBudget(2_000_000_000n)
+      const out = await buildSwapWithoutServiceFee(
+        sender,
+        tx,
+        inputOf(tx) as any,
+        quote,
+        0,
+        0,
+        false
+      )
+      tx.transferObjects([out as any], RECEIVER)
+      const ref = new Transaction()
+      ref.setSender(sender)
+      let coin: any = inputOf(ref)
+      for (const h of c.hops) coin = referenceCall(ref, h, coin)
+      ref.moveCall({ target: '0x2::coin::value', typeArguments: [c.target], arguments: [coin] })
+      ref.transferObjects([coin], RECEIVER)
+      const [sdkSim, refSim]: any[] = await Promise.all([
+        client.core.simulateTransaction({
+          transaction: tx,
+          checksEnabled: !c.walCoin,
+          include: { effects: true, balanceChanges: true }
+        } as any),
+        client.core.simulateTransaction({
+          transaction: ref,
+          checksEnabled: false,
+          include: { effects: true, commandResults: true }
+        } as any)
+      ])
+      const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
+      const r = refSim.Transaction ?? refSim.FailedTransaction
+      row = {
+        case: c.name,
+        sdkOk: Boolean(s?.status?.success),
+        refOk: Boolean(r?.status?.success)
+      }
+      if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error).slice(0, 300)
+      if (!row.refOk) row.refError = JSON.stringify(r?.status?.error).slice(0, 300)
+      row.received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
+        .filter((b: any) => norm(b.coinType) === norm(c.target) && b.address === RECEIVER)
+        .reduce((t: bigint, b: any) => t + BigInt(b.amount), 0n)
         .toString()
+      if (row.refOk) {
+        const vi = refSim.commandResults.length - 2
+        row.reference = Buffer.from(refSim.commandResults[vi].returnValues[0].bcs)
+          .readBigUInt64LE(0)
+          .toString()
+      }
+      const vs = versions(s?.effects)
+      const vr = versions(r?.effects)
+      row.sameState = Object.keys(vs).length > 0 && Object.keys(vs).every((k) => vs[k] === vr[k])
+      row.result =
+        !row.sdkOk || !row.refOk
+          ? 'fail'
+          : !row.sameState
+            ? 'state_moved'
+            : row.received === row.reference
+              ? 'pass'
+              : 'fail'
+      row.attempts = attempt
+      if (row.result !== 'state_moved') break
     }
-    const vs = versions(s?.effects)
-    const vr = versions(r?.effects)
-    row.sameState = Object.keys(vs).length > 0 && Object.keys(vs).every((k) => vs[k] === vr[k])
-    row.result =
-      !row.sdkOk || !row.refOk
-        ? 'fail'
-        : !row.sameState
-          ? 'pass_state_moved'
-          : row.received === row.reference
-            ? 'pass'
-            : 'fail'
-    if (row.result === 'fail') failed++
+    if (row.result === 'state_moved') row.result = 'fail_state_moved'
+    if (row.result !== 'pass') failed++
     rows.push(row)
     console.log(
       `${row.result.toUpperCase().padEnd(16)} ${c.name.padEnd(26)} received=${row.received} reference=${row.reference ?? row.refError}${row.sdkError ? ` sdkErr=${row.sdkError.slice(0, 200)}` : ''}`
     )
   }
-  if (!cases.some((c) => c.walCoin)) console.log('SKIP WAL->haWAL: no WAL coin found')
+  if (!cases.some((c) => c.walCoin)) {
+    // A skipped case is not a pass: without it nothing checks the haWAL call.
+    rows.push({
+      case: 'WAL->haWAL',
+      result: 'fail_skipped',
+      detail: 'no WAL coin with >= 2 WAL found'
+    })
+    failed++
+    console.log('FAIL_SKIPPED     WAL->haWAL: no WAL coin found')
+  }
   mkdirSync('tests/e2e/reports', { recursive: true })
   const file = `tests/e2e/reports/new-lst-sources-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
   writeFileSync(file, JSON.stringify({ sender: SENDER, rows }, null, 1))

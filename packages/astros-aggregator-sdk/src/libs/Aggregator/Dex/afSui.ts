@@ -2,9 +2,9 @@ import { Transaction } from '@mysten/sui/transactions'
 import { AggregatorConfig } from '../config'
 
 /**
- * afSUI（Aftermath 质押）：直接调 LSD v2。
- * a2b = SUI→afSUI：staked_sui_vault::request_stake，验证人固定用 Aftermath 自己的（手续费 0）
- * b2a = afSUI→SUI：staked_sui_vault::request_unstake_atomic（从即时赎回准备金付款）
+ * afSUI (Aftermath liquid staking): calls the LSD package v2 directly.
+ * a2b = SUI -> afSUI: staked_sui_vault::request_stake with Aftermath's own validator (fee 0).
+ * b2a = afSUI -> SUI: staked_sui_vault::request_unstake_atomic (paid from the instant-redeem reserve).
  */
 export async function makeAfSuiPTB(txb: Transaction, pathTempCoin: any, a2b: boolean) {
   const c = AggregatorConfig

@@ -179,12 +179,20 @@ async function simulate(from: string, target: string, quote: any, minOut: number
   )
   for (const [name, from, target, amounts] of CASES) {
     let row: any = null
+    let lastReason = 'state_kept_moving'
     for (let attempt = 1; attempt <= 5 && !row; attempt++) {
       const raw = await rawPoolState()
-      if (!raw) continue
+      if (!raw) {
+        lastReason = 'pool_state_unavailable'
+        continue
+      }
       const quote = quoteFor(raw.type, from, target, amounts)
       const first = await simulate(from, target, quote, 0)
-      if (first.poolVersion !== raw.version) continue // 池子在读状态后变了，重来
+      // 池子在读状态后变了，重来。SDK 模拟失败时 effects 里可能没有池子，不能当成"状态变了"，直接记录真实错误
+      if (first.ok && first.poolVersion !== raw.version) {
+        lastReason = 'state_kept_moving'
+        continue
+      }
       const tight = first.ok ? await simulate(from, target, quote, Number(first.received)) : null
       row = {
         case: name,
@@ -205,7 +213,8 @@ async function simulate(from: string, target: string, quote: any, minOut: number
       }
     }
     if (!row) {
-      rows.push({ case: name, result: 'state_kept_moving' })
+      rows.push({ case: name, result: lastReason })
+      console.log(`${lastReason.toUpperCase()} ${name}`)
       failed++
       continue
     }

@@ -402,7 +402,9 @@ export async function buildSwapWithoutServiceFee(
           break
         }
         default: {
-          break
+          // A hop this SDK cannot build would leave the input coin in pathTempCoin and fail later
+          // in mergeCoins with a type mismatch; fail here with the provider name instead.
+          throw new Error(`Unsupported provider: ${provider}`)
         }
       }
     }

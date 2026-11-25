@@ -1,0 +1,58 @@
+{
+ "sender": "0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d",
+ "rows": [
+  {
+   "case": "SUI->IKA 10 SUI",
+   "sdkOk": true,
+   "refOk": true,
+   "received": "11248545284802",
+   "reference": "11248545284802",
+   "fieldVersions": {
+    "0x56b0fbb25f0780c082daad669ee904129094ce3cdc7f0796894f3d2077387f18": "1109783221"
+   },
+   "sameState": true,
+   "result": "pass",
+   "attempts": 1
+  },
+  {
+   "case": "SUI->IKA->SUI 50 SUI",
+   "sdkOk": true,
+   "refOk": true,
+   "received": "49714726882",
+   "reference": "49714726882",
+   "fieldVersions": {
+    "0x56b0fbb25f0780c082daad669ee904129094ce3cdc7f0796894f3d2077387f18": "1109783221"
+   },
+   "sameState": true,
+   "result": "pass",
+   "attempts": 1
+  },
+  {
+   "case": "SUI->FLX->USDC 200 SUI",
+   "sdkOk": true,
+   "refOk": true,
+   "received": "125543952",
+   "reference": "125543952",
+   "fieldVersions": {
+    "0x9ed5b1a7bd56c700ae978f54b5b218ebe545ad39ab51995c9f1a907e9560050c": "1109784596",
+    "0xdd38b1f85a56bf8d421bf02384f89609435de7ad309f3e998fd199b1217fcad7": "1109605567"
+   },
+   "sameState": true,
+   "result": "pass",
+   "attempts": 1
+  },
+  {
+   "case": "SUI->USDC 1000 SUI",
+   "sdkOk": true,
+   "refOk": true,
+   "received": "606871577",
+   "reference": "606871577",
+   "fieldVersions": {
+    "0x8eba28d4fef9750f52baaaed896d096b0765973ca6c8f193870236b5451a413c": "1109775389"
+   },
+   "sameState": true,
+   "result": "pass",
+   "attempts": 1
+  }
+ ]
+}

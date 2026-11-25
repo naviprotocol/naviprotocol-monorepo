@@ -3,7 +3,7 @@
   "receiver": "0x000000000000000000000000000000000000000000000000000000000000beef",
   "package": "0x6b989f9b05bd11a00f1c7779443d66802c5e71631f59e87be5d2a616991f151e",
   "failed": 0,
-  "rawFile": "tests/e2e/reports/cetus-dlmm-2026-11-23T05-46-15-015Z.raw.json",
+  "rawFile": "tests/e2e/reports/cetus-dlmm-2026-11-25T06-11-01-075Z.raw.json",
   "rows": [
     {
       "case": "SUI->USDC 5 SUI",
@@ -15,22 +15,22 @@
       ],
       "sdkOk": true,
       "sdkError": null,
-      "poolVersion": "1105713665",
-      "nowMs": "1795412766300",
-      "received": "3308206",
+      "poolVersion": "1109786022",
+      "nowMs": "1795587052988",
+      "received": "3194694",
       "swapEvents": [
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "5000000000",
-          "amount_out": "3308206"
+          "amount_out": "3194694"
         }
       ],
       "tightSlippageOk": true,
       "tightSameState": true,
-      "tightReceived": "3308206",
+      "tightReceived": "3194694",
       "result": "pass",
-      "rawPoolVersion": "1105713665",
+      "rawPoolVersion": "1109786022",
       "rawGroups": 67
     },
     {
@@ -43,22 +43,22 @@
       ],
       "sdkOk": true,
       "sdkError": null,
-      "poolVersion": "1105713665",
-      "nowMs": "1795412767983",
-      "received": "1984923825",
+      "poolVersion": "1109786022",
+      "nowMs": "1795587054720",
+      "received": "1916816438",
       "swapEvents": [
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "3000000000000",
-          "amount_out": "1984923825"
+          "amount_out": "1916816438"
         }
       ],
       "tightSlippageOk": true,
       "tightSameState": true,
-      "tightReceived": "1984923825",
+      "tightReceived": "1916816438",
       "result": "pass",
-      "rawPoolVersion": "1105713665",
+      "rawPoolVersion": "1109786022",
       "rawGroups": 67
     },
     {
@@ -71,22 +71,22 @@
       ],
       "sdkOk": true,
       "sdkError": null,
-      "poolVersion": "1105713665",
-      "nowMs": "1795412770182",
-      "received": "74579697123",
+      "poolVersion": "1109786022",
+      "nowMs": "1795587056723",
+      "received": "77238493249",
       "swapEvents": [
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "50000000",
-          "amount_out": "74579697123"
+          "amount_out": "77238493249"
         }
       ],
       "tightSlippageOk": true,
       "tightSameState": true,
-      "tightReceived": "74579697123",
+      "tightReceived": "77238493249",
       "result": "pass",
-      "rawPoolVersion": "1105713665",
+      "rawPoolVersion": "1109786022",
       "rawGroups": 67
     },
     {
@@ -99,22 +99,22 @@
       ],
       "sdkOk": true,
       "sdkError": null,
-      "poolVersion": "1105713665",
-      "nowMs": "1795412772361",
-      "received": "29027842232342",
+      "poolVersion": "1109786022",
+      "nowMs": "1795587058448",
+      "received": "30895391487308",
       "swapEvents": [
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "20000000000",
-          "amount_out": "29027842232342"
+          "amount_out": "30895391487308"
         }
       ],
       "tightSlippageOk": true,
       "tightSameState": true,
-      "tightReceived": "29027842232342",
+      "tightReceived": "30895391487308",
       "result": "pass",
-      "rawPoolVersion": "1105713665",
+      "rawPoolVersion": "1109786022",
       "rawGroups": 67
     },
     {
@@ -128,28 +128,28 @@
       ],
       "sdkOk": true,
       "sdkError": null,
-      "poolVersion": "1105713665",
-      "nowMs": "1795412774002",
-      "received": "661641274",
+      "poolVersion": "1109786022",
+      "nowMs": "1795587059927",
+      "received": "638938811",
       "swapEvents": [
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "300000000000",
-          "amount_out": "198492382"
+          "amount_out": "191681643"
         },
         {
           "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
           "ref_fee": "0",
           "amount_in": "700000000000",
-          "amount_out": "463148892"
+          "amount_out": "447257168"
         }
       ],
       "tightSlippageOk": true,
       "tightSameState": true,
-      "tightReceived": "661641274",
+      "tightReceived": "638938811",
       "result": "pass",
-      "rawPoolVersion": "1105713665",
+      "rawPoolVersion": "1109786022",
       "rawGroups": 67
     }
   ]

@@ -138,13 +138,13 @@ export enum Dex {
   MAGMA_ALMM = 'magmaAlmm',
   /** Cetus DLMM DEX protocol */
   CETUS_DLMM = 'cetusDlmm',
-  /** stSUI（AlphaFi 质押） */
+  /** AlphaFi liquid staking (SUI <-> stSUI) */
   ALPHAFI = 'alphafi',
-  /** haWAL（Haedal WAL 质押） */
+  /** Haedal WAL liquid staking (WAL -> haWAL only) */
   HAWAL = 'haWal',
-  /** afSUI（Aftermath 质押） */
+  /** Aftermath liquid staking (SUI <-> afSUI) */
   AFSUI = 'afSui',
-  /** FlowX AMM（v2 恒定乘积；FlowX CLMM 是 FLOWX） */
+  /** FlowX AMM v2 (constant product); FlowX CLMM is FLOWX */
   FLOWX_AMM = 'flowxAmm'
 }
 

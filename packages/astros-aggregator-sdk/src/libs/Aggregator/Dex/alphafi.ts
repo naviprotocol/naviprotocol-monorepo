@@ -2,8 +2,8 @@ import { Transaction } from '@mysten/sui/transactions'
 import { AggregatorConfig } from '../config'
 
 /**
- * stSUI（AlphaFi 质押）：直接调执行包 v2 的 liquid_staking::mint / redeem，整枚输入币进入调用。
- * a2b = SUI→stSUI（mint），b2a = stSUI→SUI（redeem）。
+ * stSUI (AlphaFi liquid staking): calls liquid_staking::mint / redeem on execution package v2
+ * with the whole input coin. a2b = SUI -> stSUI (mint), b2a = stSUI -> SUI (redeem).
  */
 export async function makeAlphafiPTB(txb: Transaction, pathTempCoin: any, a2b: boolean) {
   const info = txb.object(AggregatorConfig.alphafiLiquidStakingInfo)

@@ -28,6 +28,7 @@ const GRPC = process.env.SUI_GRPC_URL || 'https://fullnode.mainnet.sui.io'
 const client = new SuiGrpcClient({ baseUrl: GRPC, network: 'mainnet' })
 const SENDER =
   process.env.SENDER || '0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d'
+const MAX_ATTEMPTS = 5
 const RECEIVER = '0x000000000000000000000000000000000000000000000000000000000000beef'
 const V5 = '0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7'
 const GAS_BUDGET = 2_000_000_000n
@@ -233,96 +234,114 @@ async function syntheticQuote(from: string, amount: bigint, hops: Hop[]) {
       }))
 
   for (const c of cases) {
-    let got: any
-    try {
-      got = await c.get()
-    } catch (error: any) {
-      got = { error: String(error?.message ?? error).slice(0, 300) }
-    }
-    if (!got.data) {
-      const row = {
-        case: c.name,
-        result: got.skip ? 'no_route' : 'fail',
-        detail: got.skip ?? got.error
+    // Pool state can move between the two simulations; re-quote and retry so 'received = reference'
+    // is really checked. A row still in a moved state after MAX_ATTEMPTS fails.
+    let row: any
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let got: any
+      try {
+        got = await c.get()
+      } catch (error: any) {
+        got = { error: String(error?.message ?? error).slice(0, 300) }
       }
-      if (row.result === 'fail') failed++
+      if (!got.data) {
+        row = {
+          case: c.name,
+          result: got.skip ? 'no_route' : 'fail',
+          detail: got.skip ?? got.error
+        }
+        break
+      }
+      const data = got.data
+      const hops: any[] = data.routes.flatMap((r: any) => r.path)
+      const nonAftermath = hops.filter((h) => h.provider !== 'aftermath').length
+      const pools: string[] = [...new Set<string>(hops.map((h) => h.id))]
+      const quoteOut = BigInt(Math.floor(Number(data.amount_out)))
+
+      const tx = new Transaction()
+      tx.setSender(SENDER)
+      tx.setGasBudget(GAS_BUDGET)
+      const coinIn = inputCoin(tx, data.from, BigInt(Math.floor(Number(data.amount_in))))
+      // 合成模式 minAmountOut = 报价（S4：min_out 不会误伤，最后的滑点检查按报价通过）；后端模式 0
+      const minOut = AG_API ? 0 : Number(quoteOut)
+      const out = await buildSwapWithoutServiceFee(
+        SENDER,
+        tx,
+        coinIn as any,
+        data,
+        minOut,
+        0,
+        false
+      )
+      tx.transferObjects([out as any], RECEIVER)
+
+      const [sdkSim, ref]: any[] = await Promise.all([
+        client.core.simulateTransaction({
+          transaction: tx,
+          include: { effects: true, balanceChanges: true }
+        } as any),
+        simulateRef(data)
+      ])
+      const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
+      row = {
+        case: c.name,
+        routes: data.routes.length,
+        hops: hops.length,
+        nonAftermath,
+        quoteOut: quoteOut.toString()
+      }
+      row.sdkOk = Boolean(s?.status?.success)
+      if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error ?? sdkSim).slice(0, 300)
+      // SDK 交易里所有 Aftermath swap_exact_in 调用的包（S1–S3：必须全是 v5）
+      row.calledPackages = [
+        ...new Set(
+          tx
+            .getData()
+            .commands.filter(
+              (x: any) => x.MoveCall?.module === 'swap' && x.MoveCall?.function === 'swap_exact_in'
+            )
+            .map((x: any) => x.MoveCall.package)
+        )
+      ]
+      const received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
+        .filter((x: any) => norm(x.coinType) === norm(c.target) && x.address === RECEIVER)
+        .reduce((t: bigint, x: any) => t + BigInt(x.amount), 0n)
+      row.received = received.toString()
+      row.receivedMinusQuote = (received - quoteOut).toString()
+      if (ref.ok) {
+        // 每条路由最后一跳的输出之和
+        let k = 0
+        let refOut = 0n
+        for (const r of data.routes) {
+          k += r.path.length
+          refOut += ref.values[k - 1]
+        }
+        row.referenceOut = refOut.toString()
+      } else row.referenceError = ref.error
+      const vs = poolVersions(s?.effects, pools)
+      const vr = ref.ok ? poolVersions(ref.effects, pools) : {}
+      row.sameState = pools.every((p) => vs[p] !== undefined && vs[p] === vr[p])
+      const usesV5 =
+        row.calledPackages.length > 0 && row.calledPackages.every((x: string) => x === V5)
+      const equal = row.referenceOut !== undefined && row.received === row.referenceOut
+      row.result =
+        !row.sdkOk || !usesV5 || nonAftermath > 0
+          ? 'fail'
+          : !row.sameState
+            ? 'state_moved'
+            : equal
+              ? 'pass'
+              : 'fail'
+      row.attempts = attempt
+      if (row.result !== 'state_moved') break
+    }
+    if (row.result === 'state_moved') row.result = 'fail_state_moved'
+    if (row.result !== 'pass' && row.result !== 'no_route') failed++
+    if (row.detail !== undefined) {
       rows.push(row)
       console.log(`${row.result.toUpperCase().padEnd(16)} ${c.name}: ${row.detail}`)
       continue
     }
-    const data = got.data
-    const hops: any[] = data.routes.flatMap((r: any) => r.path)
-    const nonAftermath = hops.filter((h) => h.provider !== 'aftermath').length
-    const pools: string[] = [...new Set<string>(hops.map((h) => h.id))]
-    const quoteOut = BigInt(Math.floor(Number(data.amount_out)))
-
-    const tx = new Transaction()
-    tx.setSender(SENDER)
-    tx.setGasBudget(GAS_BUDGET)
-    const coinIn = inputCoin(tx, data.from, BigInt(Math.floor(Number(data.amount_in))))
-    // 合成模式 minAmountOut = 报价（S4：min_out 不会误伤，最后的滑点检查按报价通过）；后端模式 0
-    const minOut = AG_API ? 0 : Number(quoteOut)
-    const out = await buildSwapWithoutServiceFee(SENDER, tx, coinIn as any, data, minOut, 0, false)
-    tx.transferObjects([out as any], RECEIVER)
-
-    const [sdkSim, ref]: any[] = await Promise.all([
-      client.core.simulateTransaction({
-        transaction: tx,
-        include: { effects: true, balanceChanges: true }
-      } as any),
-      simulateRef(data)
-    ])
-    const s = sdkSim.Transaction ?? sdkSim.FailedTransaction
-    const row: any = {
-      case: c.name,
-      routes: data.routes.length,
-      hops: hops.length,
-      nonAftermath,
-      quoteOut: quoteOut.toString()
-    }
-    row.sdkOk = Boolean(s?.status?.success)
-    if (!row.sdkOk) row.sdkError = JSON.stringify(s?.status?.error ?? sdkSim).slice(0, 300)
-    // SDK 交易里所有 Aftermath swap_exact_in 调用的包（S1–S3：必须全是 v5）
-    row.calledPackages = [
-      ...new Set(
-        tx
-          .getData()
-          .commands.filter(
-            (x: any) => x.MoveCall?.module === 'swap' && x.MoveCall?.function === 'swap_exact_in'
-          )
-          .map((x: any) => x.MoveCall.package)
-      )
-    ]
-    const received = (sdkSim.balanceChanges ?? s?.balanceChanges ?? [])
-      .filter((x: any) => norm(x.coinType) === norm(c.target) && x.address === RECEIVER)
-      .reduce((t: bigint, x: any) => t + BigInt(x.amount), 0n)
-    row.received = received.toString()
-    row.receivedMinusQuote = (received - quoteOut).toString()
-    if (ref.ok) {
-      // 每条路由最后一跳的输出之和
-      let k = 0
-      let refOut = 0n
-      for (const r of data.routes) {
-        k += r.path.length
-        refOut += ref.values[k - 1]
-      }
-      row.referenceOut = refOut.toString()
-    } else row.referenceError = ref.error
-    const vs = poolVersions(s?.effects, pools)
-    const vr = ref.ok ? poolVersions(ref.effects, pools) : {}
-    row.sameState = pools.every((p) => vs[p] !== undefined && vs[p] === vr[p])
-    const usesV5 =
-      row.calledPackages.length > 0 && row.calledPackages.every((x: string) => x === V5)
-    const equal = row.referenceOut !== undefined && row.received === row.referenceOut
-    row.result =
-      !row.sdkOk || !usesV5 || nonAftermath > 0
-        ? 'fail'
-        : !row.sameState
-          ? 'pass_state_moved'
-          : equal
-            ? 'pass'
-            : 'fail'
-    if (row.result === 'fail') failed++
     rows.push(row)
     console.log(
       `${row.result.toUpperCase().padEnd(16)} ${c.name.padEnd(24)} hops=${row.hops} sdkOk=${row.sdkOk} quote=${row.quoteOut} received=${row.received} reference=${row.referenceOut ?? row.referenceError}` +

@@ -61,9 +61,9 @@ export async function getQuoteInternal(
     // 16 the Cetus v17 integrate package, 17 the DeepBook v9 linkage call, and 18 DeepBook
     // swaps that pay the taker fee from the input coin instead of NAVI's sponsored DEEP, so
     // the router API can keep incompatible Cetus/DeepBook routes away from older clients once
-    // the corresponding backend capability gate is enabled. 20 calls Aftermath amm v5
-    // (older clients call v2, which aborts with code 40 since the 2026-11-13 PoolRegistry upgrade).
-    // 19 is reserved for the Cetus DLMM / alphafi / haWAL / afSUI / FlowX AMM release.
+    // the corresponding backend capability gate is enabled. 19 adds Cetus DLMM, AlphaFi (stSUI),
+    // haWAL, afSUI and FlowX AMM; 20 calls Aftermath amm v5 (older clients call v2, which aborts
+    // with code 40 since the 2026-11-13 PoolRegistry upgrade). Gates are cumulative, so 20 covers 19.
     version: '20'
   }).toString()
 

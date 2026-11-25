@@ -10,7 +10,11 @@
   `find_routes` client version from 18 to 20 for backend capability gating.
 - New swap sources, gated on the backend at `find_routes` version 19 (this release sends 20, so
   it receives them): Cetus DLMM (`Dex.CETUS_DLMM`), alphafi stSUI, haWAL, afSUI and FlowX AMM v2
-  (`Dex.FLOWX_AMM`).
+  (`Dex.FLOWX_AMM`). Cetus DLMM calls package v10, which must match the on-chain `Versioned`
+  object; if Cetus bumps it, the backend stops returning cetusDlmm routes until the SDK and the
+  backend are both updated.
+- `buildSwapWithoutServiceFee` now throws `Unsupported provider: <name>` for a route hop it cannot
+  build, instead of skipping the hop and failing later in `mergeCoins` with a type mismatch.
 
 ## 2.0.9
 
