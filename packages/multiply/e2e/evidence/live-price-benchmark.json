@@ -1,0 +1,3624 @@
+{
+  "kind": "mainnet-readmarket-live-price-benchmark",
+  "broadcast": false,
+  "finishedAt": "2026-11-25T09:58:28.494Z",
+  "commit": "b9c4869e42aa3dde672f0825ca4c92d895f885b3",
+  "dirty": false,
+  "node": "v24.20.0",
+  "versions": {
+    "before": "0.2.0",
+    "after": "0.3.0"
+  },
+  "rpc": "https://fullnode.mainnet.sui.io:443",
+  "rounds": 10,
+  "summary": [
+    {
+      "strategy": "main-vsui-sui",
+      "before": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1623.3,
+          "median": 1893.1,
+          "p90": 2587.4,
+          "max": 2587.4,
+          "mean": 2014.3
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 173.10000000000002
+          },
+          "flash_config": {
+            "startMs": 0.4,
+            "durationMs": 172.75
+          },
+          "market_pools": {
+            "startMs": 0.3,
+            "durationMs": 322.45000000000005
+          },
+          "flash_assets": {
+            "startMs": 0.4,
+            "durationMs": 846.5
+          },
+          "market_oracle": {
+            "startMs": 847.1500000000001,
+            "durationMs": 371.6
+          },
+          "market_inspect": {
+            "startMs": 1232.55,
+            "durationMs": 603.9
+          }
+        }
+      },
+      "after": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1262.9,
+          "median": 1316.3000000000002,
+          "p90": 3259.7,
+          "max": 3259.7,
+          "mean": 1663.1
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 159.6
+          },
+          "flash_config": {
+            "startMs": 0.45,
+            "durationMs": 159.2
+          },
+          "market_pools": {
+            "startMs": 0.35,
+            "durationMs": 323.75
+          },
+          "market_oracle": {
+            "startMs": 159.65,
+            "durationMs": 508.75
+          },
+          "flash_assets": {
+            "startMs": 0.45,
+            "durationMs": 757.55
+          },
+          "market_inspect": {
+            "startMs": 774.15,
+            "durationMs": 550.6
+          }
+        }
+      },
+      "medianSpeedupMs": 576.8,
+      "pairs": 10,
+      "samePtbDigest": 10,
+      "sameMoveCalls": 10,
+      "maxPairRatioDiffBps": "0.000"
+    },
+    {
+      "strategy": "main-hasui-sui",
+      "before": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1664.5,
+          "median": 1718.45,
+          "p90": 2933.6,
+          "max": 2933.6,
+          "mean": 1839.3
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 157.85
+          },
+          "flash_config": {
+            "startMs": 0.4,
+            "durationMs": 157.35
+          },
+          "market_pools": {
+            "startMs": 0.3,
+            "durationMs": 308
+          },
+          "flash_assets": {
+            "startMs": 0.4,
+            "durationMs": 762.05
+          },
+          "market_oracle": {
+            "startMs": 763,
+            "durationMs": 368.5
+          },
+          "market_inspect": {
+            "startMs": 1134.15,
+            "durationMs": 578.8
+          }
+        }
+      },
+      "after": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1175.4,
+          "median": 1301.2,
+          "p90": 2316.7,
+          "max": 2316.7,
+          "mean": 1399.6
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 156.3
+          },
+          "flash_config": {
+            "startMs": 0.4,
+            "durationMs": 155.9
+          },
+          "market_pools": {
+            "startMs": 0.35,
+            "durationMs": 302.1
+          },
+          "market_oracle": {
+            "startMs": 156.4,
+            "durationMs": 481.95
+          },
+          "flash_assets": {
+            "startMs": 0.4,
+            "durationMs": 771.5
+          },
+          "market_inspect": {
+            "startMs": 772.55,
+            "durationMs": 509.40000000000003
+          }
+        }
+      },
+      "medianSpeedupMs": 417.3,
+      "pairs": 10,
+      "samePtbDigest": 10,
+      "sameMoveCalls": 10,
+      "maxPairRatioDiffBps": "0.000"
+    },
+    {
+      "strategy": "main-usdsui-usdc",
+      "before": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1551.9,
+          "median": 1797.1,
+          "p90": 2770.8,
+          "max": 2770.8,
+          "mean": 1943.3
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 157
+          },
+          "flash_config": {
+            "startMs": 0.4,
+            "durationMs": 156.6
+          },
+          "market_pools": {
+            "startMs": 0.3,
+            "durationMs": 311.1
+          },
+          "flash_assets": {
+            "startMs": 0.4,
+            "durationMs": 766.8
+          },
+          "market_oracle": {
+            "startMs": 767.45,
+            "durationMs": 369.05
+          },
+          "market_inspect": {
+            "startMs": 1137.55,
+            "durationMs": 599.3
+          }
+        }
+      },
+      "after": {
+        "errors": 0,
+        "totalMs": {
+          "n": 10,
+          "min": 1181.7,
+          "median": 1711.1,
+          "p90": 2259.4,
+          "max": 2259.4,
+          "mean": 1705.2
+        },
+        "stageMedians": {
+          "market_config": {
+            "startMs": 0,
+            "durationMs": 155.7
+          },
+          "flash_config": {
+            "startMs": 0.5,
+            "durationMs": 155.25
+          },
+          "market_pools": {
+            "startMs": 0.4,
+            "durationMs": 320.20000000000005
+          },
+          "market_oracle": {
+            "startMs": 155.75,
+            "durationMs": 481.5
+          },
+          "flash_assets": {
+            "startMs": 0.5,
+            "durationMs": 1073.7
+          },
+          "market_inspect": {
+            "startMs": 1075.2,
+            "durationMs": 599.6
+          }
+        }
+      },
+      "medianSpeedupMs": 86,
+      "pairs": 10,
+      "samePtbDigest": 10,
+      "sameMoveCalls": 10,
+      "maxPairRatioDiffBps": "0.000"
+    }
+  ],
+  "samples": [
+    {
+      "round": 0,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600602828,
+      "totalMs": 2343.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0.1,
+          "durationMs": 806
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 6.9,
+          "durationMs": 799.3
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 6.4,
+          "durationMs": 829
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 6.9,
+          "durationMs": 1087.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1095.2,
+          "durationMs": 547
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1643.3,
+          "durationMs": 698.6
+        }
+      ],
+      "collateralPrice": "0.6364066",
+      "debtPrice": "0.6364066",
+      "ratio": "1",
+      "observedAt": 1795600605172,
+      "observedAtMinusStart": 2344,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 0,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600605172,
+      "totalMs": 1377.8,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0.2,
+          "durationMs": 180
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.9,
+          "durationMs": 179.3
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.7,
+          "durationMs": 337.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 180.2,
+          "durationMs": 582.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.9,
+          "durationMs": 766.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 769.5,
+          "durationMs": 604.9
+        }
+      ],
+      "collateralPrice": "0.6364066",
+      "debtPrice": "0.6364066",
+      "ratio": "1",
+      "observedAt": 1795600606550,
+      "observedAtMinusStart": 1378,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 0,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600606550,
+      "totalMs": 1677.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 156.1
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 155.7
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 325
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 753.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 755,
+          "durationMs": 366.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1122.2,
+          "durationMs": 553.4
+        }
+      ],
+      "collateralPrice": "0.6363115",
+      "debtPrice": "0.6363115",
+      "ratio": "1",
+      "observedAt": 1795600608227,
+      "observedAtMinusStart": 1677,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 0,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600608228,
+      "totalMs": 1175.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 179.7
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 179.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 327.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 179.7,
+          "durationMs": 465.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 750.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 751.7,
+          "durationMs": 421.3
+        }
+      ],
+      "collateralPrice": "0.6363115",
+      "debtPrice": "0.6363115",
+      "ratio": "1",
+      "observedAt": 1795600609403,
+      "observedAtMinusStart": 1175,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 0,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600609403,
+      "totalMs": 1911.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 185.3
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 184.8
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 314.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 735.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 735.9,
+          "durationMs": 394
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1130.1,
+          "durationMs": 780.4
+        }
+      ],
+      "collateralPrice": "0.999856",
+      "debtPrice": "0.999856",
+      "ratio": "1",
+      "observedAt": 1795600611315,
+      "observedAtMinusStart": 1912,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 0,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600611316,
+      "totalMs": 2082.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 151.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 323.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 151.8,
+          "durationMs": 492
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1467
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1468.6,
+          "durationMs": 610
+        }
+      ],
+      "collateralPrice": "0.999856",
+      "debtPrice": "0.999856",
+      "ratio": "1",
+      "observedAt": 1795600613398,
+      "observedAtMinusStart": 2082,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600613398,
+      "totalMs": 3259.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 156.7
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 156.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 156.8,
+          "durationMs": 511.5
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 734.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 2417.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 2418.4,
+          "durationMs": 838.6
+        }
+      ],
+      "collateralPrice": "0.6363115",
+      "debtPrice": "0.6363115",
+      "ratio": "1",
+      "observedAt": 1795600616658,
+      "observedAtMinusStart": 3260,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600616658,
+      "totalMs": 2020.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 197.3
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 196.9
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 351.1
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 932
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 932.7,
+          "durationMs": 372.7
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1305.8,
+          "durationMs": 712.7
+        }
+      ],
+      "collateralPrice": "0.6363115",
+      "debtPrice": "0.6363115",
+      "ratio": "1",
+      "observedAt": 1795600618678,
+      "observedAtMinusStart": 2020,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600618678,
+      "totalMs": 1419.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 154
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 153.7
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 296.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 154.1,
+          "durationMs": 483.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 741.5
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 742.7,
+          "durationMs": 673.2
+        }
+      ],
+      "collateralPrice": "0.63631398",
+      "debtPrice": "0.63631398",
+      "ratio": "1",
+      "observedAt": 1795600620098,
+      "observedAtMinusStart": 1420,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600620098,
+      "totalMs": 1750.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 162.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 162.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 297.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 826.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 827,
+          "durationMs": 392.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1219.9,
+          "durationMs": 528.9
+        }
+      ],
+      "collateralPrice": "0.63631398",
+      "debtPrice": "0.63631398",
+      "ratio": "1",
+      "observedAt": 1795600621848,
+      "observedAtMinusStart": 1750,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600621848,
+      "totalMs": 2094.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 150
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 149.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 316.6
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 150,
+          "durationMs": 483.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1421.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1423.2,
+          "durationMs": 668.6
+        }
+      ],
+      "collateralPrice": "0.999854",
+      "debtPrice": "0.999854",
+      "ratio": "1",
+      "observedAt": 1795600623943,
+      "observedAtMinusStart": 2095,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 1,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600623943,
+      "totalMs": 1829.5,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 150.3
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 149.8
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 298.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 892.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 892.9,
+          "durationMs": 391.5
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1285.1,
+          "durationMs": 542.6
+        }
+      ],
+      "collateralPrice": "0.999854",
+      "debtPrice": "0.999854",
+      "ratio": "1",
+      "observedAt": 1795600625772,
+      "observedAtMinusStart": 1829,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600625773,
+      "totalMs": 2328.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 172.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 172.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 294.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1413.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1414.2,
+          "durationMs": 361.7
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1776.3,
+          "durationMs": 550.7
+        }
+      ],
+      "collateralPrice": "0.63631398",
+      "debtPrice": "0.63631398",
+      "ratio": "1",
+      "observedAt": 1795600628101,
+      "observedAtMinusStart": 2328,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600628102,
+      "totalMs": 2181.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 169.1
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 168.7
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 309.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 169.2,
+          "durationMs": 619.6
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 1415
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1416.6,
+          "durationMs": 761.8
+        }
+      ],
+      "collateralPrice": "0.63641009",
+      "debtPrice": "0.63641009",
+      "ratio": "1",
+      "observedAt": 1795600630283,
+      "observedAtMinusStart": 2181,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600630283,
+      "totalMs": 1664.5,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 161.3
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 160.9
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 303.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 770.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 771,
+          "durationMs": 359.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1130.8,
+          "durationMs": 532.7
+        }
+      ],
+      "collateralPrice": "0.63641009",
+      "debtPrice": "0.63641009",
+      "ratio": "1",
+      "observedAt": 1795600631948,
+      "observedAtMinusStart": 1665,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600631948,
+      "totalMs": 2316.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 153
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.2,
+          "durationMs": 152.8
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.2,
+          "durationMs": 306.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 153,
+          "durationMs": 481.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.2,
+          "durationMs": 1515
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1516.3,
+          "durationMs": 798.2
+        }
+      ],
+      "collateralPrice": "0.63641009",
+      "debtPrice": "0.63641009",
+      "ratio": "1",
+      "observedAt": 1795600634265,
+      "observedAtMinusStart": 2317,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600634265,
+      "totalMs": 2473.5,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 166.5
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 166.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 308
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1406.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1407.7,
+          "durationMs": 362.4
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1770.5,
+          "durationMs": 701
+        }
+      ],
+      "collateralPrice": "0.999848",
+      "debtPrice": "0.999848",
+      "ratio": "1",
+      "observedAt": 1795600636738,
+      "observedAtMinusStart": 2473,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 2,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600636739,
+      "totalMs": 2098.5,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 154.2
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 153.7
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 292.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 154.3,
+          "durationMs": 475.6
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 1385.5
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1386.9,
+          "durationMs": 708.8
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600638837,
+      "observedAtMinusStart": 2098,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600638837,
+      "totalMs": 1303.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.5
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 151
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 297.4
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 151.5,
+          "durationMs": 479.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 732
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 733.5,
+          "durationMs": 567.7
+        }
+      ],
+      "collateralPrice": "0.63588074",
+      "debtPrice": "0.63588074",
+      "ratio": "1",
+      "observedAt": 1795600640141,
+      "observedAtMinusStart": 1304,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600640141,
+      "totalMs": 2587.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.5
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 151.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 297.6
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1482.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1483.4,
+          "durationMs": 372.3
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1856.5,
+          "durationMs": 728.8
+        }
+      ],
+      "collateralPrice": "0.63612556",
+      "debtPrice": "0.63612556",
+      "ratio": "1",
+      "observedAt": 1795600642728,
+      "observedAtMinusStart": 2587,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600642729,
+      "totalMs": 1251.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0.1,
+          "durationMs": 156.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 156.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 297.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 156.9,
+          "durationMs": 474.8
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 742.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 744.5,
+          "durationMs": 504.1
+        }
+      ],
+      "collateralPrice": "0.63612556",
+      "debtPrice": "0.63612556",
+      "ratio": "1",
+      "observedAt": 1795600643980,
+      "observedAtMinusStart": 1251,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600643981,
+      "totalMs": 1712.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 178.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 178.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 312.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 728.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 729.7,
+          "durationMs": 372.7
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1102.6,
+          "durationMs": 607.6
+        }
+      ],
+      "collateralPrice": "0.63612556",
+      "debtPrice": "0.63612556",
+      "ratio": "1",
+      "observedAt": 1795600645693,
+      "observedAtMinusStart": 1712,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600645693,
+      "totalMs": 1248.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 157.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 157.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 300.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 157.7,
+          "durationMs": 477.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 747.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 748.7,
+          "durationMs": 496
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600646941,
+      "observedAtMinusStart": 1248,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 3,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600646941,
+      "totalMs": 1749.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.5
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 151.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 298.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 774.4
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 775,
+          "durationMs": 369.5
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1145,
+          "durationMs": 600.6
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600648691,
+      "observedAtMinusStart": 1750,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600648691,
+      "totalMs": 1733.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 153.1
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 152.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 296
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 761
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 761.6,
+          "durationMs": 367.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1129.5,
+          "durationMs": 602.3
+        }
+      ],
+      "collateralPrice": "0.63612556",
+      "debtPrice": "0.63612556",
+      "ratio": "1",
+      "observedAt": 1795600650425,
+      "observedAtMinusStart": 1734,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600650425,
+      "totalMs": 1262.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0.1,
+          "durationMs": 156
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 155.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 298.4
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 156.1,
+          "durationMs": 475.1
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 733.9
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 735.6,
+          "durationMs": 524.1
+        }
+      ],
+      "collateralPrice": "0.63587095",
+      "debtPrice": "0.63587095",
+      "ratio": "1",
+      "observedAt": 1795600651688,
+      "observedAtMinusStart": 1263,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600651688,
+      "totalMs": 1767.2,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 156.2
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 155.9
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 299.4
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 798
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 798.5,
+          "durationMs": 366.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1165.8,
+          "durationMs": 599.2
+        }
+      ],
+      "collateralPrice": "0.63587095",
+      "debtPrice": "0.63587095",
+      "ratio": "1",
+      "observedAt": 1795600653456,
+      "observedAtMinusStart": 1768,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600653456,
+      "totalMs": 1326,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 155.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 155.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 296.6
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 155.9,
+          "durationMs": 482.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 772.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 773.7,
+          "durationMs": 549.3
+        }
+      ],
+      "collateralPrice": "0.63587095",
+      "debtPrice": "0.63587095",
+      "ratio": "1",
+      "observedAt": 1795600654782,
+      "observedAtMinusStart": 1326,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600654782,
+      "totalMs": 1672.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 155.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 155.5
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 298.5
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 732.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 732.8,
+          "durationMs": 367.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1101,
+          "durationMs": 570
+        }
+      ],
+      "collateralPrice": "0.999853",
+      "debtPrice": "0.999853",
+      "ratio": "1",
+      "observedAt": 1795600656454,
+      "observedAtMinusStart": 1672,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 4,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600656455,
+      "totalMs": 2259.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 153.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 153.3
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 297.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 153.8,
+          "durationMs": 479.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 1627.3
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1628.3,
+          "durationMs": 628.7
+        }
+      ],
+      "collateralPrice": "0.999853",
+      "debtPrice": "0.999853",
+      "ratio": "1",
+      "observedAt": 1795600658714,
+      "observedAtMinusStart": 2259,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600658714,
+      "totalMs": 1309.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 151.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 296.4
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 729.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 151.9,
+          "durationMs": 620.7
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 773.8,
+          "durationMs": 533.5
+        }
+      ],
+      "collateralPrice": "0.63587095",
+      "debtPrice": "0.63587095",
+      "ratio": "1",
+      "observedAt": 1795600660024,
+      "observedAtMinusStart": 1310,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600660024,
+      "totalMs": 1623.3,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 181.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 181.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 292.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 736.5
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 737.1,
+          "durationMs": 361
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1098.5,
+          "durationMs": 522.7
+        }
+      ],
+      "collateralPrice": "0.63587095",
+      "debtPrice": "0.63587095",
+      "ratio": "1",
+      "observedAt": 1795600661647,
+      "observedAtMinusStart": 1623,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600661648,
+      "totalMs": 1220.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 152.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 152
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 295.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 152.4,
+          "durationMs": 478.8
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 745.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 747.1,
+          "durationMs": 471.1
+        }
+      ],
+      "collateralPrice": "0.63568016",
+      "debtPrice": "0.63568016",
+      "ratio": "1",
+      "observedAt": 1795600662868,
+      "observedAtMinusStart": 1220,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600662868,
+      "totalMs": 2933.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 151.7
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 151.3
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 297.8
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1996.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1997.4,
+          "durationMs": 359.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 2356.8,
+          "durationMs": 575
+        }
+      ],
+      "collateralPrice": "0.63568016",
+      "debtPrice": "0.63568016",
+      "ratio": "1",
+      "observedAt": 1795600665802,
+      "observedAtMinusStart": 2934,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600665802,
+      "totalMs": 1181.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 149.1
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 148.7
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 300.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 149.2,
+          "durationMs": 565.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 745.3
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 746,
+          "durationMs": 434.1
+        }
+      ],
+      "collateralPrice": "0.999848",
+      "debtPrice": "0.999848",
+      "ratio": "1",
+      "observedAt": 1795600666984,
+      "observedAtMinusStart": 1182,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 5,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600666984,
+      "totalMs": 1551.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 149.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.3,
+          "durationMs": 149.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.2,
+          "durationMs": 291.5
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.3,
+          "durationMs": 738.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 738.7,
+          "durationMs": 356.9
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1095.9,
+          "durationMs": 454.1
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600668536,
+      "observedAtMinusStart": 1552,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600668536,
+      "totalMs": 2348.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 146.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 146.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 298.6
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1409.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1410.6,
+          "durationMs": 359.5
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1770.8,
+          "durationMs": 576.8
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600670885,
+      "observedAtMinusStart": 2349,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600670885,
+      "totalMs": 2027.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0.1,
+          "durationMs": 149.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 149.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 296.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 149.6,
+          "durationMs": 506
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1408.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1409.9,
+          "durationMs": 614.9
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600672912,
+      "observedAtMinusStart": 2027,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600672913,
+      "totalMs": 1715.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 153.7
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 153.3
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 298.5
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 741.5
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 742.4,
+          "durationMs": 360.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1102.8,
+          "durationMs": 611.5
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600674628,
+      "observedAtMinusStart": 1715,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600674628,
+      "totalMs": 1423.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 147.1
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.2,
+          "durationMs": 146.9
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.2,
+          "durationMs": 297.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 147.1,
+          "durationMs": 484.1
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.2,
+          "durationMs": 850.4
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 852,
+          "durationMs": 569.3
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600676052,
+      "observedAtMinusStart": 1424,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600676052,
+      "totalMs": 2770.8,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 156.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 156
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 1270.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 1580.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 1580.6,
+          "durationMs": 578.4
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 2159.3,
+          "durationMs": 609.7
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600678823,
+      "observedAtMinusStart": 2771,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 6,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600678823,
+      "totalMs": 2216.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 323.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.6,
+          "durationMs": 323.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.5,
+          "durationMs": 695.6
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 323.6,
+          "durationMs": 728.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.6,
+          "durationMs": 1598
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1599.8,
+          "durationMs": 613.4
+        }
+      ],
+      "collateralPrice": "0.99985",
+      "debtPrice": "0.99985",
+      "ratio": "1",
+      "observedAt": 1795600681039,
+      "observedAtMinusStart": 2216,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600681039,
+      "totalMs": 1322.9,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 270.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 270
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 495.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 754.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 270.4,
+          "durationMs": 537.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 808.8,
+          "durationMs": 511.8
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600682362,
+      "observedAtMinusStart": 1323,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600682363,
+      "totalMs": 1766.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 198.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 198.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 436.8
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 754.4
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 755,
+          "durationMs": 403.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1159.3,
+          "durationMs": 605.5
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600684129,
+      "observedAtMinusStart": 1766,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600684129,
+      "totalMs": 1330.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 190
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 189.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 390.8
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 190.1,
+          "durationMs": 483.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 811.9
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 813.3,
+          "durationMs": 514.7
+        }
+      ],
+      "collateralPrice": "0.63602163",
+      "debtPrice": "0.63602163",
+      "ratio": "1",
+      "observedAt": 1795600685459,
+      "observedAtMinusStart": 1330,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600685460,
+      "totalMs": 1770.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 157.7
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.6,
+          "durationMs": 157.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 357.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.6,
+          "durationMs": 784.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 785.3,
+          "durationMs": 374.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1159.8,
+          "durationMs": 608.8
+        }
+      ],
+      "collateralPrice": "0.63618476",
+      "debtPrice": "0.63618476",
+      "ratio": "1",
+      "observedAt": 1795600687230,
+      "observedAtMinusStart": 1770,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600687230,
+      "totalMs": 1291.3,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 157.2
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 156.8
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 357.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 157.2,
+          "durationMs": 530.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 761.9
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 763.5,
+          "durationMs": 525.2
+        }
+      ],
+      "collateralPrice": "0.999839",
+      "debtPrice": "0.999839",
+      "ratio": "1",
+      "observedAt": 1795600688521,
+      "observedAtMinusStart": 1291,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 7,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600688521,
+      "totalMs": 1764.7,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 158.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 158.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 360.5
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 790.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 791.1,
+          "durationMs": 373.3
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1164.8,
+          "durationMs": 598
+        }
+      ],
+      "collateralPrice": "0.999839",
+      "debtPrice": "0.999839",
+      "ratio": "1",
+      "observedAt": 1795600690286,
+      "observedAtMinusStart": 1765,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600690286,
+      "totalMs": 1722,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 161
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 160.5
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 361.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 740.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 741,
+          "durationMs": 370.9
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1112.1,
+          "durationMs": 608.3
+        }
+      ],
+      "collateralPrice": "0.63618476",
+      "debtPrice": "0.63618476",
+      "ratio": "1",
+      "observedAt": 1795600692008,
+      "observedAtMinusStart": 1722,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600692009,
+      "totalMs": 1293.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 178.8
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 178.4
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 358.4
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 178.8,
+          "durationMs": 460.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 760.3
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 762,
+          "durationMs": 528.5
+        }
+      ],
+      "collateralPrice": "0.63618476",
+      "debtPrice": "0.63618476",
+      "ratio": "1",
+      "observedAt": 1795600693302,
+      "observedAtMinusStart": 1293,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600693302,
+      "totalMs": 1721.5,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 158
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 157.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 347.1
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 749.6
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 750.2,
+          "durationMs": 387.1
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1137.5,
+          "durationMs": 582.6
+        }
+      ],
+      "collateralPrice": "0.63618476",
+      "debtPrice": "0.63618476",
+      "ratio": "1",
+      "observedAt": 1795600695023,
+      "observedAtMinusStart": 1721,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600695023,
+      "totalMs": 1276.4,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 160.3
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 159.8
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 352.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 160.3,
+          "durationMs": 487.4
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 780.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 781.8,
+          "durationMs": 491.7
+        }
+      ],
+      "collateralPrice": "0.63618476",
+      "debtPrice": "0.63618476",
+      "ratio": "1",
+      "observedAt": 1795600696300,
+      "observedAtMinusStart": 1277,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600696300,
+      "totalMs": 2108.1,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 157.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 157.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 344.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 759.2
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 759.9,
+          "durationMs": 368.6
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1129.2,
+          "durationMs": 976.8
+        }
+      ],
+      "collateralPrice": "0.999839",
+      "debtPrice": "0.999839",
+      "ratio": "1",
+      "observedAt": 1795600698408,
+      "observedAtMinusStart": 2108,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 8,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600698408,
+      "totalMs": 1340,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 157.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 157.6
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 344.3
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 158,
+          "durationMs": 474.2
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 745.8
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 747.3,
+          "durationMs": 589.2
+        }
+      ],
+      "collateralPrice": "0.99984",
+      "debtPrice": "0.99984",
+      "ratio": "1",
+      "observedAt": 1795600699748,
+      "observedAtMinusStart": 1340,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-vsui-sui",
+      "impl": "after",
+      "startedAt": 1795600699749,
+      "totalMs": 1292.8,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 162.5
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 162.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 344.7
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 162.5,
+          "durationMs": 488.9
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 773.7
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 774.5,
+          "durationMs": 516
+        }
+      ],
+      "collateralPrice": "0.63681987",
+      "debtPrice": "0.63681987",
+      "ratio": "1",
+      "observedAt": 1795600701041,
+      "observedAtMinusStart": 1292,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-vsui-sui",
+      "impl": "before",
+      "startedAt": 1795600701041,
+      "totalMs": 1669.6,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 173.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.3,
+          "durationMs": 173.1
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 346.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 753
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 753.8,
+          "durationMs": 389
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1143.4,
+          "durationMs": 524.7
+        }
+      ],
+      "collateralPrice": "0.63681987",
+      "debtPrice": "0.63681987",
+      "ratio": "1",
+      "observedAt": 1795600702711,
+      "observedAtMinusStart": 1670,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "27d4150932c2ea3e4fd66ddf22c91b94a0fe465fe1e187c479f8e27a6a81b5fc"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-hasui-sui",
+      "impl": "after",
+      "startedAt": 1795600702711,
+      "totalMs": 1254.8,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 164.9
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 164.5
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 344.6
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 165,
+          "durationMs": 469.7
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 770.4
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 771.4,
+          "durationMs": 481
+        }
+      ],
+      "collateralPrice": "0.63681987",
+      "debtPrice": "0.63681987",
+      "ratio": "1",
+      "observedAt": 1795600703966,
+      "observedAtMinusStart": 1255,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-hasui-sui",
+      "impl": "before",
+      "startedAt": 1795600703966,
+      "totalMs": 1681,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 160.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 160
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 342.4
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 746.9
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 747.8,
+          "durationMs": 370.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1118.7,
+          "durationMs": 560.3
+        }
+      ],
+      "collateralPrice": "0.63681987",
+      "debtPrice": "0.63681987",
+      "ratio": "1",
+      "observedAt": 1795600705647,
+      "observedAtMinusStart": 1681,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "06d2b47a603d839c85cf3d23d2f495b4e0ea8f77f14b395131309bc0dc3f6a55"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-usdsui-usdc",
+      "impl": "after",
+      "startedAt": 1795600705648,
+      "totalMs": 1240.3,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 176.4
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.5,
+          "durationMs": 175.9
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.4,
+          "durationMs": 347.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 176.5,
+          "durationMs": 459.3
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.5,
+          "durationMs": 757
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 758.8,
+          "durationMs": 479.3
+        }
+      ],
+      "collateralPrice": "0.99984",
+      "debtPrice": "0.99984",
+      "ratio": "1",
+      "observedAt": 1795600706888,
+      "observedAtMinusStart": 1240,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    },
+    {
+      "round": 9,
+      "strategy": "main-usdsui-usdc",
+      "impl": "before",
+      "startedAt": 1795600706888,
+      "totalMs": 1600,
+      "stages": [
+        {
+          "stage": "market_config",
+          "startMs": 0,
+          "durationMs": 158.6
+        },
+        {
+          "stage": "flash_config",
+          "startMs": 0.4,
+          "durationMs": 158.2
+        },
+        {
+          "stage": "market_pools",
+          "startMs": 0.3,
+          "durationMs": 345
+        },
+        {
+          "stage": "flash_assets",
+          "startMs": 0.4,
+          "durationMs": 728.1
+        },
+        {
+          "stage": "market_oracle",
+          "startMs": 728.7,
+          "durationMs": 365.2
+        },
+        {
+          "stage": "market_inspect",
+          "startMs": 1094.2,
+          "durationMs": 504
+        }
+      ],
+      "collateralPrice": "0.99984",
+      "debtPrice": "0.99984",
+      "ratio": "1",
+      "observedAt": 1795600708488,
+      "observedAtMinusStart": 1600,
+      "ptb": {
+        "moveCalls": [
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea::oracle_pro::update_single_price_v3",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::calculator::calculate_value",
+          "0x74c2e735aa13768048f8b8b46855a93d9e242ea3336c17e72720197e9675ae35::getter::get_reserve_data",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::storage::get_borrow_weight",
+          "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a::flash_loan::get_asset"
+        ],
+        "digest": "2e363a030577667da26b7668079950e8457f8f42b83ad74ebc085b74fda192be"
+      }
+    }
+  ]
+}

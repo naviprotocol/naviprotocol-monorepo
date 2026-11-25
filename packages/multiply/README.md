@@ -235,6 +235,13 @@ market config is read and runs beside the pool, flash-loan and E-Mode reads; the
 simulated PTB is unchanged. Built PTBs push the same feeds again and the on-chain HF
 limiter checks `minHealthFactor`, so quote prices never bypass on-chain safety.
 
+`e2e/live-price-benchmark.mjs` compares `readMarket` against published 0.2.0 on
+mainnet (read-only). Evidence from 10 interleaved rounds per strategy is in
+`e2e/evidence/live-price-benchmark.json`: median 1893 → 1316 ms (vSUI/SUI),
+1718 → 1301 ms (haSUI/SUI) and 1797 → 1711 ms (USDSUI/USDC), with the same
+simulated PTB digest in all 30 pairs. The critical path is now
+`getAllFlashLoanAssets` followed by the simulation.
+
 Default exits now use the independent rate hint plus a real Astros quote; the prior
 native redemption cash-gated fast path is not selected. Explicit native integrations
 can still use their snapshot helpers. API `MULTIPLY_DISABLE_RATE_HINTS=true` disables
