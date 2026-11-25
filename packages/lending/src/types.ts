@@ -288,16 +288,6 @@ export type Pool = {
     price: string
     /** Oracle identifier */
     oracleId: number
-    /** Optional immutable sampling evidence supplied by the market API, never retimestamped by SDK caches. */
-    freshness?: {
-      version: 1
-      source: 'navi-oracle'
-      snapshotId: string
-      observedAtMs: number
-      chainObservedAtMs: number
-      validUntilMs: number
-      deploymentRevision: string
-    }
     /** Whether oracle is valid */
     valid: boolean
   }
