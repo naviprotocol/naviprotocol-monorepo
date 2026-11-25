@@ -353,3 +353,4 @@ Result: unit 540/540 on 0.2.0 and 515/515 after carrying the fixes onto 0.3.0 (e
 with the fix reverted, three are controls), typecheck, lint, build; the mainnet simulations above were repeated on the
 0.3.0 build with the same outcome. Astros is now 2.0.9
 (2.0.7 routed DeepBook hops through the retired `sponsored_deep`); `run.mjs`, `stage.mjs` and `emode.mjs` were not rerun.
+Versioned as 0.3.1; the same code was published to npm as `0.3.1-preview.20261125.1` (dist-tag `preview`).
