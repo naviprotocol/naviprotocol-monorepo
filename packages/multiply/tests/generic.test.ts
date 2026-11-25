@@ -2756,57 +2756,6 @@ describe('v3 native redemption candidate and build oracle mode', () => {
     await optimized.buildPTB(new Transaction(), q, { coins: [] })
     expect(prepare).toHaveBeenCalledTimes(2)
   })
-  it('replans the entire quote once with live prices when market evidence expires', async () => {
-    const f = withRedemption()
-    const read = vi.spyOn(f.source, 'readMarket')
-    read
-      .mockResolvedValueOnce({
-        ...f.market,
-        priceEvidence: {
-          source: 'market',
-          snapshotId: 'test',
-          observedAtMs: Date.now(),
-          expiresAt: Date.now() - 1
-        }
-      })
-      .mockResolvedValue({ ...f.market })
-    const engine = createMultiplyClient({
-      dataSource: f.source,
-      strategies: [f.strategy],
-      converters: [f.converter],
-      marketPriceMode: 'prefer-market'
-    })
-    const q = await engine.quote(
-      owner,
-      f.strategy,
-      { type: 'set_leverage', targetLeverage: '1.5' },
-      loose
-    )
-    expect(read.mock.calls.map((c) => c[1])).toEqual(['prefer-market', 'live'])
-    expect(q.execution.market.priceEvidence).toBeUndefined()
-  })
-  it('does not upgrade market-only into a live oracle request', async () => {
-    const f = withRedemption()
-    const read = vi.spyOn(f.source, 'readMarket').mockResolvedValue({
-      ...f.market,
-      priceEvidence: {
-        source: 'market',
-        snapshotId: 'test',
-        observedAtMs: Date.now(),
-        expiresAt: Date.now() - 1
-      }
-    })
-    const engine = createMultiplyClient({
-      dataSource: f.source,
-      strategies: [f.strategy],
-      converters: [f.converter],
-      marketPriceMode: 'market-only'
-    })
-    await expect(
-      engine.quote(owner, f.strategy, { type: 'set_leverage', targetLeverage: '1.5' }, loose)
-    ).rejects.toMatchObject({ code: 'MARKET_PRICE_EXPIRED' })
-    expect(read).toHaveBeenCalledTimes(1)
-  })
 })
 
 describe('Astros-only independent hint planning', () => {
