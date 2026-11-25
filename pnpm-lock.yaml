@@ -353,8 +353,8 @@ importers:
   packages/multiply:
     dependencies:
       '@naviprotocol/astros-aggregator-sdk':
-        specifier: 2.0.7
-        version: 2.0.7(@mysten/sui@2.20.2(typescript@5.8.3))
+        specifier: 2.0.9
+        version: 2.0.9(@mysten/sui@2.20.2(typescript@5.8.3))
       '@naviprotocol/lending':
         specifier: 2.2.0
         version: 2.2.0(@mysten/sui@2.20.2(typescript@5.8.3))
@@ -2054,8 +2054,8 @@ packages:
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
 
-  '@naviprotocol/astros-aggregator-sdk@2.0.7':
-    resolution: {integrity: sha512-k2+kdkqEZQpa6kbrGXyRVFtZPtczRiLaKPfDa3xzrbC/uXjihG5Z3+6zlZz9K6QE1NhOfSSdjBAgCHvUkVqphA==}
+  '@naviprotocol/astros-aggregator-sdk@2.0.9':
+    resolution: {integrity: sha512-6Tks5r2uMbR6eBkUnNFGYRr7Le3kWdoF1IXZmtxvmJgv3lXKowa1hW2kU0oFfeZ47P/Eciv2e3AK/puQxx0j7Q==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mysten/sui': '>=2.0.0'
@@ -8790,7 +8790,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@naviprotocol/astros-aggregator-sdk@2.0.7(@mysten/sui@2.20.2(typescript@5.8.3))':
+  '@naviprotocol/astros-aggregator-sdk@2.0.9(@mysten/sui@2.20.2(typescript@5.8.3))':
     dependencies:
       '@mysten/sui': 2.20.2(typescript@5.8.3)
       axios: 1.13.2

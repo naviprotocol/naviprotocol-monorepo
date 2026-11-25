@@ -324,3 +324,32 @@ supplies a PTB-created Cap under a placeholder identity must add `transient: tru
 Result: unit tests pass (both new cases fail with the fix reverted: "Target exceeds maxLeverage"), typecheck, lint, build.
 `run.mjs` (constraints `maxLeverage: '3'`) on mainnet simulation from the rebuilt `dist`: 18/18, evidence verified
 (115 artifacts, `broadcast=false`); `repay`, `add-collateral` and `close` now run without the on-chain leverage check.
+
+
+### Third review of PR #125 (2026-11-25, found on 23a5e55 / 0.2.0, fixes carried onto 0.3.0)
+
+Each row was first reproduced, then fixed. Chain evidence is read-only mainnet simulation (nothing signed or broadcast)
+against wallet `0xc41d…d9fe`, whose Registry rows are `4:1` and `6:1` (empty Caps, in no E-Mode), `4:2` (vSUI/SUI,
+E-Mode 0) and `5:1` (haSUI/SUI, no E-Mode).
+
+| ID | Failure | Required behaviour | Evidence |
+|----|---------|--------------------|----------|
+| RV-06 | A converter's quote carries `fees` and its `enrichFees` returns `undefined` (nothing to add, or the 1.5 s cut-off): the final quote loses the fees | `enrichFees` only replaces fees when it returns some | unit `RV-06 keeps fees the converter quoted…` |
+| RV-07 | Regression of RV-01 under the 0.1% target accuracy: the solver accepts an open or upward `set_leverage` up to 0.1% above the target, the `maxLeverage` ceiling band is 0.01%, so a target equal to `maxLeverage` at zero slippage can end in `CONSTRAINT_VIOLATION` although a plan inside the ceiling exists | Above the target, acceptance stops at the ceiling (never below the previous 0.01%); the solver keeps searching instead | unit `RV-07 reaches a target equal to maxLeverage…`: 3 bps less output in a narrow size band, target 3 = `maxLeverage` 3 |
+| RV-08 | The E-Mode LTV/LT were applied to every Cap of an E-Mode strategy, but the account's mode was never read and only a created Cap entered it. The Cap holder can leave a mode (`lending::exit_emode_with_account_cap`, public). On the registered empty Cap `4:1` configured as vSUI/SUI E-Mode 0: open 5x aborts 1600 in `logic::execute_borrow`; open 1.5x succeeds outside the mode with chain HF 2.400 against a quoted 2.790 | The default source reads `storage::is_in_emode` and `get_user_emode_id` (`accountEmodeId`). An open on an empty Cap in no mode enters the mode before any lending call; a position outside the mode, or an empty Cap in another mode, is `POSITION_UNSUPPORTED`; a mode changed since the quote is `STALE_QUOTE` | Same Cap after the fix: open 5x and 1.5x simulate with checks, the account is in mode 0 and chain HF equals the quote (1.162240, 2.790441). Cap `4:2` (mode 0, live position): `set_leverage` 2x and 4x and `close` simulate with checks. Units `RV-08 …` in `generic.test.ts` and `emode.test.ts` |
+| RV-09 | `readPosition` refused any balance outside the strategy's two reserves. `incentive_v3::entry_deposit_on_behalf_of_user` is `public entry` and takes the beneficiary as an address: an unrelated sender's 0.001 SUI deposit to the lending account of Cap `5:1` succeeds, after which `getPosition`, `quote(close)` and `quote(repay)` are all `POSITION_UNSUPPORTED`. An account in an E-Mode is protected on chain (the same deposit to Cap `4:2` aborts 3001 in `storage::verify_emode_support`) | Supply outside the collateral reserve is left out of every figure (it only adds collateral value on chain); debt outside the debt reserve is still `POSITION_UNSUPPORTED` | Same interposed deposit after the fix: `getPosition`, `quote(close)` and `quote(repay)` return. Unit `RV-09 leaves out supply anyone can add…` |
+
+Not changed, with the reason:
+
+- A registered Cap the wallet no longer owns (transferred or wrapped; `AccountCap` has `store`) fails the whole listing,
+  so every strategy of that wallet is unreadable. This is the intended fail-closed rule, only the holder can cause it,
+  and `multiply_registry::unregister_mul_for_account_cap` removes the row. Left for a decision.
+- `prefer-market` retry after `MARKET_PRICE_EXPIRED` shared the quote budget. The live pools API served no
+  `oracle.freshness` (main and vsui-sui, 2026-11-25), so the retry could not be reached; 0.3.0 removed the path.
+- The Astros numeric limit (2^53 − 1 atoms) is above the main-market flash caps (SUI 5,000,000, USDC 10,000,000), so a
+  plan that reaches it is refused for flash capacity first.
+
+Result: unit 540/540 on 0.2.0 and 515/515 after carrying the fixes onto 0.3.0 (eleven new or rewritten cases: eight fail
+with the fix reverted, three are controls), typecheck, lint, build; the mainnet simulations above were repeated on the
+0.3.0 build with the same outcome. Astros is now 2.0.9
+(2.0.7 routed DeepBook hops through the retired `sponsored_deep`); `run.mjs`, `stage.mjs` and `emode.mjs` were not rerun.

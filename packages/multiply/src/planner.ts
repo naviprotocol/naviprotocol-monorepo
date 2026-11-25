@@ -18,6 +18,7 @@ import { BN, ceil, check, decimal, floor, uint, MultiplyError, sameCoin } from '
 import { validateConversion } from './converters'
 import {
   isDustClose,
+  LEVERAGE_TOLERANCE,
   amountCushion,
   atomPrices,
   borrowCapacity,
@@ -267,7 +268,17 @@ export async function plan(
         .abs()
       return residual.lte(BN.maximum(principalValue.times('0.0001'), pd))
     }
-    return value.div(net).minus(target).abs().lte(target.times(targetTolerance))
+    // RV-07: the relaxed 0.1% accuracy must not carry a result past the independent maxLeverage
+    // ceiling (0.01% band). Above the target, acceptance stops at that ceiling, never below the
+    // 0.01% every action had before, so a target equal to maxLeverage stays reachable.
+    const leverage = value.div(net)
+    const above = limit
+      ? BN.maximum(
+          target.times(n(1).plus(LEVERAGE_TOLERANCE)),
+          BN.minimum(target.times(n(1).plus(targetTolerance)), limit)
+        )
+      : target.times(n(1).plus(targetTolerance))
+    return leverage.gte(target.times(n(1).minus(targetTolerance))) && leverage.lte(above)
   }
   // Leave time for the API's other reads within its quote deadline. An abandoned
   // converter promise is read-only; late results are never used in the plan.
