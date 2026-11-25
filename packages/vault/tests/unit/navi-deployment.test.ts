@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { Transaction } from '@mysten/sui/transactions'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -75,22 +77,31 @@ const base: Vault = {
 const PROD_RECEIPT_TYPE =
   '0x51cecaacaed0bd436f04ebbd8ba0ca1627c9c4d0e54ad28eff095ca78591518c::navi_vault::Receipt'
 
+// Inputs and commands, normalized to plain JSON. The fixtures under ./fixtures were generated
+// from the pre-change sources (origin/main) under these same mocks.
+const fullData = (tx: Transaction) => {
+  const { inputs, commands } = tx.getData()
+  return JSON.parse(JSON.stringify({ inputs, commands }))
+}
+const fixture = (name: string) =>
+  JSON.parse(readFileSync(join(__dirname, 'fixtures', name), 'utf8'))
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getVaultReceipts).mockResolvedValue([{ id: A('0xa'), shares: 1_000n }] as never)
 })
 
 describe('navi PTBs for a prod-shaped vault (no new fields)', () => {
-  it('keeps the deposit command list unchanged', async () => {
+  it('keeps the deposit transaction data unchanged', async () => {
     const tx = new Transaction()
     await depositPTB(tx, base, OWNER, 100n, { coin: tx.object(A('0xc01')) })
-    expect(tx.getData().commands).toMatchSnapshot()
+    expect(fullData(tx)).toEqual(fixture('prod-deposit.json'))
   })
 
-  it('keeps the withdraw command list unchanged', async () => {
+  it('keeps the withdraw transaction data unchanged', async () => {
     const tx = new Transaction()
     await withdrawPTB(tx, base, OWNER, { kind: 'amount', amount: 100n })
-    expect(tx.getData().commands).toMatchSnapshot()
+    expect(fullData(tx)).toEqual(fixture('prod-withdraw.json'))
   })
 
   it('keeps the previous lending call shapes (prod env)', async () => {

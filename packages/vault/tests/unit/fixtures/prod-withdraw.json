@@ -1,0 +1,239 @@
+{
+  "inputs": [
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000009e5f"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000000570"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x000000000000000000000000000000000000000000000000000000000000001a"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000000006"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x00000000000000000000000000000000000000000000000000000000000011c3"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x000000000000000000000000000000000000000000000000000000000000f00d"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "Pure": {
+        "bytes": "AAAAAAAAAAA="
+      },
+      "$kind": "Pure"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x000000000000000000000000000000000000000000000000000000000000000a"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000000ac1"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000009001"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "Pure": {
+        "bytes": "ZAAAAAAAAAA="
+      },
+      "$kind": "Pure"
+    },
+    {
+      "Pure": {
+        "bytes": "AAAAAAAAAAA="
+      },
+      "$kind": "Pure"
+    },
+    {
+      "Pure": {
+        "bytes": "AQ=="
+      },
+      "$kind": "Pure"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x00000000000000000000000000000000000000000000000000000000000011c2"
+      },
+      "$kind": "UnresolvedObject"
+    },
+    {
+      "UnresolvedObject": {
+        "objectId": "0x0000000000000000000000000000000000000000000000000000000000000005"
+      },
+      "$kind": "UnresolvedObject"
+    }
+  ],
+  "commands": [
+    {
+      "MoveCall": {
+        "package": "0x00000000000000000000000000000000000000000000000000000000000011a1",
+        "module": "navi_vault",
+        "function": "sync_market_balance",
+        "typeArguments": ["0x2::sui::SUI"],
+        "arguments": [
+          {
+            "Input": 0,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 1,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 2,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 3,
+            "type": "object",
+            "$kind": "Input"
+          }
+        ]
+      },
+      "$kind": "MoveCall"
+    },
+    {
+      "MoveCall": {
+        "package": "0x00000000000000000000000000000000000000000000000000000000000011a1",
+        "module": "navi_vault",
+        "function": "collect_reward",
+        "typeArguments": ["0x2::sui::SUI", "0x2::sui::SUI"],
+        "arguments": [
+          {
+            "Input": 0,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 3,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 1,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 4,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 5,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 6,
+            "type": "pure",
+            "$kind": "Input"
+          }
+        ]
+      },
+      "$kind": "MoveCall"
+    },
+    {
+      "MoveCall": {
+        "package": "0x00000000000000000000000000000000000000000000000000000000000011a1",
+        "module": "navi_vault",
+        "function": "withdraw",
+        "typeArguments": ["0x2::sui::SUI"],
+        "arguments": [
+          {
+            "Input": 0,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 7,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 3,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 8,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 1,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 9,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 10,
+            "type": "pure",
+            "$kind": "Input"
+          },
+          {
+            "Input": 11,
+            "type": "pure",
+            "$kind": "Input"
+          },
+          {
+            "Input": 12,
+            "type": "pure",
+            "$kind": "Input"
+          },
+          {
+            "Input": 13,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 4,
+            "type": "object",
+            "$kind": "Input"
+          },
+          {
+            "Input": 14,
+            "type": "object",
+            "$kind": "Input"
+          }
+        ]
+      },
+      "$kind": "MoveCall"
+    }
+  ]
+}
