@@ -1,0 +1,301 @@
+import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions'
+import type { SuiGrpcClient } from '@mysten/sui/grpc'
+import type { getConfig, Pool, NaviSdkServiceOptions } from '@naviprotocol/lending'
+
+export type MultiplySuiClient = Pick<SuiGrpcClient, 'core'>
+/** NAVI deployment the open-api serves: `prod`, or the stage deployment `dev` (stage_v2). */
+export type NaviEnv = 'prod' | 'dev'
+export type CoinAmount = { coinType: string; amount: string }
+export type CoinInput = { coinType: string; coin: TransactionObjectArgument }
+export interface RegistryKey {
+  strategyNumericId: string
+  strategyVersion: string
+}
+export interface CapRegistryConfig {
+  network: 'sui:mainnet'
+  packageId: string
+  objectId: string
+}
+export interface Strategy {
+  id: string
+  registryKey: RegistryKey
+  market: string
+  principalCoinType: string
+  collateralCoinType: string
+  debtCoinType: string
+  /** Defaults to principal only. Entries must be collateral or debt. */
+  acceptedInputCoinTypes?: string[]
+  /** Mode entered atomically when creating a Cap. Immutable for this Registry key; 0 is valid. */
+  emodeId?: number
+  /** Enabled only for configured markets whose direct close supports sub-atom collateral. */
+  allowCollateralDustClose?: boolean
+}
+export type Action =
+  | { type: 'open'; amount: string; targetLeverage: string; inputCoinType?: string }
+  | { type: 'add_principal'; amount: string; targetLeverage?: string; inputCoinType?: string }
+  | { type: 'remove_principal'; amount: string; targetLeverage?: string }
+  | { type: 'set_leverage'; targetLeverage: string }
+  | { type: 'repay' | 'add_collateral'; amount: string }
+  | { type: 'close' }
+export interface Constraints {
+  minHealthFactor: string
+  maxSlippageBps: number
+  /**
+   * Additional ceiling on leverage at the minimum conversion output, also checked on chain; omitted
+   * means protocol/HF limits apply. Enforced with the solver's 0.01% tolerance, so a target equal
+   * to it is reachable; with nonzero slippage leave headroom above the target. Never refuses
+   * close, repay or add_collateral; other decreases may keep, but not raise, a leverage above it.
+   */
+  maxLeverage?: string
+}
+export interface AccountCap {
+  id: string
+  accountOwner: string
+  strategyId: string
+  registryKey: RegistryKey
+  /**
+   * Simulation fixtures only, never set by the default data source: the Cap is created earlier in
+   * the PTB being built, so `id` and `accountOwner` are placeholders. `buildPTB` then requires
+   * `inputs.accountCap` and cannot bind it on chain to the quoted lending account.
+   */
+  transient?: true
+}
+export interface PositionAmounts {
+  /** Native Coin<T> atoms, not NAVI's normalized lending balance units. */
+  collateralAmount: string
+  debtAmount: string
+  /** Indexed protocol balances before native-coin rounding (nine decimals). */
+  protocolCollateralAmount?: string
+  protocolDebtAmount?: string
+}
+export interface Position extends PositionAmounts {
+  address: string
+  strategy: Strategy
+  accountCap: AccountCap
+  healthFactor: string | null
+  leverage: string | null
+}
+export type LendingConfig = Awaited<ReturnType<typeof getConfig>>
+export type MarketPriceMode = 'live' | 'prefer-market' | 'market-only'
+export interface OraclePriceFreshness {
+  version: 1
+  source: 'navi-oracle'
+  snapshotId: string
+  observedAtMs: number
+  chainObservedAtMs: number
+  validUntilMs: number
+  deploymentRevision: string
+}
+export interface MarketSnapshot {
+  config: LendingConfig
+  /** Effective configured mode, not a recurring account-mode observation. */
+  emode?: { id: number; active: boolean }
+  collateral: Pool
+  debt: Pool
+  /** USD per whole token. Pool capacities retain the lending SDK's documented units. */
+  collateralPrice: string
+  debtPrice: string
+  ltv: string
+  liquidationThreshold: string
+  borrowWeight: string
+  flash: { config: LendingConfig; poolId: string; max: string; min: string; feeBps: string }
+  observedAt: number
+  priceEvidence?: { source: 'market'; snapshotId: string; observedAtMs: number; expiresAt: number }
+}
+/** Implementations must fail closed on incomplete reads; these methods never sign or broadcast. */
+export interface DataSource {
+  marketPriceMode?: MarketPriceMode
+  /** Deployment used for discovery. A custom source must declare its binding. */
+  capRegistry: CapRegistryConfig
+  /** NAVI deployment every read and PTB of this source targets. Omitted means `prod`. */
+  env?: NaviEnv
+  listAccountCaps(address: string): Promise<AccountCap[]>
+  readMarket(strategy: Strategy, mode?: MarketPriceMode): Promise<MarketSnapshot>
+  readPosition(
+    cap: AccountCap,
+    strategy: Strategy,
+    market?: MarketSnapshot
+  ): Promise<PositionAmounts>
+  readBorrowFeeBps(market: MarketSnapshot, accountOwner?: string): Promise<string>
+  /** Optional capability. Never synthesize this from separate latest reads. */
+  readConsistentPosition?(
+    cap: AccountCap,
+    strategy: Strategy,
+    signal: AbortSignal
+  ): Promise<
+    PositionAmounts & {
+      accountCapId: string
+      accountOwner: string
+      marketKey: string
+      stateCheckpoint: string
+      stateId: string
+      completed: true
+      market: MarketSnapshot
+    }
+  >
+  prepareOracle(tx: Transaction, strategy: Strategy, market: MarketSnapshot): Promise<void>
+}
+export interface ConversionRequest {
+  coinIn: string
+  coinOut: string
+  amountIn: string
+  slippageBps: number
+}
+export interface ConversionQuote {
+  converterId: string
+  input: CoinAmount
+  expectedOutput: CoinAmount
+  minOutput: CoinAmount
+  expiresAt: number
+  /** Opaque JSON, interpreted only by the converter that produced it. */
+  data: unknown
+  /** Known provider charges only; absent means unavailable, not zero. Never deduct twice. */
+  fees?: {
+    coinType: string
+    amount: string
+    feeKind: string
+    includedInExpectedOutput: true
+    /** Underlying provider when the conversion is routed through an aggregator. */
+    provider?: string
+  }[]
+  route?: {
+    provider: string
+    hops: { coinIn: string; coinOut: string; poolId?: string; dex?: string; feeRate?: string }[]
+    observedAt: number
+  }
+}
+export type Funding = { kind: 'none' } | { kind: 'collateral' | 'debt'; input: CoinAmount }
+/** Fixed flow roles, not a caller-supplied transaction language. */
+export interface PlannedConversion extends ConversionQuote {
+  id: string
+  purpose: 'input' | 'leverage' | 'repayment' | 'output'
+  source: 'wallet' | 'flash' | 'wallet-and-flash' | 'withdrawal' | 'surplus'
+}
+/** Gross chain exchange rate used only as a solver hint, never as an executable quote or risk price. */
+export interface ConversionRateHint {
+  input: CoinAmount
+  output: CoinAmount
+  expiresAt: number
+}
+/** Coherent, short-lived native stake state. Supply/fees are integer strings, not a display rate. */
+export interface StakingSnapshot {
+  converterId: string
+  coinIn: string
+  coinOut: string
+  suiSupply: string
+  lstSupply: string
+  feeRate: string
+  feeDenominator: string
+  feeRounding: 'ceil' | 'floor'
+  minInput: string
+  epoch: string
+  observedAt: number
+  expiresAt: number
+}
+export interface RedemptionSnapshot extends Omit<StakingSnapshot, 'minInput'> {
+  source?: { packageId: string; objectVersions: Record<string, string> }
+  /** Gross SUI safely available without assuming future deposits or staking redemptions. */
+  availableSui: string
+  minOutput: string
+  minOutputBasis: 'gross' | 'net'
+}
+export interface Converter {
+  id: string
+  supports(coinIn: string, coinOut: string): boolean
+  quote(request: ConversionRequest): Promise<ConversionQuote>
+  /** Optional short-lived native staking rate. Final amounts always require a fresh quote. */
+  getRateHint?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<ConversionRateHint | undefined>
+  /** Optional decoration applied only to the final chosen conversion, before checksum. */
+  enrichFees?(quote: ConversionQuote): Promise<ConversionQuote['fees']>
+  getStakingSnapshot?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<StakingSnapshot | undefined>
+  getRedemptionSnapshot?(
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ): Promise<RedemptionSnapshot | undefined>
+  buildPTB(
+    tx: Transaction,
+    quote: ConversionQuote,
+    coinIn: TransactionObjectArgument,
+    /** Multiply binds this to quote.address; required by the Astros converter. */
+    context?: { changeRecipient: string }
+  ): Promise<{ coinOut: TransactionObjectArgument; change: CoinInput[] }>
+}
+export interface ExecutionPlan {
+  version: 4
+  /** NAVI deployment the quote was made for; a client of another env refuses to build it (ST-20..ST-23). */
+  env: NaviEnv
+  capRegistry: CapRegistryConfig
+  accountCap: { kind: 'create'; registryKey: RegistryKey } | ({ kind: 'existing' } & AccountCap)
+  snapshot: PositionAmounts
+  market: MarketSnapshot
+  funding: Funding
+  conversions: PlannedConversion[]
+  direction: 'increase' | 'decrease' | 'repay' | 'add_collateral'
+  flashAmount: string
+  flashRepayment: string
+  borrowAmount: string
+  borrowFee: string
+  withdrawAmount: string
+  collateralAfter: string
+  debtAfter: string
+  minCollateralAfter: string
+  /** Binds all quote data for accidental modification detection, not authentication. */
+  checksum: string
+}
+export interface MultiplyQuote {
+  address: string
+  strategy: Strategy
+  action: Action
+  constraints: Constraints
+  expiresAt: number
+  estimate: {
+    inputs: CoinAmount[]
+    outputs: CoinAmount[]
+    minOutputs: CoinAmount[]
+    healthFactor: string | null
+    leverage: string | null
+  }
+  execution: ExecutionPlan
+}
+export interface BuildInputs {
+  coins: CoinInput[]
+  accountCap?: TransactionObjectArgument
+}
+export interface BuildResult {
+  /** Remaining engine coins. Astros route change is transferred to quote.address directly. */
+  coins: CoinInput[]
+  accountCap: TransactionObjectArgument
+  createdAccountCap?: TransactionObjectArgument
+}
+export interface MultiplyOptions {
+  client?: MultiplySuiClient
+  capRegistry?: CapRegistryConfig
+  dataSource?: DataSource
+  strategies?: Strategy[]
+  /** Explicitly retired keys are skipped only after validating the complete registry. */
+  retiredRegistryKeys?: RegistryKey[]
+  converters?: Converter[]
+  /** Omitted: Astros. Used only when no eligible primary converter can quote. */
+  fallbackConverter?: Converter
+  services?: NaviSdkServiceOptions
+  marketPriceMode?: MarketPriceMode
+  /** API stored-plan assembly only. The caller MUST fully simulate and reconcile the PTB. */
+  prepareOracleForSimulation?: boolean
+  /** Disable chain rate hints; execution still uses the configured converters (default Astros). */
+  useRateHints?: boolean
+  /** Independent from execution routing. Undefined selects built-in LST hints for default routing. */
+  rateHintProvider?: (
+    pair: Pick<ConversionRequest, 'coinIn' | 'coinOut'>
+  ) => Promise<ConversionRateHint | undefined>
+  /** Explicit native-converter experiments only; default routing never uses native snapshots. */
+  disableRedemptionSnapshot?: boolean
+  /**
+   * NAVI deployment for the default data source. Omitted means `prod`. Not combinable with a
+   * custom `dataSource`, which declares its own `env`. `dev` has no Multiply Registry:
+   * Cap creation and Registry discovery need an explicit `capRegistry` there.
+   */
+  env?: NaviEnv
+}

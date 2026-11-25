@@ -1,0 +1,47 @@
+{
+  "sdkHead": "b12eb2ac2ec61213a3ee20b58e55ae372cbdeabb",
+  "scope": "Uncommitted SDK changes, not the npm published package",
+  "currentSources": {
+    "src/amounts.ts": "4da5cd6d186326bdec45838b8bb72594ab29f9b316992ed88ce44a2c7feab512",
+    "src/cap-registry.ts": "3c5b4e7657e7148e320f44ed71ec582e9135bd2a93f152fefdd272f8af937267",
+    "src/client.ts": "d018a078860f95b28dfb2d438cddce9a21ec2e9ec4154fc83d01d96923c4edb3",
+    "src/converters.ts": "55d86267224b019856abee508969788c06f575c8967a27f2255f15d72e7d58b6",
+    "src/data-source.ts": "1f727880ff1a2dd11ec224f0b77a3a12bc2205d47dcaa544b939c74d3330fbff",
+    "src/emode.ts": "135d83657940a48af43b5ab3bb0513dac4676b6a3eaf38937fc3321f1cb2f72b",
+    "src/funding.ts": "1ba25762244c7a567f1bacd19a9926f8baa6d9266f92dbc42f83745dae269d15",
+    "src/index.ts": "17f03edb79410de0beec0e4617ab2046c42f996f784c6c2a62889a2c08d7e8c8",
+    "src/market-prices.ts": "e62902a153a2bfcd7ae1c7f461e72b874225c0b61cd8c283ce817c7b2f022166",
+    "src/native-redemption.ts": "4c74b50aa52742e09ce2f11ccd122792da2e3bdeb7ccc8c428f57d9095421938",
+    "src/native-staking.ts": "c5e2a3057f8b868796569b432a7498c2af0f8ad393c68364f95dd220238d3580",
+    "src/planner.ts": "7f463e2fb83d6948091379d63166c958284b1e78c8686db9271eab67991c71d2",
+    "src/rate-hints.ts": "81a49848da91c4b6431f610a7556f7684ca251ba0218d259a87106c08eace517",
+    "src/strategies.ts": "eafd7e841bee8d9958d1e6ee065a79ad55bd62ffecb4c8d77d97b940ceffd138",
+    "src/types.ts": "4c70e15c47cb7bf64a0496b4e18ede1a77e6e298b77ae95e474ef41e0c8f0b51",
+    "src/utils.ts": "b567b9ada6d81af014e6d269eff8238026070c4c908916d017b06b597d592a6f"
+  },
+  "baselinePlannerSha256": "6b5867e2d249a27e59c332901f8a84f5ba655c464d97eae776611bf0161f0a78",
+  "baselineDistSha256": {
+    "amounts.js": "6426e98d20dba722d10633d3884199468e15ac2d8b2065565470893bbe1a98dc",
+    "cap-registry.js": "0c962a7786077cc4d1205dde2dd8286781b1364cdd0651e3fb3aa8f8910e9c2a",
+    "client.js": "59fad231b4c1e462d4124ef23381853ba35af307ddbef16c372b52336450de9e",
+    "converters.js": "a6a17778b860e18cc0d17b88ea19e6dbf58165c3d9b58ac4814bc209662deb7b",
+    "data-source.js": "2628b3de57026281e637841cad663ad390895b39244423d62dbd35c823ff396d",
+    "emode.js": "4784c5efc8d168d981578aabe19c1b0e95ffac6b0257138b5f846c31a6639e4a",
+    "funding.js": "b8e58db5dc1b8a70aecbebb82ec4a7c4667a07e4a998f482713b282159231892",
+    "index.js": "f81d88f2a0d819499de94da80ab9d3e11ad6b6403d49123febac40000723067c",
+    "market-prices.js": "3b5da33540cbfc020d78790b5c5c290d12e194dda1ab7ccac5e659256be2ee2c",
+    "native-redemption.js": "f186469e7e7a233a8d996ebe6fe158136f87aaa8927bd3297472c22edd705544",
+    "native-staking.js": "4b94110b7b0fc3f543fcb4e83344c58c1a87a0fea47eb7cfebbff5bd607d6e5d",
+    "planner.js": "08955223d55597cde0f4412509289890ff01538ac770b91fae99158b6e1f075c",
+    "rate-hints.js": "3247f6cf6ed11296fb446b35cd515e1eb8503d750384e26df0198d1321cc397f",
+    "strategies.js": "bf9849cd184a9e3edb99dadeec014f17b71c6af2c551acf1a4eaf58e6ff42423",
+    "utils.js": "31ebb3f70afb4a2630d125fb39c9318c899cdc97c53b37e47e063ae2d328010b"
+  },
+  "baselineGuards": {
+    "src/client.ts": "d018a078860f95b28dfb2d438cddce9a21ec2e9ec4154fc83d01d96923c4edb3",
+    "src/amounts.ts": "018f2c1d223fb72df94becbe1448a5b6901453d604de61067f6aafb3883dc576",
+    "src/funding.ts": "1ba25762244c7a567f1bacd19a9926f8baa6d9266f92dbc42f83745dae269d15",
+    "src/emode.ts": "135d83657940a48af43b5ab3bb0513dac4676b6a3eaf38937fc3321f1cb2f72b",
+    "src/converters.ts": "55d86267224b019856abee508969788c06f575c8967a27f2255f15d72e7d58b6"
+  }
+}

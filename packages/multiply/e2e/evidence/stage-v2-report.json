@@ -1,0 +1,159 @@
+{
+  "kind": "mainnet-e2e-simulation",
+  "env": "dev (NAVI stage_v2)",
+  "broadcast": false,
+  "startedAt": "2026-11-17T11:16:45.859Z",
+  "commit": "3ee622b3d54181740264b7bba1a437b6937e25e3",
+  "workingTree": "M packages/multiply/e2e/FAILURE-MATRIX.md\n M packages/multiply/package.json\n M packages/multiply/src/cap-registry.ts\n M packages/multiply/src/client.ts\n M packages/multiply/src/data-source.ts\n M packages/multiply/src/index.ts\n M packages/multiply/src/types.ts\n?? packages/multiply/e2e/stage.mjs",
+  "scenarios": [
+    {
+      "name": "ST-03 invalid env",
+      "status": "passed",
+      "durationMs": 1,
+      "clockRaceRetries": [],
+      "detail": {
+        "rejected": 6
+      }
+    },
+    {
+      "name": "ST-04 env with a custom dataSource",
+      "status": "passed",
+      "durationMs": 0,
+      "clockRaceRetries": [],
+      "detail": {
+        "rejected": 1
+      }
+    },
+    {
+      "name": "ST-01 env omitted reads prod; ST-02/ST-12 env dev reads stage_v2 only",
+      "status": "passed",
+      "durationMs": 8846,
+      "clockRaceRetries": [],
+      "detail": {
+        "prodPackage": "0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a",
+        "devPackage": "0x64d89919ad10c78c27385429873334365823ebe21971f6450e58dbe61a5bacc0"
+      }
+    },
+    {
+      "name": "ST-07/ST-08/ST-09/ST-10 strategy feed selection",
+      "status": "passed",
+      "durationMs": 2,
+      "clockRaceRetries": [],
+      "detail": {
+        "dev": 3,
+        "prod": 2,
+        "prodHasRatio": false,
+        "rejected": [
+          "debt has no own feed",
+          "RR without own feed",
+          "two own feeds",
+          "two RR feeds"
+        ]
+      }
+    },
+    {
+      "name": "ST-06 dev has no Multiply Registry",
+      "status": "passed",
+      "durationMs": 16090,
+      "clockRaceRetries": [],
+      "detail": {
+        "rejected": 3
+      }
+    },
+    {
+      "name": "ST-02/ST-05/ST-07/ST-12 open on stage_v2 vsui-sui with a PTB-created Cap",
+      "status": "passed",
+      "durationMs": 29525,
+      "clockRaceRetries": [],
+      "detail": {
+        "hf": 2.7900000087981818,
+        "quotedHf": 2.790000003273,
+        "collateral": "1682312004",
+        "debt": "599999990",
+        "leverage": "1.499999999119",
+        "packages": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+          "0x2ddd0d42028be061697e3faf946ad1c4011a5c9714d540a1527fb7dc9ad3bd4e",
+          "0x55300367a2d40813727ccac4ecee977a39fb9cdb46f2e6b2c354b9798f5de2c0",
+          "0x64d89919ad10c78c27385429873334365823ebe21971f6450e58dbe61a5bacc0",
+          "0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20",
+          "0x7fb80183295089bb282d0a66017366bb60c3f1942151e8bc89cff9e3407f5811",
+          "0x99de5c967d8206ef4b75c0afab3df2a59eb02b05c282821db803831008ac25b4",
+          "0xe64be9213b8f66845502634d4b1ed2b4683a5e1aebd5afec6b2eb560dffc93b3"
+        ]
+      }
+    },
+    {
+      "name": "ST-07 without the RR push the same open aborts 1502",
+      "status": "passed",
+      "durationMs": 25142,
+      "clockRaceRetries": [],
+      "detail": {
+        "status": "Transaction resolution failed: MoveAbort in 15th command, abort code: 1502, in '0x64d89919ad10c78c27385429873334365823ebe21971f6450e58dbe61a5bacc0::calculator::calculate_value' (instruction 9)"
+      }
+    },
+    {
+      "name": "ST-12 add_principal keeps leverage",
+      "status": "passed",
+      "durationMs": 55941,
+      "clockRaceRetries": [],
+      "detail": {
+        "before": {
+          "c": "1682312004",
+          "d": "599999990",
+          "hf": 2.7900000086498875
+        },
+        "after": {
+          "c": "3364624007",
+          "d": "1199999978",
+          "hf": 2.7900000104229905
+        },
+        "quotedLeverage": "1.499999998514"
+      }
+    },
+    {
+      "name": "ST-12 remove_principal",
+      "status": "passed",
+      "durationMs": 57463,
+      "clockRaceRetries": [],
+      "detail": {
+        "before": {
+          "c": "1682312005",
+          "d": "599999991",
+          "hf": 2.7900000033194243
+        },
+        "after": {
+          "c": "410449771",
+          "d": "146373631",
+          "hf": 2.790269008221353
+        },
+        "quotedLeverage": "1.499927697266"
+      }
+    },
+    {
+      "name": "ST-12 close",
+      "status": "passed",
+      "durationMs": 55398,
+      "clockRaceRetries": [],
+      "detail": {
+        "before": {
+          "c": "1682312005",
+          "d": "599999991",
+          "hf": 2.790000003962965
+        },
+        "after": {
+          "c": "0",
+          "d": "0",
+          "hf": 1.157920892373162e+50
+        },
+        "quotedLeverage": null
+      }
+    }
+  ],
+  "address": "0x39c70d4ce3ce769a46f46ad80184a88bc25be9b49545751f5425796ef0c3d9ba",
+  "network": {
+    "chainIdentifier": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S"
+  },
+  "finishedAt": "2026-11-17T11:20:54.772Z",
+  "success": true
+}

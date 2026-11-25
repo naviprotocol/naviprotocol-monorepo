@@ -1,0 +1,132 @@
+{
+  "broadcast": false,
+  "checksEnabled": true,
+  "address": "0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe",
+  "scenarios": [
+    {
+      "name": "vsui-exact-mint",
+      "status": "passed",
+      "expectedMint": "1753802784",
+      "actualMint": "1753802784"
+    },
+    {
+      "name": "vsui-min-output",
+      "status": "passed",
+      "error": {
+        "$kind": "Unknown",
+        "message": "InsufficientCoinBalance in command 12",
+        "command": 12,
+        "Unknown": null
+      }
+    },
+    {
+      "name": "vsui",
+      "status": "passed",
+      "formalQuoteCalls": 0,
+      "quotedHF": "1.860000000000",
+      "hf": 1.8600000026587975,
+      "recomputedHF": 1.8600000031299768,
+      "bytesSha256": "f3192a0cb5258ddb1a975f5bec3f6eca91b6cc873cf316816203d5260b2b03ae"
+    },
+    {
+      "name": "vsui-unsafe-hf",
+      "status": "passed",
+      "error": {
+        "$kind": "MoveAbort",
+        "message": "MoveAbort in 24th command, abort code: 1000000000, in '0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a::navi_adaptor::verify_navi_position_healthy' (instruction 30)",
+        "command": 23,
+        "MoveAbort": {
+          "abortCode": "1000000000",
+          "location": {
+            "package": "0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a",
+            "module": "navi_adaptor",
+            "function": 0,
+            "instruction": 30,
+            "functionName": "verify_navi_position_healthy"
+          }
+        }
+      }
+    },
+    {
+      "name": "hasui-exact-mint",
+      "status": "passed",
+      "expectedMint": "1711367214",
+      "actualMint": "1711367214"
+    },
+    {
+      "name": "hasui-min-output",
+      "status": "passed",
+      "error": {
+        "$kind": "Unknown",
+        "message": "InsufficientCoinBalance in command 11",
+        "command": 11,
+        "Unknown": null
+      }
+    },
+    {
+      "name": "hasui",
+      "status": "passed",
+      "formalQuoteCalls": 0,
+      "quotedHF": "1.500000000000",
+      "hf": 1.4999999999999998,
+      "recomputedHF": 1.5,
+      "bytesSha256": "38d06c8f5fdfddf515de8b338d580f2ef47b95de5304004ee35f66cbb1ec99c0"
+    },
+    {
+      "name": "hasui-unsafe-hf",
+      "status": "passed",
+      "error": {
+        "$kind": "MoveAbort",
+        "message": "MoveAbort in 23rd command, abort code: 1000000000, in '0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a::navi_adaptor::verify_navi_position_healthy' (instruction 30)",
+        "command": 22,
+        "MoveAbort": {
+          "abortCode": "1000000000",
+          "location": {
+            "package": "0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a",
+            "module": "navi_adaptor",
+            "function": 0,
+            "instruction": 30,
+            "functionName": "verify_navi_position_healthy"
+          }
+        }
+      }
+    },
+    {
+      "name": "usdsui",
+      "status": "passed",
+      "formalQuoteCalls": 1,
+      "quotedHF": "1.739930191271",
+      "hf": 1.739930221412317,
+      "recomputedHF": 1.7399302178010871,
+      "bytesSha256": "1dcc6ef2f6739a86ac783215506235ce04504a9e3338c1f3003f970ec4bd3c07"
+    },
+    {
+      "name": "usdsui-unsafe-hf",
+      "status": "passed",
+      "error": {
+        "$kind": "MoveAbort",
+        "message": "MoveAbort in 45th command, abort code: 1000000000, in '0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a::navi_adaptor::verify_navi_position_healthy' (instruction 30)",
+        "command": 44,
+        "MoveAbort": {
+          "abortCode": "1000000000",
+          "location": {
+            "package": "0x3ccac6515a31a45c138b1e74b7fbc8825263c786f8bd960adcbc109792fb876a",
+            "module": "navi_adaptor",
+            "function": 0,
+            "instruction": 30,
+            "functionName": "verify_navi_position_healthy"
+          }
+        }
+      }
+    }
+  ],
+  "candidateSourceSha256": {
+    "planner": "377b6c0aee6ebb4326cbea9c37147efea857b0ed021b22afac0dbf9a7f9e0f58",
+    "converters": "1574462d3d65f4e2891425540efc73acdfafcae7775a7fb08fb1b9aec278252f",
+    "client": "7cce75d778f7369d996dcd9f23581bca44eb97aee5099071b6791c027695e865",
+    "types": "bd55f078197a7242bfa16328f0f22584e90556642e7a53752671256ef60d0c86",
+    "native-staking": "c5e2a3057f8b868796569b432a7498c2af0f8ad393c68364f95dd220238d3580"
+  },
+  "usdcFunding": "Wallet had insufficient USDC; an actual 0.3 SUI -> USDC swap was prepended inside the same checksEnabled=true simulated PTB. Its quote is excluded from strategy formalQuoteCalls.",
+  "rawEvidenceDirectory": "/private/tmp/multiply-native-snapshot-20261124/build-sim"
+}

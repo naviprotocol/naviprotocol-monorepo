@@ -1,0 +1,15 @@
+{
+  "kind": "mainnet-e2e-simulation",
+  "broadcast": false,
+  "startedAt": "2026-10-29T13:28:51.101Z",
+  "commit": "a05557682fe3945114c269531f51f8e055016e31",
+  "scenarios": [
+    {
+      "name": "bootstrap",
+      "status": "failed",
+      "error": "Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/dist/index.js' imported from /Users/zado/code/navi/naviprotocol-monorepo/packages/multiply/e2e/run.mjs\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at moduleResolve (node:internal/modules/esm/resolve:879:10)\n    at defaultResolve (node:internal/modules/esm/resolve:1006:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:763:56)\n    at #resolve (node:internal/modules/esm/loader:687:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)\n    at node:internal/modules/esm/loader:636:32\n    at TracingChannel.tracePromise (node:diagnostics_channel:361:14)"
+    }
+  ],
+  "finishedAt": "2026-10-29T13:28:51.123Z",
+  "success": false
+}
