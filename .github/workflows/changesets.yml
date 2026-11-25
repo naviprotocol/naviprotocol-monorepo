@@ -17,11 +17,11 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # pin@v3.7.0
       - name: Install Node and dependencies
         uses: ./.github/actions/install-dependencies
       - name: Create Release Pull Request
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # pin@v1.9.0
         with:
           version: pnpm changeset-version
         env:

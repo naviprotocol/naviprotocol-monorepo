@@ -3,7 +3,7 @@ description: 'Install Node dependencies with pnpm'
 runs:
   using: 'composite'
   steps:
-    - uses: pnpm/action-setup@v4
+    - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # pin@v4.3.0
       with:
         version: 10.1.0
         run_install: false
@@ -11,14 +11,14 @@ runs:
       id: pnpm-cache-dir
       shell: bash
       run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-    - uses: actions/cache@v4
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # pin@v4.3.0
       id: pnpm-cache
       with:
         path: ${{ steps.pnpm-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-node-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: ${{ runner.os }}-node-
     - name: Use Node.js v22
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # pin@v3.9.1
       with:
         node-version: 22
     - shell: bash

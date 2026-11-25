@@ -17,7 +17,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # pin@v3.7.0
       - name: Install Node and dependencies
         uses: ./.github/actions/install-dependencies
 
@@ -29,7 +29,7 @@ jobs:
       API_KEY: ${{ secrets.API_KEY }}
       RPC_URL: ${{ secrets.RPC_URL }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # pin@v3.7.0
       - name: Install Node and dependencies
         uses: ./.github/actions/install-dependencies
       - name: Run unit tests
@@ -40,7 +40,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # pin@v3.7.0
       - name: Install Node and dependencies
         uses: ./.github/actions/install-dependencies
       - name: Lint
@@ -53,7 +53,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # pin@v3.7.0
       - name: Install Node and dependencies
         uses: ./.github/actions/install-dependencies
       - id: diff
