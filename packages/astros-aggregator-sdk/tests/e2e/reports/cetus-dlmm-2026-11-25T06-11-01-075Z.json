@@ -1,0 +1,156 @@
+{
+  "sender": "0x60dd01bc037e2c1ea2aaf02187701f9f4453ba323338d2f2f521957065b0984d",
+  "receiver": "0x000000000000000000000000000000000000000000000000000000000000beef",
+  "package": "0x6b989f9b05bd11a00f1c7779443d66802c5e71631f59e87be5d2a616991f151e",
+  "failed": 0,
+  "rawFile": "tests/e2e/reports/cetus-dlmm-2026-11-25T06-11-01-075Z.raw.json",
+  "rows": [
+    {
+      "case": "SUI->USDC 5 SUI",
+      "from": "0x2::sui::SUI",
+      "target": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+      "a2b": false,
+      "pathAmounts": [
+        "5000000000"
+      ],
+      "sdkOk": true,
+      "sdkError": null,
+      "poolVersion": "1109786022",
+      "nowMs": "1795587052988",
+      "received": "3194694",
+      "swapEvents": [
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "5000000000",
+          "amount_out": "3194694"
+        }
+      ],
+      "tightSlippageOk": true,
+      "tightSameState": true,
+      "tightReceived": "3194694",
+      "result": "pass",
+      "rawPoolVersion": "1109786022",
+      "rawGroups": 67
+    },
+    {
+      "case": "SUI->USDC 3000 SUI",
+      "from": "0x2::sui::SUI",
+      "target": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+      "a2b": false,
+      "pathAmounts": [
+        "3000000000000"
+      ],
+      "sdkOk": true,
+      "sdkError": null,
+      "poolVersion": "1109786022",
+      "nowMs": "1795587054720",
+      "received": "1916816438",
+      "swapEvents": [
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "3000000000000",
+          "amount_out": "1916816438"
+        }
+      ],
+      "tightSlippageOk": true,
+      "tightSameState": true,
+      "tightReceived": "1916816438",
+      "result": "pass",
+      "rawPoolVersion": "1109786022",
+      "rawGroups": 67
+    },
+    {
+      "case": "USDC->SUI 50 USDC",
+      "from": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+      "target": "0x2::sui::SUI",
+      "a2b": true,
+      "pathAmounts": [
+        "50000000"
+      ],
+      "sdkOk": true,
+      "sdkError": null,
+      "poolVersion": "1109786022",
+      "nowMs": "1795587056723",
+      "received": "77238493249",
+      "swapEvents": [
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "50000000",
+          "amount_out": "77238493249"
+        }
+      ],
+      "tightSlippageOk": true,
+      "tightSameState": true,
+      "tightReceived": "77238493249",
+      "result": "pass",
+      "rawPoolVersion": "1109786022",
+      "rawGroups": 67
+    },
+    {
+      "case": "USDC->SUI 20000 USDC",
+      "from": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+      "target": "0x2::sui::SUI",
+      "a2b": true,
+      "pathAmounts": [
+        "20000000000"
+      ],
+      "sdkOk": true,
+      "sdkError": null,
+      "poolVersion": "1109786022",
+      "nowMs": "1795587058448",
+      "received": "30895391487308",
+      "swapEvents": [
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "20000000000",
+          "amount_out": "30895391487308"
+        }
+      ],
+      "tightSlippageOk": true,
+      "tightSameState": true,
+      "tightReceived": "30895391487308",
+      "result": "pass",
+      "rawPoolVersion": "1109786022",
+      "rawGroups": 67
+    },
+    {
+      "case": "SUI->USDC 2 paths 300+700 SUI",
+      "from": "0x2::sui::SUI",
+      "target": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+      "a2b": false,
+      "pathAmounts": [
+        "300000000000",
+        "700000000000"
+      ],
+      "sdkOk": true,
+      "sdkError": null,
+      "poolVersion": "1109786022",
+      "nowMs": "1795587059927",
+      "received": "638938811",
+      "swapEvents": [
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "300000000000",
+          "amount_out": "191681643"
+        },
+        {
+          "partner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "ref_fee": "0",
+          "amount_in": "700000000000",
+          "amount_out": "447257168"
+        }
+      ],
+      "tightSlippageOk": true,
+      "tightSameState": true,
+      "tightReceived": "638938811",
+      "result": "pass",
+      "rawPoolVersion": "1109786022",
+      "rawGroups": 67
+    }
+  ]
+}

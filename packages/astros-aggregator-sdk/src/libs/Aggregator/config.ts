@@ -52,7 +52,10 @@ export const AggregatorConfig = {
   clockAddress: '0x6',
 
   // Aftermath DEX configuration
-  aftermathPackageId: '0xc4049b2d1cc0f6e017fda8260e4377cecd236bd7f56a54fee120816e72e2e0dd',
+  // amm v5 package. swap::swap_exact_in keeps the v2 signature but runs pool_registry::assert_correct_package:
+  // PoolRegistry.protocol_version must be <= 4 (abort 63) and not paused (abort 64). Since 2026-11-13 the registry is 4,
+  // so the old v2 package (0xc4049b2d…, requires == 2) aborts with code 40 and v4 (0x3a6928bd…, accepts <= 3) with 63.
+  aftermathPackageId: '0x93056cd889839d7186498c5e86d3087cb79dacb08ae0e18b9b2c42ebe06d7be7',
   aftermathPoolRegistry: '0xfcc774493db2c45c79f688f88d28023a3e7d98e4ee9f48bbf5c7990f651577ae',
   aftermathFeeVault: '0xf194d9b1bcad972e45a7dd67dd49b3ee1e3357a00a50850c52cd51bb450e13b4',
   aftermathTreasury: '0x28e499dff5e864a2eafe476269a4f5035f1c16f338da7be18b103499abf271ce',
@@ -111,7 +114,39 @@ export const AggregatorConfig = {
   // config::checked_package_version (code 10); 0x668909f9 is the current v4 integrate
   // package (verified by devInspect on both SUI->USDC and USDC->SUI).
   magmaIntegratePublishedAt: '0x668909f9f30380dd1b63834534dc2bd19b274e6312a0dfa9be0ee5b0cef73446',
-  magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf'
+  magmaAlmmFactory: '0xedb456e93e423dd75a8ddebedd9974bb661195043027e32ce01649d6ccee74cf',
+
+  // Cetus DLMM configuration (protocol package, original 0x5664f9d3…).
+  // cetusDlmmPublishedAt is the latest package (v10). It must track Versioned.version (currently 10):
+  // versioned::check_version aborts in packages whose version constant is below it. When Cetus bumps
+  // Versioned, the backend stops returning cetusDlmm routes (its engine only prices version 10) until
+  // both this address and the backend are updated.
+  cetusDlmmPublishedAt: '0x6b989f9b05bd11a00f1c7779443d66802c5e71631f59e87be5d2a616991f151e',
+  cetusDlmmGlobalConfig: '0xf31b605d117f959b9730e8c07b08b856cb05143c5e81d5751c90d2979e82f599',
+  cetusDlmmVersioned: '0x05370b2d656612dd5759cbe80463de301e3b94a921dfc72dd9daa2ecdeb2d0a8',
+
+  // AlphaFi liquid staking (stSUI): execution package v2 and LiquidStakingInfo<STSUI>
+  alphafiPackageId: '0x059f94b85c07eb74d2847f8255d8cc0a67c9a8dcc039eabf9f8b9e23a0de2700',
+  alphafiLiquidStakingInfo: '0x1adb343ab351458e151bc392fbf1558b3332467f23bda45ae67cd355a57fd5f5',
+  stSuiCoinType: '0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI',
+
+  // Haedal WAL staking (haWAL): Haedal package v6, Walrus Staking and Haedal walstaking::Staking
+  haWalPackageId: '0xd59779c4cbc3dc0bd53ce0a518116903623a6f2f30ee25bdfb5693691c82235d',
+  walrusStaking: '0x10b9d30c28448939ce6c4d6c6e0ffce4a7f8a4ada8248bdad09ef8b70e4a3904',
+  haWalStaking: '0x9e5f6537be1a5b658ec7eed23160df0b28c799563f6c41e9becc9ad633cb592b',
+
+  // Aftermath liquid staking (afSUI): LSD package v2 and its shared objects.
+  // The treasury / referral vault are the LSD ones, not the Aftermath AMM ones.
+  afSuiPackageId: '0x1575034d2729907aefca1ac757d6ccfcd3fc7e9e77927523c06007d8353ad836',
+  afSuiVault: '0x2f8f6d5da7f13ea37daa397724280483ed062769813b6f31e9788e59cc88994d',
+  afSuiSafe: '0xeb685899830dd5837b47007809c76d91a098d52aabbf61e8ac467c59e5cc4610',
+  afSuiReferralVault: '0x4ce9a19b594599536c53edb25d22532f82f18038dc8ef618afd00fbbfb9845ef',
+  afSuiTreasury: '0xd2b95022244757b0ab9f74e2ee2fb2c3bf29dce5590fa6993a85d64bd219d7e8',
+  afSuiValidator: '0xd30018ec3f5ff1a3c75656abf927a87d7f0529e6dc89c7ddd1bd27ecb05e3db2',
+
+  // FlowX AMM (v2 constant product): the package has only v1; every pair lives in the shared Container's Bag
+  flowxAmmPackageId: '0xba153169476e8c3114962261d1edc70de5ad9781b83cc617ecc8c1923191cae0',
+  flowxAmmContainer: '0xb65dcbf63fd3ad5d0ebfbf334780dc9f785eff38a4459e37ab08fa79576ee511'
 }
 
 /**

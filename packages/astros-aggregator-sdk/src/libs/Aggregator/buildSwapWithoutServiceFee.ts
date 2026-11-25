@@ -11,11 +11,16 @@ import { makeDeepbookPTB } from './Dex/deepbook'
 import { makeBluefinPTB } from './Dex/bluefin'
 import { makeMAGMAPTB } from './Dex/magma'
 import { makeVSUIPTB } from './Dex/vSui'
+import { makeAlphafiPTB } from './Dex/alphafi'
+import { makeHaWalPTB } from './Dex/haWal'
+import { makeAfSuiPTB } from './Dex/afSui'
+import { makeFlowxAmmPTB } from './Dex/flowxAmm'
 import { makeHASUIPTB } from './Dex/haSui'
 import { makeMomentumPTB } from './Dex/momentum'
 import { getRemotePositiveSlippageSetting } from './getPositiveSlippageSetting'
 import { makeFLOWXPTB } from './Dex/flowx'
 import { makeMAGMAALMMPTB } from './Dex/magmaAlmm'
+import { makeCetusDlmmPTB } from './Dex/cetusDlmm'
 import { parsePoolTypeArgs } from './utils'
 import { moveCallTransferNonzero } from '../PTB/commonFunctions'
 import type { SwapOptions } from '../../types'
@@ -97,7 +102,8 @@ export async function buildSwapWithoutServiceFee(
         Dex.BLUEFIN,
         Dex.MAGMA,
         Dex.MOMENTUM,
-        Dex.MAGMA_ALMM
+        Dex.MAGMA_ALMM,
+        Dex.CETUS_DLMM
       ]
 
       if (dexNeedsParsing.includes(provider)) {
@@ -298,6 +304,22 @@ export async function buildSwapWithoutServiceFee(
           pathTempCoin = await makeHASUIPTB(txb, pathTempCoin, a2b)
           break
         }
+        case Dex.ALPHAFI: {
+          pathTempCoin = await makeAlphafiPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.HAWAL: {
+          pathTempCoin = await makeHaWalPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.AFSUI: {
+          pathTempCoin = await makeAfSuiPTB(txb, pathTempCoin, a2b)
+          break
+        }
+        case Dex.FLOWX_AMM: {
+          pathTempCoin = await makeFlowxAmmPTB(txb, pathTempCoin, tempTokenA, tempTokenB)
+          break
+        }
         case Dex.MOMENTUM: {
           const outputCoin = await makeMomentumPTB(
             txb,
@@ -365,8 +387,24 @@ export async function buildSwapWithoutServiceFee(
           }
           break
         }
-        default: {
+        case Dex.CETUS_DLMM: {
+          const [poolA, poolB] = parsePoolTypeArgs(route.type)
+          // The whole path coin is swapped (exact-in), so there is no leftover to return.
+          pathTempCoin = await makeCetusDlmmPTB(
+            txb,
+            poolA,
+            poolB,
+            poolId,
+            pathTempCoin,
+            amountInPTB,
+            a2b
+          )
           break
+        }
+        default: {
+          // A hop this SDK cannot build would leave the input coin in pathTempCoin and fail later
+          // in mergeCoins with a type mismatch; fail here with the provider name instead.
+          throw new Error(`Unsupported provider: ${provider}`)
         }
       }
     }

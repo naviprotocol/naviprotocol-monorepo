@@ -1,0 +1,4 @@
+# Raw pool state (hundreds of KB), only for the backend sdk-check; never committed
+*.raw.json
+# One committed report per script (added with git add -f); new runs stay local
+*.json
