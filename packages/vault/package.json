@@ -1,6 +1,6 @@
 {
   "name": "@naviprotocol/vault",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Unified Vault SDK",
   "license": "MIT",
   "homepage": "https://sdk.naviprotocol.io/vault",

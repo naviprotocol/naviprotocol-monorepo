@@ -48,6 +48,19 @@ export type VaultLockup = {
 type NAVIVaultCustomConfig = {
   /** Published address of the `navi_vault` Move package this vault's on-chain object belongs to. */
   package: string
+  /**
+   * Address of the ORIGINAL (first-published) `navi_vault` package. Move struct types, such
+   * as the vault's `Receipt`, are named by this address even after package upgrades, whereas
+   * `package` is the latest version that calls are routed to. Defaults to the production
+   * deployment's original package when omitted.
+   */
+  originalPackage?: string
+  /**
+   * The `@naviprotocol/lending` environment this vault's lending markets live in; it is
+   * passed as `env` to every lending call (pools, config, price feeds, oracle updates).
+   * Defaults to `'prod'` when omitted.
+   */
+  lendingEnv?: 'prod' | 'dev'
 }
 
 /** Present on `Vault.volo` only for vaults served by the Volo source. */

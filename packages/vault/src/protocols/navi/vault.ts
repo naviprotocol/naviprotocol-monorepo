@@ -2,7 +2,7 @@ import { bcs, type BcsType } from '@mysten/sui/bcs'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { Vault, CacheOption } from '../../types'
 import { getSuiClient, withCache, withSingleton } from '../../utils'
-import { checkVault } from './utils'
+import { checkVault, getLendingEnv } from './utils'
 import { DEFAULT_CACHE_TIME, getPools } from '@naviprotocol/lending'
 import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils'
 import { vaultErrors } from '../../error'
@@ -273,6 +273,7 @@ export async function getVaultDefaultPool(
   const defaultMarket = normalizeSuiAddress(vaultInfo.default_market)
   const pools = await getPools({
     pools: [defaultMarket],
+    env: getLendingEnv(vault),
     cacheTime: DEFAULT_CACHE_TIME
   })
   const defaultPool = pools.find(

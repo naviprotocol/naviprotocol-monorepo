@@ -11,16 +11,34 @@ import { vaultErrors } from '../../error'
  * `VAULT_CONFIG_INVALID` condition.
  *
  * @param market - Market key to resolve. A `LendingConfig` yields `undefined`
+ * @param options - Optional lending environment (`env`, defaults to `'prod'`)
  * @returns Promise<LendingConfig | undefined> - The market's config, or `undefined` when
  *          `market` was not a string
  */
-export async function getMarketConfig(market: string | LendingConfig) {
+export async function getMarketConfig(
+  market: string | LendingConfig,
+  options?: { env?: LendingEnv }
+) {
   if (typeof market === 'string') {
     return await getConfig({
       market,
+      env: options?.env ?? 'prod',
       cacheTime: DEFAULT_CACHE_TIME
     })
   }
+}
+
+/** The `@naviprotocol/lending` environment a NAVI vault's markets live in. */
+export type LendingEnv = NonNullable<NonNullable<Vault['navi']>['lendingEnv']>
+
+/**
+ * Lending environment for a vault's markets: `vault.navi.lendingEnv`, `'prod'` when unset.
+ *
+ * @param vault - A NAVI vault
+ * @returns The `env` to pass to `@naviprotocol/lending` calls for this vault
+ */
+export function getLendingEnv(vault: Vault): LendingEnv {
+  return vault.navi?.lendingEnv ?? 'prod'
 }
 
 /**

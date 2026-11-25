@@ -13,12 +13,12 @@ import {
   getPriceFeeds,
   filterPriceFeeds
 } from '@naviprotocol/lending'
-import { getMarketConfig, checkVault } from './utils'
+import { getMarketConfig, getLendingEnv, checkVault } from './utils'
 import { getVaultDefaultPool, getVaultInfo, getVaultRewardRules } from './vault'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { apportion, parseTxValue } from '../../utils'
 import { U64_MAX } from '../../config'
-import { getVaultReceipts, receiptType, planReceiptWithdrawByAmount } from './receipt'
+import { getVaultReceipts, getReceiptType, planReceiptWithdrawByAmount } from './receipt'
 import { VaultReward } from './reward'
 import { vaultErrors } from '../../error'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
@@ -108,6 +108,7 @@ export async function collectNaviRewardsPTB(
   })
   const pools = await getPools({
     pools: poolList,
+    env: getLendingEnv(vault),
     cacheTime: DEFAULT_CACHE_TIME
   })
 
@@ -126,6 +127,7 @@ export async function collectNaviRewardsPTB(
     }
     const config = await getConfig({
       market: pool.market,
+      env: getLendingEnv(vault),
       cacheTime: DEFAULT_CACHE_TIME
     })
     const rewardFund = config.rewardFunds[reward.rewardCoinType]
@@ -304,7 +306,7 @@ export async function depositPTB(
   if (!pool) {
     throw vaultErrors.vaultConfigInvalid(vault.id, 'default pool was not found')
   }
-  const marketConfig = await getMarketConfig(pool.market)
+  const marketConfig = await getMarketConfig(pool.market, { env: getLendingEnv(vault) })
   if (!marketConfig) {
     throw vaultErrors.vaultConfigInvalid(vault.id, `market ${pool.market} was not found`, {
       market: pool.market
@@ -314,10 +316,10 @@ export async function depositPTB(
   const receiptOption = receipt
     ? tx.moveCall({
         target: '0x1::option::some',
-        typeArguments: [receiptType],
+        typeArguments: [getReceiptType(vault)],
         arguments: [parseTxValue(receipt, tx.object)]
       })
-    : tx.moveCall({ target: '0x1::option::none', typeArguments: [receiptType] })
+    : tx.moveCall({ target: '0x1::option::none', typeArguments: [getReceiptType(vault)] })
 
   return tx.moveCall({
     target: `${vault!.navi!.package}::navi_vault::deposit`,
@@ -450,7 +452,7 @@ export async function withdrawPTB(
   )
 
   const pool = await getVaultDefaultPool(vault, options)
-  const marketConfig = await getMarketConfig(pool.market)
+  const marketConfig = await getMarketConfig(pool.market, { env: getLendingEnv(vault) })
 
   if (!marketConfig) {
     throw vaultErrors.vaultConfigInvalid(vault.id, `market ${pool.market} was not found`, {
@@ -460,7 +462,7 @@ export async function withdrawPTB(
   }
 
   const priceFeeds = await getPriceFeeds({
-    env: 'prod'
+    env: getLendingEnv(vault)
   })
 
   await updateOraclePricesPTB(
@@ -470,7 +472,7 @@ export async function withdrawPTB(
     }),
     {
       client: options?.client,
-      env: 'prod',
+      env: getLendingEnv(vault),
       market: pool.market,
       updatePythPriceFeeds: true
     }
